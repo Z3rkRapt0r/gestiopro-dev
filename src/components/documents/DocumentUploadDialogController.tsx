@@ -4,18 +4,19 @@ import DocumentUpload from "./DocumentUpload";
 
 interface DocumentUploadDialogControllerProps {
   onSuccess?: () => void;
-  trigger?: React.ReactNode; // Esempio: un bottone
+  trigger?: React.ReactNode;
+  targetUserId?: string; // <-- AGGIUNTO
 }
 
 const DocumentUploadDialogController = ({
   onSuccess,
-  trigger
+  trigger,
+  targetUserId
 }: DocumentUploadDialogControllerProps) => {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      {/* Trigger custom, oppure niente */}
       {trigger ? (
         <span onClick={() => setOpen(true)} style={{ display: 'inline-flex' }}>
           {trigger}
@@ -28,9 +29,11 @@ const DocumentUploadDialogController = ({
           setOpen(false);
           onSuccess && onSuccess();
         }}
+        targetUserId={targetUserId} // <-- Passa la prop
       />
     </>
   );
 };
 
 export default DocumentUploadDialogController;
+

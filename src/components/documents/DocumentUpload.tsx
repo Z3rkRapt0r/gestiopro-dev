@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,9 +22,10 @@ interface DocumentUploadProps {
   onSuccess?: () => void;
   open: boolean;
   setOpen: (open: boolean) => void;
+  targetUserId?: string; // <-- AGGIUNTO
 }
 
-const DocumentUpload = ({ onSuccess, open, setOpen }: DocumentUploadProps) => {
+const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUploadProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -42,7 +42,17 @@ const DocumentUpload = ({ onSuccess, open, setOpen }: DocumentUploadProps) => {
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
-    if (isAdmin && open) {
+    if (targetUserId) {
+      setUploadTarget('specific_user');
+      setSelectedUserId(targetUserId);
+    } else if (!open) {
+      setUploadTarget(isAdmin ? 'specific_user' : 'self');
+      setSelectedUserId('');
+    }
+  }, [open, isAdmin, targetUserId]);
+
+  useEffect(() => {
+    if (isAdmin && open && !targetUserId) {
       const fetchProfiles = async () => {
         const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, email');
         if (error) {
@@ -53,18 +63,7 @@ const DocumentUpload = ({ onSuccess, open, setOpen }: DocumentUploadProps) => {
       };
       fetchProfiles();
     }
-  }, [isAdmin, open]);
-
-  useEffect(() => {
-    if (!open) {
-      setFile(null);
-      setTitle('');
-      setDescription('');
-      setDocumentType('');
-      setUploadTarget(isAdmin ? 'specific_user' : 'self');
-      setSelectedUserId('');
-    }
-  }, [open, isAdmin]);
+  }, [isAdmin, open, targetUserId]);
 
   const documentTypes = [
     { value: 'payslip', label: 'Busta Paga' },
@@ -87,15 +86,18 @@ const DocumentUpload = ({ onSuccess, open, setOpen }: DocumentUploadProps) => {
 
     setLoading(true);
 
-    let targetUserIdForUpload: string | undefined = user.id;
-    let isPersonalDocument: boolean = true;
+    let targetUserForUpload: string | undefined = user.id;
+    let isPersonalDocument = true;
 
-    if (isAdmin) {
+    if (targetUserId) {
+      targetUserForUpload = targetUserId;
+      isPersonalDocument = true;
+    } else if (isAdmin) {
       if (uploadTarget === 'specific_user') {
-        targetUserIdForUpload = selectedUserId;
+        targetUserForUpload = selectedUserId;
         isPersonalDocument = true;
       } else if (uploadTarget === 'all_employees') {
-        targetUserIdForUpload = user.id;
+        targetUserForUpload = user.id;
         isPersonalDocument = false;
       }
     }
@@ -105,7 +107,7 @@ const DocumentUpload = ({ onSuccess, open, setOpen }: DocumentUploadProps) => {
       title,
       description,
       documentType as any,
-      targetUserIdForUpload,
+      targetUserForUpload,
       isPersonalDocument
     );
 
@@ -133,7 +135,8 @@ const DocumentUpload = ({ onSuccess, open, setOpen }: DocumentUploadProps) => {
           <DialogTitle>Carica Nuovo Documento</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isAdmin && (
+          {/* Se admin e targetUserId NON c'è, mostra selettore destinatario */}
+          {isAdmin && !targetUserId && (
             <div className="space-y-2">
               <Label htmlFor="uploadTarget">Destinatario</Label>
               <Select value={uploadTarget} onValueChange={(value) => setUploadTarget(value as any)}>
@@ -155,21 +158,34 @@ const DocumentUpload = ({ onSuccess, open, setOpen }: DocumentUploadProps) => {
             </div>
           )}
 
+          {/* Se l’admin è in modalità utente specifico, mostra drop-down. Se c’è targetUserId bloccato, mostra solo dati utente selezionato */}
           {isAdmin && uploadTarget === 'specific_user' && (
             <div className="space-y-2">
               <Label htmlFor="specificUser">Seleziona Utente</Label>
-              <Select value={selectedUserId} onValueChange={setSelectedUserId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona un utente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {allProfiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.first_name} {p.last_name} ({p.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {targetUserId ? (
+                // Mostra solo info dell’utente target, non editabile
+                <Input
+                  value={allProfiles.find((p) => p.id === targetUserId)
+                    ? `${allProfiles.find((p) => p.id === targetUserId)?.first_name || ''} ${allProfiles.find((p) => p.id === targetUserId)?.last_name || ''} (${allProfiles.find((p) => p.id === targetUserId)?.email || ''})`
+                    : targetUserId
+                  }
+                  readOnly
+                  disabled
+                />
+              ) : (
+                <Select value={selectedUserId} onValueChange={setSelectedUserId} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona un utente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allProfiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.first_name} {p.last_name} ({p.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
 

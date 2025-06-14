@@ -115,8 +115,7 @@ export default function EmployeeDocumentsPage() {
                   : "Dipendente"}
               </span>
             </CardTitle>
-            {/* Tenere solo questo bottone di Upload */}
-            <DocumentUploadDialogController 
+            <DocumentUploadDialogController
               onSuccess={() => { refreshDocuments(); }}
               trigger={
                 <Button variant="default">
@@ -124,6 +123,7 @@ export default function EmployeeDocumentsPage() {
                   Carica Documento
                 </Button>
               }
+              targetUserId={employeeId}
             />
           </div>
         </CardHeader>
