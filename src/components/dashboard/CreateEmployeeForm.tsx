@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { User, UserPlus, X } from 'lucide-react';
+import { UserPlus, X } from 'lucide-react';
 
 interface CreateEmployeeFormProps {
   onClose: () => void;
@@ -31,26 +31,39 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
     setIsLoading(true);
 
     try {
-      // Crea l'utente in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Crea l'utente in Supabase Auth come se fosse lui stesso a registrarsi
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        email_confirm: true,
-        user_metadata: {
-          first_name: formData.firstName,
-          last_name: formData.lastName
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            role: 'employee',
+          }
         }
       });
 
-      if (authError) {
-        throw authError;
+      if (signUpError) {
+        // Gestione di errori comuni
+        let description = signUpError.message || "Errore durante la creazione dell'account";
+        if (signUpError.message === "User already registered") {
+          description = "Esiste già un utente con questa email";
+        }
+        throw new Error(description);
       }
 
-      // Crea il profilo nella tabella profiles
+      const userId = signUpData?.user?.id;
+      if (!userId) {
+        throw new Error("Impossibile recuperare l'id del nuovo utente.");
+      }
+
+      // Inserisci/aggiorna il profilo nella tabella profiles
+      // NB: la funzione handle_new_user normalmente inserisce il profilo.
+      // Aggiorniamo i campi aggiuntivi
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({
-          id: authData.user.id,
+        .update({
           first_name: formData.firstName,
           last_name: formData.lastName,
           email: formData.email,
@@ -58,7 +71,8 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
           department: formData.department || null,
           employee_code: formData.employeeCode || null,
           is_active: true
-        });
+        })
+        .eq('id', userId);
 
       if (profileError) {
         throw profileError;
@@ -181,3 +195,4 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
 };
 
 export default CreateEmployeeForm;
+
