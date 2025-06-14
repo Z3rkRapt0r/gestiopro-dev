@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,18 +55,17 @@ const DocumentUpload = ({ onSuccess }: DocumentUploadProps) => {
     }
   }, [isAdmin, open]);
 
-  // Reset state when dialog closes or upload target changes
+  // NUOVA LOGICA: Permette controllo esterno (quindi non serve più il DialogTrigger interno!)
   useEffect(() => {
     if (!open) {
       setFile(null);
       setTitle('');
       setDescription('');
       setDocumentType('');
-      setUploadTarget(isAdmin ? 'specific_user' : 'self'); // Default for admin
+      setUploadTarget(isAdmin ? 'specific_user' : 'self');
       setSelectedUserId('');
     }
   }, [open, isAdmin]);
-
 
   const documentTypes = [
     { value: 'payslip', label: 'Busta Paga' },
@@ -135,12 +133,7 @@ const DocumentUpload = ({ onSuccess }: DocumentUploadProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Upload className="mr-2 h-4 w-4" />
-          Carica Documento
-        </Button>
-      </DialogTrigger>
+      {/* RIMOSSO DialogTrigger */}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Carica Nuovo Documento</DialogTitle>
