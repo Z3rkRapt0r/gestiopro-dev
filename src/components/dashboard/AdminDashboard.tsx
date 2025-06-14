@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import CreateEmployeeForm from "./CreateEmployeeForm";
+import EditEmployeeForm from "./EditEmployeeForm";
 import AdminDocumentsSection from "./AdminDocumentsSection";
 import AdminNotificationsSection from "./AdminNotificationsSection";
 
@@ -27,10 +28,12 @@ interface Employee {
   first_name: string | null;
   last_name: string | null;
   email: string | null;
-  role: string;
+  role: 'admin' | 'employee';
   department: string | null;
   employee_code: string | null;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 const AdminDashboard = () => {
@@ -38,6 +41,7 @@ const AdminDashboard = () => {
   const [showCreateEmployee, setShowCreateEmployee] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+  const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
 
@@ -75,8 +79,12 @@ const AdminDashboard = () => {
       if (error) {
         throw error;
       }
-
-      setEmployees(data || []);
+      const fetchedEmployees = (data || []).map(emp => ({
+        ...emp,
+        role: emp.role as 'admin' | 'employee',
+        is_active: emp.is_active ?? true
+      })) as Employee[];
+      setEmployees(fetchedEmployees);
     } catch (error: any) {
       console.error('Error fetching employees:', error);
       toast({
@@ -90,13 +98,19 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    if (activeSection === 'employees') {
+    if (activeSection === 'employees' || activeSection === 'dashboard') {
       fetchEmployees();
     }
   }, [activeSection]);
 
   const handleEmployeeCreated = () => {
     fetchEmployees();
+    setShowCreateEmployee(false);
+  };
+
+  const handleEmployeeUpdated = () => {
+    fetchEmployees();
+    setEmployeeToEdit(null);
   };
 
   const renderDashboard = () => (
@@ -279,15 +293,21 @@ const AdminDashboard = () => {
                   <div className="flex items-center space-x-2">
                     <Badge 
                       variant={employee.role === 'admin' ? 'default' : 'secondary'}
+                      className={employee.role === 'admin' ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}
                     >
                       {employee.role === 'admin' ? 'Admin' : 'Dipendente'}
                     </Badge>
                     <Badge 
                       variant={employee.is_active ? 'default' : 'secondary'}
+                      className={employee.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'}
                     >
                       {employee.is_active ? 'Attivo' : 'Inattivo'}
                     </Badge>
-                    <Button size="sm" variant="ghost">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => setEmployeeToEdit(employee)}
+                    >
                       <Settings className="h-4 w-4" />
                     </Button>
                   </div>
@@ -391,6 +411,15 @@ const AdminDashboard = () => {
         <CreateEmployeeForm
           onClose={() => setShowCreateEmployee(false)}
           onEmployeeCreated={handleEmployeeCreated}
+        />
+      )}
+
+      {/* Modal per modificare dipendente */}
+      {employeeToEdit && (
+        <EditEmployeeForm
+          employee={employeeToEdit}
+          onClose={() => setEmployeeToEdit(null)}
+          onEmployeeUpdated={handleEmployeeUpdated}
         />
       )}
     </div>
