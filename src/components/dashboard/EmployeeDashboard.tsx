@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,8 @@ import { useDocuments } from "@/hooks/useDocuments";
 import { useNotifications } from "@/hooks/useNotifications";
 import DocumentsSection from "./DocumentsSection";
 import NotificationsSection from "./NotificationsSection";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const EmployeeDashboard = () => {
   const [activeSection, setActiveSection] = useState('documents');
@@ -68,6 +69,14 @@ const EmployeeDashboard = () => {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+
+  // Skeleton shimmer per loading navigazione interna
+  const SectionSkeleton = () => (
+    <div className="py-12">
+      <Skeleton className="h-6 w-1/3 mb-6" />
+      <Skeleton className="h-48 w-full" />
     </div>
   );
 
@@ -152,16 +161,18 @@ const EmployeeDashboard = () => {
 
           {/* Main Content */}
           <div className="flex-1">
-            {activeSection === 'documents' && <DocumentsSection />}
-            {activeSection === 'notifications' && <NotificationsSection />}
-            {activeSection === 'profile' && renderProfile()}
-            {activeSection === 'messages' && (
-              <div className="text-center py-12">
-                <Mail className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Centro Messaggi</h3>
-                <p className="mt-1 text-sm text-gray-500">Funzionalità in sviluppo</p>
-              </div>
-            )}
+            <Suspense fallback={<SectionSkeleton />}>
+              {activeSection === 'documents' && <DocumentsSection />}
+              {activeSection === 'notifications' && <NotificationsSection />}
+              {activeSection === 'profile' && renderProfile()}
+              {activeSection === 'messages' && (
+                <div className="text-center py-12">
+                  <Mail className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">Centro Messaggi</h3>
+                  <p className="mt-1 text-sm text-gray-500">Funzionalità in sviluppo</p>
+                </div>
+              )}
+            </Suspense>
           </div>
         </div>
       </div>

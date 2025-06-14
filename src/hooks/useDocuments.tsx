@@ -30,9 +30,10 @@ export const useDocuments = () => {
 
     setLoading(true);
     try {
+      // Ottimizziamo la select: solo campi veramente usati in UI  
       const { data, error } = await supabase
         .from('documents')
-        .select('*')
+        .select('id, user_id, uploaded_by, title, description, file_name, file_size, file_type, file_path, document_type, is_personal, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       if (error) {

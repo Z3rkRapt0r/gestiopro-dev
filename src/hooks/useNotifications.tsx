@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,9 +25,10 @@ export const useNotifications = () => {
 
     setLoading(true);
     try {
+      // Ottimizziamo la select per solo i campi necessari
       const { data, error } = await supabase
         .from('notifications')
-        .select('*')
+        .select('id, user_id, title, message, type, is_read, created_by, created_at')
         .order('created_at', { ascending: false });
 
       if (error) {

@@ -1,9 +1,25 @@
-
 import { useAuth } from "@/hooks/useAuth";
 import { AuthProvider } from "@/hooks/useAuth";
 import AuthPage from "@/components/auth/AuthPage";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
 import EmployeeDashboard from "@/components/dashboard/EmployeeDashboard";
+import { Suspense, lazy } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const AdminDashboard = lazy(() => import("@/components/dashboard/AdminDashboard"));
+const EmployeeDashboard = lazy(() => import("@/components/dashboard/EmployeeDashboard"));
+
+// Skeleton placeholder per la dashboard
+const DashboardSkeleton = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div>
+      <Skeleton className="h-10 w-64 mb-6" />
+      <Skeleton className="h-6 w-96 mb-3" />
+      <Skeleton className="h-6 w-96 mb-3" />
+      <Skeleton className="h-64 w-[32rem]" />
+    </div>
+  </div>
+);
 
 const IndexContent = () => {
   const { user, profile, loading } = useAuth();
@@ -13,10 +29,7 @@ const IndexContent = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Caricamento...</p>
-        </div>
+        <DashboardSkeleton />
       </div>
     );
   }
@@ -30,11 +43,13 @@ const IndexContent = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {profile.role === 'admin' ? (
-        <AdminDashboard />
-      ) : (
-        <EmployeeDashboard />
-      )}
+      <Suspense fallback={<DashboardSkeleton />}>
+        {profile.role === 'admin' ? (
+          <AdminDashboard />
+        ) : (
+          <EmployeeDashboard />
+        )}
+      </Suspense>
     </div>
   );
 };
