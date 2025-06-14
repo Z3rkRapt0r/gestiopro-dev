@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +16,28 @@ import {
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import CreateEmployeeForm from "./CreateEmployeeForm";
+
+interface Employee {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  role: string;
+  department: string | null;
+  employee_code: string | null;
+  is_active: boolean;
+}
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [showCreateEmployee, setShowCreateEmployee] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const { profile, signOut } = useAuth();
+  const { toast } = useToast();
 
   // Dati demo per i grafici
   const documentsData = [
@@ -37,19 +55,47 @@ const AdminDashboard = () => {
     { name: 'Assenti', value: 2, color: '#f59e0b' },
   ];
 
-  const employees = [
-    { id: 1, name: 'Giuseppe Verdi', email: 'g.verdi@serramenti.com', role: 'Dipendente', status: 'Attivo' },
-    { id: 2, name: 'Marco Bianchi', email: 'm.bianchi@serramenti.com', role: 'Dipendente', status: 'Attivo' },
-    { id: 3, name: 'Luca Ferrari', email: 'l.ferrari@serramenti.com', role: 'Dipendente', status: 'In Ferie' },
-    { id: 4, name: 'Anna Rossi', email: 'a.rossi@serramenti.com', role: 'Dipendente', status: 'Attivo' },
-  ];
-
   const recentDocuments = [
     { id: 1, name: 'Busta Paga Maggio 2024', employee: 'Giuseppe Verdi', date: '2024-06-01', type: 'Busta Paga' },
     { id: 2, name: 'Certificato Medico', employee: 'Marco Bianchi', date: '2024-05-28', type: 'Documento' },
     { id: 3, name: 'Richiesta Ferie', employee: 'Luca Ferrari', date: '2024-05-25', type: 'Richiesta' },
     { id: 4, name: 'Comunicazione Sicurezza', employee: 'Tutti', date: '2024-05-20', type: 'Comunicazione' },
   ];
+
+  const fetchEmployees = async () => {
+    setIsLoadingEmployees(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setEmployees(data || []);
+    } catch (error: any) {
+      console.error('Error fetching employees:', error);
+      toast({
+        title: "Errore",
+        description: "Errore nel caricamento dei dipendenti",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingEmployees(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'employees') {
+      fetchEmployees();
+    }
+  }, [activeSection]);
+
+  const handleEmployeeCreated = () => {
+    fetchEmployees();
+  };
 
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -60,7 +106,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Dipendenti Totali</p>
-                <p className="text-2xl font-bold text-gray-900">30</p>
+                <p className="text-2xl font-bold text-gray-900">{employees.length}</p>
               </div>
               <Users className="h-8 w-8 text-blue-600" />
             </div>
@@ -192,7 +238,10 @@ const AdminDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Gestione Dipendenti</h2>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button 
+          className="bg-blue-600 hover:bg-blue-700"
+          onClick={() => setShowCreateEmployee(true)}
+        >
           <UserPlus className="mr-2 h-4 w-4" />
           Aggiungi Dipendente
         </Button>
@@ -200,26 +249,57 @@ const AdminDashboard = () => {
 
       <Card>
         <CardContent className="p-6">
-          <div className="space-y-4">
-            {employees.map((employee) => (
-              <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <h3 className="font-medium text-gray-900">{employee.name}</h3>
-                  <p className="text-sm text-gray-600">{employee.email}</p>
+          {isLoadingEmployees ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-2 text-gray-600">Caricamento dipendenti...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {employees.map((employee) => (
+                <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h3 className="font-medium text-gray-900">
+                      {employee.first_name} {employee.last_name}
+                    </h3>
+                    <p className="text-sm text-gray-600">{employee.email}</p>
+                    <div className="flex items-center space-x-4 mt-1">
+                      <span className="text-xs text-gray-500">
+                        {employee.department || 'Nessun dipartimento'}
+                      </span>
+                      {employee.employee_code && (
+                        <span className="text-xs text-gray-500">
+                          Codice: {employee.employee_code}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge 
+                      variant={employee.role === 'admin' ? 'default' : 'secondary'}
+                    >
+                      {employee.role === 'admin' ? 'Admin' : 'Dipendente'}
+                    </Badge>
+                    <Badge 
+                      variant={employee.is_active ? 'default' : 'secondary'}
+                    >
+                      {employee.is_active ? 'Attivo' : 'Inattivo'}
+                    </Badge>
+                    <Button size="sm" variant="ghost">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Badge 
-                    variant={employee.status === 'Attivo' ? 'default' : 'secondary'}
-                  >
-                    {employee.status}
-                  </Badge>
-                  <Button size="sm" variant="ghost">
-                    <Settings className="h-4 w-4" />
-                  </Button>
+              ))}
+              {employees.length === 0 && (
+                <div className="text-center py-8">
+                  <Users className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">Nessun dipendente</h3>
+                  <p className="mt-1 text-sm text-gray-500">Inizia aggiungendo il primo dipendente</p>
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -315,6 +395,14 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal per creare dipendente */}
+      {showCreateEmployee && (
+        <CreateEmployeeForm
+          onClose={() => setShowCreateEmployee(false)}
+          onEmployeeCreated={handleEmployeeCreated}
+        />
+      )}
     </div>
   );
 };
