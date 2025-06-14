@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,14 +9,14 @@ import {
   Search,
   Filter,
   CheckCircle,
-  Circle,
   FileText,
   MessageSquare,
-  Megaphone,
-  Settings
+  Megaphone
 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
+import NotificationItem from "@/components/notifications/NotificationItem";
+import { groupNotificationsByDate } from "@/utils/notificationUtils";
 
 const NotificationsSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,53 +28,6 @@ const NotificationsSection = () => {
 
   const myNotifications = notifications.filter(n => n.user_id === profile?.id);
   const unreadNotifications = myNotifications.filter(n => !n.is_read);
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'document':
-        return <FileText className="h-5 w-5 text-blue-600" />;
-      case 'message':
-        return <MessageSquare className="h-5 w-5 text-green-600" />;
-      case 'announcement':
-        return <Megaphone className="h-5 w-5 text-purple-600" />;
-      case 'system':
-      default:
-        return <Settings className="h-5 w-5 text-gray-600" />;
-    }
-  };
-
-  const getNotificationTypeLabel = (type: string) => {
-    const types: Record<string, string> = {
-      'document': 'Documento',
-      'system': 'Sistema',
-      'message': 'Messaggio',
-      'announcement': 'Annuncio'
-    };
-    return types[type] || type;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffHours < 1) {
-      const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      return `${diffMinutes} minuti fa`;
-    } else if (diffHours < 24) {
-      return `${diffHours} ore fa`;
-    } else if (diffDays < 7) {
-      return `${diffDays} giorni fa`;
-    } else {
-      return date.toLocaleDateString('it-IT', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    }
-  };
 
   // Filtering logic
   const filteredNotifications = myNotifications
@@ -92,7 +44,6 @@ const NotificationsSection = () => {
       return matchesSearch && matchesType && matchesRead;
     })
     .sort((a, b) => {
-      // Prima le non lette, poi per data
       if (a.is_read !== b.is_read) {
         return a.is_read ? 1 : -1;
       }
@@ -103,6 +54,8 @@ const NotificationsSection = () => {
     acc[notification.type] = (acc[notification.type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const groupedNotifications = groupNotificationsByDate(filteredNotifications);
 
   const handleMarkAsRead = async (notificationId: string, isRead: boolean) => {
     if (!isRead) {
@@ -228,26 +181,16 @@ const NotificationsSection = () => {
         </CardContent>
       </Card>
 
-      {/* Lista notifiche */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Le Tue Notifiche
-            {filteredNotifications.length !== myNotifications.length && (
-              <span className="text-sm font-normal text-gray-600 ml-2">
-                ({filteredNotifications.length} di {myNotifications.length})
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Caricamento notifiche...</p>
-            </div>
-          ) : filteredNotifications.length === 0 ? (
-            <div className="text-center py-12">
+      {/* Grouped notifications list */}
+      <div className="space-y-6">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Caricamento notifiche...</p>
+          </div>
+        ) : filteredNotifications.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
               <Bell className="mx-auto h-16 w-16 text-gray-400" />
               <h3 className="mt-4 text-lg font-medium text-gray-900">
                 {searchTerm || filterType !== 'all' || filterRead !== 'all' 
@@ -261,60 +204,57 @@ const NotificationsSection = () => {
                   : 'Le tue notifiche appariranno qui'
                 }
               </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredNotifications.map((notification) => (
-                <div 
-                  key={notification.id} 
-                  className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-sm ${
-                    notification.is_read 
-                      ? 'bg-gray-50 border-gray-200' 
-                      : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
-                  }`}
-                  onClick={() => handleMarkAsRead(notification.id, notification.is_read)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3 flex-1">
-                      <div className="flex-shrink-0 mt-1">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-medium text-gray-900 truncate">
-                            {notification.title}
-                          </h3>
-                          {!notification.is_read && (
-                            <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                          {notification.message}
-                        </p>
-                        <div className="flex items-center space-x-4">
-                          <p className="text-xs text-gray-400">
-                            {formatDate(notification.created_at)}
-                          </p>
-                          <Badge variant="outline" className="text-xs">
-                            {getNotificationTypeLabel(notification.type)}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex-shrink-0 ml-2 mt-1">
-                      {notification.is_read ? (
-                        <CheckCircle className="h-5 w-5 text-gray-400" />
-                      ) : (
-                        <Circle className="h-5 w-5 text-blue-600" />
-                      )}
-                    </div>
-                  </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {groupedNotifications.today.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Oggi</h3>
+                <div className="space-y-3">
+                  {groupedNotifications.today.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
+                      onMarkAsRead={handleMarkAsRead}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            )}
+
+            {groupedNotifications.yesterday.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Ieri</h3>
+                <div className="space-y-3">
+                  {groupedNotifications.yesterday.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
+                      onMarkAsRead={handleMarkAsRead}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {groupedNotifications.older.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Precedenti</h3>
+                <div className="space-y-3">
+                  {groupedNotifications.older.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
+                      onMarkAsRead={handleMarkAsRead}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
