@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useNotificationForm } from "@/hooks/useNotificationForm";
+import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,11 +14,6 @@ const TOPICS = [
   "Avvisi sicurezza",
 ];
 
-const RECIPIENTS_OPTIONS = [
-  { value: "ALL", label: "Tutti i dipendenti" },
-  // Altri destinatari custom qui in futuro
-];
-
 interface Props {
   onCreated?: () => void;
 }
@@ -27,9 +23,10 @@ const NotificationForm = ({ onCreated }: Props) => {
   const [shortText, setShortText] = useState("");
   const [body, setBody] = useState("");
   const [topic, setTopic] = useState("");
-  const [recipientId, setRecipientId] = useState<string | null>("ALL");
+  const [recipientId, setRecipientId] = useState<string>("ALL");
   const [file, setFile] = useState<File | null>(null);
 
+  const { employees, loading: loadingEmployees } = useActiveEmployees();
   const { sendNotification, loading } = useNotificationForm(onCreated);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,13 +49,20 @@ const NotificationForm = ({ onCreated }: Props) => {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
-      <Select value={recipientId || "ALL"} onValueChange={setRecipientId}>
+      <Select
+        value={recipientId}
+        onValueChange={setRecipientId}
+        disabled={loadingEmployees}
+      >
         <SelectTrigger>
           <SelectValue placeholder="Destinatario" />
         </SelectTrigger>
         <SelectContent>
-          {RECIPIENTS_OPTIONS.map(r => (
-            <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+          <SelectItem value="ALL">Tutti i dipendenti</SelectItem>
+          {employees.map((emp) => (
+            <SelectItem key={emp.id} value={emp.id}>
+              {(emp.first_name || "") + " " + (emp.last_name || "")} {emp.email && `(${emp.email})`}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -93,7 +97,7 @@ const NotificationForm = ({ onCreated }: Props) => {
         accept=".pdf,.doc,.docx,.jpg,.png,.jpeg,.gif"
         onChange={e => setFile(e.target.files?.[0] || null)}
       />
-      <Button type="submit">
+      <Button type="submit" disabled={loading || loadingEmployees}>
         Invia notifica
       </Button>
     </form>

@@ -41,16 +41,15 @@ export const useNotificationForm = (onCreated?: () => void) => {
         attachment_url = data?.path || null;
       }
 
-      // Se recipientId is null, invia a tutti ("general") -> per ogni utente attivo
       if (!recipientId) {
-        // Fetch all active employee profiles
+        // Tutti i dipendenti
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id")
           .eq("is_active", true);
         if (profilesError) throw profilesError;
 
-        // For each employee, create a notification
+        // Per ogni dipendente attivo, crea una notifica
         for (const p of profiles || []) {
           await supabase
             .from("notifications")
@@ -65,7 +64,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
             });
         }
       } else {
-        // Notifica personale
+        // Notifica singolo dipendente
         await supabase
           .from("notifications")
           .insert({
@@ -79,13 +78,11 @@ export const useNotificationForm = (onCreated?: () => void) => {
           });
       }
 
-      // Edge function - send email
-      // Qui si manda la notifica email tramite edge solo a uno o più
+      // Invio email tramite Edge Function
       const emailPayload = {
         recipientId,
         subject,
         shortText,
-        // notificationId: // non è più one2one, quindi lo lasciamo undefined
       };
       await fetch("/functions/v1/send-notification-email", {
         method: "POST",
