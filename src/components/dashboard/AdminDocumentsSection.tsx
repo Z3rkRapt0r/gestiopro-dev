@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -87,8 +86,19 @@ const AdminDocumentsSection = () => {
       <div>
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Documenti Dipendenti</h2>
         <p className="text-gray-600 text-sm mb-4">
-          Seleziona un dipendente per consultare e caricare i documenti personali.
+          Seleziona un dipendente per consultare i documenti personali. Usa i filtri o la barra di ricerca per trovare rapidamente.
         </p>
+      </div>
+
+      {/* PULSANTE CARICA DOCUMENTO INDIPENDENTE */}
+      <div className="mb-4 flex justify-end">
+        <Button
+          className="bg-blue-600 hover:bg-blue-700"
+          onClick={() => setUploadUserId("admin")}
+        >
+          <Upload className="h-4 w-4 mr-1" />
+          Carica Documento
+        </Button>
       </div>
 
       {/* FILTRI & SEARCHBAR */}
@@ -144,7 +154,6 @@ const AdminDocumentsSection = () => {
             <Card
               className="hover:shadow-lg transition cursor-pointer relative"
               key={emp.id}
-              // Navigazione appena sopra il tasto!
               onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}
             >
               <CardContent className="flex items-center p-5 gap-4">
@@ -163,18 +172,6 @@ const AdminDocumentsSection = () => {
                     {emp.department || "N/D"} • {emp.role || "N/D"}
                   </span>
                 </div>
-                <Button
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setUploadUserId(emp.id);
-                  }}
-                  title="Carica documento per questo dipendente"
-                >
-                  <Upload className="h-4 w-4 mr-1" />
-                  Carica
-                </Button>
               </CardContent>
             </Card>
           ))}
@@ -217,14 +214,11 @@ const AdminDocumentsSection = () => {
         </CardContent>
       </Card>
 
-      {/* Modale upload documento per dipendente */}
+      {/* Modale upload documento */}
       {uploadUserId && (
         <DocumentUpload
           onSuccess={() => setUploadUserId(null)}
-          // Override utente specifico
           key={uploadUserId}
-          // Customizzazione: prop non usata ma sarà ignorata dall'implementazione base
-          // Puoi modificarla in DocumentUpload se vuoi forzare l'upload per un certo userId!
         >
           {/* Children ignorati, solo per chiamata */}
         </DocumentUpload>
