@@ -89,6 +89,47 @@ export type Database = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          admin_id: string
+          content: string
+          created_at: string | null
+          id: string
+          is_default: boolean
+          name: string
+          subject: string
+          updated_at: string | null
+        }
+        Insert: {
+          admin_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          subject: string
+          updated_at?: string | null
+        }
+        Update: {
+          admin_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          subject?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           body: string
