@@ -42,6 +42,13 @@ const AdminDashboard = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
+
+  // --- NEW: Real documents & notifications state ---
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
 
@@ -68,6 +75,7 @@ const AdminDashboard = () => {
     { id: 4, name: 'Comunicazione Sicurezza', employee: 'Tutti', date: '2024-05-20', type: 'Comunicazione' },
   ];
 
+  // --- FETCH EMPLOYEES ---
   const fetchEmployees = async () => {
     setIsLoadingEmployees(true);
     try {
@@ -76,9 +84,7 @@ const AdminDashboard = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       const fetchedEmployees = (data || []).map(emp => ({
         ...emp,
         role: emp.role as 'admin' | 'employee',
@@ -97,9 +103,45 @@ const AdminDashboard = () => {
     }
   };
 
+  // --- NEW: FETCH DOCUMENTS ---
+  const fetchDocuments = async () => {
+    setIsLoadingDocuments(true);
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setDocuments(data || []);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  // --- NEW: FETCH NOTIFICATIONS ---
+  const fetchNotifications = async () => {
+    setIsLoadingNotifications(true);
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setNotifications(data || []);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
   useEffect(() => {
     if (activeSection === 'employees' || activeSection === 'dashboard') {
       fetchEmployees();
+      fetchDocuments();
+      fetchNotifications();
     }
   }, [activeSection]);
 
@@ -113,6 +155,26 @@ const AdminDashboard = () => {
     setEmployeeToEdit(null);
   };
 
+  // --- STATISTICHE REALISTICHE ---
+  const totalEmployees = employees.length;
+  // Documents for the current month
+  const currentMonth = new Date().getMonth();
+  const documentsThisMonth = documents.filter(doc => {
+    if (!doc.created_at) return false;
+    const docDate = new Date(doc.created_at);
+    return docDate.getMonth() === currentMonth && docDate.getFullYear() === new Date().getFullYear();
+  }).length;
+  // Unread notifications
+  const pendingNotifications = notifications.filter(n => n.is_read === false).length;
+
+  // Performance: rapporto documenti/mese / dipendenti
+  let performance: string | number = "N/D";
+  if (totalEmployees > 0) {
+    performance = Math.min(100, Math.round((documentsThisMonth / totalEmployees) * 100));
+    if (isNaN(performance)) performance = "N/D";
+    else performance = `${performance}%`;
+  }
+
   const renderDashboard = () => (
     <div className="space-y-6">
       {/* Cards statistiche */}
@@ -122,7 +184,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Dipendenti Totali</p>
-                <p className="text-2xl font-bold text-gray-900">{employees.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{isLoadingEmployees ? '-' : totalEmployees}</p>
               </div>
               <Users className="h-8 w-8 text-blue-600" />
             </div>
@@ -134,7 +196,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Documenti Mese</p>
-                <p className="text-2xl font-bold text-gray-900">67</p>
+                <p className="text-2xl font-bold text-gray-900">{isLoadingDocuments ? '-' : documentsThisMonth}</p>
               </div>
               <FileText className="h-8 w-8 text-green-600" />
             </div>
@@ -146,7 +208,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Notifiche Pending</p>
-                <p className="text-2xl font-bold text-gray-900">12</p>
+                <p className="text-2xl font-bold text-gray-900">{isLoadingNotifications ? '-' : pendingNotifications}</p>
               </div>
               <Bell className="h-8 w-8 text-orange-600" />
             </div>
@@ -158,7 +220,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Performance</p>
-                <p className="text-2xl font-bold text-gray-900">98%</p>
+                <p className="text-2xl font-bold text-gray-900">{performance}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-purple-600" />
             </div>
