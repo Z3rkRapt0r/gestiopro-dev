@@ -13,15 +13,18 @@ export function useAdminSettings() {
   useEffect(() => {
     if (profile?.role === "admin") {
       setLoading(true);
-      supabase
-        .from("admin_settings")
-        .select("brevo_api_key")
-        .eq("admin_id", profile?.id)
-        .maybeSingle()
-        .then(({ data }) => {
+      (async () => {
+        try {
+          const { data } = await supabase
+            .from("admin_settings")
+            .select("brevo_api_key")
+            .eq("admin_id", profile?.id)
+            .maybeSingle();
           setApiKey(data?.brevo_api_key || "");
-        })
-        .finally(() => setLoading(false));
+        } finally {
+          setLoading(false);
+        }
+      })();
     }
   }, [profile]);
 
@@ -51,3 +54,4 @@ export function useAdminSettings() {
 
   return { apiKey, loading, saveApiKey };
 }
+
