@@ -22,7 +22,6 @@ import CreateEmployeeForm from "./CreateEmployeeForm";
 import EditEmployeeForm from "./EditEmployeeForm";
 import AdminDocumentsSection from "./AdminDocumentsSection";
 import AdminNotificationsSection from "./AdminNotificationsSection";
-import { useNavigate } from "react-router-dom";
 
 interface Employee {
   id: string;
@@ -52,7 +51,6 @@ const AdminDashboard = () => {
 
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   // Funzione per raggruppare documenti per mese (ultimi 12 mesi)
   function getMonthlyDocumentsStats(documents: any[]) {
@@ -491,7 +489,7 @@ const AdminDashboard = () => {
             <Button
               variant={activeSection === 'documents' ? 'default' : 'ghost'}
               className="w-full justify-start"
-              onClick={() => navigate("/admin/documents")}
+              onClick={() => setActiveSection('documents')}
             >
               <FileText className="mr-2 h-4 w-4" />
               Documenti
