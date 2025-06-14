@@ -52,28 +52,62 @@ const AdminDashboard = () => {
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
 
-  // Dati demo per i grafici
-  const documentsData = [
-    { name: 'Gen', documents: 45 },
-    { name: 'Feb', documents: 52 },
-    { name: 'Mar', documents: 48 },
-    { name: 'Apr', documents: 61 },
-    { name: 'Mag', documents: 55 },
-    { name: 'Giu', documents: 67 },
+  // Funzione per raggruppare documenti per mese (ultimi 12 mesi)
+  function getMonthlyDocumentsStats(documents: any[]) {
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (11 - i));
+      return {
+        name: d.toLocaleString('it-IT', { month: 'short' }),
+        value: 0,
+        year: d.getFullYear(),
+        month: d.getMonth(),
+      };
+    });
+
+    documents.forEach((doc) => {
+      if (!doc.created_at) return;
+      const d = new Date(doc.created_at);
+      const found = months.find(
+        (m) => m.year === d.getFullYear() && m.month === d.getMonth()
+      );
+      if (found) found.value++;
+    });
+
+    return months.map((m) => ({
+      name: m.name,
+      documents: m.value,
+    }));
+  }
+
+  // Calcolo status dipendenti dinamico
+  const totalActive = employees.filter(e => e.is_active).length;
+  const totalInactive = employees.length - totalActive;
+  // Possibili future espansioni: ferie, assenti (se dati disponibili)
+
+  const employeeStatusData = [
+    { name: 'Attivi', value: totalActive, color: '#3b82f6' },
+    { name: 'Inattivi', value: totalInactive, color: '#f59e0b' },
   ];
 
-  const employeeData = [
-    { name: 'Attivi', value: 25, color: '#3b82f6' },
-    { name: 'In Ferie', value: 3, color: '#10b981' },
-    { name: 'Assenti', value: 2, color: '#f59e0b' },
-  ];
+  // Documenti mensili reali
+  const monthlyDocumentsData = getMonthlyDocumentsStats(documents);
 
-  const recentDocuments = [
-    { id: 1, name: 'Busta Paga Maggio 2024', employee: 'Giuseppe Verdi', date: '2024-06-01', type: 'Busta Paga' },
-    { id: 2, name: 'Certificato Medico', employee: 'Marco Bianchi', date: '2024-05-28', type: 'Documento' },
-    { id: 3, name: 'Richiesta Ferie', employee: 'Luca Ferrari', date: '2024-05-25', type: 'Richiesta' },
-    { id: 4, name: 'Comunicazione Sicurezza', employee: 'Tutti', date: '2024-05-20', type: 'Comunicazione' },
-  ];
+  // Attività recenti: ultimi 4 documenti reali
+  const recentDocuments = documents
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 4)
+    .map((doc) => ({
+      id: doc.id,
+      name: doc.title || doc.file_name,
+      employee: (() => {
+        // Ricerca nome dipendente se disponibile dall'elenco employees
+        const emp = employees.find(e => e.id === doc.user_id);
+        return emp ? `${emp.first_name ?? '-'} ${emp.last_name ?? ''}`.trim() : "Sconosciuto";
+      })(),
+      date: new Date(doc.created_at).toLocaleDateString('it-IT'),
+      type: doc.document_type,
+    }));
 
   // --- FETCH EMPLOYEES ---
   const fetchEmployees = async () => {
@@ -175,6 +209,7 @@ const AdminDashboard = () => {
     else performance = `${performance}%`;
   }
 
+  // Aggiorna il renderDashboard in modo che usi i dati dinamici
   const renderDashboard = () => (
     <div className="space-y-6">
       {/* Cards statistiche */}
@@ -230,16 +265,17 @@ const AdminDashboard = () => {
 
       {/* Grafici */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Grafico Documenti Mensili */}
         <Card>
           <CardHeader>
             <CardTitle>Documenti Mensili</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={documentsData}>
+              <BarChart data={monthlyDocumentsData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
-                <YAxis />
+                <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Bar dataKey="documents" fill="#3b82f6" />
               </BarChart>
@@ -247,6 +283,7 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Grafico Status Dipendenti */}
         <Card>
           <CardHeader>
             <CardTitle>Status Dipendenti</CardTitle>
@@ -255,15 +292,15 @@ const AdminDashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={employeeData}
+                  data={employeeStatusData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
                   outerRadius={100}
-                  paddingAngle={5}
+                  paddingAngle={4}
                   dataKey="value"
                 >
-                  {employeeData.map((entry, index) => (
+                  {employeeStatusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -271,7 +308,7 @@ const AdminDashboard = () => {
               </PieChart>
             </ResponsiveContainer>
             <div className="flex justify-center space-x-4 mt-4">
-              {employeeData.map((entry, index) => (
+              {employeeStatusData.map((entry, index) => (
                 <div key={index} className="flex items-center">
                   <div 
                     className="w-3 h-3 rounded-full mr-2" 
@@ -285,7 +322,7 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
-      {/* Documenti recenti */}
+      {/* Documenti recenti reali */}
       <Card>
         <CardHeader>
           <CardTitle>Attività Recenti</CardTitle>
@@ -300,12 +337,22 @@ const AdminDashboard = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline">{doc.type}</Badge>
-                  <Button size="sm" variant="ghost">
+                  <Button size="sm" variant="ghost" onClick={() => {
+                    // Download file (usa la funzione helper del documento se disponibile)
+                    window.open(`/api/documents/download/${doc.id}`, "_blank");
+                  }}>
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
+            {recentDocuments.length === 0 && (
+              <div className="text-center py-8">
+                <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">Nessun documento recente</h3>
+                <p className="mt-1 text-sm text-gray-500">Quando saranno caricati documenti, li vedrai qui.</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
