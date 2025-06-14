@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -250,10 +249,6 @@ export default function EmployeeDocumentsPage() {
             setShowUpload(false);
             refreshDocuments();
           }}
-          // Configura modalità caricamento per un utente specifico
-          // Con queste props il documento sarà personale per il dipendente corrente
-          userId={employeeId}
-          isPersonal
           open={showUpload}
           setOpen={setShowUpload}
         />
@@ -268,4 +263,3 @@ export default function EmployeeDocumentsPage() {
     </div>
   );
 }
-
