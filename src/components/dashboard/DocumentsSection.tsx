@@ -20,6 +20,17 @@ import DocumentUpload from "@/components/documents/DocumentUpload";
 import DocumentPreview from "@/components/documents/DocumentPreview";
 import { getDocumentTypeLabel, formatFileSize, formatDate } from "@/utils/documentUtils";
 
+const documentTypesList = [
+  { value: "payslip", label: "Busta Paga" },
+  { value: "transfer", label: "Bonifico" },
+  { value: "communication", label: "Comunicazione" },
+  { value: "medical_certificate", label: "Certificato Medico" },
+  { value: "leave_request", label: "Richiesta Ferie" },
+  { value: "expense_report", label: "Nota Spese" },
+  { value: "contract", label: "Contratto" },
+  { value: "other", label: "Altro" },
+];
+
 const DocumentsSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -30,37 +41,6 @@ const DocumentsSection = () => {
   const { documents, downloadDocument, loading } = useDocuments();
 
   const myDocuments = documents.filter(doc => doc.user_id === profile?.id);
-
-  const getDocumentTypeLabel = (type: string) => {
-    const types: Record<string, string> = {
-      'payslip': 'Busta Paga',
-      'transfer': 'Bonifico',
-      'communication': 'Comunicazione',
-      'medical_certificate': 'Certificato Medico',
-      'leave_request': 'Richiesta Ferie',
-      'expense_report': 'Nota Spese',
-      'contract': 'Contratto',
-      'other': 'Altro'
-    };
-    return types[type] || type;
-  };
-
-  const formatFileSize = (bytes: number | null) => {
-    if (!bytes) return 'N/A';
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
-    return Math.round(bytes / 1048576) + ' MB';
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('it-IT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   // Filtering and sorting logic
   const filteredAndSortedDocuments = myDocuments
@@ -94,6 +74,14 @@ const DocumentsSection = () => {
     acc[doc.document_type] = (acc[doc.document_type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  // Nuova suddivisione in blocchi per tipo
+  const groupedDocuments: Record<string, typeof filteredAndSortedDocuments> = {};
+  filteredAndSortedDocuments.forEach((doc) => {
+    const type = doc.document_type;
+    if (!groupedDocuments[type]) groupedDocuments[type] = [];
+    groupedDocuments[type].push(doc);
+  });
 
   return (
     <>
@@ -217,11 +205,11 @@ const DocumentsSection = () => {
           </CardContent>
         </Card>
 
-        {/* Lista documenti */}
+        {/* Lista documenti suddivisi per tipo */}
         <Card>
           <CardHeader>
             <CardTitle>
-              Documenti Personali 
+              Documenti Personali
               {filteredAndSortedDocuments.length !== myDocuments.length && (
                 <span className="text-sm font-normal text-gray-600 ml-2">
                   ({filteredAndSortedDocuments.length} di {myDocuments.length})
@@ -249,56 +237,72 @@ const DocumentsSection = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredAndSortedDocuments.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors group">
-                    <div className="flex items-center space-x-4 flex-1">
-                      <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition-colors">
-                        <FileText className="h-5 w-5 text-blue-600" />
+              // Blocchi separati per tipo
+              <div className="space-y-8">
+                {documentTypesList
+                  .filter(typeItem => groupedDocuments[typeItem.value] && groupedDocuments[typeItem.value].length > 0)
+                  .map(typeItem => (
+                    <div key={typeItem.value}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold text-lg text-gray-800">{typeItem.label}</span>
+                        <Badge variant="secondary" className="ml-2">
+                          {groupedDocuments[typeItem.value].length}
+                        </Badge>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-gray-900 truncate">{doc.title}</h3>
-                        <div className="flex items-center space-x-4 mt-1">
-                          <p className="text-sm text-gray-600">
-                            {formatDate(doc.created_at)}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {formatFileSize(doc.file_size)}
-                          </p>
-                          {doc.file_type && (
-                            <p className="text-sm text-gray-500 uppercase">
-                              {doc.file_type.split('/')[1]}
-                            </p>
-                          )}
-                        </div>
-                        {doc.description && (
-                          <p className="text-sm text-gray-500 mt-1 truncate">{doc.description}</p>
-                        )}
+                      <div className="space-y-3">
+                        {groupedDocuments[typeItem.value].map((doc) => (
+                          <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors group">
+                            <div className="flex items-center space-x-4 flex-1">
+                              <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition-colors">
+                                <FileText className="h-5 w-5 text-blue-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-gray-900 truncate">{doc.title}</h3>
+                                <div className="flex items-center space-x-4 mt-1">
+                                  <p className="text-sm text-gray-600">
+                                    {formatDate(doc.created_at)}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {formatFileSize(doc.file_size)}
+                                  </p>
+                                  {doc.file_type && (
+                                    <p className="text-sm text-gray-500 uppercase">
+                                      {doc.file_type.split('/')[1]}
+                                    </p>
+                                  )}
+                                </div>
+                                {doc.description && (
+                                  <p className="text-sm text-gray-500 mt-1 truncate">{doc.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <Badge variant="outline" className="whitespace-nowrap">
+                                {getDocumentTypeLabel(doc.document_type)}
+                              </Badge>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => setPreviewDocument(doc)}
+                                className="hover:bg-blue-50"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => downloadDocument(doc)}
+                                className="hover:bg-blue-50"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Badge variant="outline" className="whitespace-nowrap">
-                        {getDocumentTypeLabel(doc.document_type)}
-                      </Badge>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => setPreviewDocument(doc)}
-                        className="hover:bg-blue-50"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => downloadDocument(doc)}
-                        className="hover:bg-blue-50"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                }
               </div>
             )}
           </CardContent>
