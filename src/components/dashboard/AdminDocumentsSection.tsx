@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import DocumentPreview from "@/components/documents/DocumentPreview";
+import DocumentUpload from "@/components/documents/DocumentUpload";
 import { getDocumentTypeLabel, formatFileSize, formatDate } from "@/utils/documentUtils";
 
 const AdminDocumentsSection = () => {
@@ -24,14 +24,19 @@ const AdminDocumentsSection = () => {
   const [sortBy, setSortBy] = useState<string>('date_desc');
   const [previewDocument, setPreviewDocument] = useState<any>(null);
   
-  const { documents, downloadDocument, loading } = useDocuments();
+  const { documents, downloadDocument, loading, refreshDocuments } = useDocuments();
 
   // Filtering and sorting logic for all documents
   const filteredAndSortedDocuments = documents
     .filter(doc => {
-      const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           getDocumentTypeLabel(doc.document_type).toLowerCase().includes(searchTerm.toLowerCase());
+      const searchLower = searchTerm.toLowerCase();
+      const titleMatch = doc.title.toLowerCase().includes(searchLower);
+      const descMatch = doc.description?.toLowerCase().includes(searchLower) || false;
+      const typeLabelMatch = getDocumentTypeLabel(doc.document_type).toLowerCase().includes(searchLower);
+      // Tentativo di cercare anche per nome utente se l'info è disponibile o caricata separatamente
+      // const userNameMatch = profiles.find(p => p.id === doc.user_id) ... (richiederebbe caricamento profili)
+
+      const matchesSearch = titleMatch || descMatch || typeLabelMatch;
       
       const matchesType = filterType === 'all' || doc.document_type === filterType;
       
@@ -64,6 +69,7 @@ const AdminDocumentsSection = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-3xl font-bold text-gray-900">Gestione Documenti</h2>
+          <DocumentUpload onSuccess={refreshDocuments} />
         </div>
 
         {/* Cards riassuntive */}
@@ -112,9 +118,9 @@ const AdminDocumentsSection = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Utenti Attivi</p>
+                  <p className="text-sm font-medium text-gray-600">Utenti Attivi con Documenti</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {new Set(documents.map(doc => doc.user_id)).size}
+                    {new Set(documents.filter(d => d.is_personal).map(doc => doc.user_id)).size}
                   </p>
                 </div>
                 <Users className="h-8 w-8 text-orange-600" />
@@ -204,7 +210,7 @@ const AdminDocumentsSection = () => {
                 <p className="mt-2 text-gray-500">
                   {searchTerm || filterType !== 'all' 
                     ? 'Prova a modificare i filtri di ricerca'
-                    : 'I documenti caricati dagli utenti appariranno qui'
+                    : 'I documenti caricati dagli utenti o per l\'azienda appariranno qui'
                   }
                 </p>
               </div>
@@ -213,25 +219,25 @@ const AdminDocumentsSection = () => {
                 {filteredAndSortedDocuments.map((doc) => (
                   <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors group">
                     <div className="flex items-center space-x-4 flex-1">
-                      <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition-colors">
-                        <FileText className="h-5 w-5 text-blue-600" />
+                      <div className={`p-3 rounded-lg group-hover:bg-blue-200 transition-colors ${doc.is_personal ? 'bg-blue-100' : 'bg-yellow-100 group-hover:bg-yellow-200'}`}>
+                        <FileText className={`h-5 w-5 ${doc.is_personal ? 'text-blue-600' : 'text-yellow-600'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-gray-900 truncate">{doc.title}</h3>
-                        <div className="flex items-center space-x-4 mt-1">
-                          <p className="text-sm text-gray-600">
+                        <div className="flex items-center space-x-2 md:space-x-4 mt-1 flex-wrap">
+                          <p className="text-sm text-gray-600 whitespace-nowrap">
                             {formatDate(doc.created_at)}
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 whitespace-nowrap">
                             {formatFileSize(doc.file_size)}
                           </p>
                           {doc.file_type && (
-                            <p className="text-sm text-gray-500 uppercase">
+                            <p className="text-sm text-gray-500 uppercase whitespace-nowrap">
                               {doc.file_type.split('/')[1]}
                             </p>
                           )}
-                          <p className="text-sm text-blue-600">
-                            ID Utente: {doc.user_id.slice(0, 8)}...
+                          <p className={`text-sm whitespace-nowrap ${doc.is_personal ? 'text-blue-600' : 'text-yellow-700 font-medium'}`}>
+                            {doc.is_personal ? `Utente: ${doc.user_id.slice(0, 8)}...` : 'Aziendale'}
                           </p>
                         </div>
                         {doc.description && (
@@ -239,26 +245,29 @@ const AdminDocumentsSection = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Badge variant="outline" className="whitespace-nowrap">
+                    <div className="flex items-center space-x-1 sm:space-x-3">
+                      <Badge variant={doc.is_personal ? "outline" : "default"} className={`whitespace-nowrap ${!doc.is_personal && 'bg-yellow-500 hover:bg-yellow-600'}`}>
                         {getDocumentTypeLabel(doc.document_type)}
                       </Badge>
                       <Button 
-                        size="sm" 
+                        size="icon" 
                         variant="ghost" 
                         onClick={() => setPreviewDocument(doc)}
-                        className="hover:bg-blue-50"
+                        className="hover:bg-blue-50 h-8 w-8 sm:h-auto sm:w-auto sm:px-2 sm:py-1"
+                        title="Anteprima"
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
                       <Button 
-                        size="sm" 
+                        size="icon" 
                         variant="ghost" 
                         onClick={() => downloadDocument(doc)}
-                        className="hover:bg-blue-50"
+                        className="hover:bg-blue-50 h-8 w-8 sm:h-auto sm:w-auto sm:px-2 sm:py-1"
+                        title="Scarica"
                       >
                         <Download className="h-4 w-4" />
                       </Button>
+                      {/* TODO: Aggiungere opzione elimina per admin */}
                     </div>
                   </div>
                 ))}

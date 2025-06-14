@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -65,13 +64,22 @@ export const useDocuments = () => {
     title: string,
     description: string,
     documentType: Document['document_type'],
-    userId?: string
+    targetUserId?: string, // ID of the user the document is for, or admin's ID if company doc
+    isPersonalDocument: boolean = true // Default to true
   ) => {
     if (!user) return { error: 'User not authenticated' };
 
-    const targetUserId = userId || user.id;
+    const finalTargetUserId = targetUserId || user.id;
     const fileName = `${Date.now()}_${file.name}`;
-    const filePath = `${targetUserId}/${fileName}`;
+    let filePath: string;
+
+    if (isPersonalDocument) {
+      filePath = `${finalTargetUserId}/${fileName}`;
+    } else {
+      // Company document, uploaded by admin (user.id) for all
+      // user_id in DB will be uploader's id (user.id), is_personal = false
+      filePath = `company_documents/${fileName}`;
+    }
 
     try {
       // Upload file to storage
@@ -80,6 +88,10 @@ export const useDocuments = () => {
         .upload(filePath, file);
 
       if (uploadError) {
+        // Check if error is because file path already exists (common in dev/testing)
+        // Supabase storage might throw an error if the file path is identical.
+        // A more robust solution would be to ensure unique file names or handle specific errors.
+        console.error('Storage upload error:', uploadError);
         throw uploadError;
       }
 
@@ -87,8 +99,8 @@ export const useDocuments = () => {
       const { error: dbError } = await supabase
         .from('documents')
         .insert({
-          user_id: targetUserId,
-          uploaded_by: user.id,
+          user_id: isPersonalDocument ? finalTargetUserId : user.id, // For company docs, user_id is the uploader (admin)
+          uploaded_by: user.id, // Always the current authenticated user
           title,
           description,
           file_name: file.name,
@@ -96,10 +108,11 @@ export const useDocuments = () => {
           file_type: file.type,
           file_path: filePath,
           document_type: documentType,
-          is_personal: true,
+          is_personal: isPersonalDocument,
         });
 
       if (dbError) {
+        console.error('Database insert error:', dbError);
         throw dbError;
       }
 
@@ -108,7 +121,7 @@ export const useDocuments = () => {
         description: "Documento caricato correttamente",
       });
 
-      await fetchDocuments();
+      await fetchDocuments(); // Refresh the documents list
       return { error: null };
     } catch (error: any) {
       console.error('Error uploading document:', error);
