@@ -9,7 +9,129 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      documents: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          document_type: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          is_personal: boolean | null
+          title: string
+          updated_at: string | null
+          uploaded_by: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          document_type: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          is_personal?: boolean | null
+          title: string
+          updated_at?: string | null
+          uploaded_by: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          document_type?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          is_personal?: boolean | null
+          title?: string
+          updated_at?: string | null
+          uploaded_by?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          email: string | null
+          employee_code: string | null
+          first_name: string | null
+          hire_date: string | null
+          id: string
+          is_active: boolean | null
+          last_name: string | null
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          employee_code?: string | null
+          first_name?: string | null
+          hire_date?: string | null
+          id: string
+          is_active?: boolean | null
+          last_name?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          employee_code?: string | null
+          first_name?: string | null
+          hire_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_name?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
