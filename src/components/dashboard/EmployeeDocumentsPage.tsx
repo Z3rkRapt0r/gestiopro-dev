@@ -44,9 +44,6 @@ export default function EmployeeDocumentsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("");
 
-  // Stato per mostrare upload dialog
-  const [showUpload, setShowUpload] = useState(false);
-
   useEffect(() => {
     async function fetchEmployee() {
       if (!employeeId) return;
@@ -117,15 +114,12 @@ export default function EmployeeDocumentsPage() {
                   : "Dipendente"}
               </span>
             </CardTitle>
-            {/* Pulsante upload */}
-            <Button
-              onClick={() => setShowUpload(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-              size="sm"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Carica Documento per {employee ? employee.first_name : 'lui/lei'}
-            </Button>
+            {/* Pulsante upload - ora lasciamo che DocumentUpload gestisca il proprio bottone */}
+            <DocumentUpload
+              onSuccess={() => {
+                refreshDocuments();
+              }}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -246,11 +240,8 @@ export default function EmployeeDocumentsPage() {
       {employeeId && (
         <DocumentUpload
           onSuccess={() => {
-            setShowUpload(false);
             refreshDocuments();
           }}
-          open={showUpload}
-          setOpen={setShowUpload}
         />
       )}
 
