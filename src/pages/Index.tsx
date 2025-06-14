@@ -8,6 +8,8 @@ import EmployeeDashboard from "@/components/dashboard/EmployeeDashboard";
 const IndexContent = () => {
   const { user, profile, loading } = useAuth();
 
+  console.log('IndexContent render:', { user: !!user, profile, loading });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -20,8 +22,11 @@ const IndexContent = () => {
   }
 
   if (!user || !profile) {
+    console.log('Showing auth page - User:', !!user, 'Profile:', !!profile);
     return <AuthPage />;
   }
+
+  console.log('User role:', profile.role);
 
   return (
     <div className="min-h-screen bg-gray-50">
