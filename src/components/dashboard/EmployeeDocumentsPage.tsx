@@ -42,7 +42,7 @@ export default function EmployeeDocumentsPage() {
 
   // Modifica: aggiungiamo stato per ricerca e filtro
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   useEffect(() => {
     async function fetchEmployee() {
@@ -66,7 +66,7 @@ export default function EmployeeDocumentsPage() {
     let docs = filteredPersonalDocs;
 
     // Filtro per tipo documento, se selezionato
-    if (typeFilter) {
+    if (typeFilter !== "all") {
       docs = docs.filter(doc => doc.document_type === typeFilter);
     }
 
@@ -140,7 +140,7 @@ export default function EmployeeDocumentsPage() {
                 <SelectValue placeholder="Tutti i tipi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tutti i tipi</SelectItem>
+                <SelectItem value="all">Tutti i tipi</SelectItem>
                 {documentTypesList.map(typeItem => (
                   <SelectItem key={typeItem.value} value={typeItem.value}>
                     {typeItem.label}
