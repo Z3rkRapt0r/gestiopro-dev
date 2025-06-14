@@ -67,7 +67,7 @@ export default function EmployeeDocumentsPage() {
     <div className="max-w-3xl mx-auto py-8">
       <Button
         variant="ghost"
-        onClick={() => navigate("/admin")}
+        onClick={() => navigate("/admin?section=documents")}
         className="mb-4 flex items-center gap-2"
       >
         <ChevronLeft className="h-4 w-4" />

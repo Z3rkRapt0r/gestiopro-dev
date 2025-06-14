@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +38,9 @@ interface Employee {
 }
 
 const AdminDashboard = () => {
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const [searchParams] = typeof window !== "undefined" ? [new URLSearchParams(window.location.search)] : [new URLSearchParams()];
+  const sectionFromQuery = searchParams.get("section");
+  const [activeSection, setActiveSection] = useState(sectionFromQuery === "documents" ? "documents" : "dashboard");
   const [showCreateEmployee, setShowCreateEmployee] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
@@ -435,6 +438,14 @@ const AdminDashboard = () => {
       </Card>
     </div>
   );
+
+  // Aggiorna activeSection se cambia query param
+  useEffect(() => {
+    if (sectionFromQuery && sectionFromQuery !== activeSection) {
+      setActiveSection(sectionFromQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionFromQuery]);
 
   return (
     <div className="min-h-screen bg-gray-50">
