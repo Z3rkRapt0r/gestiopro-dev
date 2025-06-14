@@ -23,6 +23,8 @@ import CreateEmployeeForm from "./CreateEmployeeForm";
 import EditEmployeeForm from "./EditEmployeeForm";
 import AdminDocumentsSection from "./AdminDocumentsSection";
 import AdminNotificationsSection from "./AdminNotificationsSection";
+import NotificationForm from "@/components/notifications/NotificationForm";
+import NotificationsList from "@/components/notifications/NotificationsList";
 
 interface Employee {
   id: string;
@@ -521,7 +523,24 @@ const AdminDashboard = () => {
             {activeSection === 'dashboard' && renderDashboard()}
             {activeSection === 'employees' && renderEmployees()}
             {activeSection === 'documents' && <AdminDocumentsSection />}
-            {activeSection === 'notifications' && <AdminNotificationsSection />}
+            {activeSection === 'notifications' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold">Invia nuova notifica</h2>
+                <NotificationForm onCreated={() => {/* force refresh notifications list logic */}} />
+                <h3 className="text-xl font-semibold mt-8">Notifiche inviate</h3>
+                <NotificationsList
+                  // le notifiche possono essere passate da state/prop/fetch
+                  notifications={notifications}
+                  adminView
+                  onDelete={async (id) => {
+                    // elimina da Supabase
+                    await supabase.from("notifications").delete().eq("id", id);
+                    // TODO: remove file attachment if present
+                    fetchNotifications();
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

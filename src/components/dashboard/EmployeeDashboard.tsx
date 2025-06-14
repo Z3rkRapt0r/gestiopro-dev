@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,8 @@ import NotificationsSection from "./NotificationsSection";
 import EmployeeMessagesSection from "./EmployeeMessagesSection";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import NotificationsList from "@/components/notifications/NotificationsList";
+import { supabase } from "@/integrations/supabase/client";
 
 const EmployeeDashboard = () => {
   const [activeSection, setActiveSection] = useState('documents');
@@ -171,6 +173,57 @@ const EmployeeDashboard = () => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const NotificationsSection = () => {
+  const { profile } = useAuth();
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [filter, setFilter] = useState<"all" | "personal" | "unread">("all");
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      let query = supabase
+        .from("notifications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const { data } = await query;
+      setNotifications(
+        (data || []).filter((n) => {
+          if (filter === "personal") return n.recipient_id === profile.id;
+          if (filter === "unread") return !(n.read_by || []).includes(profile.id);
+          return n.recipient_id === profile.id || n.is_global;
+        })
+      );
+    };
+    fetchNotifications();
+  }, [profile, filter]);
+
+  const markRead = async (id: string) => {
+    const notif = notifications.find((n) => n.id === id);
+    if (!notif) return;
+    await supabase
+      .from("notifications")
+      .update({ read_by: [...(notif.read_by || []), profile.id] })
+      .eq("id", id);
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read_by: [...(n.read_by || []), profile.id] } : n))
+    );
+  };
+
+  return (
+    <div>
+      <div className="flex gap-2 justify-end mb-2">
+        <Button variant={filter === "all" ? "default" : "ghost"} onClick={() => setFilter("all")}>Tutte</Button>
+        <Button variant={filter === "personal" ? "default" : "ghost"} onClick={() => setFilter("personal")}>Personali</Button>
+        <Button variant={filter === "unread" ? "default" : "ghost"} onClick={() => setFilter("unread")}>Non lette</Button>
+      </div>
+      <NotificationsList
+        notifications={notifications}
+        onMarkRead={markRead}
+      />
     </div>
   );
 };
