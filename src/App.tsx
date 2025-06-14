@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import EmployeeDocumentsPage from "@/components/dashboard/EmployeeDocumentsPage";
 import { AuthProvider } from "@/hooks/useAuth";
+import AdminDashboard from "@/components/dashboard/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            {/* Route per la dashboard admin */}
+            <Route path="/admin" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="/admin/documents/:employeeId" element={<EmployeeDocumentsPage />} />
             <Route path="*" element={<NotFound />} />
