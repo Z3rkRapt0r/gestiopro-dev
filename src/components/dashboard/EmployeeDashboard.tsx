@@ -14,9 +14,9 @@ import { useDocuments } from "@/hooks/useDocuments";
 import { useNotifications } from "@/hooks/useNotifications";
 import DocumentsSection from "./DocumentsSection";
 import EmployeeMessagesSection from "./EmployeeMessagesSection";
+import NotificationsSection from "./NotificationsSection";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import NotificationsList from "@/components/notifications/NotificationsList";
 import { supabase } from "@/integrations/supabase/client";
 
 const EmployeeDashboard = () => {

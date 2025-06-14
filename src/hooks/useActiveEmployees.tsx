@@ -14,15 +14,16 @@ export function useActiveEmployees() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    supabase
-      .from("profiles")
-      .select("id, first_name, last_name, email")
-      .eq("is_active", true)
-      .then(({ data }) => {
-        setEmployees((data || []) as EmployeeProfile[]);
-      })
-      .finally(() => setLoading(false));
+    const fetchEmployees = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, email")
+        .eq("is_active", true);
+      setEmployees((data || []) as EmployeeProfile[]);
+      setLoading(false);
+    };
+    fetchEmployees();
   }, []);
 
   return { employees, loading };
