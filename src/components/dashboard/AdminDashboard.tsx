@@ -19,6 +19,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import CreateEmployeeForm from "./CreateEmployeeForm";
+import AdminDocumentsSection from "./AdminDocumentsSection";
+import AdminNotificationsSection from "./AdminNotificationsSection";
 
 interface Employee {
   id: string;
@@ -378,20 +380,8 @@ const AdminDashboard = () => {
           <div className="flex-1">
             {activeSection === 'dashboard' && renderDashboard()}
             {activeSection === 'employees' && renderEmployees()}
-            {activeSection === 'documents' && (
-              <div className="text-center py-12">
-                <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Gestione Documenti</h3>
-                <p className="mt-1 text-sm text-gray-500">Funzionalità in sviluppo</p>
-              </div>
-            )}
-            {activeSection === 'notifications' && (
-              <div className="text-center py-12">
-                <Bell className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Centro Notifiche</h3>
-                <p className="mt-1 text-sm text-gray-500">Funzionalità in sviluppo</p>
-              </div>
-            )}
+            {activeSection === 'documents' && <AdminDocumentsSection />}
+            {activeSection === 'notifications' && <AdminNotificationsSection />}
           </div>
         </div>
       </div>
