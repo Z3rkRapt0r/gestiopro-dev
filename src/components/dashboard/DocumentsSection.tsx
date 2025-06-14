@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import DocumentUpload from "@/components/documents/DocumentUpload";
 import DocumentPreview from "@/components/documents/DocumentPreview";
 import { getDocumentTypeLabel, formatFileSize, formatDate } from "@/utils/documentUtils";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import DocumentUploadDialogController from "@/components/documents/DocumentUploadDialogController";
 
 const documentTypesList = [
   { value: "payslip", label: "Busta Paga" },
@@ -88,7 +88,14 @@ const DocumentsSection = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-3xl font-bold text-gray-900">I Miei Documenti</h2>
-          <DocumentUpload onSuccess={() => {}} />
+          <DocumentUploadDialogController
+            trigger={
+              <Button>
+                <Upload className="h-4 w-4 mr-1" />
+                Carica Documento
+              </Button>
+            }
+          />
         </div>
 
         {/* Cards riassuntive */}

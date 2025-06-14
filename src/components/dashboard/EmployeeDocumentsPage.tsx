@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FileText, Eye, Download, ChevronLeft, Filter, Search, Upload } from "lucide-react";
 import DocumentPreview from "@/components/documents/DocumentPreview";
 import DocumentUpload from "@/components/documents/DocumentUpload";
+import DocumentUploadDialogController from "@/components/documents/DocumentUploadDialogController";
 
 const documentTypesList = [
   { value: "payslip", label: "Busta Paga" },
@@ -115,10 +116,14 @@ export default function EmployeeDocumentsPage() {
               </span>
             </CardTitle>
             {/* Tenere solo questo bottone di Upload */}
-            <DocumentUpload
-              onSuccess={() => {
-                refreshDocuments();
-              }}
+            <DocumentUploadDialogController 
+              onSuccess={() => { refreshDocuments(); }}
+              trigger={
+                <Button variant="default">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Carica Documento
+                </Button>
+              }
             />
           </div>
         </CardHeader>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Users, Upload, Search, FileText } from "lucide-react";
-import DocumentUpload from "@/components/documents/DocumentUpload";
+import DocumentUploadDialogController from "@/components/documents/DocumentUploadDialogController";
 import { useDocuments } from "@/hooks/useDocuments";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -93,13 +93,14 @@ const AdminDocumentsSection = () => {
 
       {/* PULSANTE CARICA DOCUMENTO INDIPENDENTE */}
       <div className="mb-4 flex justify-end">
-        <Button
-          className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => setUploadDialogOpen(true)}
-        >
-          <Upload className="h-4 w-4 mr-1" />
-          Carica Documento
-        </Button>
+        <DocumentUploadDialogController 
+          trigger={
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Upload className="h-4 w-4 mr-1" />
+              Carica Documento
+            </Button>
+          }
+        />
       </div>
 
       {/* FILTRI & SEARCHBAR */}
@@ -216,12 +217,6 @@ const AdminDocumentsSection = () => {
       </Card>
 
       {/* Modale upload documento - adesso UNA SOLA ISTANZA CONTROLLATA */}
-      <DocumentUpload
-        open={uploadDialogOpen}
-        setOpen={setUploadDialogOpen}
-        onSuccess={() => setUploadDialogOpen(false)}
-        key="admin-upload-dialog"
-      />
     </div>
   );
 };
