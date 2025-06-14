@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -33,9 +33,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  // Ref per sapere se il componente è montato
+  const mounted = useRef(true);
+
   const fetchUserProfile = async (userId: string) => {
     try {
-      console.log('Fetching profile for user:', userId);
+      console.log('[useAuth] Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -43,61 +46,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching profile:', error);
+        console.error('[useAuth] Error fetching profile:', error);
         toast({
           title: "Errore nel caricamento del profilo",
           description: error.message,
           variant: "destructive",
         });
+        setProfile(null);
         return;
       }
 
       if (!data) {
-        console.log('No profile found for user:', userId);
-        // Se il profilo non esiste, potrebbe essere un nuovo utente
-        // Creiamo un profilo di default
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            email: user?.email || null, // user might not be set here yet if called directly
-            role: 'employee',
-            is_active: true
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Error creating profile:', createError);
-          toast({
-            title: "Errore nella creazione del profilo",
-            description: createError.message,
-            variant: "destructive",
-          });
-          return;
-        }
-
-        console.log('Created new profile:', newProfile);
-        const typedNewProfile: Profile = { // Renamed to avoid conflict
-          ...newProfile,
-          role: newProfile.role as 'admin' | 'employee'
-        };
-        setProfile(typedNewProfile);
+        console.log('[useAuth] No profile found for user:', userId);
+        setProfile(null);
         return;
       }
 
-      console.log('Profile data received:', data);
-
-      // Ensure role is properly typed
-      const typedProfile: Profile = { // Renamed to avoid conflict
+      const typedProfile: Profile = {
         ...data,
         role: data.role as 'admin' | 'employee'
       };
-      
       setProfile(typedProfile);
-      console.log('Profile set successfully:', typedProfile);
+      console.log('[useAuth] Profile set successfully:', typedProfile);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('[useAuth] Error fetching user profile:', error);
+      setProfile(null);
       toast({
         title: "Errore nel caricamento del profilo",
         description: "Si è verificato un errore durante il caricamento del profilo",
@@ -107,61 +80,80 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    let mounted = true;
+    mounted.current = true;
+    console.log('[useAuth] useEffect started. Mounted ref:', mounted.current);
 
-    // Set up auth state listener
+    // Setup auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
+      (_event, newSession) => {
+        console.log('[useAuth] onAuthStateChange fired. Event:', _event, 'Session User ID:', newSession?.user?.id);
+        if (!mounted.current) return;
 
-        console.log('Auth state changed:', event, session?.user?.id);
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch user profile after successful authentication or state change
-          await fetchUserProfile(session.user.id);
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        setLoading(true);
+        if (newSession?.user) {
+          // Defer fetchUserProfile to avoid possible state update issues inside callback
+          setTimeout(async () => {
+            if (!mounted.current) return;
+            await fetchUserProfile(newSession.user!.id);
+            if (mounted.current) setLoading(false);
+          }, 0);
         } else {
           setProfile(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
-    // Check for existing session
+    // Initial session check
     const initializeAuth = async () => {
+      console.log('[useAuth] initializeAuth started.');
       try {
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession(); // Renamed to currentSession
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error('Error getting session:', error);
+          console.error('[useAuth] Error getting session:', error);
+          setSession(null);
+          setUser(null);
+          setProfile(null);
           setLoading(false);
           return;
         }
-
-        console.log('Initial session check:', currentSession?.user?.id);
-        if (!mounted) return;
-
+        console.log('[useAuth] Initial session check:', currentSession?.user?.id);
+        if (!mounted.current) return;
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         if (currentSession?.user) {
+          setLoading(true);
           await fetchUserProfile(currentSession.user.id);
+        } else {
+          setProfile(null);
         }
-        setLoading(false);
       } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (mounted) {
+        console.error('[useAuth] Error initializing auth:', error);
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+      } finally {
+        if (mounted.current) {
           setLoading(false);
         }
+        console.log('[useAuth] initializeAuth finally: setting loading to false.');
       }
+      console.log('[useAuth] initializeAuth promise resolved.');
     };
 
     initializeAuth();
 
+    console.log('[useAuth] Subscribed to onAuthStateChange.');
+
     return () => {
-      mounted = false;
+      mounted.current = false;
       subscription.unsubscribe();
     };
-  }, []); // Removed user from dependency array as fetchUserProfile now uses session.user.id
+
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
@@ -178,16 +170,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive",
         });
       } else {
-        // onAuthStateChange will handle setting user, profile, session
-        // and fetching profile. It will also set loading to false.
         toast({
           title: "Accesso effettuato",
           description: "Benvenuto nel sistema!",
         });
       }
-      // setLoading(false) will be handled by onAuthStateChange if successful,
-      // or here if error
-      if(error) setLoading(false);
+      if (error) setLoading(false);
       return { error };
     } catch (error: any) {
       console.error('Sign in error:', error);
@@ -217,7 +205,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           title: "Disconnesso",
           description: "Alla prossima!",
         });
-        // Successful Supabase sign out. onAuthStateChange will be triggered.
       }
     } catch (e: any) {
       console.error('Exception during sign out process:', e);
@@ -227,8 +214,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         variant: "destructive",
       });
     } finally {
-      // Ensure local state is cleared regardless of Supabase call outcome.
-      // onAuthStateChange will also handle this, but this provides immediate local feedback.
       setUser(null);
       setProfile(null);
       setSession(null);
