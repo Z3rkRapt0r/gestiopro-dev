@@ -214,7 +214,7 @@ const AdminDocumentsSection = () => {
         </CardContent>
       </Card>
 
-      {/* Modale upload documento */}
+      {/* Modale upload documento - UNA SOLA ISTANZA */}
       {uploadUserId && (
         <DocumentUpload
           onSuccess={() => setUploadUserId(null)}
