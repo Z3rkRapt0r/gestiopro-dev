@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,7 +61,8 @@ const AdminDocumentsSection = () => {
 
       if (!error && data) {
         setEmployeeList(data);
-        if (data.length > 0 && !selectedUserId) {
+        // Modificato: seleziona solo se data.length > 0
+        if (data.length > 0 && (!selectedUserId || data.every(emp => emp.id !== selectedUserId))) {
           setSelectedUserId(data[0].id); // Preseleziona il primo
         }
       }
@@ -130,16 +130,24 @@ const AdminDocumentsSection = () => {
             <p className="text-gray-600 text-sm">Seleziona un dipendente per consultare e scaricare i suoi documenti personali.</p>
           </div>
           <div className="w-full md:w-80">
-            <Select value={selectedUserId ?? ""} onValueChange={setSelectedUserId}>
+            <Select
+              value={employeeList.length > 0 ? selectedUserId ?? employeeList[0].id : "__no_employee__"}
+              onValueChange={val => {
+                if (val !== "__no_employee__") setSelectedUserId(val);
+              }}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={"Seleziona dipendente"} />
               </SelectTrigger>
               <SelectContent>
-                {employeeList.length === 0 && <SelectItem value="">Nessun dipendente</SelectItem>}
-                {employeeList.map(emp =>
-                  <SelectItem value={emp.id} key={emp.id}>
-                    {emp.first_name || ''} {emp.last_name || ''} ({emp.email})
-                  </SelectItem>
+                {employeeList.length === 0 ? (
+                  <SelectItem value="__no_employee__" disabled>Nessun dipendente</SelectItem>
+                ) : (
+                  employeeList.map(emp =>
+                    <SelectItem value={emp.id} key={emp.id}>
+                      {emp.first_name || ''} {emp.last_name || ''} ({emp.email})
+                    </SelectItem>
+                  )
                 )}
               </SelectContent>
             </Select>
