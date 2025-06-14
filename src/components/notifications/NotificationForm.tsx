@@ -93,7 +93,7 @@ const NotificationForm = ({ onCreated }: Props) => {
         accept=".pdf,.doc,.docx,.jpg,.png,.jpeg,.gif"
         onChange={e => setFile(e.target.files?.[0] || null)}
       />
-      <Button type="submit" loading={loading}>
+      <Button type="submit">
         Invia notifica
       </Button>
     </form>

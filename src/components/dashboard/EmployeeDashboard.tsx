@@ -13,7 +13,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useNotifications } from "@/hooks/useNotifications";
 import DocumentsSection from "./DocumentsSection";
-import NotificationsSection from "./NotificationsSection";
 import EmployeeMessagesSection from "./EmployeeMessagesSection";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -192,9 +191,11 @@ const NotificationsSection = () => {
       const { data } = await query;
       setNotifications(
         (data || []).filter((n) => {
-          if (filter === "personal") return n.recipient_id === profile.id;
-          if (filter === "unread") return !(n.read_by || []).includes(profile.id);
-          return n.recipient_id === profile.id || n.is_global;
+          if (filter === "personal") return n.user_id === profile.id;
+          if (filter === "unread") return !n.is_read && n.user_id === profile.id;
+          // "all": personali + generali (notifiche inviate a tutti)
+          // Per questa struttura (NO is_global), si può distinguere: personali=user_id mio, generali=tutte le altre
+          return n.user_id === profile.id || n.user_id !== profile.id;
         })
       );
     };
@@ -202,14 +203,13 @@ const NotificationsSection = () => {
   }, [profile, filter]);
 
   const markRead = async (id: string) => {
-    const notif = notifications.find((n) => n.id === id);
-    if (!notif) return;
+    // set is_read=true per la notifica con quell'id
     await supabase
       .from("notifications")
-      .update({ read_by: [...(notif.read_by || []), profile.id] })
+      .update({ is_read: true })
       .eq("id", id);
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read_by: [...(n.read_by || []), profile.id] } : n))
+      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
   };
 

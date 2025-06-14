@@ -41,28 +41,51 @@ export const useNotificationForm = (onCreated?: () => void) => {
         attachment_url = data?.path || null;
       }
 
-      const { data, error } = await supabase
-        .from("notifications")
-        .insert({
-          sender_id: profile?.id,
-          recipient_id: recipientId,
-          is_global: recipientId == null,
-          subject,
-          short_text: shortText,
-          body,
-          attachment_url,
-        })
-        .select()
-        .maybeSingle();
+      // Se recipientId is null, invia a tutti ("general") -> per ogni utente attivo
+      if (!recipientId) {
+        // Fetch all active employee profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("is_active", true);
+        if (profilesError) throw profilesError;
 
-      if (error) throw error;
+        // For each employee, create a notification
+        for (const p of profiles || []) {
+          await supabase
+            .from("notifications")
+            .insert({
+              user_id: p.id,
+              title: subject,
+              message: shortText,
+              type: topic || "system",
+              body,
+              attachment_url,
+              created_by: profile?.id
+            });
+        }
+      } else {
+        // Notifica personale
+        await supabase
+          .from("notifications")
+          .insert({
+            user_id: recipientId,
+            title: subject,
+            message: shortText,
+            type: topic || "system",
+            body,
+            attachment_url,
+            created_by: profile?.id
+          });
+      }
 
       // Edge function - send email
+      // Qui si manda la notifica email tramite edge solo a uno o più
       const emailPayload = {
         recipientId,
         subject,
         shortText,
-        notificationId: data.id,
+        // notificationId: // non è più one2one, quindi lo lasciamo undefined
       };
       await fetch("/functions/v1/send-notification-email", {
         method: "POST",
