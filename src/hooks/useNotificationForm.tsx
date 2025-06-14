@@ -79,24 +79,38 @@ export const useNotificationForm = (onCreated?: () => void) => {
       }
 
       // Invio email tramite Edge Function Brevo
-      const emailPayload = {
-        recipientId,
-        subject,
-        shortText,
-        userId: profile?.id,
-      };
-      await fetch("/functions/v1/send-notification-email", {
-        method: "POST",
-        body: JSON.stringify(emailPayload),
-        headers: { "Content-Type": "application/json" },
-      });
+      console.log("Calling send-notification-email function...");
+      
+      const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+        'send-notification-email',
+        {
+          body: {
+            recipientId,
+            subject: topic || subject,
+            shortText,
+            userId: profile?.id,
+          }
+        }
+      );
 
-      toast({
-        title: "Notifica inviata",
-        description: "La notifica è stata inviata e il destinatario riceverà una email.",
-      });
+      if (emailError) {
+        console.error("Email function error:", emailError);
+        toast({
+          title: "Notifica salvata",
+          description: "La notifica è stata salvata ma l'invio email ha avuto problemi: " + emailError.message,
+          variant: "destructive",
+        });
+      } else {
+        console.log("Email function success:", emailResult);
+        toast({
+          title: "Notifica inviata",
+          description: "La notifica è stata inviata e l'email è stata spedita con successo.",
+        });
+      }
+      
       onCreated?.();
     } catch (e: any) {
+      console.error("Notification error:", e);
       toast({
         title: "Errore",
         description: e.message || "Errore nell'invio notifica.",
