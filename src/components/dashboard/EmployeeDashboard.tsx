@@ -14,7 +14,7 @@ import { useDocuments } from "@/hooks/useDocuments";
 import { useNotifications } from "@/hooks/useNotifications";
 import DocumentsSection from "./DocumentsSection";
 import NotificationsSection from "./NotificationsSection";
-import EmployeeMessagesSection from "./EmployeeMessagesSection";
+import EmployeeMessages from "@/components/communications/EmployeeMessages";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -126,21 +126,16 @@ const EmployeeDashboard = () => {
                 </Badge>
               )}
             </Button>
-            
+
             <Button
-              variant={activeSection === 'notifications' ? 'default' : 'ghost'}
+              variant={activeSection === 'communications' ? 'default' : 'ghost'}
               className="w-full justify-start"
-              onClick={() => setActiveSection('notifications')}
+              onClick={() => setActiveSection('communications')}
             >
-              <Bell className="mr-2 h-4 w-4" />
-              Notifiche
-              {unreadNotifications.length > 0 && (
-                <Badge className="ml-auto bg-red-500 text-white">
-                  {unreadNotifications.length}
-                </Badge>
-              )}
+              <Mail className="mr-2 h-4 w-4" />
+              Comunicazioni
             </Button>
-            
+
             <Button
               variant={activeSection === 'profile' ? 'default' : 'ghost'}
               className="w-full justify-start"
@@ -149,24 +144,14 @@ const EmployeeDashboard = () => {
               <User className="mr-2 h-4 w-4" />
               Profilo
             </Button>
-            
-            <Button
-              variant={activeSection === 'messages' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveSection('messages')}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              Messaggi
-            </Button>
           </div>
 
           {/* Main Content */}
           <div className="flex-1">
             <Suspense fallback={<SectionSkeleton />}>
               {activeSection === 'documents' && <DocumentsSection />}
-              {activeSection === 'notifications' && <NotificationsSection />}
+              {activeSection === 'communications' && <EmployeeMessages />}
               {activeSection === 'profile' && renderProfile()}
-              {activeSection === 'messages' && <EmployeeMessagesSection />}
             </Suspense>
           </div>
         </div>
