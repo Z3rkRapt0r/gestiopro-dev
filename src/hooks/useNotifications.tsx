@@ -36,7 +36,13 @@ export const useNotifications = () => {
         return;
       }
 
-      setNotifications(data || []);
+      // Ensure type is properly typed
+      const typedNotifications: Notification[] = (data || []).map(notification => ({
+        ...notification,
+        type: notification.type as Notification['type']
+      }));
+
+      setNotifications(typedNotifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {

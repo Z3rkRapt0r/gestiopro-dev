@@ -81,7 +81,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      setProfile(data);
+      // Ensure role is properly typed
+      const profile: Profile = {
+        ...data,
+        role: data.role as 'admin' | 'employee'
+      };
+      
+      setProfile(profile);
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }

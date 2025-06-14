@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,14 +15,11 @@ import {
   UserPlus
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useAuth } from "@/hooks/useAuth";
 
-interface AdminDashboardProps {
-  user: { role: 'admin' | 'employee'; name: string; email: string };
-  onLogout: () => void;
-}
-
-const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
+const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
+  const { profile, signOut } = useAuth();
 
   // Dati demo per i grafici
   const documentsData = [
@@ -245,8 +241,10 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             </div>
             
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Benvenuto, {user.name}</span>
-              <Button variant="ghost" onClick={onLogout}>
+              <span className="text-sm text-gray-600">
+                Benvenuto, {profile?.first_name} {profile?.last_name}
+              </span>
+              <Button variant="ghost" onClick={signOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Esci
               </Button>

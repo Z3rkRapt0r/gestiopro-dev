@@ -46,7 +46,13 @@ export const useDocuments = () => {
         return;
       }
 
-      setDocuments(data || []);
+      // Ensure document_type is properly typed
+      const typedDocuments: Document[] = (data || []).map(doc => ({
+        ...doc,
+        document_type: doc.document_type as Document['document_type']
+      }));
+
+      setDocuments(typedDocuments);
     } catch (error) {
       console.error('Error fetching documents:', error);
     } finally {
@@ -126,12 +132,12 @@ export const useDocuments = () => {
       }
 
       const url = URL.createObjectURL(data);
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
       link.download = document.file_name;
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error: any) {
       console.error('Error downloading document:', error);
