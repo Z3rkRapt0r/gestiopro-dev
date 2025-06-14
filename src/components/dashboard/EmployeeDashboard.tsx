@@ -14,6 +14,7 @@ import { useDocuments } from "@/hooks/useDocuments";
 import { useNotifications } from "@/hooks/useNotifications";
 import DocumentsSection from "./DocumentsSection";
 import NotificationsSection from "./NotificationsSection";
+import EmployeeMessagesSection from "./EmployeeMessagesSection";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -165,13 +166,7 @@ const EmployeeDashboard = () => {
               {activeSection === 'documents' && <DocumentsSection />}
               {activeSection === 'notifications' && <NotificationsSection />}
               {activeSection === 'profile' && renderProfile()}
-              {activeSection === 'messages' && (
-                <div className="text-center py-12">
-                  <Mail className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">Centro Messaggi</h3>
-                  <p className="mt-1 text-sm text-gray-500">Funzionalità in sviluppo</p>
-                </div>
-              )}
+              {activeSection === 'messages' && <EmployeeMessagesSection />}
             </Suspense>
           </div>
         </div>
