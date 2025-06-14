@@ -1,11 +1,11 @@
+
 import { useAuth } from "@/hooks/useAuth";
 import { AuthProvider } from "@/hooks/useAuth";
 import AuthPage from "@/components/auth/AuthPage";
-import AdminDashboard from "@/components/dashboard/AdminDashboard";
-import EmployeeDashboard from "@/components/dashboard/EmployeeDashboard";
 import { Suspense, lazy } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Importazioni lazy
 const AdminDashboard = lazy(() => import("@/components/dashboard/AdminDashboard"));
 const EmployeeDashboard = lazy(() => import("@/components/dashboard/EmployeeDashboard"));
 
