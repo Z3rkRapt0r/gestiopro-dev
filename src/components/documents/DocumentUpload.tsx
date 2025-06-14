@@ -1,39 +1,39 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Upload, FileText, Users, User } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FileText, Users, User } from 'lucide-react';
 import { useDocuments } from '@/hooks/useDocuments';
-import { useAuth } from '@/hooks/useAuth'; // To get current user and role
-import { supabase } from '@/integrations/supabase/client'; // To fetch profiles for admin
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
-// Definizione del tipo Profile (dovrebbe corrispondere a quello in useAuth o simile)
+// Definizione del tipo Profile
 interface Profile {
   id: string;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
-  // Aggiungi altri campi se necessari
 }
 
 interface DocumentUploadProps {
   onSuccess?: () => void;
-  // Rimuoviamo userId, isAdmin, allProfiles dalle props, li gestiremo internamente o con useAuth
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }
 
-const DocumentUpload = ({ onSuccess }: DocumentUploadProps) => {
-  const [open, setOpen] = useState(false);
+const DocumentUpload = ({ onSuccess, open, setOpen }: DocumentUploadProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [documentType, setDocumentType] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  
+
   const { uploadDocument } = useDocuments();
-  const { user, profile } = useAuth(); // Get current user info
+  const { user, profile } = useAuth();
 
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [uploadTarget, setUploadTarget] = useState<'self' | 'specific_user' | 'all_employees'>('self');
@@ -55,7 +55,6 @@ const DocumentUpload = ({ onSuccess }: DocumentUploadProps) => {
     }
   }, [isAdmin, open]);
 
-  // NUOVA LOGICA: Permette controllo esterno (quindi non serve più il DialogTrigger interno!)
   useEffect(() => {
     if (!open) {
       setFile(null);
@@ -82,8 +81,7 @@ const DocumentUpload = ({ onSuccess }: DocumentUploadProps) => {
     e.preventDefault();
     if (!file || !title || !documentType || !user) return;
     if (isAdmin && uploadTarget === 'specific_user' && !selectedUserId) {
-      // Admin selected "specific user" but didn't choose one
-      alert("Seleziona un utente specifico."); // Replace with toast later
+      alert("Seleziona un utente specifico.");
       return;
     }
 
@@ -97,25 +95,22 @@ const DocumentUpload = ({ onSuccess }: DocumentUploadProps) => {
         targetUserIdForUpload = selectedUserId;
         isPersonalDocument = true;
       } else if (uploadTarget === 'all_employees') {
-        targetUserIdForUpload = user.id; // The document belongs to the company, 'user_id' is the admin uploader
+        targetUserIdForUpload = user.id;
         isPersonalDocument = false;
       }
-      // if 'self', it's like a normal user upload but by admin, so personal to admin
     }
-    // For non-admin, targetUserIdForUpload remains user.id and isPersonalDocument true
 
     const { error } = await uploadDocument(
       file,
       title,
       description,
-      documentType as any, // Document['document_type']
+      documentType as any,
       targetUserIdForUpload,
       isPersonalDocument
     );
 
     if (!error) {
       setOpen(false);
-      // Resetting state is handled by useEffect on 'open'
       onSuccess?.();
     }
     setLoading(false);
@@ -133,7 +128,6 @@ const DocumentUpload = ({ onSuccess }: DocumentUploadProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {/* RIMOSSO DialogTrigger */}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Carica Nuovo Documento</DialogTitle>

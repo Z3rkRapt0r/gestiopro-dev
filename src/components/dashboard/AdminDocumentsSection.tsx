@@ -26,6 +26,7 @@ const AdminDocumentsSection = () => {
   const [filterDept, setFilterDept] = useState("");
   const [filterRole, setFilterRole] = useState("");
   const [uploadUserId, setUploadUserId] = useState<string | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const { documents } = useDocuments();
 
   // Documenti recenti (ultimi 6)
@@ -94,7 +95,7 @@ const AdminDocumentsSection = () => {
       <div className="mb-4 flex justify-end">
         <Button
           className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => setUploadUserId("admin")}
+          onClick={() => setUploadDialogOpen(true)}
         >
           <Upload className="h-4 w-4 mr-1" />
           Carica Documento
@@ -214,15 +215,13 @@ const AdminDocumentsSection = () => {
         </CardContent>
       </Card>
 
-      {/* Modale upload documento - UNA SOLA ISTANZA */}
-      {uploadUserId && (
-        <DocumentUpload
-          onSuccess={() => setUploadUserId(null)}
-          key={uploadUserId}
-        >
-          {/* Children ignorati, solo per chiamata */}
-        </DocumentUpload>
-      )}
+      {/* Modale upload documento - adesso UNA SOLA ISTANZA CONTROLLATA */}
+      <DocumentUpload
+        open={uploadDialogOpen}
+        setOpen={setUploadDialogOpen}
+        onSuccess={() => setUploadDialogOpen(false)}
+        key="admin-upload-dialog"
+      />
     </div>
   );
 };
