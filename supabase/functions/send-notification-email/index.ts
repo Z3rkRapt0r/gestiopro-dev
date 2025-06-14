@@ -14,61 +14,29 @@ serve(async (req) => {
   }
 
   console.log("[Brevo Email] Starting email function");
-  console.log("[Brevo Email] Request method:", req.method);
-  console.log("[Brevo Email] Request headers:", Object.fromEntries(req.headers.entries()));
 
   try {
-    // Parse request body
-    let body;
-    try {
-      const rawBody = await req.text();
-      console.log("[Brevo Email] Raw request body:", rawBody);
-      body = JSON.parse(rawBody);
-    } catch (parseError) {
-      console.error("[Brevo Email] Error parsing request body:", parseError);
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON in request body" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const body = await req.json();
+    console.log("[Brevo Email] Request body:", JSON.stringify(body, null, 2));
 
-    console.log("[Brevo Email] Parsed request body:", JSON.stringify(body, null, 2));
-
-    // Extract parameters with fallbacks
     const { recipientId, subject, shortText, userId } = body;
 
-    console.log("[Brevo Email] Extracted parameters:");
-    console.log("- recipientId:", recipientId);
-    console.log("- subject:", subject);
-    console.log("- shortText:", shortText);
-    console.log("- userId:", userId);
-
-    // Validation
     if (!userId) {
       console.error("[Brevo Email] Missing userId in request");
       return new Response(
-        JSON.stringify({ error: "Missing userId parameter" }),
+        JSON.stringify({ error: "Missing userId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!subject) {
-      console.error("[Brevo Email] Missing subject in request");
+    if (!subject || !shortText) {
+      console.error("[Brevo Email] Missing subject or shortText");
       return new Response(
-        JSON.stringify({ error: "Missing subject parameter" }),
+        JSON.stringify({ error: "Missing subject or shortText" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!shortText) {
-      console.error("[Brevo Email] Missing shortText in request");
-      return new Response(
-        JSON.stringify({ error: "Missing shortText parameter" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Initialize Supabase client
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -184,7 +152,7 @@ serve(async (req) => {
       textContent: shortText
     };
 
-    console.log("[Brevo Email] Calling Brevo API with payload:", JSON.stringify(brevoPayload, null, 2));
+    console.log("[Brevo Email] Calling Brevo API...");
 
     const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -197,7 +165,7 @@ serve(async (req) => {
 
     const brevoResponseText = await brevoResponse.text();
     console.log("[Brevo Email] Brevo response status:", brevoResponse.status);
-    console.log("[Brevo Email] Brevo response body:", brevoResponseText);
+    console.log("[Brevo Email] Brevo response:", brevoResponseText);
 
     if (!brevoResponse.ok) {
       console.error("[Brevo Email] Brevo API error:", brevoResponse.status, brevoResponseText);

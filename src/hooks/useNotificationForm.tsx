@@ -29,11 +29,6 @@ export const useNotificationForm = (onCreated?: () => void) => {
     setLoading(true);
 
     try {
-      // Verifica che l'utente sia autenticato
-      if (!profile?.id) {
-        throw new Error("Utente non autenticato");
-      }
-
       let attachment_url: string | null = null;
 
       if (file) {
@@ -65,7 +60,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
               type: topic || "system",
               body,
               attachment_url,
-              created_by: profile.id
+              created_by: profile?.id
             });
         }
       } else {
@@ -79,26 +74,22 @@ export const useNotificationForm = (onCreated?: () => void) => {
             type: topic || "system",
             body,
             attachment_url,
-            created_by: profile.id
+            created_by: profile?.id
           });
       }
 
       // Invio email tramite Edge Function Brevo
-      console.log("Calling send-notification-email function with userId:", profile.id);
-      
-      const emailPayload = {
-        recipientId,
-        subject: topic || subject,
-        shortText,
-        userId: profile.id, // Assicuriamoci che sia sempre presente
-      };
-
-      console.log("Email payload:", emailPayload);
+      console.log("Calling send-notification-email function...");
       
       const { data: emailResult, error: emailError } = await supabase.functions.invoke(
         'send-notification-email',
         {
-          body: emailPayload
+          body: {
+            recipientId,
+            subject: topic || subject,
+            shortText,
+            userId: profile?.id,
+          }
         }
       );
 
