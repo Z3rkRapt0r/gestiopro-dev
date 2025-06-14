@@ -114,7 +114,7 @@ export default function EmployeeDocumentsPage() {
                   : "Dipendente"}
               </span>
             </CardTitle>
-            {/* Pulsante upload - ora lasciamo che DocumentUpload gestisca il proprio bottone */}
+            {/* Tenere solo questo bottone di Upload */}
             <DocumentUpload
               onSuccess={() => {
                 refreshDocuments();
@@ -235,15 +235,6 @@ export default function EmployeeDocumentsPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Modale di upload dedicata al dipendente */}
-      {employeeId && (
-        <DocumentUpload
-          onSuccess={() => {
-            refreshDocuments();
-          }}
-        />
-      )}
 
       <DocumentPreview
         document={previewDocument}
