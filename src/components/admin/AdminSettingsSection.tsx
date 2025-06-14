@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 const AdminSettingsSection = () => {
   const { apiKey, loading, saveApiKey } = useAdminSettings();
   const [value, setValue] = useState(apiKey || "");
+
+  // Aggiorna value quando apiKey cambia
+  useEffect(() => {
+    if (apiKey !== null && apiKey !== undefined) {
+      setValue(apiKey);
+    }
+  }, [apiKey]);
 
   return (
     <div className="max-w-lg p-6 bg-white rounded shadow space-y-4">
@@ -32,3 +39,4 @@ const AdminSettingsSection = () => {
   );
 };
 export default AdminSettingsSection;
+
