@@ -78,11 +78,12 @@ export const useNotificationForm = (onCreated?: () => void) => {
           });
       }
 
-      // Invio email tramite Edge Function
+      // Invio email tramite Edge Function Brevo
       const emailPayload = {
         recipientId,
         subject,
         shortText,
+        userId: profile?.id,
       };
       await fetch("/functions/v1/send-notification-email", {
         method: "POST",

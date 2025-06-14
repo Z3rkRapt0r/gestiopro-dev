@@ -1,11 +1,8 @@
 
-// Edge Function: invio email tramite Resend
+// Edge Function versione Brevo
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -16,14 +13,29 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { recipientId, subject, shortText, notificationId } = body;
+    const { recipientId, subject, shortText, notificationId, userId } = body;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // recupera l’email del destinatario (o tutte le email attive se null)
+    // Recupero chiave Brevo salva per admin (userId)
+    const { data: adminSetting, error } = await supabase
+      .from("admin_settings")
+      .select("brevo_api_key")
+      .eq("admin_id", userId)
+      .maybeSingle();
+    if (error || !adminSetting) {
+      return new Response(JSON.stringify({ error: "Impostazione Brevo non trovata per admin" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const brevoApiKey = adminSetting.brevo_api_key;
+
+    // Recupero email destinatari
     let emails: string[] = [];
     if (recipientId) {
       const { data } = await supabase.from("profiles").select("email").eq("id", recipientId).maybeSingle();
@@ -33,30 +45,40 @@ serve(async (req) => {
       emails = (data || []).map((d: any) => d.email).filter(Boolean);
     }
 
-    // Crea link notifica (assumi dominio)
-    const baseUrl = Deno.env.get("BASE_URL") || "https://YOUR_APP_URL";
-    const link = `${baseUrl}/`; // in futuro: /notification/${notificationId}
-
-    await resend.emails.send({
-      from: "Notifiche <onboarding@resend.dev>",
-      to: emails,
-      subject,
-      html: `
-        <h2>${subject}</h2>
-        <p>${shortText}</p>
-        <p>
-          <a href="${link}" target="_blank">Accedi alla notifica</a>
-        </p>
-      `,
+    // INVIO MAIL via API Brevo
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": brevoApiKey,
+      },
+      body: JSON.stringify({
+        sender: { name: "Notifiche", email: "notifiche@yourdomain.com" }, // personalizzalo!
+        to: emails.map(email => ({ email })),
+        subject,
+        htmlContent: `<h2>${subject}</h2><p>${shortText}</p>`,
+        textContent: shortText,
+      }),
     });
+
+    if (!response.ok) {
+      const errorMsg = await response.text();
+      return new Response(JSON.stringify({ error: errorMsg }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: (e as Error).message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });
