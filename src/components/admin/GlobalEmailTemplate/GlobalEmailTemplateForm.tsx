@@ -56,8 +56,8 @@ export const GlobalEmailTemplateForm = () => {
         .maybeSingle();
 
       if (!error && data) {
-        // Il footer personalizzato sta in subject
         setFooterText(data.subject || DEFAULT_FOOTER);
+        // Migliorata la logica di fallback
         const alignValue =
           data.name === "right"
             ? "right"
@@ -75,6 +75,29 @@ export const GlobalEmailTemplateForm = () => {
     loadData();
     // eslint-disable-next-line
   }, [profile?.id]);
+
+  // Funzione separata per ricaricare anteprima con valori aggiornati dal db dopo il salvataggio
+  const reloadTemplateSettings = async () => {
+    if (!profile?.id) return;
+    const { data, error } = await supabase
+      .from("email_templates")
+      .select("subject,name")
+      .eq("admin_id", profile.id)
+      .eq("is_default", false)
+      .eq("topic", "generale")
+      .maybeSingle();
+
+    if (!error && data) {
+      setFooterText(data.subject || DEFAULT_FOOTER);
+      const alignValue =
+        data.name === "right"
+          ? "right"
+          : data.name === "center"
+          ? "center"
+          : "left";
+      setLogoAlign(alignValue as "left" | "right" | "center");
+    }
+  };
 
   const handleLogoUpload = async () => {
     if (!logoUploadFile || !profile?.id) return;
@@ -137,7 +160,7 @@ export const GlobalEmailTemplateForm = () => {
         .from("email_templates")
         .update({
           name: logoAlign,
-          subject: footerText, // Qui assicuro che il valore sia quello giusto
+          subject: footerText,
           sender_name: DEFAULT_SENDER_NAME,
           is_default: false,
           content: "",
@@ -151,7 +174,7 @@ export const GlobalEmailTemplateForm = () => {
           {
             admin_id: profile.id,
             name: logoAlign,
-            subject: footerText, // Anche qui
+            subject: footerText,
             sender_name: DEFAULT_SENDER_NAME,
             is_default: false,
             topic: "generale",
@@ -173,6 +196,7 @@ export const GlobalEmailTemplateForm = () => {
         title: "Salvato",
         description: "Le impostazioni sono state aggiornate.",
       });
+      await reloadTemplateSettings(); // Aggiorna stato e anteprima subito dopo il salvataggio
     }
   };
 
