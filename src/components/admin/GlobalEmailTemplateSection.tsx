@@ -28,18 +28,14 @@ const GlobalEmailTemplateSection = () => {
   const [testLoading, setTestLoading] = useState(false);
   const inputLogoRef = useRef<HTMLInputElement>(null);
 
-  // Se il logo allegato è presente, imposta direttamente come logoUploadFile ed esegui upload
+  // Se il logo allegato è presente, imposta direttamente come logoUploadFile ed esegui upload (funzione async corretta)
   useEffect(() => {
-    // Carica il logo predefinito SE NON esiste già un logo per l'admin
-    // NOTA: l'immagine allegata deve essere caricata ONE-TIME come logo base del profilo admin
     const autoUploadLogoFromAttachment = async () => {
       if (!profile?.id) return;
-      // Controlla se c'è già un logo e se no caricalo
       const { data: logoData } = await supabase.storage
         .from(LOGO_BUCKET)
         .getPublicUrl(`${profile.id}/${LOGO_PATH}`);
       if (logoData?.publicUrl) return; // già esiste un logo
-      // Carica quello fornito in allegato
       const response = await fetch("/lovable-uploads/6ef558b5-05c5-4f90-8b0e-d42cb12af8e8.png");
       const blob = await response.blob();
       const file = new File([blob], "email-logo.png", { type: blob.type });
@@ -70,49 +66,52 @@ const GlobalEmailTemplateSection = () => {
     // eslint-disable-next-line
   }, [profile?.id]);
 
-  // Carica il logo
+  // Carica il logo e le impostazioni template (usa funzione async interna)
   useEffect(() => {
-    if (!profile?.id) {
+    const loadData = async () => {
+      if (!profile?.id) {
+        setInitialLoading(false);
+        return;
+      }
+      setInitialLoading(true);
+
+      const { data: logoData } = await supabase
+        .storage
+        .from(LOGO_BUCKET)
+        .getPublicUrl(`${profile.id}/${LOGO_PATH}`);
+      if (logoData?.publicUrl) {
+        setLogoUrl(logoData.publicUrl);
+      } else {
+        setLogoUrl(null);
+      }
+
+      const { data, error } = await supabase
+        .from("email_templates")
+        .select("subject,name")
+        .eq("admin_id", profile.id)
+        .eq("is_default", false)
+        .eq("topic", "generale")
+        .maybeSingle();
+
+      if (!error && data) {
+        setFooterText(data.subject || DEFAULT_FOOTER);
+        const alignValue =
+          data.name === "right"
+            ? "right"
+            : data.name === "center"
+            ? "center"
+            : "left";
+        setLogoAlign(alignValue as "left" | "right" | "center");
+      } else {
+        setFooterText(DEFAULT_FOOTER);
+        setLogoAlign("left");
+      }
+
       setInitialLoading(false);
-      return;
-    }
-    setInitialLoading(true);
+    };
 
-    // Carica il logo
-    const { data: logoData } = await supabase
-      .storage
-      .from(LOGO_BUCKET)
-      .getPublicUrl(`${profile.id}/${LOGO_PATH}`);
-    if (logoData?.publicUrl) {
-      setLogoUrl(logoData.publicUrl);
-    } else {
-      setLogoUrl(null);
-    }
-
-    // Carica le impostazioni template (allineamento logo e footer)
-    const { data, error } = await supabase
-      .from("email_templates")
-      .select("subject,name")
-      .eq("admin_id", profile.id)
-      .eq("is_default", false)
-      .eq("topic", "generale")
-      .maybeSingle();
-
-    if (!error && data) {
-      setFooterText(data.subject || DEFAULT_FOOTER);
-      const alignValue =
-        data.name === "right"
-          ? "right"
-          : data.name === "center"
-          ? "center"
-          : "left";
-      setLogoAlign(alignValue as "left" | "right" | "center");
-    } else {
-      setFooterText(DEFAULT_FOOTER);
-      setLogoAlign("left");
-    }
-
-    setInitialLoading(false);
+    loadData();
+    // eslint-disable-next-line
   }, [profile?.id]);
 
   // Upload logo su Supabase Storage
