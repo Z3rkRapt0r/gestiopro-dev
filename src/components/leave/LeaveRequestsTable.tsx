@@ -30,10 +30,24 @@ export default function LeaveRequestsTable({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [edited, setEdited] = useState<Partial<LeaveRequest>>({});
 
-  const handleAction = async (id: string, status: "approved" | "rejected") => {
+  const handleAction = async (id: string, status: "approved" | "rejected" | "pending") => {
     try {
       await updateStatusMutation.mutateAsync({ id, status, admin_note: adminNotes[id] || "" });
-      toast({ title: status === "approved" ? "Richiesta approvata" : "Richiesta rifiutata" });
+      let title;
+      switch (status) {
+        case "approved":
+          title = "Richiesta approvata";
+          break;
+        case "rejected":
+          title = "Richiesta rifiutata";
+          break;
+        case "pending":
+          title = "Richiesta riportata a pendente";
+          break;
+        default:
+          title = "Azione completata";
+      }
+      toast({ title });
       setAdminNotes((prev) => ({ ...prev, [id]: "" }));
     } catch {
       toast({ title: "Errore azione amministratore", variant: "destructive" });
@@ -272,6 +286,19 @@ export default function LeaveRequestsTable({
                           <XCircle className="w-4 h-4" />
                         </Button>
                       </>
+                    )}
+                    {/* Riporta a pendente se APPROVED o REJECTED solo lato admin */}
+                    {(req.status === "approved" || req.status === "rejected") && adminMode && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="border-yellow-400 bg-yellow-50 hover:bg-yellow-100 h-7 w-7 p-0 flex items-center justify-center"
+                        onClick={() => handleAction(req.id, "pending")}
+                        title="Riporta a pendente"
+                        style={{ minWidth: 28, minHeight: 28 }}
+                      >
+                        <Sparkles className="w-4 h-4 text-yellow-700" />
+                      </Button>
                     )}
                     {showEdit && (
                       <Button

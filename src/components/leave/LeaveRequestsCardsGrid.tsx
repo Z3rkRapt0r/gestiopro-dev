@@ -233,6 +233,7 @@ export default function LeaveRequestsCardsGrid({
                 {/* AZIONI ADMIN */}
                 {adminMode && (
                   <>
+                    {/* Se pending: approva/rifiuta */}
                     {req.status === "pending" && (
                       <>
                         <Button
@@ -256,6 +257,20 @@ export default function LeaveRequestsCardsGrid({
                           <XCircle className="w-4 h-4" />
                         </Button>
                       </>
+                    )}
+                    {/* Se approved o rejected: Riporta a pendente */}
+                    {(req.status === "approved" || req.status === "rejected") && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="border-yellow-400 bg-yellow-50 hover:bg-yellow-100 h-7 w-7 p-0 flex items-center justify-center"
+                        onClick={() => handleAction(req.id, "pending")}
+                        title="Riporta a pendente"
+                        style={{ minWidth: 28, minHeight: 28 }}
+                      >
+                        {/* Icona "pending": Sparkles */}
+                        <Sparkles className="w-4 h-4 text-yellow-700" />
+                      </Button>
                     )}
                     {showEdit && (
                       <Button
