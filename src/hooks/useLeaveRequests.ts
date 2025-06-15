@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -121,11 +120,57 @@ export function useLeaveRequests() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave_requests"] }),
   });
 
+  // Nuovo: update richiesta permesso/ferie completo
+  const updateRequestMutation = useMutation({
+    mutationFn: async (payload: Partial<LeaveRequest> & { id: string }) => {
+      const { id, ...fields } = payload;
+      // Pulizia payload solo colonne editabili
+      const editableFields = {
+        day: fields.day ?? null,
+        time_from: fields.time_from ?? null,
+        time_to: fields.time_to ?? null,
+        date_from: fields.date_from ?? null,
+        date_to: fields.date_to ?? null,
+        note: fields.note ?? null,
+        admin_note: fields.admin_note ?? null,
+        status: fields.status,
+      } as any;
+      // Non inviare field vuoti se edit non admin
+      Object.keys(editableFields).forEach(key => {
+        if (editableFields[key] === undefined) delete editableFields[key];
+      });
+      const { error, data } = await supabase
+        .from("leave_requests")
+        .update(editableFields)
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      return data as LeaveRequest;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave_requests"] }),
+  });
+
+  // Nuovo: delete richiesta
+  const deleteRequestMutation = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { error } = await supabase
+        .from("leave_requests")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave_requests"] }),
+  });
+
   return {
     isLoading,
     leaveRequests: data,
     error,
     insertMutation,
     updateStatusMutation,
+    updateRequestMutation,
+    deleteRequestMutation,
   };
 }
