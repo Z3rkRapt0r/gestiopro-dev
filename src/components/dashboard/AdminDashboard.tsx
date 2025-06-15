@@ -27,6 +27,7 @@ import NotificationForm from "@/components/notifications/NotificationForm";
 import NotificationsList from "@/components/notifications/NotificationsList";
 
 import { useNavigate, useLocation } from "react-router-dom";
+import AdminSettingsSection from "@/components/admin/AdminSettingsSection";
 
 interface Employee {
   id: string;
@@ -521,53 +522,42 @@ const AdminDashboard = () => {
               <Bell className="mr-2 h-4 w-4" />
               Notifiche
             </Button>
-            
+            {/* NUOVO: pulsante impostazioni come le altre sezioni */}
             <Button
-              variant={location.pathname === "/admin-settings" ? "default" : "ghost"}
+              variant={activeSection === "settings" ? "default" : "ghost"}
               className="w-full justify-start"
-              onClick={() => navigate("/admin-settings")}
+              onClick={() => setActiveSection("settings")}
             >
               <Settings className="mr-2 h-4 w-4" />
               Impostazioni
             </Button>
           </div>
-
           {/* Main Content */}
           <div className="flex-1">
-            {location.pathname === "/admin-settings" ? (
-              // Lazy load della pagina impostazioni
+            {activeSection === 'dashboard' && renderDashboard()}
+            {activeSection === 'employees' && renderEmployees()}
+            {activeSection === 'documents' && <AdminDocumentsSection />}
+            {activeSection === 'notifications' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold">Invia nuova notifica</h2>
+                <NotificationForm onCreated={() => {/* force refresh notifications list logic */}} />
+                <h3 className="text-xl font-semibold mt-8">Notifiche inviate</h3>
+                <NotificationsList
+                  notifications={notifications}
+                  adminView
+                  onDelete={async (id) => {
+                    await supabase.from("notifications").delete().eq("id", id);
+                    fetchNotifications();
+                  }}
+                />
+              </div>
+            )}
+            {/* SEZIONE IMPOSTAZIONI */}
+            {activeSection === "settings" && (
               <div className="py-10">
                 <h1 className="text-2xl font-bold mb-6">Impostazioni Admin</h1>
-                <div>
-                  {/* Render la pagina delle impostazioni */}
-                  <iframe
-                    src="/admin-settings"
-                    style={{ width: "100%", minHeight: 500, border: "none" }}
-                    title="Impostazioni Admin"
-                  />
-                </div>
+                <AdminSettingsSection />
               </div>
-            ) : (
-              <>
-                {activeSection === 'dashboard' && renderDashboard()}
-                {activeSection === 'employees' && renderEmployees()}
-                {activeSection === 'documents' && <AdminDocumentsSection />}
-                {activeSection === 'notifications' && (
-                  <div className="space-y-6">
-                    <h2 className="text-2xl font-bold">Invia nuova notifica</h2>
-                    <NotificationForm onCreated={() => {/* force refresh notifications list logic */}} />
-                    <h3 className="text-xl font-semibold mt-8">Notifiche inviate</h3>
-                    <NotificationsList
-                      notifications={notifications}
-                      adminView
-                      onDelete={async (id) => {
-                        await supabase.from("notifications").delete().eq("id", id);
-                        fetchNotifications();
-                      }}
-                    />
-                  </div>
-                )}
-              </>
             )}
           </div>
         </div>

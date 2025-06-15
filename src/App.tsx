@@ -8,7 +8,6 @@ import NotFound from "./pages/NotFound";
 import EmployeeDocumentsPage from "@/components/dashboard/EmployeeDocumentsPage";
 import { AuthProvider } from "@/hooks/useAuth";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
-import AdminSettingsPage from "@/pages/admin-settings";
 
 const queryClient = new QueryClient();
 
@@ -25,8 +24,6 @@ const App = () => (
             <Route path="/admin" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="/admin/documents/:employeeId" element={<EmployeeDocumentsPage />} />
-            {/* Route per le impostazioni admin */}
-            <Route path="/admin-settings" element={<AdminSettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
