@@ -1,3 +1,4 @@
+
 import { Label } from "@/components/ui/label";
 import React from "react";
 
@@ -5,7 +6,6 @@ interface Props {
   logoUrl: string | null;
   logoAlign: "left" | "center" | "right";
   footerText: string;
-  senderName?: string;
   DEMO_BODY?: string;
 }
 
@@ -30,9 +30,7 @@ export const GlobalEmailPreview: React.FC<Props> = ({
         <h2 style="color: #2757d6;">Oggetto comunicazione</h2>
         <p>${DEMO_BODY}</p>
       </div>
-      <footer style="color:#888; font-size:13px; margin-top:36px;text-align:center;">
-        ${footerText}
-      </footer>
+      <footer style="color:#888; font-size:13px; margin-top:36px;text-align:center;">${footerText}</footer>
     </div>
   `;
   return (

@@ -51,8 +51,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // RECUPERA IMPOSTAZIONI TEMPLATE GLOBALE 
-    // LEGGO SEMPRE IL FOOTER PERSONALIZZATO!
+    // RECUPERA IMPOSTAZIONI TEMPLATE GLOBALE
     const { logoAlign, footerText, logoPublicUrl } = await getGlobalEmailTemplate(supabase, userId);
 
     // RECUPERA ADMIN SETTINGS
@@ -91,8 +90,10 @@ serve(async (req) => {
       .eq("id", userId)
       .single();
 
-    // mittente: fisso per tutte le mail
-    const senderNameSafe = "A.L.M Infissi";
+    const senderName = adminProfile?.first_name && adminProfile?.last_name 
+      ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche` 
+      : "Sistema Notifiche";
+    
     const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
 
     // RECUPERA EMAIL DESTINATARI
@@ -133,7 +134,7 @@ serve(async (req) => {
     // COMPOSIZIONE EMAIL PAYLOAD
     const brevoPayload = {
       sender: { 
-        name: senderNameSafe, 
+        name: senderName, 
         email: senderEmail
       },
       to: emails.map(email => ({ email })),
@@ -143,7 +144,7 @@ serve(async (req) => {
         shortText,
         logoHtml,
         downloadSection,
-        footerText: footerText || DEFAULT_FOOTER, // SOLO FOOTER personalizzato
+        footerText,
       }),
       textContent: `${subject}\n\n${shortText}\n${attachment_url ? "\nAllegato incluso, accedi al portale per scaricarlo." : ""}\n\n--- Notifica automatica dal sistema aziendale ---`
     };
