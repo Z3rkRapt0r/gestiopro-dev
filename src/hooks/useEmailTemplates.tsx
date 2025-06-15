@@ -29,7 +29,6 @@ export const useEmailTemplates = () => {
 
   const loadTemplates = async () => {
     if (!profile?.id) return;
-    
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -56,7 +55,6 @@ export const useEmailTemplates = () => {
     template: Omit<EmailTemplate, "id" | "created_at">
   ) => {
     if (!profile?.id) return;
-
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -79,7 +77,6 @@ export const useEmailTemplates = () => {
         title: "Template salvato",
         description: "Il template è stato salvato con successo",
       });
-
       return data;
     } catch (error: any) {
       console.error("Error saving template:", error);
