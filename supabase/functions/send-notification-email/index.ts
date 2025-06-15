@@ -50,8 +50,14 @@ async function fetchLogoUrl(supabase: any, userId: string) {
       .from("company-assets")
       .getPublicUrl(`${userId}/email-logo.png`);
     if (logoData?.publicUrl) {
-      console.log("[Notification Email] Found logoUrl for admin:", logoData.publicUrl);
-      return logoData.publicUrl;
+      // Aggiungi query param per evitare caching dell’immagine nella mail
+      const cacheBuster = `v=${Date.now()}`;
+      const logoUrlNoCache =
+        logoData.publicUrl.indexOf("?") === -1
+          ? `${logoData.publicUrl}?${cacheBuster}`
+          : `${logoData.publicUrl}&${cacheBuster}`;
+      console.log("[Notification Email] Found logoUrl for admin:", logoUrlNoCache);
+      return logoUrlNoCache;
     }
     console.log("[Notification Email] No custom logo for admin, skipping logo.");
     return null;
