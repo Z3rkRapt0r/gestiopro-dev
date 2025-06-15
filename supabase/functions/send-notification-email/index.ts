@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -20,6 +19,9 @@ serve(async (req) => {
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
     const { recipientId, subject, shortText, userId } = body;
+
+    // Recupera il percorso attachment_url dal body (potrebbe essere null)
+    const attachment_url = body.attachment_url ?? null;
 
     if (!userId) {
       console.error("[Notification Email] Missing userId in request");
@@ -146,6 +148,23 @@ serve(async (req) => {
     console.log("[Notification Email] Sending to emails:", emails.length, "recipients");
     console.log("[Notification Email] Using sender:", senderEmail);
 
+    let downloadSection = '';
+    if (attachment_url) {
+      // Il public URL del file. 
+      // Nota: Per policy di sicurezza il file non sarà visibile pubblicamente, si consiglia di istruire il destinatario a loggarsi.
+      const bucket = "notification-attachments";
+      const storageUrl = Deno.env.get("SUPABASE_URL")?.replace(/^https?:\/\//, "") ?? "";
+      const bucketUrl = `https://${storageUrl}/storage/v1/object/public/${bucket}/${attachment_url}`;
+      // ATTENZIONE: bucket privato! Si invita l'utente ad accedere per vedere l'allegato.
+      downloadSection = `
+        <div style="margin-top: 20px; border-left: 4px solid #007bff; padding-left: 10px;">
+          <strong>Allegato:</strong><br>
+          <a href="${bucketUrl}" target="_blank" style="color: #007bff;">Scarica allegato</a>
+          <div style="font-size:11px; color:#888">Potresti dover effettuare l'accesso con il tuo account per scaricare l'allegato.</div>
+        </div>
+      `;
+    }
+
     // Send email via Brevo API
     const brevoPayload = {
       sender: { 
@@ -162,6 +181,7 @@ serve(async (req) => {
           <div style="margin: 20px 0; line-height: 1.6; color: #555;">
             ${shortText.replace(/\n/g, '<br>')}
           </div>
+          ${downloadSection}
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
           <p style="font-size: 12px; color: #888; margin: 0;">
             Questa è una notifica automatica dal sistema aziendale.<br>
@@ -169,7 +189,7 @@ serve(async (req) => {
           </p>
         </div>
       `,
-      textContent: `${subject}\n\n${shortText}\n\n--- Notifica automatica dal sistema aziendale ---`
+      textContent: `${subject}\n\n${shortText}\n${attachment_url ? "\nAllegato incluso, accedi al portale per scaricarlo." : ""}\n\n--- Notifica automatica dal sistema aziendale ---`
     };
 
     console.log("[Notification Email] Calling Brevo API...");
