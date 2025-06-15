@@ -143,7 +143,7 @@ serve(async (req) => {
         shortText,
         logoHtml,
         downloadSection,
-        footerText: footerText || DEFAULT_FOOTER, // <<--- sempre passa il footer giusto!
+        footerText: footerText || DEFAULT_FOOTER, // SOLO FOOTER personalizzato
       }),
       textContent: `${subject}\n\n${shortText}\n${attachment_url ? "\nAllegato incluso, accedi al portale per scaricarlo." : ""}\n\n--- Notifica automatica dal sistema aziendale ---`
     };

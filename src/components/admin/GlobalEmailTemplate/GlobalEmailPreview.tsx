@@ -1,4 +1,3 @@
-
 import { Label } from "@/components/ui/label";
 import React from "react";
 
@@ -14,7 +13,6 @@ export const GlobalEmailPreview: React.FC<Props> = ({
   logoUrl,
   logoAlign,
   footerText,
-  senderName,
   DEMO_BODY = "Qui verrà inserito il messaggio della comunicazione.",
 }) => {
   let textAlign = logoAlign;
@@ -33,8 +31,7 @@ export const GlobalEmailPreview: React.FC<Props> = ({
         <p>${DEMO_BODY}</p>
       </div>
       <footer style="color:#888; font-size:13px; margin-top:36px;text-align:center;">
-        ${footerText}<br />
-        <span style="color:#555;font-size:12px;">${senderName ? senderName : ""}</span>
+        ${footerText}
       </footer>
     </div>
   `;

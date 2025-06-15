@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +56,7 @@ export const GlobalEmailTemplateForm = () => {
         .maybeSingle();
 
       if (!error && data) {
+        // Il footer personalizzato sta in subject
         setFooterText(data.subject || DEFAULT_FOOTER);
         const alignValue =
           data.name === "right"
@@ -137,7 +137,7 @@ export const GlobalEmailTemplateForm = () => {
         .from("email_templates")
         .update({
           name: logoAlign,
-          subject: footerText,
+          subject: footerText, // Qui assicuro che il valore sia quello giusto
           sender_name: DEFAULT_SENDER_NAME,
           is_default: false,
           content: "",
@@ -151,7 +151,7 @@ export const GlobalEmailTemplateForm = () => {
           {
             admin_id: profile.id,
             name: logoAlign,
-            subject: footerText,
+            subject: footerText, // Anche qui
             sender_name: DEFAULT_SENDER_NAME,
             is_default: false,
             topic: "generale",
@@ -223,7 +223,7 @@ export const GlobalEmailTemplateForm = () => {
         logoUrl={logoUrl}
         logoAlign={logoAlign}
         footerText={footerText}
-        senderName={senderName}
+        // senderName={senderName} // NON PASSO PIU' senderName
         DEMO_BODY={DEMO_BODY}
       />
     </div>
