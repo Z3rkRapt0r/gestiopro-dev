@@ -18,13 +18,16 @@ const NotificationsSection = () => {
         .order("created_at", { ascending: false });
 
       const { data } = await query;
+
+      // Nuova logica di filtro:
       setNotifications(
         (data || []).filter((n) => {
-          if (filter === "personal") return n.user_id === profile.id;
-          if (filter === "unread") return !n.is_read && n.user_id === profile.id;
-          // "all": personali + generali (notifiche inviate a tutti)
-          // Con questa struttura, personali=user_id mio, generali=tutte le altre
-          return n.user_id === profile.id || n.user_id !== profile.id;
+          if (filter === "personal")
+            return n.user_id === profile.id;
+          if (filter === "unread")
+            return !n.is_read && n.user_id === profile.id;
+          // tutte: personali (user_id mio) + generali (user_id nullo)
+          return n.user_id === profile.id || n.user_id === null;
         })
       );
     };
