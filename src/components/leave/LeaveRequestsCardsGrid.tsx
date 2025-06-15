@@ -81,7 +81,6 @@ export default function LeaveRequestsCardsGrid({
     try {
       await deleteRequestMutation.mutateAsync({ id });
       toast({ title: "Richiesta eliminata!" });
-      // Invalidate local cache if necessary (React Query si occupa, ma possiamo forzare se serve)
     } catch {
       toast({ title: "Errore eliminazione", variant: "destructive" });
     }
@@ -105,7 +104,7 @@ export default function LeaveRequestsCardsGrid({
     profile?.id === req.user_id && req.status === "pending" && !adminMode;
 
   // ELIMINA: 
-  // - archivio: tutte proprie richieste (approved/rejected) si possono eliminare
+  // - archivio: tutte proprie richieste (approved/rejected/pending) si possono eliminare
   // - altrimenti, solo pending proprie richieste, e non adminMode
   const canDelete = (req: LeaveRequest) => {
     if (!profile) return false;
