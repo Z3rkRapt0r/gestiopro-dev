@@ -51,7 +51,8 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // RECUPERA IMPOSTAZIONI TEMPLATE GLOBALE (ora include senderName)
+    // RECUPERA IMPOSTAZIONI TEMPLATE GLOBALE 
+    // LEGGO SEMPRE IL FOOTER PERSONALIZZATO!
     const { logoAlign, footerText, logoPublicUrl } = await getGlobalEmailTemplate(supabase, userId);
 
     // RECUPERA ADMIN SETTINGS
@@ -142,7 +143,7 @@ serve(async (req) => {
         shortText,
         logoHtml,
         downloadSection,
-        footerText,
+        footerText: footerText || DEFAULT_FOOTER, // <<--- sempre passa il footer giusto!
       }),
       textContent: `${subject}\n\n${shortText}\n${attachment_url ? "\nAllegato incluso, accedi al portale per scaricarlo." : ""}\n\n--- Notifica automatica dal sistema aziendale ---`
     };

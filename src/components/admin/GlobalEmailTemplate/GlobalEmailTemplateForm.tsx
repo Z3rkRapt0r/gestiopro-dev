@@ -37,13 +37,17 @@ export const GlobalEmailTemplateForm = () => {
       }
       setInitialLoading(true);
 
-      // Logo
+      // Step 1: Ottieni il logo pubblicamente (aggiungi timestamp per bypass cache)
       const { data: logoData } = await supabase
         .storage.from(LOGO_BUCKET)
         .getPublicUrl(`${profile.id}/${LOGO_PATH}`);
-      setLogoUrl(logoData?.publicUrl || null);
+      setLogoUrl(
+        logoData?.publicUrl
+          ? logoData.publicUrl + `?t=${Date.now()}`
+          : null
+      );
 
-      // Template
+      // Step 2: Ottieni il template email personalizzato
       const { data, error } = await supabase
         .from("email_templates")
         .select("subject,name")
@@ -77,11 +81,15 @@ export const GlobalEmailTemplateForm = () => {
     setLoading(true);
     await supabase.storage.createBucket(LOGO_BUCKET, { public: true }).catch(() => {});
     const path = `${profile.id}/${LOGO_PATH}`;
+
+    // Step 1: Rimuovi esplicitamente eventuali versioni precedenti e svuota la cache locale
     await supabase.storage.from(LOGO_BUCKET).remove([path]).catch(() => {});
+
+    // Step 2: Effettua l'upload del nuovo file
     const { error } = await supabase.storage
       .from(LOGO_BUCKET)
       .upload(path, logoUploadFile, {
-        cacheControl: "3600",
+        cacheControl: "0", // Nessuna cache!
         upsert: true,
         contentType: logoUploadFile.type,
       });
@@ -94,8 +102,9 @@ export const GlobalEmailTemplateForm = () => {
       setLoading(false);
       return;
     }
+    // Step 3: Ottieni subito la nuova url e aggiungi un param random per forzare il refresh anche nei browser/email-client
     const { data: logoData } = await supabase.storage.from(LOGO_BUCKET).getPublicUrl(path);
-    setLogoUrl(logoData?.publicUrl ?? null);
+    setLogoUrl(logoData?.publicUrl ? logoData.publicUrl + `?t=${Date.now()}` : null);
     toast({
       title: "Logo aggiornato",
       description: "Il logo è stato caricato con successo.",
