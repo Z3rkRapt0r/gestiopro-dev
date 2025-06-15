@@ -6,6 +6,7 @@ interface Props {
   logoUrl: string | null;
   logoAlign: "left" | "center" | "right";
   footerText: string;
+  senderName?: string;
   DEMO_BODY?: string;
 }
 
@@ -13,6 +14,7 @@ export const GlobalEmailPreview: React.FC<Props> = ({
   logoUrl,
   logoAlign,
   footerText,
+  senderName,
   DEMO_BODY = "Qui verrà inserito il messaggio della comunicazione.",
 }) => {
   let textAlign = logoAlign;
@@ -30,7 +32,10 @@ export const GlobalEmailPreview: React.FC<Props> = ({
         <h2 style="color: #2757d6;">Oggetto comunicazione</h2>
         <p>${DEMO_BODY}</p>
       </div>
-      <footer style="color:#888; font-size:13px; margin-top:36px;text-align:center;">${footerText}</footer>
+      <footer style="color:#888; font-size:13px; margin-top:36px;text-align:center;">
+        ${footerText}<br />
+        <span style="color:#555;font-size:12px;">${senderName ? senderName : ""}</span>
+      </footer>
     </div>
   `;
   return (

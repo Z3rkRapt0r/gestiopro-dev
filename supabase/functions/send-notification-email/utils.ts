@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const LOGO_BUCKET = "company-assets";
@@ -10,11 +9,12 @@ export async function getGlobalEmailTemplate(supabase: any, userId: string) {
   let logoAlign: "left" | "center" | "right" = "left";
   let footerText: string = DEFAULT_FOOTER;
   let logoPublicUrl: string | null = null;
+  let senderName: string = "Admin SerramentiCorp - Sistema notifiche";
 
   // 1. Recupera template globale "generale"
   const { data: tpl } = await supabase
     .from("email_templates")
-    .select("name,subject")
+    .select("name,subject,sender_name")
     .eq("admin_id", userId)
     .eq("topic", "generale")
     .maybeSingle();
@@ -24,6 +24,7 @@ export async function getGlobalEmailTemplate(supabase: any, userId: string) {
     if (tpl.name === "right" || tpl.name === "center") {
       logoAlign = tpl.name;
     }
+    senderName = tpl.sender_name || "Admin SerramentiCorp - Sistema notifiche";
   }
 
   // 2. Recupera URL pubblico del logo
@@ -35,7 +36,7 @@ export async function getGlobalEmailTemplate(supabase: any, userId: string) {
     logoPublicUrl = logoData.publicUrl;
   }
 
-  return { logoAlign, footerText, logoPublicUrl };
+  return { logoAlign, footerText, logoPublicUrl, senderName };
 }
 
 // Genera HTML content per la mail

@@ -1,7 +1,7 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,7 @@ const GlobalEmailTemplateSection = () => {
   const [logoAlign, setLogoAlign] = useState<"left" | "right" | "center">("left");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [senderName, setSenderName] = useState("Admin SerramentiCorp - Sistema notifiche");
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,7 +48,7 @@ const GlobalEmailTemplateSection = () => {
       // Template
       const { data, error } = await supabase
         .from("email_templates")
-        .select("subject,name")
+        .select("subject,name,sender_name")
         .eq("admin_id", profile.id)
         .eq("is_default", false)
         .eq("topic", "generale")
@@ -62,9 +63,11 @@ const GlobalEmailTemplateSection = () => {
             ? "center"
             : "left";
         setLogoAlign(alignValue as "left" | "right" | "center");
+        setSenderName(data.sender_name || "Admin SerramentiCorp - Sistema notifiche");
       } else {
         setFooterText(DEFAULT_FOOTER);
         setLogoAlign("left");
+        setSenderName("Admin SerramentiCorp - Sistema notifiche");
       }
 
       setInitialLoading(false);
@@ -105,7 +108,7 @@ const GlobalEmailTemplateSection = () => {
     setLoading(false);
   };
 
-  // Salva allineamento e footer
+  // Salva allineamento, footer e mittente
   const handleSave = async () => {
     if (!profile?.id) {
       toast({
@@ -132,6 +135,7 @@ const GlobalEmailTemplateSection = () => {
         .update({
           name: logoAlign,
           subject: footerText,
+          sender_name: senderName,
           is_default: false,
           content: "",
         })
@@ -146,6 +150,7 @@ const GlobalEmailTemplateSection = () => {
             admin_id: profile.id,
             name: logoAlign,
             subject: footerText,
+            sender_name: senderName,
             is_default: false,
             topic: "generale",
             content: "",
@@ -191,6 +196,20 @@ const GlobalEmailTemplateSection = () => {
             initialLoading={initialLoading}
           />
         </div>
+        {/* NEW FIELD: Sender Name */}
+        <div>
+          <label className="block mb-1 font-medium" htmlFor="sender-name">Nome Mittente:</label>
+          <Input
+            id="sender-name"
+            value={senderName}
+            onChange={e => setSenderName(e.target.value)}
+            placeholder="Admin SerramentiCorp - Sistema notifiche"
+            disabled={loading || initialLoading}
+          />
+          <div className="text-xs text-muted-foreground mt-1">
+            Apparirà come nome mittente per l’invio delle email.
+          </div>
+        </div>
         <GlobalEmailFooterInput
           value={footerText}
           onChange={setFooterText}
@@ -207,6 +226,7 @@ const GlobalEmailTemplateSection = () => {
           logoUrl={logoUrl}
           logoAlign={logoAlign}
           footerText={footerText}
+          senderName={senderName}
           DEMO_BODY={DEMO_BODY}
         />
       </CardContent>

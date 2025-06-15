@@ -51,8 +51,8 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // RECUPERA IMPOSTAZIONI TEMPLATE GLOBALE
-    const { logoAlign, footerText, logoPublicUrl } = await getGlobalEmailTemplate(supabase, userId);
+    // RECUPERA IMPOSTAZIONI TEMPLATE GLOBALE (ora include senderName)
+    const { logoAlign, footerText, logoPublicUrl, senderName } = await getGlobalEmailTemplate(supabase, userId);
 
     // RECUPERA ADMIN SETTINGS
     console.log("[Notification Email] Looking for admin settings for user:", userId);
@@ -90,9 +90,10 @@ serve(async (req) => {
       .eq("id", userId)
       .single();
 
-    const senderName = adminProfile?.first_name && adminProfile?.last_name 
+    // mittente
+    const senderNameSafe = senderName || (adminProfile?.first_name && adminProfile?.last_name 
       ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche` 
-      : "Sistema Notifiche";
+      : "Sistema Notifiche");
     
     const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
 
@@ -134,7 +135,7 @@ serve(async (req) => {
     // COMPOSIZIONE EMAIL PAYLOAD
     const brevoPayload = {
       sender: { 
-        name: senderName, 
+        name: senderNameSafe, 
         email: senderEmail
       },
       to: emails.map(email => ({ email })),
