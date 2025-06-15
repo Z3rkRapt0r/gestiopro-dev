@@ -78,14 +78,26 @@ export default function LeaveRequestsTable({
 
   return (
     <div className="overflow-x-auto rounded-lg border bg-white shadow-sm p-2 sm:p-4">
-      <Table className="min-w-[420px] max-w-full">
+      <Table className="w-full">
         <TableHead>
           <TableRow>
-            {adminMode && <TableCell className="font-semibold text-xs w-28 px-2 text-center">Utente</TableCell>}
-            <TableCell className="font-semibold text-xs w-20 px-2 text-center">Tipo</TableCell>
-            <TableCell className="font-semibold text-xs w-32 px-1 text-center">Data</TableCell>
-            <TableCell className="font-semibold text-xs w-16 px-1 text-center">Stato</TableCell>
-            <TableCell className="font-semibold text-xs w-20 px-2 text-center">Azioni</TableCell>
+            {adminMode && (
+              <TableCell className="font-semibold text-xs p-1 text-center w-[80px] min-w-[48px] max-w-[100px]">
+                Utente
+              </TableCell>
+            )}
+            <TableCell className="font-semibold text-xs p-1 text-center w-[48px] min-w-[48px] max-w-[60px]">
+              Tipo
+            </TableCell>
+            <TableCell className="font-semibold text-xs p-1 text-center w-[90px] min-w-[48px] max-w-[110px]">
+              Data
+            </TableCell>
+            <TableCell className="font-semibold text-xs p-1 text-center w-[48px] min-w-[48px] max-w-[60px]">
+              Stato
+            </TableCell>
+            <TableCell className="font-semibold text-xs p-1 text-center w-[70px] min-w-[48px] max-w-[80px]">
+              Azioni
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -100,18 +112,20 @@ export default function LeaveRequestsTable({
                 } text-xs`}
             >
               {adminMode && (
-                <TableCell className="whitespace-nowrap px-2 py-1 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <User2 className="w-4 h-4 text-muted-foreground" />
-                    <span className="truncate max-w-[70px]">{req.profiles?.first_name
+                <TableCell className="p-1 text-center align-middle">
+                  <div className="flex flex-col items-center gap-0">
+                    <span className="bg-gray-200 rounded-full w-7 h-7 flex items-center justify-center mb-0.5 mx-auto">
+                      <User2 className="w-4 h-4 text-muted-foreground" />
+                    </span>
+                    <span className="truncate max-w-[68px] text-[11px] leading-none">{req.profiles?.first_name
                       ? `${req.profiles.first_name} ${req.profiles.last_name}`
                       : "Io"}</span>
                   </div>
                 </TableCell>
               )}
-              <TableCell className="px-2 py-1 text-center">
+              <TableCell className="p-1 text-center align-middle">
                 <Badge
-                  className={`gap-1 px-1.5 py-0.5 rounded text-xs font-medium min-w-0 mx-auto flex items-center justify-center
+                  className={`gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold flex items-center justify-center mx-auto min-w-0 
                     ${req.type === "ferie"
                       ? "bg-blue-100 text-blue-800"
                       : "bg-violet-100 text-violet-800"
@@ -119,47 +133,50 @@ export default function LeaveRequestsTable({
                   variant="secondary"
                 >
                   {req.type === "ferie" ? <Sun className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
-                  <span className="capitalize">{req.type}</span>
+                  <span className="capitalize pl-0.5">{req.type}</span>
                 </Badge>
               </TableCell>
-              <TableCell className="px-1 py-1 text-center">
+              <TableCell className="p-1 text-center align-middle">
                 {editingId === req.id ? (
                   req.type === "permesso" ? (
                     <input
                       type="date"
                       value={edited.day ?? ""}
                       onChange={e => handleEditChange("day", e.target.value)}
-                      className="border px-1 rounded text-xs w-24 mx-auto block"
+                      className="border px-1 rounded text-xs w-[78px] mx-auto block"
+                      style={{ height: '28px' }}
                     />
                   ) : (
-                    <div className="flex flex-col gap-0.5 items-center">
+                    <div className="flex flex-col items-center gap-0.5">
                       <input
                         type="date"
                         value={edited.date_from ?? ""}
                         onChange={e => handleEditChange("date_from", e.target.value)}
-                        className="border px-1 rounded text-xs w-24"
+                        className="border px-1 rounded text-xs w-[78px] mb-0.5"
+                        style={{ height: '24px' }}
                       />
-                      <span className="text-xs text-gray-400 px-0.5 text-center">al</span>
+                      <span className="text-xs text-gray-400 leading-none">al</span>
                       <input
                         type="date"
                         value={edited.date_to ?? ""}
                         onChange={e => handleEditChange("date_to", e.target.value)}
-                        className="border px-1 rounded text-xs w-24"
+                        className="border px-1 rounded text-xs w-[78px] mt-0.5"
+                        style={{ height: '24px' }}
                       />
                     </div>
                   )
                 ) : req.type === "permesso" && req.day ? (
-                  <span>{req.day}</span>
+                  <span className="whitespace-nowrap">{req.day}</span>
                 ) : req.type === "ferie" && req.date_from && req.date_to ? (
-                  <span>{req.date_from}<span className="mx-0.5">-</span>{req.date_to}</span>
+                  <span className="whitespace-nowrap">{req.date_from}<span className="mx-0.5">-</span>{req.date_to}</span>
                 ) : (
                   "-"
                 )}
               </TableCell>
-              <TableCell className="px-1 py-1 text-center">
+              <TableCell className="p-1 text-center align-middle">
                 <Badge
                   className={
-                    `gap-1 px-1.5 py-0.5 rounded text-xs font-medium flex items-center justify-center mx-auto min-w-0 ` +
+                    `gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold flex items-center justify-center mx-auto min-w-0 ` +
                     (req.status === "pending"
                       ? "bg-yellow-200/90 text-yellow-800"
                       : req.status === "approved"
@@ -175,50 +192,54 @@ export default function LeaveRequestsTable({
                   ) : (
                     <XCircle className="w-3 h-3" />
                   )}
-                  <span className="capitalize">{req.status}</span>
+                  <span className="capitalize pl-0.5">{req.status}</span>
                 </Badge>
               </TableCell>
-              <TableCell className="px-2 py-1 text-center">
+              <TableCell className="p-1 text-center align-middle">
                 {editingId === req.id ? (
-                  <div className="flex gap-1 justify-center">
+                  <div className="flex gap-0.5 justify-center items-center">
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
-                      className="bg-green-100 border-green-300 text-green-800 px-2 py-1 h-6 w-6"
+                      className="bg-green-100 border-green-300 text-green-800 h-7 w-7 p-0 flex items-center justify-center"
                       onClick={handleEditSave}
                       title="Salva"
+                      style={{ minWidth: 28, minHeight: 28 }}
                     >
                       <Check className="w-4 h-4" />
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="ghost"
-                      className="h-6 w-6"
+                      className="h-7 w-7 p-0 flex items-center justify-center"
                       onClick={() => setEditingId(null)}
                       title="Annulla"
+                      style={{ minWidth: 28, minHeight: 28 }}
                     >
                       <XCircle className="w-4 h-4" />
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex gap-1 justify-center">
+                  <div className="flex gap-0.5 justify-center items-center">
                     {req.status === "pending" && (
                       <>
                         <Button
                           variant="outline"
                           size="icon"
-                          className="border-green-500 bg-green-50 hover:bg-green-100 h-6 w-6"
+                          className="border-green-500 bg-green-50 hover:bg-green-100 h-7 w-7 p-0 flex items-center justify-center"
                           onClick={() => handleAction(req.id, "approved")}
                           title="Approva"
+                          style={{ minWidth: 28, minHeight: 28 }}
                         >
                           <Check className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="outline"
                           size="icon"
-                          className="border-red-400 bg-red-50 hover:bg-red-100 h-6 w-6"
+                          className="border-red-400 bg-red-50 hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
                           onClick={() => handleAction(req.id, "rejected")}
                           title="Rifiuta"
+                          style={{ minWidth: 28, minHeight: 28 }}
                         >
                           <XCircle className="w-4 h-4" />
                         </Button>
@@ -228,9 +249,10 @@ export default function LeaveRequestsTable({
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="hover:bg-blue-100 h-6 w-6"
+                        className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
                         onClick={() => handleEdit(req)}
                         title="Modifica"
+                        style={{ minWidth: 28, minHeight: 28 }}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -239,9 +261,10 @@ export default function LeaveRequestsTable({
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="hover:bg-red-100 h-6 w-6"
+                        className="hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
                         onClick={() => handleDelete(req.id)}
                         title="Elimina"
+                        style={{ minWidth: 28, minHeight: 28 }}
                       >
                         <Trash className="w-4 h-4" />
                       </Button>
