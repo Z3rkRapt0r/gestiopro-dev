@@ -46,19 +46,20 @@ export const GlobalEmailTemplateForm = () => {
           : null
       );
 
-      // Step 2: Ottieni il template email personalizzato
+      // Step 2: Ottieni SOLO l'ultimo template email personalizzato
       const { data, error } = await supabase
         .from("email_templates")
-        .select("subject,name")
+        .select("subject,name,created_at")
         .eq("admin_id", profile.id)
         .eq("is_default", false)
         .eq("topic", "generale")
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      console.log("[GlobalEmailTemplate] loaded template:", { data, error });
+      console.log("[GlobalEmailTemplate] loaded template (fixed):", { data, error });
 
       if (!error && data) {
-        // Su caricamento, imposto quello che viene da Supabase (solo una volta)
         setFooterText(data.subject || DEFAULT_FOOTER);
         const alignValue =
           data.name === "right"
@@ -83,16 +84,17 @@ export const GlobalEmailTemplateForm = () => {
     if (!profile?.id) return;
     const { data, error } = await supabase
       .from("email_templates")
-      .select("subject,name")
+      .select("subject,name,created_at")
       .eq("admin_id", profile.id)
       .eq("is_default", false)
       .eq("topic", "generale")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    console.log("[GlobalEmailTemplate] reloadTemplateSettings result:", { data, error });
+    console.log("[GlobalEmailTemplate] reloadTemplateSettings result (fixed):", { data, error });
 
     if (!error && data) {
-      // Solo aggiorna se diversi per non sovrascrivere input utente post-save
       if (data.subject !== footerText) setFooterText(data.subject || DEFAULT_FOOTER);
       const alignValue =
         data.name === "right"
@@ -149,14 +151,17 @@ export const GlobalEmailTemplateForm = () => {
     }
     setLoading(true);
 
+    // Cerca SOLO l'ultimo template per update
     const { data: existing, error: getError } = await supabase
       .from("email_templates")
-      .select("id")
+      .select("id,created_at")
       .eq("admin_id", profile.id)
       .eq("topic", "generale")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    console.log("[GlobalEmailTemplate] existing template found before save:", { existing, getError });
+    console.log("[GlobalEmailTemplate] existing template found before save (fixed):", { existing, getError });
 
     let error = null;
 
@@ -189,6 +194,9 @@ export const GlobalEmailTemplateForm = () => {
         ]);
       error = insertError;
       console.log("[GlobalEmailTemplate] insert response:", { insertData, insertError });
+      if (!insertData || insertData.length === 0) {
+        console.error("ATTENZIONE: nessun dato creato su insert, controllare le policy o errori DB!");
+      }
     }
 
     setLoading(false);
@@ -203,7 +211,6 @@ export const GlobalEmailTemplateForm = () => {
         title: "Salvato",
         description: "Le impostazioni sono state aggiornate.",
       });
-      // Ricarica il dato dal backend solo se effettivamente cambiato
       await reloadTemplateSettings();
     }
   };
