@@ -52,7 +52,7 @@ serve(async (req) => {
     );
 
     // RECUPERA IMPOSTAZIONI TEMPLATE GLOBALE (ora include senderName)
-    const { logoAlign, footerText, logoPublicUrl, senderName } = await getGlobalEmailTemplate(supabase, userId);
+    const { logoAlign, footerText, logoPublicUrl } = await getGlobalEmailTemplate(supabase, userId);
 
     // RECUPERA ADMIN SETTINGS
     console.log("[Notification Email] Looking for admin settings for user:", userId);
@@ -90,11 +90,8 @@ serve(async (req) => {
       .eq("id", userId)
       .single();
 
-    // mittente
-    const senderNameSafe = senderName || (adminProfile?.first_name && adminProfile?.last_name 
-      ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche` 
-      : "Sistema Notifiche");
-    
+    // mittente: fisso per tutte le mail
+    const senderNameSafe = "A.L.M Infissi";
     const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
 
     // RECUPERA EMAIL DESTINATARI
