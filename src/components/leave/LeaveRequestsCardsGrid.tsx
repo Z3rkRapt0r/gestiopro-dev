@@ -6,6 +6,7 @@ import { useLeaveRequests, LeaveRequest } from "@/hooks/useLeaveRequests";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import EditProfileDialog from "./EditProfileDialog";
+import EditLeaveRequestDialog from "./EditLeaveRequestDialog";
 
 interface LeaveRequestsCardsGridProps {
   adminMode?: boolean;
@@ -36,6 +37,12 @@ export default function LeaveRequestsCardsGrid({
     first: string;
     last: string;
   }>({ open: false, profileId: "", first: "", last: "" });
+
+  const [editDialog, setEditDialog] = useState<{
+    open: boolean;
+    req: LeaveRequest | null;
+    loading: boolean;
+  }>({ open: false, req: null, loading: false });
 
   const handleAction = async (id: string, status: "approved" | "rejected") => {
     try {
@@ -70,11 +77,31 @@ export default function LeaveRequestsCardsGrid({
     }
   };
 
+  // Nuovo: handler per apertura modifica richiesta
+  const openEditDialog = (req: LeaveRequest) => {
+    setEditDialog({ open: true, req, loading: false });
+  };
+
+  // Nuovo: submit modifica richiesta salvataggio
+  const submitEditDialog = async (values: Partial<LeaveRequest>) => {
+    if (!editDialog.req) return;
+    setEditDialog(val => ({ ...val, loading: true }));
+    try {
+      await updateRequestMutation.mutateAsync({ ...values, id: editDialog.req.id });
+      toast({ title: "Richiesta aggiornata!" });
+      setEditDialog({ open: false, req: null, loading: false });
+    } catch {
+      toast({ title: "Errore salvataggio", variant: "destructive" });
+      setEditDialog(val => ({ ...val, loading: false }));
+    }
+  };
+
+  // Nuovo: handler elimina con prompt conferma
   const handleDelete = async (id: string) => {
     if (!window.confirm("Sei sicuro di voler eliminare questa richiesta?")) return;
     try {
       await deleteRequestMutation.mutateAsync({ id });
-      toast({ title: "Richiesta eliminata" });
+      toast({ title: "Richiesta eliminata!" });
     } catch {
       toast({ title: "Errore eliminazione", variant: "destructive" });
     }
@@ -96,7 +123,8 @@ export default function LeaveRequestsCardsGrid({
     <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {leaveRequests.map((req: LeaveRequest) => {
-          const isEditing = editingId === req.id;
+          const isOwn = profile?.id === req.user_id;
+          const isPending = req.status === "pending";
           const typeIcon = req.type === "ferie" ? <Sun className="w-4 h-4 text-blue-700" /> : <Sparkles className="w-4 h-4 text-violet-700" />;
           const statusIcon =
             req.status === "pending"
@@ -142,38 +170,11 @@ export default function LeaveRequestsCardsGrid({
                 </Badge>
               </div>
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                {adminMode && (
-                  <div className="flex items-center gap-1 bg-gray-50 rounded px-2 py-1 min-w-[120px]">
-                    <span className="truncate font-semibold text-[13px] max-w-[180px]" title={fullName}>
-                      {fullName}
-                    </span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="ml-1 h-6 w-6 p-0 flex items-center justify-center"
-                      onClick={() =>
-                        setProfileEditData({
-                          open: true,
-                          profileId: req.user_id,
-                          first: req.profiles?.first_name ?? "",
-                          last: req.profiles?.last_name ?? "",
-                        })
-                      }
-                      title="Modifica nome"
-                      type="button"
-                      style={{ minWidth: 24, minHeight: 24 }}
-                    >
-                      <Edit className="w-4 h-4 text-blue-700" />
-                    </Button>
-                  </div>
-                )}
-                {!adminMode && (
-                  <div className="flex items-center gap-1 bg-gray-50 rounded px-2 py-1 min-w-[120px]">
-                    <span className="truncate font-semibold text-[13px] max-w-[180px]" title={fullName}>
-                      {fullName}
-                    </span>
-                  </div>
-                )}
+                <div className="flex items-center gap-1 bg-gray-50 rounded px-2 py-1 min-w-[120px]">
+                  <span className="truncate font-semibold text-[13px] max-w-[400px]" title={fullName}>
+                    {fullName}
+                  </span>
+                </div>
                 <div className="flex items-center gap-1 ml-auto">
                   <span className="text-[12px] text-muted-foreground">
                     {req.type === "permesso" && req.day
@@ -197,30 +198,35 @@ export default function LeaveRequestsCardsGrid({
                 />
               )}
               <div className="flex gap-2 mt-auto justify-end">
-                {isEditing ? (
+                {/* AZIONI DIPENDENTE: solo se pending e proprie */}
+                {isOwn && isPending && !adminMode && (
                   <>
                     <Button
                       size="icon"
-                      variant="outline"
-                      className="bg-green-100 border-green-300 text-green-800 h-7 w-7 p-0 flex items-center justify-center"
-                      onClick={handleEditSave}
-                      title="Salva"
+                      variant="ghost"
+                      className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
+                      onClick={() => openEditDialog(req)}
+                      title="Modifica richiesta"
                       style={{ minWidth: 28, minHeight: 28 }}
                     >
-                      <Check className="w-4 h-4" />
+                      {/* icona Modifica */}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 0 1 2.828 2.828L11.829 17.828A2 2 0 0 1 9 19H5v-4a2 2 0 0 1 .586-1.414z"></path></svg>
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 p-0 flex items-center justify-center"
-                      onClick={() => setEditingId(null)}
-                      title="Annulla"
+                      className="hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
+                      onClick={() => handleDelete(req.id)}
+                      title="Elimina richiesta"
                       style={{ minWidth: 28, minHeight: 28 }}
                     >
-                      <XCircle className="w-4 h-4" />
+                      {/* icona Cestino */}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3m5 0H6m13 0h-1"></path></svg>
                     </Button>
                   </>
-                ) : (
+                )}
+                {/* AZIONI ADMIN (mantieni quelle esistenti) */}
+                {adminMode && (
                   <>
                     {req.status === "pending" && (
                       <>
@@ -251,11 +257,12 @@ export default function LeaveRequestsCardsGrid({
                         size="icon"
                         variant="ghost"
                         className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => handleEdit(req)}
+                        onClick={() => setEditingId(req.id)}
                         title="Modifica"
                         style={{ minWidth: 28, minHeight: 28 }}
                       >
-                        <Edit className="w-4 h-4" />
+                        {/* icona Modifica */}
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 0 1 2.828 2.828L11.829 17.828A2 2 0 0 1 9 19H5v-4a2 2 0 0 1 .586-1.414z"></path></svg>
                       </Button>
                     )}
                     {showDelete && (
@@ -267,7 +274,8 @@ export default function LeaveRequestsCardsGrid({
                         title="Elimina"
                         style={{ minWidth: 28, minHeight: 28 }}
                       >
-                        <Trash className="w-4 h-4" />
+                        {/* icona Cestino */}
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3m5 0H6m13 0h-1"></path></svg>
                       </Button>
                     )}
                   </>
@@ -277,6 +285,14 @@ export default function LeaveRequestsCardsGrid({
           );
         })}
       </div>
+      {/* Dialog modifica per dipendente */}
+      <EditLeaveRequestDialog
+        open={editDialog.open}
+        onOpenChange={open => setEditDialog(val => ({ ...val, open }))}
+        request={editDialog.req}
+        loading={editDialog.loading}
+        onSave={submitEditDialog}
+      />
       {/* Popup modale di modifica nome/cognome */}
       <EditProfileDialog
         open={profileEditData.open}
