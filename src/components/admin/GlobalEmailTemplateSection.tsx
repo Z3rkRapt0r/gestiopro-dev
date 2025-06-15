@@ -130,12 +130,13 @@ const GlobalEmailTemplateSection = () => {
     let error = null;
 
     if (existing?.id) {
+      // Aggiornamento template esistente
       const { error: updateError } = await supabase
         .from("email_templates")
         .update({
           name: logoAlign,
           subject: footerText,
-          sender_name: senderName,
+          sender_name: senderName, // <--- Qui mi assicuro che venga aggiornato!
           is_default: false,
           content: "",
         })
@@ -143,6 +144,7 @@ const GlobalEmailTemplateSection = () => {
 
       error = updateError;
     } else {
+      // Creazione nuovo template
       const { error: insertError } = await supabase
         .from("email_templates")
         .insert([
@@ -150,7 +152,7 @@ const GlobalEmailTemplateSection = () => {
             admin_id: profile.id,
             name: logoAlign,
             subject: footerText,
-            sender_name: senderName,
+            sender_name: senderName, // <--- Qui mi assicuro che venga inserito!
             is_default: false,
             topic: "generale",
             content: "",
@@ -196,7 +198,6 @@ const GlobalEmailTemplateSection = () => {
             initialLoading={initialLoading}
           />
         </div>
-        {/* NEW FIELD: Sender Name */}
         <div>
           <label className="block mb-1 font-medium" htmlFor="sender-name">Nome Mittente:</label>
           <Input
