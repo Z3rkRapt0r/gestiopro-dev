@@ -119,6 +119,20 @@ export default function LeaveRequestsCardsGrid({
       <div className="py-8 text-center text-sm text-muted-foreground">Nessuna richiesta trovata.</div>
     );
 
+  // Visibilità bottoni: spostiamo la logica qui per chiarezza
+  const canEdit = (req: LeaveRequest) => {
+    // Soltanto per il dipendente stesso, richieste pendenti
+    return profile?.id === req.user_id && req.status === "pending" && !adminMode;
+  };
+  const canDelete = (req: LeaveRequest) => {
+    // Solo per le proprie richieste: se pending, oppure archiviate
+    if (!profile) return false;
+    // archivio: lasciare l'azione se l'utente è owner
+    if (archive && profile.id === req.user_id) return true;
+    // nel caso normale, pending proprie
+    return !archive && profile.id === req.user_id && req.status === "pending" && !adminMode;
+  };
+
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -198,32 +212,32 @@ export default function LeaveRequestsCardsGrid({
                 />
               )}
               <div className="flex gap-2 mt-auto justify-end">
-                {/* AZIONI DIPENDENTE: solo se pending e proprie */}
-                {isOwn && isPending && !adminMode && (
-                  <>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
-                      onClick={() => openEditDialog(req)}
-                      title="Modifica richiesta"
-                      style={{ minWidth: 28, minHeight: 28 }}
-                    >
-                      {/* icona Modifica */}
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 0 1 2.828 2.828L11.829 17.828A2 2 0 0 1 9 19H5v-4a2 2 0 0 1 .586-1.414z"></path></svg>
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
-                      onClick={() => handleDelete(req.id)}
-                      title="Elimina richiesta"
-                      style={{ minWidth: 28, minHeight: 28 }}
-                    >
-                      {/* icona Cestino */}
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3m5 0H6m13 0h-1"></path></svg>
-                    </Button>
-                  </>
+                {/* BOTTONI Modifica/Elimina solo se consentiti */}
+                {canEdit(req) && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
+                    onClick={() => openEditDialog(req)}
+                    title="Modifica richiesta"
+                    style={{ minWidth: 28, minHeight: 28 }}
+                  >
+                    {/* icona Modifica */}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 0 1 2.828 2.828L11.829 17.828A2 2 0 0 1 9 19H5v-4a2 2 0 0 1 .586-1.414z"></path></svg>
+                  </Button>
+                )}
+                {canDelete(req) && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
+                    onClick={() => handleDelete(req.id)}
+                    title="Elimina richiesta"
+                    style={{ minWidth: 28, minHeight: 28 }}
+                  >
+                    {/* icona Cestino */}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3m5 0H6m13 0h-1"></path></svg>
+                  </Button>
                 )}
                 {/* AZIONI ADMIN (mantieni quelle esistenti) */}
                 {adminMode && (
@@ -285,10 +299,12 @@ export default function LeaveRequestsCardsGrid({
           );
         })}
       </div>
-      {/* Dialog modifica per dipendente */}
+      {/* Dialog modifica dipendente su propria richiesta */}
       <EditLeaveRequestDialog
         open={editDialog.open}
-        onOpenChange={open => setEditDialog(val => ({ ...val, open }))}
+        onOpenChange={open =>
+          setEditDialog(val => ({ ...val, open }))
+        }
         request={editDialog.req}
         loading={editDialog.loading}
         onSave={submitEditDialog}
