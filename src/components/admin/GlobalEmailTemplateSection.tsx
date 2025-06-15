@@ -60,16 +60,16 @@ const GlobalEmailTemplateSection = () => {
             ? "center"
             : "left";
         setLogoAlign(alignValue as "left" | "right" | "center");
-        // SOLO SE IL CAMPO È DEFINITO, ALTRIMENTI LASCIARE QUELLO ESISTENTE
+        // VALORI DI DEFAULT SOLO SE NON C'È UN VALORE NEL DB
         setSenderName(
-          typeof data.sender_name === "string" && data.sender_name.length > 0
+          typeof data.sender_name === "string" && data.sender_name.trim().length > 0
             ? data.sender_name
-            : ""
+            : "Admin SerramentiCorp - Sistema notifiche"
         );
       } else {
         setFooterText(DEFAULT_FOOTER);
         setLogoAlign("left");
-        setSenderName(""); // Lascia campo vuoto se nuovo
+        setSenderName("Admin SerramentiCorp - Sistema notifiche"); // Mostra sempre un default
       }
 
       setInitialLoading(false);
@@ -122,6 +122,11 @@ const GlobalEmailTemplateSection = () => {
     }
     setLoading(true);
 
+    // Valore di default se l'input è vuoto
+    const cleanSenderName = senderName.trim().length > 0
+      ? senderName.trim()
+      : "Admin SerramentiCorp - Sistema notifiche";
+
     const { data: existing, error: getError } = await supabase
       .from("email_templates")
       .select("id")
@@ -138,7 +143,7 @@ const GlobalEmailTemplateSection = () => {
         .update({
           name: logoAlign,
           subject: footerText,
-          sender_name: senderName, // <--- Qui mi assicuro che venga aggiornato!
+          sender_name: cleanSenderName,
           is_default: false,
           content: "",
         })
@@ -154,7 +159,7 @@ const GlobalEmailTemplateSection = () => {
             admin_id: profile.id,
             name: logoAlign,
             subject: footerText,
-            sender_name: senderName, // <--- Qui mi assicuro che venga inserito!
+            sender_name: cleanSenderName,
             is_default: false,
             topic: "generale",
             content: "",
