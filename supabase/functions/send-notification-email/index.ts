@@ -150,17 +150,20 @@ serve(async (req) => {
 
     let downloadSection = '';
     if (attachment_url) {
-      // Il public URL del file. 
-      // Nota: Per policy di sicurezza il file non sarà visibile pubblicamente, si consiglia di istruire il destinatario a loggarsi.
+      // Costruisco il link con testo personalizzato per l'allegato
       const bucket = "notification-attachments";
       const storageUrl = Deno.env.get("SUPABASE_URL")?.replace(/^https?:\/\//, "") ?? "";
       const bucketUrl = `https://${storageUrl}/storage/v1/object/public/${bucket}/${attachment_url}`;
-      // ATTENZIONE: bucket privato! Si invita l'utente ad accedere per vedere l'allegato.
       downloadSection = `
         <div style="margin-top: 20px; border-left: 4px solid #007bff; padding-left: 10px;">
-          <strong>Allegato:</strong><br>
-          <a href="${bucketUrl}" target="_blank" style="color: #007bff;">Scarica allegato</a>
-          <div style="font-size:11px; color:#888">Potresti dover effettuare l'accesso con il tuo account per scaricare l'allegato.</div>
+          <strong>Documento allegato disponibile</strong><br>
+          <span style="font-size: 14px; color: #333;">
+            Per visualizzare o scaricare il documento, clicca sul link sottostante.<br/>
+            <span style="font-size: 12px; color: #888;">È necessario effettuare l'accesso con il tuo account aziendale.</span>
+          </span>
+          <div style="margin-top: 8px;">
+            <a href="${bucketUrl}" target="_blank" style="color: #007bff; font-weight: bold;">Apri allegato</a>
+          </div>
         </div>
       `;
     }
