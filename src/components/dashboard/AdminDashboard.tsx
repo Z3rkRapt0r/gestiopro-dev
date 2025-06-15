@@ -289,7 +289,7 @@ const AdminDashboard = () => {
   // Unifica e ordina per data
   const boardEvents = [...lastDocumentsEvents, ...lastApprovalsEvents]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 10);
+    .slice(0, 5);
 
   // Aggiorna il renderDashboard in modo che usi i dati dinamici
   const renderDashboard = () => (
