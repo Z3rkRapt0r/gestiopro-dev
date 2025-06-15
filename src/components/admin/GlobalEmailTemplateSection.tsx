@@ -1,63 +1,117 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AlignLeft, AlignRight, Image } from "lucide-react";
 
-const DEFAULT_TEMPLATE = `<div style="font-family: sans-serif; padding: 20px;">
-  <h2 style="color: #2757d6">Titolo comunicazione</h2>
-  <p>Testo principale della comunicazione qui...</p>
-  <footer style="font-size: 12px; color: #888; margin-top: 32px;">
-    Questo messaggio è stato generato automaticamente.
-  </footer>
-</div>`;
+const DEFAULT_TEMPLATE = `<h2 style="color: #2757d6;">Oggetto comunicazione</h2>
+<p>Questo è il testo di esempio della comunicazione.<br />Puoi personalizzare questo messaggio e vedere qui sotto l'anteprima con il logo e le modifiche impostate.</p>`;
+
+const DEFAULT_FOOTER = "Questo messaggio è stato generato automaticamente.";
+
+const LOGO_BUCKET = "company-assets";
+const LOGO_PATH = "email-logo.png";
 
 const GlobalEmailTemplateSection = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
-
   const [html, setHtml] = useState(DEFAULT_TEMPLATE);
+  const [footerText, setFooterText] = useState(DEFAULT_FOOTER);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploadFile, setLogoUploadFile] = useState<File | null>(null);
+  const [logoAlign, setLogoAlign] = useState<"left" | "right">("left");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const inputLogoRef = useRef<HTMLInputElement>(null);
 
-  // Carica il template globale dall'API Supabase
+  // Carica i dati salvati (logo, template html, footer, allineamento)
   useEffect(() => {
-    const fetchGlobalTemplate = async () => {
+    const loadData = async () => {
       if (!profile?.id) {
         setInitialLoading(false);
         return;
       }
       setInitialLoading(true);
+
+      // 1. Carica il logo
+      const { data: logoData } = await supabase
+        .storage
+        .from(LOGO_BUCKET)
+        .getPublicUrl(`${profile.id}/${LOGO_PATH}`);
+      if (logoData?.publicUrl) {
+        setLogoUrl(logoData.publicUrl);
+      } else {
+        setLogoUrl(null);
+      }
+
+      // 2. Carica le impostazioni template da email_templates (riutilizzo tabella)
       const { data, error } = await supabase
         .from("email_templates")
-        .select("content")
+        .select("content,subject,name,topic")
         .eq("admin_id", profile.id)
-        .eq("is_default", true)
-        .eq("topic", "globale")
+        .eq("is_default", false)
+        .eq("topic", "generale")
         .maybeSingle();
-      if (error) {
-        toast({
-          title: "Errore",
-          description: "Impossibile caricare il modello globale.",
-          variant: "destructive",
-        });
-        setInitialLoading(false);
-        return;
+
+      if (!error && data) {
+        // Nel campo name salvo l'allineamento logo, subject il testo footer
+        setHtml(data.content || DEFAULT_TEMPLATE);
+        setFooterText(data.subject || DEFAULT_FOOTER);
+        setLogoAlign((data.name === "right" ? "right" : "left") as "left" | "right");
+      } else {
+        setHtml(DEFAULT_TEMPLATE);
+        setFooterText(DEFAULT_FOOTER);
+        setLogoAlign("left");
       }
-      if (data?.content) {
-        setHtml(data.content);
-      }
+
       setInitialLoading(false);
     };
-    fetchGlobalTemplate();
+    loadData();
     // eslint-disable-next-line
   }, [profile?.id]);
 
-  // Salva il modello su Supabase
+  // Upload logo su Supabase Storage
+  const handleLogoUpload = async () => {
+    if (!logoUploadFile || !profile?.id) return;
+    setLoading(true);
+    // Crea il bucket se non esiste (PROVA upload, non errore se già esiste)
+    await supabase.storage.createBucket(LOGO_BUCKET, { public: true }).catch(() => {});
+    // carica il file
+    const path = `${profile.id}/${LOGO_PATH}`;
+    await supabase.storage.from(LOGO_BUCKET).remove([path]).catch(() => {}); // rimuovi logo vecchio (se presente)
+    const { error } = await supabase.storage
+      .from(LOGO_BUCKET)
+      .upload(path, logoUploadFile, {
+        cacheControl: "3600",
+        upsert: true,
+        contentType: logoUploadFile.type,
+      });
+    if (error) {
+      toast({
+        title: "Errore upload logo",
+        description: error.message,
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+    // ottieni il nuovo url pubblico
+    const { data: logoData } = await supabase.storage.from(LOGO_BUCKET).getPublicUrl(path);
+    setLogoUrl(logoData?.publicUrl ?? null);
+    toast({
+      title: "Logo aggiornato",
+      description: "Il logo è stato caricato con successo.",
+    });
+    setLoading(false);
+  };
+
+  // Salva il template completo (HTML, footer, allineamento logo)
   const handleSave = async () => {
     if (!profile?.id) {
       toast({
@@ -68,15 +122,16 @@ const GlobalEmailTemplateSection = () => {
       return;
     }
     setLoading(true);
+    // salvo footerText in subject, align in name, html in content (stessa row)
     const { error } = await supabase.from("email_templates").upsert(
       [
         {
           admin_id: profile.id,
-          name: "Modello Globale",
-          subject: "",
+          name: logoAlign, // left o right
+          subject: footerText,
           content: html,
-          is_default: true,
-          topic: "globale",
+          is_default: false, // NON "default"!
+          topic: "generale",
         },
       ],
       {
@@ -94,39 +149,128 @@ const GlobalEmailTemplateSection = () => {
     } else {
       toast({
         title: "Salvato",
-        description: "Il modello globale è stato aggiornato.",
+        description: "Il modello è stato aggiornato.",
       });
     }
+  };
+
+  // Anteprima HTML
+  const renderPreview = () => {
+    return `
+      <div style="font-family: sans-serif; border:1px solid #ccc; padding:32px; max-width:580px; margin:auto; background:white;">
+        ${
+          logoUrl
+            ? `<div style="text-align:${logoAlign};margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
+            : ""
+        }
+        <div>${html}</div>
+        <footer style="color:#888; font-size:13px; margin-top:36px;text-align:center;">${footerText}</footer>
+      </div>
+    `;
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Modello Globale Comunicazione Email</CardTitle>
+        <CardTitle>Template Generale Email</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <Label htmlFor="html-template">HTML del modello</Label>
-        <Textarea
-          id="html-template"
-          value={html}
-          onChange={(e) => setHtml(e.target.value)}
-          rows={10}
-          className="font-mono"
-          disabled={initialLoading || loading}
-        />
+      <CardContent className="space-y-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end">
+          <div className="w-full md:w-1/2">
+            <Label>Logo aziendale (PNG/JPG/SVG):</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => inputLogoRef.current?.click()}
+                type="button"
+                title="Carica logo"
+                disabled={loading || initialLoading}
+              >
+                <Image />
+              </Button>
+              <input
+                ref={inputLogoRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  if (e.target.files?.[0]) setLogoUploadFile(e.target.files[0]);
+                }}
+                disabled={loading || initialLoading}
+              />
+              <Button
+                onClick={handleLogoUpload}
+                variant="secondary"
+                disabled={loading || initialLoading || !logoUploadFile}
+                type="button"
+              >
+                Carica Logo
+              </Button>
+              {logoUrl && (
+                <img src={logoUrl} alt="logo email" className="h-8 ml-2 rounded shadow" />
+              )}
+            </div>
+          </div>
+          <div className="w-full md:w-1/2 flex flex-col gap-1">
+            <Label>Allineamento logo:</Label>
+            <div className="flex gap-2">
+              <Button
+                size="icon"
+                variant={logoAlign === "left" ? "default" : "outline"}
+                onClick={() => setLogoAlign("left")}
+                type="button"
+                title="Allinea a sinistra"
+                disabled={loading || initialLoading}
+              >
+                <AlignLeft />
+              </Button>
+              <Button
+                size="icon"
+                variant={logoAlign === "right" ? "default" : "outline"}
+                onClick={() => setLogoAlign("right")}
+                type="button"
+                title="Allinea a destra"
+                disabled={loading || initialLoading}
+              >
+                <AlignRight />
+              </Button>
+            </div>
+          </div>
+        </div>
         <div>
-          <Label>Anteprima:</Label>
-          <div
-            className="border rounded p-4 mt-2 bg-white max-h-72 overflow-auto"
-            dangerouslySetInnerHTML={{ __html: html }}
+          <Label htmlFor="html-template">Testo principale (HTML):</Label>
+          <Textarea
+            id="html-template"
+            value={html}
+            onChange={e => setHtml(e.target.value)}
+            rows={8}
+            className="font-mono"
+            disabled={loading || initialLoading}
+          />
+        </div>
+        <div>
+          <Label htmlFor="footer-template">Testo Footer Personalizzato:</Label>
+          <Input
+            id="footer-template"
+            value={footerText}
+            onChange={e => setFooterText(e.target.value)}
+            disabled={loading || initialLoading}
           />
         </div>
         <Button
           onClick={handleSave}
           disabled={loading || initialLoading}
         >
-          {loading ? "Salvataggio..." : "Salva modello"}
+          {loading ? "Salvataggio..." : "Salva Modifiche"}
         </Button>
+        <div>
+          <Label>Anteprima completa:</Label>
+          <div
+            className="border rounded p-4 mt-2 bg-white max-h-[600px] overflow-auto"
+            dangerouslySetInnerHTML={{ __html: renderPreview() }}
+          />
+        </div>
       </CardContent>
     </Card>
   );
