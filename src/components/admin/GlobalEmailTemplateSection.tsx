@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AlignLeft, AlignRight, AlignCenter, Image } from "lucide-react";
 
-const DEFAULT_FOOTER = "Questo messaggio è stato generato automaticamente.";
+const DEFAULT_FOOTER = "© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820";
 
 const LOGO_BUCKET = "company-assets";
 const LOGO_PATH = "email-logo.png";
