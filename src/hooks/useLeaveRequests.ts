@@ -47,7 +47,7 @@ export function useLeaveRequests() {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Fix: Filtro/trasformo profiles: può essere {error: true} se manca!
+      // Filtro/trasformo profiles: può essere {error: true} se manca!
       const mapped = (data as any[]).map((item) => ({
         ...item,
         profiles: item.profiles && item.profiles.first_name !== undefined
@@ -62,15 +62,33 @@ export function useLeaveRequests() {
   // Add new leave request
   const insertMutation = useMutation({
     mutationFn: async (payload: Partial<LeaveRequest>) => {
-      // Fix: va passato user_id obbligatorio per policy!
+      // Clean the payload: only send relevant fields!
+      const {
+        user_id,
+        type,
+        day,
+        time_from,
+        time_to,
+        date_from,
+        date_to,
+        note,
+        status,
+      } = payload;
+      // Frontend might pass null/undefined, but SQL expects undefined for missing (not null)
+      const cleanPayload = {
+        user_id: user_id!,
+        type: type!,
+        day: day ?? null,
+        time_from: time_from ?? null,
+        time_to: time_to ?? null,
+        date_from: date_from ?? null,
+        date_to: date_to ?? null,
+        note: note ?? null,
+        status: status ?? "pending",
+      };
       const { error, data } = await supabase
         .from("leave_requests")
-        .insert([
-          {
-            ...payload,
-            user_id: payload.user_id,
-          },
-        ])
+        .insert(cleanPayload)
         .select()
         .maybeSingle();
       if (error) throw error;
