@@ -6,7 +6,6 @@ import { useLeaveRequests, LeaveRequest } from "@/hooks/useLeaveRequests";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import EditProfileDialog from "./EditProfileDialog";
-import { Edit } from "lucide-react";
 
 interface LeaveRequestsCardsGridProps {
   adminMode?: boolean;
