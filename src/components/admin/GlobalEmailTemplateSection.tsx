@@ -196,15 +196,12 @@ const GlobalEmailTemplateSection = () => {
 
   // Funzione per costruire HTML completo (MAIL TEST)
   const buildHtmlContent = () => {
-    let textAlign = logoAlign;
-    if (logoAlign === "center") textAlign = "center";
-    else if (logoAlign === "right") textAlign = "right";
-    else textAlign = "left";
+    // Forza l'allineamento centrale solo per il logo nelle email spedite
     return `
       <div style="font-family: sans-serif; border:1px solid #ccc; padding:32px; max-width:580px; margin:auto; background:white;">
         ${
           logoUrl
-            ? `<div style="text-align:${textAlign};margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
+            ? `<div style="text-align:center;margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
             : ""
         }
         <div>
