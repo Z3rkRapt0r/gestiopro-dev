@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { User2, Sun, Sparkles, Check, XCircle, Edit, Trash } from "lucide-react";
@@ -6,6 +5,8 @@ import { useState } from "react";
 import { useLeaveRequests, LeaveRequest } from "@/hooks/useLeaveRequests";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import EditProfileDialog from "./EditProfileDialog";
+import { Edit } from "lucide-react";
 
 interface LeaveRequestsCardsGridProps {
   adminMode?: boolean;
@@ -30,6 +31,12 @@ export default function LeaveRequestsCardsGrid({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [edited, setEdited] = useState<Partial<LeaveRequest>>({});
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
+  const [profileEditData, setProfileEditData] = useState<{
+    open: boolean;
+    profileId: string;
+    first: string;
+    last: string;
+  }>({ open: false, profileId: "", first: "", last: "" });
 
   const handleAction = async (id: string, status: "approved" | "rejected") => {
     try {
@@ -87,28 +94,34 @@ export default function LeaveRequestsCardsGrid({
     );
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {leaveRequests.map((req: LeaveRequest) => {
-        const isEditing = editingId === req.id;
-        const typeIcon = req.type === "ferie" ? <Sun className="w-4 h-4 text-blue-700" /> : <Sparkles className="w-4 h-4 text-violet-700" />;
-        const statusIcon =
-          req.status === "pending"
-            ? <Sparkles className="w-4 h-4 text-yellow-700" />
-            : req.status === "approved"
-            ? <Check className="w-4 h-4 text-green-700" />
-            : <XCircle className="w-4 h-4 text-red-700" />;
-        const statusBg =
-          req.status === "pending"
-            ? "bg-yellow-100"
-            : req.status === "approved"
-            ? "bg-green-100"
-            : "bg-red-100";
-        return (
-          <div
-            key={req.id}
-            className={`relative rounded-xl border shadow hover:shadow-md transition-shadow bg-white flex flex-col gap-2 px-3 py-4 min-h-[160px] ${statusBg}`}
-          >
-            <div className="flex items-center mb-1 justify-between gap-2">
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {leaveRequests.map((req: LeaveRequest) => {
+          const isEditing = editingId === req.id;
+          const typeIcon = req.type === "ferie" ? <Sun className="w-4 h-4 text-blue-700" /> : <Sparkles className="w-4 h-4 text-violet-700" />;
+          const statusIcon =
+            req.status === "pending"
+              ? <Sparkles className="w-4 h-4 text-yellow-700" />
+              : req.status === "approved"
+              ? <Check className="w-4 h-4 text-green-700" />
+              : <XCircle className="w-4 h-4 text-red-700" />;
+          const statusBg =
+            req.status === "pending"
+              ? "bg-yellow-100"
+              : req.status === "approved"
+              ? "bg-green-100"
+              : "bg-red-100";
+          const fullName =
+            req.profiles && (req.profiles.first_name || req.profiles.last_name)
+              ? `${req.profiles.first_name ?? ""} ${req.profiles.last_name ?? ""}`.trim()
+              : "Non specificato";
+
+          return (
+            <div
+              key={req.id}
+              className={`relative rounded-xl border shadow hover:shadow-md transition-shadow bg-white flex flex-col gap-2 px-3 py-4 min-h-[160px] ${statusBg}`}
+            >
+              <div className="flex items-center mb-1 justify-between gap-2">
                 <Badge
                   className={`gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center bg-gray-100 ${req.type === "ferie" ? "text-blue-800" : "text-violet-800"}`}
                   variant="secondary"
@@ -128,120 +141,168 @@ export default function LeaveRequestsCardsGrid({
                   {statusIcon}
                   <span className="capitalize pl-0.5">{req.status}</span>
                 </Badge>
-            </div>
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              {adminMode && (
-                <div className="flex items-center gap-1 bg-gray-50 rounded px-1.5 py-0.5">
-                  <User2 className="w-4 h-4 text-muted-foreground mr-1" />
-                  <span className="truncate max-w-[90px] text-[12px]">
-                    {req.profiles?.first_name
-                      ? `${req.profiles.first_name} ${req.profiles.last_name}`
-                      : "Io"}
+              </div>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                {adminMode && (
+                  <div className="flex items-center gap-1 bg-gray-50 rounded px-2 py-1 min-w-[120px]">
+                    <span className="truncate font-semibold text-[13px] max-w-[180px]" title={fullName}>
+                      {fullName}
+                    </span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="ml-1 h-6 w-6 p-0 flex items-center justify-center"
+                      onClick={() =>
+                        setProfileEditData({
+                          open: true,
+                          profileId: req.user_id,
+                          first: req.profiles?.first_name ?? "",
+                          last: req.profiles?.last_name ?? "",
+                        })
+                      }
+                      title="Modifica nome"
+                      type="button"
+                      style={{ minWidth: 24, minHeight: 24 }}
+                    >
+                      <Edit className="w-4 h-4 text-blue-700" />
+                    </Button>
+                  </div>
+                )}
+                {!adminMode && (
+                  <div className="flex items-center gap-1 bg-gray-50 rounded px-2 py-1 min-w-[120px]">
+                    <span className="truncate font-semibold text-[13px] max-w-[180px]" title={fullName}>
+                      {fullName}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 ml-auto">
+                  <span className="text-[12px] text-muted-foreground">
+                    {req.type === "permesso" && req.day
+                      ? req.day
+                      : req.type === "ferie" && req.date_from && req.date_to
+                      ? `${req.date_from} → ${req.date_to}`
+                      : "-"}
                   </span>
                 </div>
+              </div>
+              <div className="text-xs text-muted-foreground mb-2 min-h-[20px]">
+                {req.note}
+              </div>
+              {adminMode && req.status === "pending" && (
+                <input
+                  type="text"
+                  placeholder="Note per amministratore..."
+                  value={adminNotes[req.id] || ""}
+                  onChange={e => setAdminNotes((prev) => ({ ...prev, [req.id]: e.target.value }))}
+                  className="block w-full text-xs border border-gray-300 rounded px-2 py-1 mb-1 focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                />
               )}
-              <div className="flex items-center gap-1 ml-auto">
-                <span className="text-[12px] text-muted-foreground">
-                  {req.type === "permesso" && req.day
-                    ? req.day
-                    : req.type === "ferie" && req.date_from && req.date_to
-                    ? `${req.date_from} → ${req.date_to}`
-                    : "-"}
-                </span>
+              <div className="flex gap-2 mt-auto justify-end">
+                {isEditing ? (
+                  <>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="bg-green-100 border-green-300 text-green-800 h-7 w-7 p-0 flex items-center justify-center"
+                      onClick={handleEditSave}
+                      title="Salva"
+                      style={{ minWidth: 28, minHeight: 28 }}
+                    >
+                      <Check className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 flex items-center justify-center"
+                      onClick={() => setEditingId(null)}
+                      title="Annulla"
+                      style={{ minWidth: 28, minHeight: 28 }}
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {req.status === "pending" && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="border-green-500 bg-green-50 hover:bg-green-100 h-7 w-7 p-0 flex items-center justify-center"
+                          onClick={() => handleAction(req.id, "approved")}
+                          title="Approva"
+                          style={{ minWidth: 28, minHeight: 28 }}
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="border-red-400 bg-red-50 hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
+                          onClick={() => handleAction(req.id, "rejected")}
+                          title="Rifiuta"
+                          style={{ minWidth: 28, minHeight: 28 }}
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                    {showEdit && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
+                        onClick={() => handleEdit(req)}
+                        title="Modifica"
+                        style={{ minWidth: 28, minHeight: 28 }}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {showDelete && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
+                        onClick={() => handleDelete(req.id)}
+                        title="Elimina"
+                        style={{ minWidth: 28, minHeight: 28 }}
+                      >
+                        <Trash className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
-            <div className="text-xs text-muted-foreground mb-2 min-h-[20px]">
-              {req.note}
-            </div>
-            {adminMode && req.status === "pending" && (
-              <input
-                type="text"
-                placeholder="Note per amministratore..."
-                value={adminNotes[req.id] || ""}
-                onChange={e => setAdminNotes((prev) => ({ ...prev, [req.id]: e.target.value }))}
-                className="block w-full text-xs border border-gray-300 rounded px-2 py-1 mb-1 focus:ring-2 focus:ring-primary/30 focus:outline-none"
-              />
-            )}
-            <div className="flex gap-2 mt-auto justify-end">
-              {isEditing ? (
-                <>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="bg-green-100 border-green-300 text-green-800 h-7 w-7 p-0 flex items-center justify-center"
-                    onClick={handleEditSave}
-                    title="Salva"
-                    style={{ minWidth: 28, minHeight: 28 }}
-                  >
-                    <Check className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 p-0 flex items-center justify-center"
-                    onClick={() => setEditingId(null)}
-                    title="Annulla"
-                    style={{ minWidth: 28, minHeight: 28 }}
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {req.status === "pending" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="border-green-500 bg-green-50 hover:bg-green-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => handleAction(req.id, "approved")}
-                        title="Approva"
-                        style={{ minWidth: 28, minHeight: 28 }}
-                      >
-                        <Check className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="border-red-400 bg-red-50 hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => handleAction(req.id, "rejected")}
-                        title="Rifiuta"
-                        style={{ minWidth: 28, minHeight: 28 }}
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                  {showEdit && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
-                      onClick={() => handleEdit(req)}
-                      title="Modifica"
-                      style={{ minWidth: 28, minHeight: 28 }}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  )}
-                  {showDelete && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
-                      onClick={() => handleDelete(req.id)}
-                      title="Elimina"
-                      style={{ minWidth: 28, minHeight: 28 }}
-                    >
-                      <Trash className="w-4 h-4" />
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+      {/* Popup modale di modifica nome/cognome */}
+      <EditProfileDialog
+        open={profileEditData.open}
+        onOpenChange={open =>
+          setProfileEditData(val => ({ ...val, open }))
+        }
+        profileId={profileEditData.profileId}
+        initialFirstName={profileEditData.first}
+        initialLastName={profileEditData.last}
+        onSuccess={(newFirst, newLast) => {
+          // Aggiorna i nomi anche in cache (soft update)
+          // Meglio ancora, invalidate la query leaveRequests (già fa mutation), qui aggiorniamo subito in UI
+          if (hookLeaveRequests) {
+            const idx = hookLeaveRequests.findIndex(r => r.user_id === profileEditData.profileId);
+            if (idx !== -1) {
+              hookLeaveRequests[idx].profiles = {
+                ...hookLeaveRequests[idx].profiles,
+                first_name: newFirst,
+                last_name: newLast,
+                email: hookLeaveRequests[idx].profiles?.email ?? "",
+              };
+            }
+          }
+        }}
+      />
+    </>
   );
 }
