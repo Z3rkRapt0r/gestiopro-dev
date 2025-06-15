@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLeaveRequests, LeaveRequest } from "@/hooks/useLeaveRequests";
 import { useState } from "react";
-import { Edit, Trash, Check } from "lucide-react";
+import { Edit, Trash, Check, XCircle, User2, Sparkles, Sun } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface LeaveRequestsTableProps {
   adminMode?: boolean;
@@ -77,154 +78,178 @@ export default function LeaveRequestsTable({
   if (!leaveRequests || leaveRequests.length === 0) return <div>Nessuna richiesta trovata.</div>;
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
-      <Table>
+    <div className="overflow-x-auto rounded-lg border bg-white shadow-sm p-2 sm:p-4">
+      <Table className="min-w-[600px]">
         <TableHead>
           <TableRow>
-            <TableCell>Utente</TableCell>
-            <TableCell>Tipo</TableCell>
-            <TableCell>Data / Intervallo</TableCell>
-            <TableCell>Orario</TableCell>
-            <TableCell>Note</TableCell>
-            <TableCell>Stato</TableCell>
-            {adminMode && <TableCell>Azioni</TableCell>}
-            {adminMode && <TableCell>Nota admin</TableCell>}
+            {adminMode && <TableCell className="font-semibold text-xs w-32">Utente</TableCell>}
+            <TableCell className="font-semibold text-xs w-32">Tipo</TableCell>
+            <TableCell className="font-semibold text-xs w-40">Data</TableCell>
+            <TableCell className="font-semibold text-xs w-28">Stato</TableCell>
+            <TableCell className="font-semibold text-xs w-28">Azioni</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {leaveRequests.map((req: LeaveRequest) => (
-            <TableRow key={req.id} className={req.status === "pending" ? "bg-yellow-50" : req.status === "approved" ? "bg-green-50" : "bg-red-50"}>
+            <TableRow
+              key={req.id}
+              className={`transition-colors ${
+                req.status === "pending"
+                  ? "bg-yellow-50"
+                  : req.status === "approved"
+                  ? "bg-green-50"
+                  : "bg-red-50"
+              } text-xs`}>
+              {adminMode && (
+                <TableCell className="whitespace-nowrap">
+                  <div className="flex items-center gap-1">
+                    <User2 className="w-4 h-4 text-muted-foreground" />
+                    {req.profiles?.first_name
+                      ? `${req.profiles.first_name} ${req.profiles.last_name}`
+                      : "Io"}
+                  </div>
+                </TableCell>
+              )}
               <TableCell>
-                {adminMode && req.profiles?.first_name
-                  ? `${req.profiles.first_name} ${req.profiles.last_name}`
-                  : "Io"
-                }
+                <Badge
+                  className={`gap-1 px-2 py-1 rounded text-xs font-medium ${
+                    req.type === "ferie"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-violet-100 text-violet-800"
+                  } flex items-center w-fit`}
+                  variant="secondary"
+                >
+                  {req.type === "ferie" ? <Sun className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  <span className="capitalize">{req.type}</span>
+                </Badge>
               </TableCell>
               <TableCell>
-                <span className={req.type === "ferie" ? "px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs" : "px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs"}>
-                  {req.type}
-                </span>
-              </TableCell>
-              <TableCell>
+                {/* Solo visualizzazione o edit campi data */}
                 {editingId === req.id ? (
-                  req.type === "permesso"
-                    ? <input type="date" value={edited.day ?? ""} onChange={e => handleEditChange("day", e.target.value)} className="border px-1 rounded text-xs" />
-                    : (
-                        <div className="flex flex-col gap-1">
-                          <input type="date" value={edited.date_from ?? ""} onChange={e => handleEditChange("date_from", e.target.value)} className="border px-1 rounded text-xs" />
-                          <span className="text-xs text-gray-400 px-1">al</span>
-                          <input type="date" value={edited.date_to ?? ""} onChange={e => handleEditChange("date_to", e.target.value)} className="border px-1 rounded text-xs" />
-                        </div>
-                      )
+                  req.type === "permesso" ? (
+                    <input
+                      type="date"
+                      value={edited.day ?? ""}
+                      onChange={e => handleEditChange("day", e.target.value)}
+                      className="border px-1 rounded text-xs w-24"
+                    />
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      <input
+                        type="date"
+                        value={edited.date_from ?? ""}
+                        onChange={e => handleEditChange("date_from", e.target.value)}
+                        className="border px-1 rounded text-xs w-24"
+                      />
+                      <span className="text-xs text-gray-400 px-1 text-center">al</span>
+                      <input
+                        type="date"
+                        value={edited.date_to ?? ""}
+                        onChange={e => handleEditChange("date_to", e.target.value)}
+                        className="border px-1 rounded text-xs w-24"
+                      />
+                    </div>
+                  )
+                ) : req.type === "permesso" && req.day ? (
+                  req.day
+                ) : req.type === "ferie" && req.date_from && req.date_to ? (
+                  <span>{req.date_from}<span className="mx-1">-</span>{req.date_to}</span>
                 ) : (
-                  req.type === "permesso" && req.day
-                    ? req.day
-                    : req.type === "ferie" && req.date_from && req.date_to
-                      ? `${req.date_from} - ${req.date_to}`
-                      : "-"
+                  "-"
                 )}
               </TableCell>
               <TableCell>
-                {editingId === req.id && req.type === "permesso"
-                  ? (
-                      <div className="flex gap-2">
-                        <input type="time" value={edited.time_from ?? ""} onChange={e => handleEditChange("time_from", e.target.value)} className="border px-1 rounded text-xs" />
-                        <input type="time" value={edited.time_to ?? ""} onChange={e => handleEditChange("time_to", e.target.value)} className="border px-1 rounded text-xs" />
-                      </div>
-                    )
-                  : req.type === "permesso"
-                    ? `${req.time_from} - ${req.time_to}`
-                    : "-"
-                }
-              </TableCell>
-              <TableCell>
-                {editingId === req.id
-                  ? <input type="text" value={edited.note ?? ""} onChange={e => handleEditChange("note", e.target.value)} className="border px-1 rounded text-xs" />
-                  : req.note
-                }
-              </TableCell>
-              <TableCell>
-                <span className={
-                  req.status === "pending"
-                    ? "inline-block px-2 py-0.5 rounded bg-yellow-200/90 text-yellow-800 text-xs"
-                    : req.status === "approved"
-                      ? "inline-block px-2 py-0.5 rounded bg-green-200/90 text-green-800 text-xs"
-                      : "inline-block px-2 py-0.5 rounded bg-red-200/80 text-red-800 text-xs"
-                }>
-                  {req.status}
-                </span>
-              </TableCell>
-              {adminMode && (
-                <TableCell>
-                  {/* Actions */}
-                  {editingId === req.id ? (
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="bg-green-100 border-green-300 text-green-800"
-                        onClick={handleEditSave}
-                        title="Salva"
-                      >
-                        <Check className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setEditingId(null)}
-                        title="Annulla"
-                      >
-                        Annulla
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-1">
-                      {req.status === "pending" && (
-                        <>
-                          <Button variant="outline" size="sm" onClick={() => handleAction(req.id, "approved")}>Approva</Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleAction(req.id, "rejected")}>Rifiuta</Button>
-                        </>
-                      )}
-                      {showEdit && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEdit(req)}
-                          title="Modifica"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {showDelete && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDelete(req.id)}
-                          title="Elimina"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </TableCell>
-              )}
-              {adminMode && (
-                <TableCell>
-                  {editingId === req.id
-                    ? <input type="text" value={edited.admin_note ?? ""} onChange={e => handleEditChange("admin_note", e.target.value)} className="border px-1 rounded text-xs" />
-                    : req.status === "pending"
-                      ? <input
-                          type="text"
-                          placeholder="Nota admin..."
-                          value={adminNotes[req.id] || ""}
-                          onChange={e => setAdminNotes(prev => ({ ...prev, [req.id]: e.target.value }))}
-                          className="border p-1 w-28 text-xs rounded"
-                        />
-                      : req.admin_note
+                <Badge
+                  className={
+                    `gap-1 px-2 py-1 rounded text-xs font-medium flex items-center w-fit ` +
+                    (req.status === "pending"
+                      ? "bg-yellow-200/90 text-yellow-800"
+                      : req.status === "approved"
+                      ? "bg-green-200/90 text-green-800"
+                      : "bg-red-200/80 text-red-800")
                   }
-                </TableCell>
-              )}
+                  variant="secondary"
+                >
+                  {req.status === "pending" ? (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  ) : req.status === "approved" ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5" />
+                  )}
+                  <span className="capitalize">{req.status}</span>
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {editingId === req.id ? (
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-green-100 border-green-300 text-green-800"
+                      onClick={handleEditSave}
+                      title="Salva"
+                    >
+                      <Check className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingId(null)}
+                      title="Annulla"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-1">
+                    {req.status === "pending" && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="border-green-500 bg-green-50 hover:bg-green-100"
+                          onClick={() => handleAction(req.id, "approved")}
+                          title="Approva"
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="border-red-400 bg-red-50 hover:bg-red-100"
+                          onClick={() => handleAction(req.id, "rejected")}
+                          title="Rifiuta"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                    {showEdit && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleEdit(req)}
+                        title="Modifica"
+                        className="hover:bg-blue-100"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {showDelete && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDelete(req.id)}
+                        title="Elimina"
+                        className="hover:bg-red-100"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
