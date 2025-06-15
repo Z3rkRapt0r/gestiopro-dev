@@ -11,6 +11,7 @@ import { GlobalEmailFooterInput } from "./GlobalEmailTemplate/GlobalEmailFooterI
 import { GlobalEmailPreview } from "./GlobalEmailTemplate/GlobalEmailPreview";
 
 const DEFAULT_FOOTER = "Questo messaggio è stato generato automaticamente.";
+const DEFAULT_SENDER_NAME = "A.L.M Infissi"; // Nuovo default fisso
 const LOGO_BUCKET = "company-assets";
 const LOGO_PATH = "email-logo.png";
 const DEMO_BODY = "Qui verrà inserito il messaggio della comunicazione.";
@@ -24,7 +25,9 @@ const GlobalEmailTemplateSection = () => {
   const [logoAlign, setLogoAlign] = useState<"left" | "right" | "center">("left");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [senderName, setSenderName] = useState("Admin SerramentiCorp - Sistema notifiche");
+
+  // Fisso, mai modificabile
+  const senderName = DEFAULT_SENDER_NAME;
 
   useEffect(() => {
     const loadData = async () => {
@@ -44,7 +47,7 @@ const GlobalEmailTemplateSection = () => {
       // Template
       const { data, error } = await supabase
         .from("email_templates")
-        .select("subject,name,sender_name")
+        .select("subject,name")
         .eq("admin_id", profile.id)
         .eq("is_default", false)
         .eq("topic", "generale")
@@ -60,16 +63,9 @@ const GlobalEmailTemplateSection = () => {
             ? "center"
             : "left";
         setLogoAlign(alignValue as "left" | "right" | "center");
-        // VALORI DI DEFAULT SOLO SE NON C'È UN VALORE NEL DB
-        setSenderName(
-          typeof data.sender_name === "string" && data.sender_name.trim().length > 0
-            ? data.sender_name
-            : "Admin SerramentiCorp - Sistema notifiche"
-        );
       } else {
         setFooterText(DEFAULT_FOOTER);
         setLogoAlign("left");
-        setSenderName("Admin SerramentiCorp - Sistema notifiche"); // Mostra sempre un default
       }
 
       setInitialLoading(false);
@@ -78,7 +74,7 @@ const GlobalEmailTemplateSection = () => {
     // eslint-disable-next-line
   }, [profile?.id]);
 
-  // Logo upload logic
+  // Logo upload logic (uguale)
   const handleLogoUpload = async () => {
     if (!logoUploadFile || !profile?.id) return;
     setLoading(true);
@@ -110,7 +106,7 @@ const GlobalEmailTemplateSection = () => {
     setLoading(false);
   };
 
-  // Salva allineamento, footer e mittente
+  // Salva allineamento e footer (non più il nome mittente)
   const handleSave = async () => {
     if (!profile?.id) {
       toast({
@@ -121,11 +117,6 @@ const GlobalEmailTemplateSection = () => {
       return;
     }
     setLoading(true);
-
-    // Valore di default se l'input è vuoto
-    const cleanSenderName = senderName.trim().length > 0
-      ? senderName.trim()
-      : "Admin SerramentiCorp - Sistema notifiche";
 
     const { data: existing, error: getError } = await supabase
       .from("email_templates")
@@ -143,7 +134,7 @@ const GlobalEmailTemplateSection = () => {
         .update({
           name: logoAlign,
           subject: footerText,
-          sender_name: cleanSenderName,
+          sender_name: DEFAULT_SENDER_NAME,
           is_default: false,
           content: "",
         })
@@ -159,7 +150,7 @@ const GlobalEmailTemplateSection = () => {
             admin_id: profile.id,
             name: logoAlign,
             subject: footerText,
-            sender_name: cleanSenderName,
+            sender_name: DEFAULT_SENDER_NAME,
             is_default: false,
             topic: "generale",
             content: "",
@@ -205,17 +196,17 @@ const GlobalEmailTemplateSection = () => {
             initialLoading={initialLoading}
           />
         </div>
+        {/* Nome mittente fisso, non modificabile */}
         <div>
           <label className="block mb-1 font-medium" htmlFor="sender-name">Nome Mittente:</label>
           <Input
             id="sender-name"
             value={senderName}
-            onChange={e => setSenderName(e.target.value)}
-            placeholder="Admin SerramentiCorp - Sistema notifiche"
-            disabled={loading || initialLoading}
+            readOnly
+            disabled
           />
           <div className="text-xs text-muted-foreground mt-1">
-            Apparirà come nome mittente per l’invio delle email.
+            Questo valore è fisso e non modificabile.
           </div>
         </div>
         <GlobalEmailFooterInput
