@@ -151,7 +151,12 @@ const GlobalEmailTemplateSection = () => {
     }
   };
 
-  // Funzione per costruire HTML completo (per test)
+  // Footer HTML blocco centrale, usato in buildHtmlContent e renderPreview
+  const FOOTER_HTML = `<footer style="color:#888; font-size:13px; margin-top:36px; width:100%; text-align:center; display:block;">
+    © A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820
+  </footer>`;
+
+  // Funzione per costruire HTML completo (MAIL TEST)
   const buildHtmlContent = () => {
     let textAlign = logoAlign;
     if (logoAlign === "center") textAlign = "center";
@@ -168,9 +173,7 @@ const GlobalEmailTemplateSection = () => {
           <h2 style="color: #2757d6;">Oggetto comunicazione</h2>
           <p>${DEMO_BODY}</p>
         </div>
-        <footer style="color:#888; font-size:13px; margin-top:36px; text-align:center;">
-          © A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820
-        </footer>
+        ${FOOTER_HTML}
       </div>
     `;
   };
@@ -192,9 +195,7 @@ const GlobalEmailTemplateSection = () => {
           <h2 style="color: #2757d6;">Oggetto comunicazione</h2>
           <p>${DEMO_BODY}</p>
         </div>
-        <footer style="color:#888; font-size:13px; margin-top:36px; text-align:center;">
-          © A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820
-        </footer>
+        ${FOOTER_HTML}
       </div>
     `;
   };
