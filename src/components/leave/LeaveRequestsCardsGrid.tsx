@@ -28,8 +28,7 @@ export default function LeaveRequestsCardsGrid({
   const { toast } = useToast();
   const { profile } = useAuth();
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [edited, setEdited] = useState<Partial<LeaveRequest>>({});
+  // RIMUOVIAMO editingId (usato solo per vecchia modalita' inline, ora usiamo solo editDialog)
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
   const [profileEditData, setProfileEditData] = useState<{
     open: boolean;
@@ -44,6 +43,7 @@ export default function LeaveRequestsCardsGrid({
     loading: boolean;
   }>({ open: false, req: null, loading: false });
 
+  // Approva/rifiuta admin
   const handleAction = async (id: string, status: "approved" | "rejected") => {
     try {
       await updateStatusMutation.mutateAsync({ id, status, admin_note: adminNotes[id] || "" });
@@ -54,35 +54,13 @@ export default function LeaveRequestsCardsGrid({
     }
   };
 
-  const handleEdit = (req: LeaveRequest) => {
-    setEditingId(req.id);
-    setEdited(req);
-  };
-
-  const handleEditChange = (field: keyof LeaveRequest, value: any) => {
-    setEdited((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleEditSave = async () => {
-    if (!editingId || !edited) return;
-    try {
-      await updateRequestMutation.mutateAsync({ ...edited, id: editingId });
-      toast({ title: "Richiesta aggiornata" });
-      setEditingId(null);
-    } catch {
-      toast({ title: "Errore salvataggio modifica", variant: "destructive" });
-    }
-  };
-
-  // Nuovo: handler per apertura modifica richiesta
+  // NUOVA: handler per apertura dialog modifica richiesta
   const openEditDialog = (req: LeaveRequest) => {
+    console.log('Apro la modale di modifica per richiesta:', req);
     setEditDialog({ open: true, req, loading: false });
   };
 
-  // Nuovo: submit modifica richiesta salvataggio
+  // Submit modifica
   const submitEditDialog = async (values: Partial<LeaveRequest>) => {
     if (!editDialog.req) return;
     setEditDialog(val => ({ ...val, loading: true }));
@@ -96,12 +74,14 @@ export default function LeaveRequestsCardsGrid({
     }
   };
 
-  // Nuovo: handler elimina con prompt conferma
+  // *** ELIMINA *** con log + fix invalidate query
   const handleDelete = async (id: string) => {
+    console.log('Chiamato handleDelete per richiesta:', id);
     if (!window.confirm("Sei sicuro di voler eliminare questa richiesta?")) return;
     try {
       await deleteRequestMutation.mutateAsync({ id });
       toast({ title: "Richiesta eliminata!" });
+      // Invalidate local cache if necessary (React Query si occupa, ma possiamo forzare se serve)
     } catch {
       toast({ title: "Errore eliminazione", variant: "destructive" });
     }
@@ -119,17 +99,17 @@ export default function LeaveRequestsCardsGrid({
       <div className="py-8 text-center text-sm text-muted-foreground">Nessuna richiesta trovata.</div>
     );
 
-  // Visibilità bottoni: spostiamo la logica qui per chiarezza
-  const canEdit = (req: LeaveRequest) => {
-    // Soltanto per il dipendente stesso, richieste pendenti
-    return profile?.id === req.user_id && req.status === "pending" && !adminMode;
-  };
+  // --- LOGICA BOTTONI ---
+  // MODIFICA: Solo OWNER, solo richieste PENDING e non admin
+  const canEdit = (req: LeaveRequest) =>
+    profile?.id === req.user_id && req.status === "pending" && !adminMode;
+
+  // ELIMINA: 
+  // - archivio: tutte proprie richieste (approved/rejected) si possono eliminare
+  // - altrimenti, solo pending proprie richieste, e non adminMode
   const canDelete = (req: LeaveRequest) => {
-    // Solo per le proprie richieste: se pending, oppure archiviate
     if (!profile) return false;
-    // archivio: lasciare l'azione se l'utente è owner
     if (archive && profile.id === req.user_id) return true;
-    // nel caso normale, pending proprie
     return !archive && profile.id === req.user_id && req.status === "pending" && !adminMode;
   };
 
@@ -138,7 +118,6 @@ export default function LeaveRequestsCardsGrid({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {leaveRequests.map((req: LeaveRequest) => {
           const isOwn = profile?.id === req.user_id;
-          const isPending = req.status === "pending";
           const typeIcon = req.type === "ferie" ? <Sun className="w-4 h-4 text-blue-700" /> : <Sparkles className="w-4 h-4 text-violet-700" />;
           const statusIcon =
             req.status === "pending"
@@ -239,7 +218,7 @@ export default function LeaveRequestsCardsGrid({
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3m5 0H6m13 0h-1"></path></svg>
                   </Button>
                 )}
-                {/* AZIONI ADMIN (mantieni quelle esistenti) */}
+                {/* AZIONI ADMIN */}
                 {adminMode && (
                   <>
                     {req.status === "pending" && (
@@ -271,7 +250,7 @@ export default function LeaveRequestsCardsGrid({
                         size="icon"
                         variant="ghost"
                         className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => setEditingId(req.id)}
+                        onClick={() => openEditDialog(req)}
                         title="Modifica"
                         style={{ minWidth: 28, minHeight: 28 }}
                       >
