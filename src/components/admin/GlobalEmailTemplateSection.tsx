@@ -213,17 +213,13 @@ const GlobalEmailTemplateSection = () => {
     `;
   };
 
-  // Anteprima HTML
+  // Anteprima HTML: ALLINEAMENTO CENTRALE FISSO (come nelle email)
   const renderPreview = () => {
-    let textAlign = logoAlign;
-    if (logoAlign === "center") textAlign = "center";
-    else if (logoAlign === "right") textAlign = "right";
-    else textAlign = "left";
     return `
       <div style="font-family: sans-serif; border:1px solid #ccc; padding:32px; max-width:580px; margin:auto; background:white;">
         ${
           logoUrl
-            ? `<div style="text-align:${textAlign};margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
+            ? `<div style="text-align:center;margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
             : ""
         }
         <div>
@@ -324,39 +320,22 @@ const GlobalEmailTemplateSection = () => {
               )}
             </div>
           </div>
+          {/* RIMUOVO/Disabilito pulsanti allineamento logo */}
           <div className="w-full md:w-1/2 flex flex-col gap-1">
             <Label>Allineamento logo:</Label>
             <div className="flex gap-2">
-              <Button
-                size="icon"
-                variant={logoAlign === "left" ? "default" : "outline"}
-                onClick={() => setLogoAlign("left")}
-                type="button"
-                title="Allinea a sinistra"
-                disabled={loading || initialLoading}
-              >
+              <Button size="icon" variant="outline" disabled type="button" title="Allineamento fisso centrale">
                 <AlignLeft />
               </Button>
-              <Button
-                size="icon"
-                variant={logoAlign === "center" ? "default" : "outline"}
-                onClick={() => setLogoAlign("center")}
-                type="button"
-                title="Allinea al centro"
-                disabled={loading || initialLoading}
-              >
+              <Button size="icon" variant="default" disabled type="button" title="Allineamento fisso centrale">
                 <AlignCenter />
               </Button>
-              <Button
-                size="icon"
-                variant={logoAlign === "right" ? "default" : "outline"}
-                onClick={() => setLogoAlign("right")}
-                type="button"
-                title="Allinea a destra"
-                disabled={loading || initialLoading}
-              >
+              <Button size="icon" variant="outline" disabled type="button" title="Allineamento fisso centrale">
                 <AlignRight />
               </Button>
+            </div>
+            <div className="text-xs text-muted-foreground pt-1">
+              L'allineamento del logo è sempre <b>centrale</b> nelle email.
             </div>
           </div>
         </div>
