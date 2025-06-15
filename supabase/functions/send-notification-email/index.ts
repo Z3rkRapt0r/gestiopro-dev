@@ -7,8 +7,135 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonResponse(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
+}
+
+function isBlank(str: unknown) {
+  return typeof str !== "string" || !str.trim();
+}
+
+async function fetchAdminSettings(supabase: any, userId: string) {
+  const { data, error } = await supabase
+    .from("admin_settings")
+    .select("brevo_api_key")
+    .eq("admin_id", userId)
+    .maybeSingle();
+  if (error || !data?.brevo_api_key) {
+    throw new Error("No Brevo API key configured for this admin. Please configure it in the admin settings.");
+  }
+  return data.brevo_api_key;
+}
+
+async function fetchAdminProfile(supabase: any, userId: string) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("first_name, last_name")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("[Notification Email] Error fetching admin profile:", error);
+    return null;
+  }
+  return data;
+}
+
+async function fetchLogoUrl(supabase: any, userId: string) {
+  try {
+    const { data: logoData } = await supabase
+      .storage
+      .from("company-assets")
+      .getPublicUrl(`${userId}/email-logo.png`);
+    if (logoData?.publicUrl) {
+      console.log("[Notification Email] Found logoUrl for admin:", logoData.publicUrl);
+      return logoData.publicUrl;
+    }
+    console.log("[Notification Email] No custom logo for admin, skipping logo.");
+    return null;
+  } catch (e) {
+    console.error("[Notification Email] Error checking logo:", e);
+    return null;
+  }
+}
+
+async function fetchRecipientEmails(supabase: any, recipientId: string | null) {
+  if (recipientId && recipientId !== "ALL") {
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("id", recipientId)
+      .maybeSingle();
+
+    if (profileError) {
+      throw new Error("Failed to fetch recipient profile");
+    }
+    return profile?.email ? [profile.email] : [];
+  } else {
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("is_active", true)
+      .not("email", "is", null);
+
+    if (profilesError) {
+      throw new Error("Failed to fetch user profiles");
+    }
+    return (profiles || []).map((p: any) => p.email).filter(Boolean);
+  }
+}
+
+function buildAttachmentSection(bucketUrl: string | null) {
+  if (!bucketUrl) return "";
+  return `
+    <div style="margin-top: 20px; border-left: 4px solid #007bff; padding-left: 10px;">
+      <strong>Documento allegato disponibile</strong><br>
+      <span style="font-size: 14px; color: #333;">
+        Per visualizzare o scaricare il documento, clicca sul link sottostante.<br/>
+        <span style="font-size: 12px; color: #888;">È necessario effettuare l'accesso con il tuo account aziendale.</span>
+      </span>
+      <div style="margin-top: 8px;">
+        <a href="${bucketUrl}" target="_blank" style="color: #007bff; font-weight: bold;">Apri allegato</a>
+      </div>
+    </div>
+  `;
+}
+
+function buildHtmlContent({ subject, shortText, logoUrl, attachmentSection, senderEmail }: {
+  subject: string,
+  shortText: string,
+  logoUrl: string | null,
+  attachmentSection: string,
+  senderEmail: string
+}) {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      ${
+        logoUrl
+          ? `<div style="text-align:center;margin-bottom:24px;">
+              <img src="${logoUrl}" alt="Logo" style="max-height:60px;max-width:180px;" />
+            </div>`
+          : ""
+      }
+      <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
+        ${subject}
+      </h2>
+      <div style="margin: 20px 0; line-height: 1.6; color: #555;">
+        ${shortText.replace(/\n/g, '<br>')}
+      </div>
+      ${attachmentSection}
+      <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+      <p style="font-size: 12px; color: #888; margin: 0;">
+        Questa è una notifica automatica dal sistema aziendale.<br>
+        Inviata da: ${senderEmail}
+      </p>
+    </div>
+  `;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -24,18 +151,12 @@ serve(async (req) => {
 
     if (!userId) {
       console.error("[Notification Email] Missing userId in request");
-      return new Response(
-        JSON.stringify({ error: "Missing userId" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Missing userId" }, 400);
     }
 
-    if (!subject || !shortText) {
+    if (isBlank(subject) || isBlank(shortText)) {
       console.error("[Notification Email] Missing subject or shortText");
-      return new Response(
-        JSON.stringify({ error: "Missing subject or shortText" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Missing subject or shortText" }, 400);
     }
 
     const supabase = createClient(
@@ -43,178 +164,63 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get Brevo API key for admin
-    console.log("[Notification Email] Looking for admin settings for user:", userId);
-
-    const { data: adminSetting, error: settingsError } = await supabase
-      .from("admin_settings")
-      .select("brevo_api_key")
-      .eq("admin_id", userId)
-      .single();
-
-    if (settingsError) {
-      console.error("[Notification Email] Error fetching admin settings:", settingsError);
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to fetch admin settings", 
-          details: settingsError.message 
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!adminSetting?.brevo_api_key) {
-      console.error("[Notification Email] No Brevo API key found for admin:", userId);
-      return new Response(
-        JSON.stringify({ 
-          error: "No Brevo API key configured for this admin. Please configure it in the admin settings." 
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log("[Notification Email] Found Brevo API key for admin");
-
-    // Get admin profile info for sender name
-    const { data: adminProfile, error: profileError } = await supabase
-      .from("profiles")
-      .select("first_name, last_name")
-      .eq("id", userId)
-      .single();
-
-    if (profileError) {
-      console.error("[Notification Email] Error fetching admin profile:", profileError);
-    }
-
-    // --- RECUPERO PUBLIC URL LOGO AZIENDALE ---
-    let logoUrl: string | null = null;
+    let brevoApiKey: string;
     try {
-      const { data: logoData } = await supabase
-        .storage
-        .from("company-assets")
-        .getPublicUrl(`${userId}/email-logo.png`);
-      if (logoData?.publicUrl) {
-        logoUrl = logoData.publicUrl;
-        console.log("[Notification Email] Found logoUrl for admin:", logoUrl);
-      } else {
-        console.log("[Notification Email] No custom logo for admin, skipping logo.");
-      }
-    } catch (logoErr) {
-      console.error("[Notification Email] Error checking logo:", logoErr);
+      brevoApiKey = await fetchAdminSettings(supabase, userId);
+      console.log("[Notification Email] Found Brevo API key for admin");
+    } catch (err: any) {
+      console.error("[Notification Email]", err.message);
+      return jsonResponse({ error: err.message }, 400);
     }
 
-    // Use the verified Brevo email and admin name for sender
-    const senderName = adminProfile?.first_name && adminProfile?.last_name 
-      ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche` 
-      : "Sistema Notifiche";
-    
+    const adminProfile = await fetchAdminProfile(supabase, userId);
+
+    const logoUrl = await fetchLogoUrl(supabase, userId);
+
+    const senderName =
+      adminProfile?.first_name && adminProfile?.last_name
+        ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche`
+        : "Sistema Notifiche";
     const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
 
-    // Get recipient emails
-    let emails: string[] = [];
-
-    if (recipientId && recipientId !== "ALL") {
-      console.log("[Notification Email] Getting single recipient email:", recipientId);
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("id", recipientId)
-        .single();
-
-      if (profileError) {
-        console.error("[Notification Email] Error fetching recipient profile:", profileError);
-        return new Response(
-          JSON.stringify({ error: "Failed to fetch recipient profile" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      if (profile?.email) {
-        emails = [profile.email];
-      }
-    } else {
-      console.log("[Notification Email] Getting all active user emails");
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("is_active", true)
-        .not("email", "is", null);
-
-      if (profilesError) {
-        console.error("[Notification Email] Error fetching profiles:", profilesError);
-        return new Response(
-          JSON.stringify({ error: "Failed to fetch user profiles" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      emails = (profiles || [])
-        .map(p => p.email)
-        .filter(Boolean);
+    let emails: string[];
+    try {
+      emails = await fetchRecipientEmails(supabase, recipientId);
+    } catch (err: any) {
+      console.error("[Notification Email]", err.message);
+      return jsonResponse({ error: err.message }, 500);
     }
 
     if (emails.length === 0) {
       console.error("[Notification Email] No valid email addresses found");
-      return new Response(
-        JSON.stringify({ error: "No valid email addresses found" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "No valid email addresses found" }, 400);
     }
-
-    console.log("[Notification Email] Sending to emails:", emails.length, "recipients");
-    console.log("[Notification Email] Using sender:", senderEmail);
 
     let downloadSection = '';
+    let bucketUrl: string | null = null;
     if (attachment_url) {
-      // Costruisco il link con testo personalizzato per l'allegato
       const bucket = "notification-attachments";
       const storageUrl = Deno.env.get("SUPABASE_URL")?.replace(/^https?:\/\//, "") ?? "";
-      const bucketUrl = `https://${storageUrl}/storage/v1/object/public/${bucket}/${attachment_url}`;
-      downloadSection = `
-        <div style="margin-top: 20px; border-left: 4px solid #007bff; padding-left: 10px;">
-          <strong>Documento allegato disponibile</strong><br>
-          <span style="font-size: 14px; color: #333;">
-            Per visualizzare o scaricare il documento, clicca sul link sottostante.<br/>
-            <span style="font-size: 12px; color: #888;">È necessario effettuare l'accesso con il tuo account aziendale.</span>
-          </span>
-          <div style="margin-top: 8px;">
-            <a href="${bucketUrl}" target="_blank" style="color: #007bff; font-weight: bold;">Apri allegato</a>
-          </div>
-        </div>
-      `;
+      bucketUrl = `https://${storageUrl}/storage/v1/object/public/${bucket}/${attachment_url}`;
+      downloadSection = buildAttachmentSection(bucketUrl);
     }
 
-    // --- HTML con LOGO AZIENDALE CENTRALE ---
+    const htmlContent = buildHtmlContent({
+      subject,
+      shortText,
+      logoUrl,
+      attachmentSection: downloadSection,
+      senderEmail
+    });
+
     const brevoPayload = {
-      sender: { 
-        name: senderName, 
+      sender: {
+        name: senderName,
         email: senderEmail
       },
       to: emails.map(email => ({ email })),
       subject: subject,
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          ${
-            logoUrl
-              ? `<div style="text-align:center;margin-bottom:24px;">
-                  <img src="${logoUrl}" alt="Logo" style="max-height:60px;max-width:180px;" />
-                </div>`
-              : ""
-          }
-          <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
-            ${subject}
-          </h2>
-          <div style="margin: 20px 0; line-height: 1.6; color: #555;">
-            ${shortText.replace(/\n/g, '<br>')}
-          </div>
-          ${downloadSection}
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="font-size: 12px; color: #888; margin: 0;">
-            Questa è una notifica automatica dal sistema aziendale.<br>
-            Inviata da: ${senderEmail}
-          </p>
-        </div>
-      `,
+      htmlContent: htmlContent,
       textContent: `${subject}\n\n${shortText}\n${attachment_url ? "\nAllegato incluso, accedi al portale per scaricarlo." : ""}\n\n--- Notifica automatica dal sistema aziendale ---`
     };
 
@@ -224,7 +230,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": adminSetting.brevo_api_key,
+        "api-key": brevoApiKey,
       },
       body: JSON.stringify(brevoPayload),
     });
@@ -235,7 +241,6 @@ serve(async (req) => {
 
     if (!brevoResponse.ok) {
       console.error("[Notification Email] Brevo API error:", brevoResponse.status, brevoResponseText);
-      
       let errorMessage = "Failed to send email via Brevo";
       try {
         const errorData = JSON.parse(brevoResponseText);
@@ -243,37 +248,26 @@ serve(async (req) => {
       } catch (e) {
         errorMessage = brevoResponseText || errorMessage;
       }
-
-      return new Response(
-        JSON.stringify({ 
-          error: errorMessage,
-          status: brevoResponse.status,
-          details: brevoResponseText
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({
+        error: errorMessage,
+        status: brevoResponse.status,
+        details: brevoResponseText
+      }, 500);
     }
 
     console.log("[Notification Email] Email sent successfully!");
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Email sent successfully",
-        recipients: emails.length,
-        sender: senderEmail
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
-  } catch (error) {
+    return jsonResponse({
+      success: true,
+      message: "Email sent successfully",
+      recipients: emails.length,
+      sender: senderEmail
+    });
+  } catch (error: any) {
     console.error("[Notification Email] Unexpected error:", error);
-    return new Response(
-      JSON.stringify({ 
-        error: "Internal server error", 
-        details: error.message 
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({
+      error: "Internal server error",
+      details: error.message
+    }, 500);
   }
 });
