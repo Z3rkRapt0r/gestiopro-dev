@@ -9,6 +9,7 @@ import { FileText, Users, User } from 'lucide-react';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useNotificationForm } from "@/hooks/useNotificationForm";
 
 // Definizione del tipo Profile
 interface Profile {
@@ -38,8 +39,11 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [uploadTarget, setUploadTarget] = useState<'self' | 'specific_user' | 'all_employees'>('self');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-
   const isAdmin = profile?.role === 'admin';
+
+  // Nuovo stato: invia notifica dopo upload
+  const [notifyRecipient, setNotifyRecipient] = useState(false);
+  const { sendNotification, loading: notificationLoading } = useNotificationForm();
 
   useEffect(() => {
     if (targetUserId) {
@@ -111,6 +115,16 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
       isPersonalDocument
     );
 
+    // INVIA NOTIFICA SOLO SE RICHIESTO, SOLO SE DOCUMENTO PERSONALE
+    if (!error && notifyRecipient && isPersonalDocument && targetUserForUpload && targetUserForUpload !== user.id) {
+      await sendNotification({
+        recipientId: targetUserForUpload,
+        subject: title,
+        shortText: defaultNotificationText,
+        topic: "document",
+      });
+    }
+
     if (!error) {
       setOpen(false);
       onSuccess?.();
@@ -127,6 +141,14 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
       }
     }
   };
+
+  const defaultNotificationText =
+    "È stato caricato un nuovo documento per te. Accedi alla tua area personale per visualizzarlo e scaricarlo.";
+
+  const shouldShowNotifyOption =
+    // Opzione disponibile solo in contesti personali (no upload aziendale)
+    // Admin: quando target specifico. Utente: sempre
+    (isAdmin && (uploadTarget === 'specific_user' || targetUserId)) || (!isAdmin);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -238,12 +260,34 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
             />
           </div>
 
+          {shouldShowNotifyOption && (
+            <div className="flex items-center space-x-2">
+              <input
+                id="notify"
+                type="checkbox"
+                checked={notifyRecipient}
+                onChange={e => setNotifyRecipient(e.target.checked)}
+                className="border-gray-300 rounded focus:ring-blue-500 h-4 w-4"
+              />
+              <Label htmlFor="notify" className="cursor-pointer select-none">
+                Avvisa il destinatario del caricamento del documento (invia una notifica email)
+              </Label>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Button 
               type="submit" 
-              disabled={loading || !file || !title || !documentType || (isAdmin && uploadTarget === 'specific_user' && !selectedUserId)}
+              disabled={
+                loading ||
+                notificationLoading ||
+                !file ||
+                !title ||
+                !documentType ||
+                (isAdmin && uploadTarget === 'specific_user' && !selectedUserId)
+              }
             >
-              {loading ? (
+              {loading || notificationLoading ? (
                 "Caricamento..."
               ) : (
                 <>
