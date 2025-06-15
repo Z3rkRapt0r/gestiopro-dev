@@ -3,18 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Users, 
-  FileText, 
-  Bell, 
-  LogOut, 
-  Settings,
-  TrendingUp,
-  Download,
-  Upload,
-  Search,
-  UserPlus
-} from "lucide-react";
+import { Users, FileText, Bell, LogOut, Settings, TrendingUp, Download, Upload, Search, UserPlus } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,10 +16,8 @@ import NotificationForm from "@/components/notifications/NotificationForm";
 import NotificationsList from "@/components/notifications/NotificationsList";
 import AdminApprovalsSection from "@/components/leave/AdminApprovalsSection";
 import SentNotificationsHistory from "@/components/notifications/SentNotificationsHistory";
-
 import { useNavigate, useLocation } from "react-router-dom";
 import AdminSettingsSection from "@/components/admin/AdminSettingsSection";
-
 interface Employee {
   id: string;
   first_name: string | null;
@@ -43,7 +30,6 @@ interface Employee {
   created_at?: string;
   updated_at?: string;
 }
-
 const AdminDashboard = () => {
   const [searchParams] = typeof window !== "undefined" ? [new URLSearchParams(window.location.search)] : [new URLSearchParams()];
   const sectionFromQuery = searchParams.get("section");
@@ -58,35 +44,39 @@ const AdminDashboard = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
-
-  const { profile, signOut } = useAuth();
-  const { toast } = useToast();
+  const {
+    profile,
+    signOut
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
 
   // Funzione per raggruppare documenti per mese (ultimi 12 mesi)
   function getMonthlyDocumentsStats(documents: any[]) {
-    const months = Array.from({ length: 12 }, (_, i) => {
+    const months = Array.from({
+      length: 12
+    }, (_, i) => {
       const d = new Date();
       d.setMonth(d.getMonth() - (11 - i));
       return {
-        name: d.toLocaleString('it-IT', { month: 'short' }),
+        name: d.toLocaleString('it-IT', {
+          month: 'short'
+        }),
         value: 0,
         year: d.getFullYear(),
-        month: d.getMonth(),
+        month: d.getMonth()
       };
     });
-
-    documents.forEach((doc) => {
+    documents.forEach(doc => {
       if (!doc.created_at) return;
       const d = new Date(doc.created_at);
-      const found = months.find(
-        (m) => m.year === d.getFullYear() && m.month === d.getMonth()
-      );
+      const found = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth());
       if (found) found.value++;
     });
-
-    return months.map((m) => ({
+    return months.map(m => ({
       name: m.name,
-      documents: m.value,
+      documents: m.value
     }));
   }
 
@@ -95,39 +85,42 @@ const AdminDashboard = () => {
   const totalInactive = employees.length - totalActive;
   // Possibili future espansioni: ferie, assenti (se dati disponibili)
 
-  const employeeStatusData = [
-    { name: 'Attivi', value: totalActive, color: '#3b82f6' },
-    { name: 'Inattivi', value: totalInactive, color: '#f59e0b' },
-  ];
+  const employeeStatusData = [{
+    name: 'Attivi',
+    value: totalActive,
+    color: '#3b82f6'
+  }, {
+    name: 'Inattivi',
+    value: totalInactive,
+    color: '#f59e0b'
+  }];
 
   // Documenti mensili reali
   const monthlyDocumentsData = getMonthlyDocumentsStats(documents);
 
   // Attività recenti: ultimi 4 documenti reali
-  const recentDocuments = documents
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 4)
-    .map((doc) => ({
-      id: doc.id,
-      name: doc.title || doc.file_name,
-      employee: (() => {
-        // Ricerca nome dipendente se disponibile dall'elenco employees
-        const emp = employees.find(e => e.id === doc.user_id);
-        return emp ? `${emp.first_name ?? '-'} ${emp.last_name ?? ''}`.trim() : "Sconosciuto";
-      })(),
-      date: new Date(doc.created_at).toLocaleDateString('it-IT'),
-      type: doc.document_type,
-    }));
+  const recentDocuments = documents.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 4).map(doc => ({
+    id: doc.id,
+    name: doc.title || doc.file_name,
+    employee: (() => {
+      // Ricerca nome dipendente se disponibile dall'elenco employees
+      const emp = employees.find(e => e.id === doc.user_id);
+      return emp ? `${emp.first_name ?? '-'} ${emp.last_name ?? ''}`.trim() : "Sconosciuto";
+    })(),
+    date: new Date(doc.created_at).toLocaleDateString('it-IT'),
+    type: doc.document_type
+  }));
 
   // --- FETCH EMPLOYEES ---
   const fetchEmployees = async () => {
     setIsLoadingEmployees(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
+      const {
+        data,
+        error
+      } = await supabase.from('profiles').select('*').order('created_at', {
+        ascending: false
+      });
       if (error) throw error;
       const fetchedEmployees = (data || []).map(emp => ({
         ...emp,
@@ -140,7 +133,7 @@ const AdminDashboard = () => {
       toast({
         title: "Errore",
         description: "Errore nel caricamento dei dipendenti",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoadingEmployees(false);
@@ -151,10 +144,12 @@ const AdminDashboard = () => {
   const fetchDocuments = async () => {
     setIsLoadingDocuments(true);
     try {
-      const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const {
+        data,
+        error
+      } = await supabase.from('documents').select('*').order('created_at', {
+        ascending: false
+      });
       if (error) throw error;
       setDocuments(data || []);
     } catch (error) {
@@ -168,10 +163,12 @@ const AdminDashboard = () => {
   const fetchNotifications = async () => {
     setIsLoadingNotifications(true);
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const {
+        data,
+        error
+      } = await supabase.from('notifications').select('*').order('created_at', {
+        ascending: false
+      });
       if (error) throw error;
       setNotifications(data || []);
     } catch (error) {
@@ -180,7 +177,6 @@ const AdminDashboard = () => {
       setIsLoadingNotifications(false);
     }
   };
-
   useEffect(() => {
     if (activeSection === 'employees' || activeSection === 'dashboard') {
       fetchEmployees();
@@ -188,12 +184,10 @@ const AdminDashboard = () => {
       fetchNotifications();
     }
   }, [activeSection]);
-
   const handleEmployeeCreated = () => {
     fetchEmployees();
     setShowCreateEmployee(false);
   };
-
   const handleEmployeeUpdated = () => {
     fetchEmployees();
     setEmployeeToEdit(null);
@@ -214,9 +208,8 @@ const AdminDashboard = () => {
   // Performance: rapporto documenti/mese / dipendenti
   let performance: string | number = "N/D";
   if (totalEmployees > 0) {
-    performance = Math.min(100, Math.round((documentsThisMonth / totalEmployees) * 100));
-    if (isNaN(performance)) performance = "N/D";
-    else performance = `${performance}%`;
+    performance = Math.min(100, Math.round(documentsThisMonth / totalEmployees * 100));
+    if (isNaN(performance)) performance = "N/D";else performance = `${performance}%`;
   }
 
   // --- NUOVO: Event board combinata (ultimi 10) ---
@@ -228,13 +221,15 @@ const AdminDashboard = () => {
   const fetchLeaveRequests = async () => {
     setIsLoadingLeaveRequests(true);
     try {
-      const { data, error } = await supabase
-        .from("leave_requests")
-        .select(`
+      const {
+        data,
+        error
+      } = await supabase.from("leave_requests").select(`
           *,
           profiles: user_id (first_name, last_name, email)
-        `)
-        .order("created_at", { ascending: false });
+        `).order("created_at", {
+        ascending: false
+      });
       if (error) throw error;
       setLeaveRequests(data || []);
     } catch (error) {
@@ -255,46 +250,34 @@ const AdminDashboard = () => {
   }, [activeSection]);
 
   // Board eventi: ultimi documenti e richieste gestite/non pendenti
-  const lastDocumentsEvents = documents
-    .slice()
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .map((doc) => ({
-      type: "document",
-      id: doc.id,
-      date: doc.created_at,
-      who: (() => {
-        const emp = employees.find((e) => e.id === doc.user_id);
-        return emp ? `${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim() : "Sconosciuto";
-      })(),
-      description: `Nuovo documento: ${doc.title || doc.file_name}`,
-      url: `/api/documents/download/${doc.id}`,
-      document_type: doc.document_type,
-    }));
+  const lastDocumentsEvents = documents.slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(doc => ({
+    type: "document",
+    id: doc.id,
+    date: doc.created_at,
+    who: (() => {
+      const emp = employees.find(e => e.id === doc.user_id);
+      return emp ? `${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim() : "Sconosciuto";
+    })(),
+    description: `Nuovo documento: ${doc.title || doc.file_name}`,
+    url: `/api/documents/download/${doc.id}`,
+    document_type: doc.document_type
+  }));
 
   // Prendi solo richieste ferie/permessi che sono approvate/rifiutate (non pending)
-  const lastApprovalsEvents = leaveRequests
-    .filter(r => r.status !== "pending")
-    .map((req) => ({
-      type: "approval",
-      id: req.id,
-      date: req.reviewed_at || req.updated_at || req.created_at,
-      who: req.profiles && (req.profiles.first_name || req.profiles.last_name)
-        ? `${req.profiles.first_name ?? ""} ${req.profiles.last_name ?? ""}`.trim()
-        : "Non specificato",
-      description: req.status === "approved"
-        ? "Richiesta ferie/permesso APPROVATA"
-        : "Richiesta ferie/permesso RIFIUTATA",
-      status: req.status,
-    }));
+  const lastApprovalsEvents = leaveRequests.filter(r => r.status !== "pending").map(req => ({
+    type: "approval",
+    id: req.id,
+    date: req.reviewed_at || req.updated_at || req.created_at,
+    who: req.profiles && (req.profiles.first_name || req.profiles.last_name) ? `${req.profiles.first_name ?? ""} ${req.profiles.last_name ?? ""}`.trim() : "Non specificato",
+    description: req.status === "approved" ? "Richiesta ferie/permesso APPROVATA" : "Richiesta ferie/permesso RIFIUTATA",
+    status: req.status
+  }));
 
   // Unifica e ordina per data
-  const boardEvents = [...lastDocumentsEvents, ...lastApprovalsEvents]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+  const boardEvents = [...lastDocumentsEvents, ...lastApprovalsEvents].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
 
   // Aggiorna il renderDashboard in modo che usi i dati dinamici
-  const renderDashboard = () => (
-    <div className="space-y-6">
+  const renderDashboard = () => <div className="space-y-6">
       {/* Cards statistiche */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
@@ -353,37 +336,20 @@ const AdminDashboard = () => {
             <CardTitle>Bacheca Eventi Recenti</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoadingDocuments || isLoadingLeaveRequests ? (
-              <div className="text-center text-gray-500 py-10">Caricamento eventi...</div>
-            ) : (
-              <div className="divide-y">
-                {boardEvents.length === 0 ? (
-                  <div className="text-center py-8">
+            {isLoadingDocuments || isLoadingLeaveRequests ? <div className="text-center text-gray-500 py-10">Caricamento eventi...</div> : <div className="divide-y">
+                {boardEvents.length === 0 ? <div className="text-center py-8">
                     <span className="text-gray-400">Nessun evento recente</span>
-                  </div>
-                ) : (
-                  boardEvents.map((ev) => (
-                    <div
-                      key={ev.type + "-" + ev.id}
-                      className="flex items-center py-4 gap-3 animate-fade-in"
-                    >
+                  </div> : boardEvents.map(ev => <div key={ev.type + "-" + ev.id} className="flex items-center py-4 gap-3 animate-fade-in">
                       {/* Icona evento */}
                       <div>
-                        {ev.type === "document" ? (
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100">
+                        {ev.type === "document" ? <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100">
                             <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M4 4v16h16V4M16 2v4H8V2H2v20h20V2h-6z"></path></svg>
-                          </span>
-                        ) : (
-                          // Solo per type === "approval" esiste status
-                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full
+                          </span> :
+                // Solo per type === "approval" esiste status
+                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full
                             ${'status' in ev && ev.status === "approved" ? "bg-green-100" : "bg-red-100"}`}>
-                            {"status" in ev && ev.status === "approved" ? (
-                              <svg className="h-5 w-5 text-green-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
-                            ) : (
-                              <svg className="h-5 w-5 text-red-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
-                            )}
-                          </span>
-                        )}
+                            {"status" in ev && ev.status === "approved" ? <svg className="h-5 w-5 text-green-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg> : <svg className="h-5 w-5 text-red-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>}
+                          </span>}
                       </div>
                       {/* Info evento */}
                       <div className="flex-1 min-w-0">
@@ -398,21 +364,11 @@ const AdminDashboard = () => {
                         {ev.date ? new Date(ev.date).toLocaleString("it-IT") : ""}
                       </div>
                       {/* Solo per DOCUMENT, forniamo il download */}
-                      {ev.type === "document" && "url" in ev && (
-                        <a
-                          href={ev.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-2 bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold hover:bg-blue-100 transition"
-                        >
+                      {ev.type === "document" && "url" in ev && <a href={ev.url} target="_blank" rel="noopener noreferrer" className="ml-2 bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold hover:bg-blue-100 transition">
                           Scarica
-                        </a>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
+                        </a>}
+                    </div>)}
+              </div>}
           </CardContent>
         </Card>
 
@@ -424,32 +380,19 @@ const AdminDashboard = () => {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie
-                  data={employeeStatusData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {employeeStatusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
+                <Pie data={employeeStatusData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={4} dataKey="value">
+                  {employeeStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                 </Pie>
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex justify-center space-x-4 mt-4">
-              {employeeStatusData.map((entry, index) => (
-                <div key={index} className="flex items-center">
-                  <div 
-                    className="w-3 h-3 rounded-full mr-2" 
-                    style={{ backgroundColor: entry.color }}
-                  />
+              {employeeStatusData.map((entry, index) => <div key={index} className="flex items-center">
+                  <div className="w-3 h-3 rounded-full mr-2" style={{
+                backgroundColor: entry.color
+              }} />
                   <span className="text-sm">{entry.name}: {entry.value}</span>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
         </Card>
@@ -462,8 +405,7 @@ const AdminDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentDocuments.map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            {recentDocuments.map(doc => <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
                   <p className="font-medium text-gray-900">{doc.name}</p>
                   <p className="text-sm text-gray-600">{doc.employee} • {doc.date}</p>
@@ -471,35 +413,26 @@ const AdminDashboard = () => {
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline">{doc.type}</Badge>
                   <Button size="sm" variant="ghost" onClick={() => {
-                    // Download file (usa la funzione helper del documento se disponibile)
-                    window.open(`/api/documents/download/${doc.id}`, "_blank");
-                  }}>
+                // Download file (usa la funzione helper del documento se disponibile)
+                window.open(`/api/documents/download/${doc.id}`, "_blank");
+              }}>
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            ))}
-            {recentDocuments.length === 0 && (
-              <div className="text-center py-8">
+              </div>)}
+            {recentDocuments.length === 0 && <div className="text-center py-8">
                 <FileText className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">Nessun documento recente</h3>
                 <p className="mt-1 text-sm text-gray-500">Quando saranno caricati documenti, li vedrai qui.</p>
-              </div>
-            )}
+              </div>}
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
-
-  const renderEmployees = () => (
-    <div className="space-y-6">
+    </div>;
+  const renderEmployees = () => <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Gestione Dipendenti</h2>
-        <Button 
-          className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => setShowCreateEmployee(true)}
-        >
+        <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setShowCreateEmployee(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
           Aggiungi Dipendente
         </Button>
@@ -507,15 +440,11 @@ const AdminDashboard = () => {
 
       <Card>
         <CardContent className="p-6">
-          {isLoadingEmployees ? (
-            <div className="text-center py-8">
+          {isLoadingEmployees ? <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-gray-600">Caricamento dipendenti...</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {employees.map((employee) => (
-                <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
+            </div> : <div className="space-y-4">
+              {employees.map(employee => <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <h3 className="font-medium text-gray-900">
                       {employee.first_name} {employee.last_name}
@@ -525,49 +454,32 @@ const AdminDashboard = () => {
                       <span className="text-xs text-gray-500">
                         {employee.department || 'Nessun dipartimento'}
                       </span>
-                      {employee.employee_code && (
-                        <span className="text-xs text-gray-500">
+                      {employee.employee_code && <span className="text-xs text-gray-500">
                           Codice: {employee.employee_code}
-                        </span>
-                      )}
+                        </span>}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge 
-                      variant={employee.role === 'admin' ? 'default' : 'secondary'}
-                      className={employee.role === 'admin' ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}
-                    >
+                    <Badge variant={employee.role === 'admin' ? 'default' : 'secondary'} className={employee.role === 'admin' ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}>
                       {employee.role === 'admin' ? 'Admin' : 'Dipendente'}
                     </Badge>
-                    <Badge 
-                      variant={employee.is_active ? 'default' : 'secondary'}
-                      className={employee.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'}
-                    >
+                    <Badge variant={employee.is_active ? 'default' : 'secondary'} className={employee.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'}>
                       {employee.is_active ? 'Attivo' : 'Inattivo'}
                     </Badge>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={() => setEmployeeToEdit(employee)}
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => setEmployeeToEdit(employee)}>
                       <Settings className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              ))}
-              {employees.length === 0 && (
-                <div className="text-center py-8">
+                </div>)}
+              {employees.length === 0 && <div className="text-center py-8">
                   <Users className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">Nessun dipendente</h3>
                   <p className="mt-1 text-sm text-gray-500">Inizia aggiungendo il primo dipendente</p>
-                </div>
-              )}
-            </div>
-          )}
+                </div>}
+            </div>}
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 
   // Aggiorna activeSection se cambia query param
   useEffect(() => {
@@ -576,14 +488,10 @@ const AdminDashboard = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionFromQuery]);
-
   const navigate = useNavigate();
   const location = useLocation();
-
   const [notificationsRefreshKey, setNotificationsRefreshKey] = useState(0);
-
-  return (
-    <div className="min-h-screen bg-gray-50">
+  return <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -614,56 +522,32 @@ const AdminDashboard = () => {
         <div className="flex space-x-8">
           {/* Sidebar */}
           <div className="w-64 space-y-2">
-            <Button
-              variant={activeSection === 'dashboard' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveSection('dashboard')}
-            >
+            <Button variant={activeSection === 'dashboard' ? 'default' : 'ghost'} className="w-full justify-start" onClick={() => setActiveSection('dashboard')}>
               <TrendingUp className="mr-2 h-4 w-4" />
               Dashboard
             </Button>
             
-            <Button
-              variant={activeSection === 'employees' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveSection('employees')}
-            >
+            <Button variant={activeSection === 'employees' ? 'default' : 'ghost'} className="w-full justify-start" onClick={() => setActiveSection('employees')}>
               <Users className="mr-2 h-4 w-4" />
               Dipendenti
             </Button>
             
-            <Button
-              variant={activeSection === 'documents' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveSection('documents')}
-            >
+            <Button variant={activeSection === 'documents' ? 'default' : 'ghost'} className="w-full justify-start" onClick={() => setActiveSection('documents')}>
               <FileText className="mr-2 h-4 w-4" />
               Documenti
             </Button>
             
-            <Button
-              variant={activeSection === 'notifications' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setActiveSection('notifications')}
-            >
+            <Button variant={activeSection === 'notifications' ? 'default' : 'ghost'} className="w-full justify-start" onClick={() => setActiveSection('notifications')}>
               <Bell className="mr-2 h-4 w-4" />
               Notifiche
             </Button>
             {/* NUOVO: pulsante impostazioni come le altre sezioni */}
-            <Button
-              variant={activeSection === "settings" ? "default" : "ghost"}
-              className="w-full justify-start"
-              onClick={() => setActiveSection("settings")}
-            >
+            <Button variant={activeSection === "settings" ? "default" : "ghost"} className="w-full justify-start" onClick={() => setActiveSection("settings")}>
               <Settings className="mr-2 h-4 w-4" />
               Impostazioni
             </Button>
             {/* NUOVO: pulsante approvazioni come le altre sezioni */}
-            <Button
-              variant={activeSection === "approvals" ? "default" : "ghost"}
-              className="w-full justify-start"
-              onClick={() => setActiveSection("approvals")}
-            >
+            <Button variant={activeSection === "approvals" ? "default" : "ghost"} className="w-full justify-start" onClick={() => setActiveSection("approvals")}>
               📝
               <span className="ml-2">Approvazioni</span>
             </Button>
@@ -673,44 +557,27 @@ const AdminDashboard = () => {
             {activeSection === 'dashboard' && renderDashboard()}
             {activeSection === 'employees' && renderEmployees()}
             {activeSection === 'documents' && <AdminDocumentsSection />}
-            {activeSection === 'notifications' && (
-              <div className="space-y-6">
+            {activeSection === 'notifications' && <div className="space-y-6">
                 <h2 className="text-2xl font-bold">Invia nuova notifica</h2>
                 <NotificationForm onCreated={() => setNotificationsRefreshKey(prev => prev + 1)} />
-                <h3 className="text-xl font-semibold mt-8">Cronologia notifiche inviate</h3>
+                
                 <SentNotificationsHistory refreshKey={notificationsRefreshKey} />
-              </div>
-            )}
+              </div>}
             {/* SEZIONE IMPOSTAZIONI */}
-            {activeSection === "settings" && (
-              <div className="py-10">
+            {activeSection === "settings" && <div className="py-10">
                 <h1 className="text-2xl font-bold mb-6">Impostazioni Admin</h1>
                 <AdminSettingsSection />
-              </div>
-            )}
+              </div>}
             {activeSection === "approvals" && <AdminApprovalsSection />}
           </div>
         </div>
       </div>
 
       {/* Modal per creare dipendente */}
-      {showCreateEmployee && (
-        <CreateEmployeeForm
-          onClose={() => setShowCreateEmployee(false)}
-          onEmployeeCreated={handleEmployeeCreated}
-        />
-      )}
+      {showCreateEmployee && <CreateEmployeeForm onClose={() => setShowCreateEmployee(false)} onEmployeeCreated={handleEmployeeCreated} />}
 
       {/* Modal per modificare dipendente */}
-      {employeeToEdit && (
-        <EditEmployeeForm
-          employee={employeeToEdit}
-          onClose={() => setEmployeeToEdit(null)}
-          onEmployeeUpdated={handleEmployeeUpdated}
-        />
-      )}
-    </div>
-  );
+      {employeeToEdit && <EditEmployeeForm employee={employeeToEdit} onClose={() => setEmployeeToEdit(null)} onEmployeeUpdated={handleEmployeeUpdated} />}
+    </div>;
 };
-
 export default AdminDashboard;
