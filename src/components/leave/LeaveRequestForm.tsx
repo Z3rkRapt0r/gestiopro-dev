@@ -1,6 +1,8 @@
 
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +24,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
   const [loading, setLoading] = useState(false);
   const { insertMutation } = useLeaveRequests();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +45,16 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
           return;
         }
       }
+      if (!profile?.id) {
+        toast({ title: "Profilo non trovato", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       const payload: any = {
         type,
         note,
         status: "pending",
+        user_id: profile.id, // fix: manda user_id per policy supabase!
       };
       if (type === "permesso") {
         payload.day = day?.toISOString().slice(0, 10);
@@ -67,53 +76,76 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      {type === "permesso" && (
-        <>
-          <label className="block text-sm font-medium">Giorno permesso</label>
-          <Calendar
-            mode="single"
-            selected={day as any}
-            onSelect={setDay}
-            className="pointer-events-auto"
-          />
-          <div className="flex gap-2">
-            <div>
-              <label className="block text-sm font-medium">Da (orario)</label>
-              <Input type="time" value={timeFrom} onChange={e => setTimeFrom(e.target.value)} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">A (orario)</label>
-              <Input type="time" value={timeTo} onChange={e => setTimeTo(e.target.value)} required />
-            </div>
+    <Card className="bg-muted/40">
+      <CardContent>
+        <form className="space-y-6 p-4" onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
+            {type === "permesso" && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Giorno permesso</label>
+                  <div className="rounded-md border bg-white">
+                    <Calendar
+                      mode="single"
+                      selected={day as any}
+                      onSelect={setDay}
+                      className="pointer-events-auto"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-row gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Da (orario)</label>
+                    <Input type="time" value={timeFrom} onChange={e => setTimeFrom(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">A (orario)</label>
+                    <Input type="time" value={timeTo} onChange={e => setTimeTo(e.target.value)} required />
+                  </div>
+                </div>
+              </>
+            )}
+            {type === "ferie" && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Dal</label>
+                  <div className="rounded-md border bg-white">
+                    <Calendar
+                      mode="single"
+                      selected={dateFrom as any}
+                      onSelect={setDateFrom}
+                      className="pointer-events-auto"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Al</label>
+                  <div className="rounded-md border bg-white">
+                    <Calendar
+                      mode="single"
+                      selected={dateTo as any}
+                      onSelect={setDateTo}
+                      className="pointer-events-auto"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-        </>
-      )}
-      {type === "ferie" && (
-        <>
-          <label className="block text-sm font-medium">Dal</label>
-          <Calendar
-            mode="single"
-            selected={dateFrom as any}
-            onSelect={setDateFrom}
-            className="pointer-events-auto"
+          <Textarea
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Note facoltative..."
+            rows={2}
+            className="resize-none"
           />
-          <label className="block text-sm font-medium">Al</label>
-          <Calendar
-            mode="single"
-            selected={dateTo as any}
-            onSelect={setDateTo}
-            className="pointer-events-auto"
-          />
-        </>
-      )}
-      <Textarea
-        value={note}
-        onChange={e => setNote(e.target.value)}
-        placeholder="Note facoltative..."
-        rows={2}
-      />
-      <Button type="submit" disabled={loading}>{loading ? "Invio..." : "Invia richiesta"}</Button>
-    </form>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={loading}>
+              {loading ? "Invio..." : "Invia richiesta"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

@@ -19,7 +19,6 @@ export type LeaveRequest = {
   reviewed_at?: string | null;
   created_at: string;
   updated_at: string;
-  // Optionally, add user profile if you want to JOIN for the admin
   profiles?: {
     first_name: string | null;
     last_name: string | null;
@@ -47,7 +46,15 @@ export function useLeaveRequests() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as LeaveRequest[];
+
+      // Fix: Filtro/trasformo profiles: può essere {error: true} se manca!
+      const mapped = (data as any[]).map((item) => ({
+        ...item,
+        profiles: item.profiles && item.profiles.first_name !== undefined
+          ? item.profiles
+          : undefined,
+      })) as LeaveRequest[];
+      return mapped;
     },
     enabled: !!profile,
   });
@@ -55,9 +62,15 @@ export function useLeaveRequests() {
   // Add new leave request
   const insertMutation = useMutation({
     mutationFn: async (payload: Partial<LeaveRequest>) => {
+      // Fix: va passato user_id obbligatorio per policy!
       const { error, data } = await supabase
         .from("leave_requests")
-        .insert([payload])
+        .insert([
+          {
+            ...payload,
+            user_id: payload.user_id,
+          },
+        ])
         .select()
         .maybeSingle();
       if (error) throw error;

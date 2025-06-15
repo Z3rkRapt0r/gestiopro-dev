@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import LeaveRequestForm from "./LeaveRequestForm";
 import LeaveRequestsTable from "./LeaveRequestsTable";
@@ -9,32 +10,51 @@ export default function EmployeeLeavePage() {
   const [showForm, setShowForm] = useState(false);
 
   return (
-    <div className="max-w-2xl mx-auto py-8 bg-white rounded shadow">
-      <h2 className="text-xl font-bold mb-4 text-center">Richieste Ferie & Permessi</h2>
-      <div className="flex gap-4 justify-center mb-6">
-        <Button
-          variant={formType === "permesso" ? "default" : "outline"}
-          onClick={() => { setFormType("permesso"); setShowForm(true); }}
-        >
-          Richiesta permesso
-        </Button>
-        <Button
-          variant={formType === "ferie" ? "default" : "outline"}
-          onClick={() => { setFormType("ferie"); setShowForm(true); }}
-        >
-          Richiesta ferie
-        </Button>
-      </div>
-      {showForm && formType && (
-        <div className="mb-8">
-          <LeaveRequestForm
-            type={formType}
-            onSuccess={() => { setShowForm(false); setFormType(null); }}
-          />
-        </div>
-      )}
-      <h3 className="text-lg font-semibold mb-2">Le mie richieste</h3>
-      <LeaveRequestsTable />
+    <div className="max-w-3xl mx-auto py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl text-center font-bold">Richieste Ferie & Permessi</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
+            <Button
+              variant={formType === "permesso" ? "default" : "outline"}
+              className="flex-1"
+              onClick={() => {
+                setFormType("permesso");
+                setShowForm(true);
+              }}
+            >
+              Richiesta permesso
+            </Button>
+            <Button
+              variant={formType === "ferie" ? "default" : "outline"}
+              className="flex-1"
+              onClick={() => {
+                setFormType("ferie");
+                setShowForm(true);
+              }}
+            >
+              Richiesta ferie
+            </Button>
+          </div>
+          {showForm && formType && (
+            <div className="mb-8 animate-fade-in">
+              <LeaveRequestForm
+                type={formType}
+                onSuccess={() => {
+                  setShowForm(false);
+                  setFormType(null);
+                }}
+              />
+            </div>
+          )}
+          <h3 className="text-lg font-semibold mt-8 mb-2">Le mie richieste</h3>
+          <div className="rounded border bg-muted/30 p-2">
+            <LeaveRequestsTable />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
