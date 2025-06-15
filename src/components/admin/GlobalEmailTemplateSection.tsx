@@ -1,9 +1,12 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_TEMPLATE = `<div style="font-family: sans-serif; padding: 20px;">
   <h2 style="color: #2757d6">Titolo comunicazione</h2>
@@ -14,9 +17,87 @@ const DEFAULT_TEMPLATE = `<div style="font-family: sans-serif; padding: 20px;">
 </div>`;
 
 const GlobalEmailTemplateSection = () => {
-  const [html, setHtml] = useState(DEFAULT_TEMPLATE);
+  const { profile } = useAuth();
+  const { toast } = useToast();
 
-  // Qui puoi integrare la logica di salvataggio su Supabase se richiesto
+  const [html, setHtml] = useState(DEFAULT_TEMPLATE);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // Carica il template globale dall'API Supabase
+  useEffect(() => {
+    const fetchGlobalTemplate = async () => {
+      if (!profile?.id) {
+        setInitialLoading(false);
+        return;
+      }
+      setInitialLoading(true);
+      const { data, error } = await supabase
+        .from("email_templates")
+        .select("content")
+        .eq("admin_id", profile.id)
+        .eq("is_default", true)
+        .eq("topic", "globale")
+        .maybeSingle();
+      if (error) {
+        toast({
+          title: "Errore",
+          description: "Impossibile caricare il modello globale.",
+          variant: "destructive",
+        });
+        setInitialLoading(false);
+        return;
+      }
+      if (data?.content) {
+        setHtml(data.content);
+      }
+      setInitialLoading(false);
+    };
+    fetchGlobalTemplate();
+    // eslint-disable-next-line
+  }, [profile?.id]);
+
+  // Salva il modello su Supabase
+  const handleSave = async () => {
+    if (!profile?.id) {
+      toast({
+        title: "Errore",
+        description: "Profilo amministratore non trovato.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.from("email_templates").upsert(
+      [
+        {
+          admin_id: profile.id,
+          name: "Modello Globale",
+          subject: "",
+          content: html,
+          is_default: true,
+          topic: "globale",
+        },
+      ],
+      {
+        onConflict: "admin_id,topic",
+        ignoreDuplicates: false,
+      }
+    );
+    setLoading(false);
+    if (error) {
+      toast({
+        title: "Errore salvataggio",
+        description: "Non è stato possibile salvare il modello.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Salvato",
+        description: "Il modello globale è stato aggiornato.",
+      });
+    }
+  };
 
   return (
     <Card>
@@ -31,6 +112,7 @@ const GlobalEmailTemplateSection = () => {
           onChange={(e) => setHtml(e.target.value)}
           rows={10}
           className="font-mono"
+          disabled={initialLoading || loading}
         />
         <div>
           <Label>Anteprima:</Label>
@@ -39,11 +121,16 @@ const GlobalEmailTemplateSection = () => {
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </div>
-        {/* Placeholder per bottone di salvataggio backend */}
-        <Button disabled>Salva modello (in arrivo)</Button>
+        <Button
+          onClick={handleSave}
+          disabled={loading || initialLoading}
+        >
+          {loading ? "Salvataggio..." : "Salva modello"}
+        </Button>
       </CardContent>
     </Card>
   );
 };
 
 export default GlobalEmailTemplateSection;
+
