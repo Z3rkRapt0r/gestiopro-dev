@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,8 @@ const GlobalEmailTemplateSection = () => {
   const [logoAlign, setLogoAlign] = useState<"left" | "right" | "center">("left");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [testEmail, setTestEmail] = useState("");
+  const [testLoading, setTestLoading] = useState(false);
   const inputLogoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -150,6 +151,74 @@ const GlobalEmailTemplateSection = () => {
     }
   };
 
+  // Funzione per costruire HTML completo (per test)
+  const buildHtmlContent = () => {
+    let textAlign = logoAlign;
+    if (logoAlign === "center") textAlign = "center";
+    else if (logoAlign === "right") textAlign = "right";
+    else textAlign = "left";
+    return `
+      <div style="font-family: sans-serif; border:1px solid #ccc; padding:32px; max-width:580px; margin:auto; background:white;">
+        ${
+          logoUrl
+            ? `<div style="text-align:${textAlign};margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
+            : ""
+        }
+        <div>
+          <h2 style="color: #2757d6;">Oggetto comunicazione</h2>
+          <p>${DEMO_BODY}</p>
+        </div>
+        <footer style="color:#888; font-size:13px; margin-top:36px;text-align:center;">${footerText}</footer>
+      </div>
+    `;
+  };
+
+  // --- FUNZIONE INVIO MAIL DI TEST ---
+  const handleSendTest = async () => {
+    if (!testEmail || !profile?.id) {
+      toast({
+        title: "Email mancante",
+        description: "Inserisci un indirizzo email valido per il test.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setTestLoading(true);
+    // Composizione payload per la funzione edge
+    const payload = {
+      templateId: null, // indica che è un test generico/globale
+      testEmail,
+      userId: profile.id,
+      subject: "Oggetto comunicazione",
+      content: buildHtmlContent(),
+    };
+    try {
+      const { data, error } = await supabase.functions.invoke("send-test-email", {
+        body: payload,
+      });
+      if (error || data?.error) {
+        toast({
+          title: "Errore invio test",
+          description: error?.message || data?.error || "Errore sconosciuto durante l'invio.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Test inviato",
+          description: "Email di test inviata all'indirizzo specificato.",
+        });
+      }
+    } catch (e: any) {
+      toast({
+        title: "Errore invio",
+        description: e.message || "Si è verificato un errore durante l'invio del test.",
+        variant: "destructive",
+      });
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
   // Anteprima HTML
   const renderPreview = () => {
     let textAlign = logoAlign;
@@ -260,6 +329,30 @@ const GlobalEmailTemplateSection = () => {
             disabled={loading || initialLoading}
           />
         </div>
+        {/* --- Sezione nuova per invio TEST ----- */}
+        <div className="flex flex-col gap-2 pt-1 pb-2">
+          <Label htmlFor="test-email">Invia una mail di test:</Label>
+          <div className="flex flex-col sm:flex-row gap-3 items-start">
+            <Input
+              id="test-email"
+              type="email"
+              placeholder="Inserisci indirizzo email destinatario"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              disabled={testLoading || initialLoading}
+              className="sm:w-72"
+            />
+            <Button
+              onClick={handleSendTest}
+              disabled={testLoading || initialLoading || !testEmail}
+              type="button"
+              variant="secondary"
+            >
+              {testLoading ? "Invio in corso..." : "Invia test"}
+            </Button>
+          </div>
+        </div>
+        {/* --- Fine sezione test --- */}
         <Button
           onClick={handleSave}
           disabled={loading || initialLoading}
