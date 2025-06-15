@@ -28,6 +28,8 @@ interface DocumentUploadProps {
 
 const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUploadProps) => {
   const [file, setFile] = useState<File | null>(null);
+  const [subject, setSubject] = useState(""); // Oggetto mail (ex-Titolo)
+  const [body, setBody] = useState(""); // Corpo messaggio mail (ex-Descrizione)
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [documentType, setDocumentType] = useState<string>('');
@@ -44,6 +46,27 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
   // Flag notifica ora sempre true di default e sempre visibile
   const [notifyRecipient, setNotifyRecipient] = useState(true);
   const { sendNotification, loading: notificationLoading } = useNotificationForm();
+  // NOTA: notifyRecipient parte già true
+
+  useEffect(() => {
+    if (file) {
+      setSubject(file.name.replace(/\.[^/.]+$/, '')); // Oggetto pre-auto dalla selezione file
+      if (!body) {
+        setBody(defaultNotificationBody);
+      }
+    }
+  }, [file]);
+
+  useEffect(() => {
+    if (!open) {
+      setFile(null);
+      setSubject("");
+      setBody("");
+      setTitle('');
+      setDescription('');
+      setDocumentType('');
+    }
+  }, [open]);
 
   useEffect(() => {
     if (targetUserId) {
@@ -80,11 +103,22 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
     { value: 'other', label: 'Altro' },
   ];
 
+  const defaultNotificationBody =
+    "Gentile utente, è stato caricato un nuovo documento per te. Accedi alla tua area personale per visualizzarlo e scaricarlo.";
+
+  const defaultNotificationBodyAzienda =
+    "Gentile collaboratore, è stato caricato un nuovo documento aziendale. Visita la tua area personale per scaricarlo.";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !title || !documentType || !user) return;
+    if (!file || !documentType || !user) return;
     if (isAdmin && uploadTarget === 'specific_user' && !selectedUserId) {
       alert("Seleziona un utente specifico.");
+      return;
+    }
+    // Devono essere obbligatori se notifico!
+    if (notifyRecipient && (!subject.trim() || !body.trim())) {
+      alert("Compila oggetto e messaggio della mail.");
       return;
     }
 
@@ -106,32 +140,33 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
       }
     }
 
+    // Upload del documento (usa solo "subject" come titolo documento)
     const { error } = await uploadDocument(
       file,
-      title,
-      description,
+      subject,
+      "", // description non più usata
       documentType as any,
       targetUserForUpload,
       isPersonalDocument
     );
 
-    // INVIA NOTIFICA SOLO SE RICHIESTO (ora sempe visibile e di default true): per doc personali NOTIFICA il destinatario, per doc aziendali (all_employees) invia a tutti
+    // Notifica email SOLO SE richiesto
     if (!error && notifyRecipient) {
-      // Se documento personale, notifica il destinatario (non se stesso)
+      // Personal: notifica il destinatario
       if (isPersonalDocument && targetUserForUpload && targetUserForUpload !== user.id) {
         await sendNotification({
           recipientId: targetUserForUpload,
-          subject: title,
-          shortText: defaultNotificationText,
+          subject: subject.trim(),
+          shortText: body.trim(),
           topic: "document",
         });
       }
-      // Se aziendale, notifica a tutti (recipientId = null, gestito in hook)
+      // Aziendale: notifica tutti
       if (!isPersonalDocument) {
         await sendNotification({
           recipientId: null,
-          subject: title,
-          shortText: defaultNotificationTextAzienda,
+          subject: subject.trim(),
+          shortText: body.trim(),
           topic: "document",
         });
       }
@@ -148,18 +183,15 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      if (!title) {
-        setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
+      if (!subject) {
+        setSubject(selectedFile.name.replace(/\.[^/.]+$/, ''));
+      }
+      if (!body) {
+        setBody(defaultNotificationBody);
       }
     }
   };
 
-  const defaultNotificationText =
-    "È stato caricato un nuovo documento per te. Accedi alla tua area personale per visualizzarlo e scaricarlo.";
-  const defaultNotificationTextAzienda =
-    "È stato caricato un nuovo documento aziendale. Accedi alla tua area personale per visualizzarlo e scaricarlo.";
-
-  // Checkbox visibile sempre e sempre true di default
   const shouldShowNotifyOption =
     // Opzione disponibile solo in contesti personali (no upload aziendale)
     // Admin: quando target specifico. Utente: sempre
@@ -226,28 +258,41 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
             </div>
           )}
 
+          {/* File */}
           <div className="space-y-2">
             <Label htmlFor="file">File</Label>
             <Input
               id="file"
               type="file"
-              onChange={handleFileChange}
+              onChange={(e) => {
+                const selectedFile = e.target.files?.[0];
+                setFile(selectedFile || null);
+                if (selectedFile && !subject) {
+                  setSubject(selectedFile.name.replace(/\.[^/.]+$/, ''));
+                }
+                if (!body) {
+                  setBody(defaultNotificationBody);
+                }
+              }}
               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx,.txt"
               required
             />
           </div>
 
+          {/* Titolo/oggetto (solo se notifica è true, altrimenti disabled) */}
           <div className="space-y-2">
-            <Label htmlFor="title">Titolo</Label>
+            <Label htmlFor="subject">Oggetto della mail</Label>
             <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Inserisci il titolo del documento"
-              required
+              id="subject"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Oggetto della mail"
+              required={notifyRecipient}
+              disabled={!notifyRecipient}
             />
           </div>
 
+          {/* Tipo documento */}
           <div className="space-y-2">
             <Label htmlFor="type">Tipo Documento</Label>
             <Select value={documentType} onValueChange={setDocumentType} required>
@@ -264,18 +309,21 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
             </Select>
           </div>
 
+          {/* Messaggio/descrizione (solo se notifica è true, altrimenti disabled) */}
           <div className="space-y-2">
-            <Label htmlFor="description">Descrizione (opzionale)</Label>
+            <Label htmlFor="body">Messaggio per il destinatario</Label>
             <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Aggiungi una descrizione..."
+              id="body"
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              placeholder="Gentile utente, è stato caricato un nuovo documento per te. Accedi alla tua area personale per visualizzarlo e scaricarlo."
+              required={notifyRecipient}
+              disabled={!notifyRecipient}
               rows={3}
             />
           </div>
 
-          {/* NOTIFICA: ora sempre visibile e checked di default */}
+          {/* Checkbox avvisa destinatario: sempre visibile! */}
           <div className="flex items-center space-x-2">
             <input
               id="notify"
@@ -290,14 +338,14 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
           </div>
 
           <div className="flex gap-2">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={
                 loading ||
                 notificationLoading ||
                 !file ||
-                !title ||
                 !documentType ||
+                (notifyRecipient && (!subject.trim() || !body.trim())) ||
                 (isAdmin && uploadTarget === 'specific_user' && !selectedUserId)
               }
             >
