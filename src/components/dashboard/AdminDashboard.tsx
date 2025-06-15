@@ -26,6 +26,7 @@ import AdminNotificationsSection from "./AdminNotificationsSection";
 import NotificationForm from "@/components/notifications/NotificationForm";
 import NotificationsList from "@/components/notifications/NotificationsList";
 import AdminApprovalsSection from "@/components/leave/AdminApprovalsSection";
+import SentNotificationsHistory from "@/components/notifications/SentNotificationsHistory";
 
 import { useNavigate, useLocation } from "react-router-dom";
 import AdminSettingsSection from "@/components/admin/AdminSettingsSection";
@@ -675,14 +676,7 @@ const AdminDashboard = () => {
                 <h2 className="text-2xl font-bold">Invia nuova notifica</h2>
                 <NotificationForm onCreated={() => {/* force refresh notifications list logic */}} />
                 <h3 className="text-xl font-semibold mt-8">Notifiche inviate</h3>
-                <NotificationsList
-                  notifications={notifications}
-                  adminView
-                  onDelete={async (id) => {
-                    await supabase.from("notifications").delete().eq("id", id);
-                    fetchNotifications();
-                  }}
-                />
+                <SentNotificationsHistory />
               </div>
             )}
             {/* SEZIONE IMPOSTAZIONI */}
