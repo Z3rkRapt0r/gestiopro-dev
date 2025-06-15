@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -19,8 +20,6 @@ serve(async (req) => {
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
     const { recipientId, subject, shortText, userId } = body;
-
-    // Recupera il percorso attachment_url dal body (potrebbe essere null)
     const attachment_url = body.attachment_url ?? null;
 
     if (!userId) {
@@ -46,7 +45,7 @@ serve(async (req) => {
 
     // Get Brevo API key for admin
     console.log("[Notification Email] Looking for admin settings for user:", userId);
-    
+
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
       .select("brevo_api_key")
@@ -87,6 +86,23 @@ serve(async (req) => {
       console.error("[Notification Email] Error fetching admin profile:", profileError);
     }
 
+    // --- RECUPERO PUBLIC URL LOGO AZIENDALE ---
+    let logoUrl: string | null = null;
+    try {
+      const { data: logoData } = await supabase
+        .storage
+        .from("company-assets")
+        .getPublicUrl(`${userId}/email-logo.png`);
+      if (logoData?.publicUrl) {
+        logoUrl = logoData.publicUrl;
+        console.log("[Notification Email] Found logoUrl for admin:", logoUrl);
+      } else {
+        console.log("[Notification Email] No custom logo for admin, skipping logo.");
+      }
+    } catch (logoErr) {
+      console.error("[Notification Email] Error checking logo:", logoErr);
+    }
+
     // Use the verified Brevo email and admin name for sender
     const senderName = adminProfile?.first_name && adminProfile?.last_name 
       ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche` 
@@ -96,7 +112,7 @@ serve(async (req) => {
 
     // Get recipient emails
     let emails: string[] = [];
-    
+
     if (recipientId && recipientId !== "ALL") {
       console.log("[Notification Email] Getting single recipient email:", recipientId);
       const { data: profile, error: profileError } = await supabase
@@ -168,7 +184,7 @@ serve(async (req) => {
       `;
     }
 
-    // Send email via Brevo API
+    // --- HTML con LOGO AZIENDALE CENTRALE ---
     const brevoPayload = {
       sender: { 
         name: senderName, 
@@ -178,6 +194,13 @@ serve(async (req) => {
       subject: subject,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          ${
+            logoUrl
+              ? `<div style="text-align:center;margin-bottom:24px;">
+                  <img src="${logoUrl}" alt="Logo" style="max-height:60px;max-width:180px;" />
+                </div>`
+              : ""
+          }
           <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
             ${subject}
           </h2>
