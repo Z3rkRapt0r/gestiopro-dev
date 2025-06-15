@@ -13,15 +13,24 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
   const { notifications, loading, refreshNotifications } = useNotifications();
   const { profile } = useAuth();
   const [innerRefreshKey, setInnerRefreshKey] = useState(0);
+  const [hasRefreshed, setHasRefreshed] = useState(false);
 
-  // Riguarda ogni volta che refreshKey cambia o viene forzato
+  // Log di debug per assicurarsi che i dati arrivino corretti
   useEffect(() => {
-    if (refreshKey !== undefined || innerRefreshKey) {
-      refreshNotifications();
+    if (!loading) {
+      // Mostra in console tutte le notifiche (per capire se arrivano aggiornate)
+      console.log("Notifiche caricate per lo storico inviate:", notifications);
     }
+  }, [notifications, loading]);
+
+  // Forza il refresh ogni volta che si monta/quando cambia refreshKey/inner key
+  useEffect(() => {
+    refreshNotifications();
+    setHasRefreshed(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey, innerRefreshKey]);
 
+  // Filtra tutte le notifiche inviate dall’utente autenticato (cioè l’admin)
   const sent = useMemo(
     () =>
       notifications.filter(n => n.created_by === profile?.id),
@@ -37,17 +46,24 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
     return <div className="text-center text-gray-500 py-8">Caricamento cronologia notifiche...</div>;
   }
 
-  if (!sent.length) {
+  // Nessuna notifica inviata oppure non caricate ancora
+  if (hasRefreshed && !sent.length) {
     return (
       <div className="flex flex-col items-center py-8 text-gray-400">
         <Button variant="outline" size="sm" onClick={handleManualRefresh}>
           <RotateCcw className="w-4 h-4 mr-2" /> Aggiorna
         </Button>
-        <div className="mt-3">Nessuna notifica inviata ancora.</div>
+        <div className="mt-3">Nessuna notifica inviata recentemente.</div>
       </div>
     );
   }
 
+  // Se sono in caricamento oppure non ancora refreshato, mostra loading (copertura casi)
+  if (!hasRefreshed) {
+    return <div className="text-center text-gray-400 py-8">Caricamento dati...</div>;
+  }
+
+  // Tabella con la lista delle notifiche inviate
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
