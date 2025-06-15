@@ -218,6 +218,79 @@ const AdminDashboard = () => {
     else performance = `${performance}%`;
   }
 
+  // --- NUOVO: Event board combinata (ultimi 10) ---
+  // Ricava ultimi documenti e richieste ferie (approvati/rifiutati, con info utente)
+  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+  const [isLoadingLeaveRequests, setIsLoadingLeaveRequests] = useState(false);
+
+  // Fetch leave requests (approvazione) lato admin
+  const fetchLeaveRequests = async () => {
+    setIsLoadingLeaveRequests(true);
+    try {
+      const { data, error } = await supabase
+        .from("leave_requests")
+        .select(`
+          *,
+          profiles: user_id (first_name, last_name, email)
+        `)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setLeaveRequests(data || []);
+    } catch (error) {
+      console.error("Error fetching leave requests:", error);
+    } finally {
+      setIsLoadingLeaveRequests(false);
+    }
+  };
+
+  // Fai partire fetchLeaveRequests
+  useEffect(() => {
+    if (activeSection === "dashboard") {
+      fetchEmployees();
+      fetchDocuments();
+      fetchNotifications();
+      fetchLeaveRequests();
+    }
+  }, [activeSection]);
+
+  // Board eventi: ultimi documenti e richieste gestite/non pendenti
+  const lastDocumentsEvents = documents
+    .slice()
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .map((doc) => ({
+      type: "document",
+      id: doc.id,
+      date: doc.created_at,
+      who: (() => {
+        const emp = employees.find((e) => e.id === doc.user_id);
+        return emp ? `${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim() : "Sconosciuto";
+      })(),
+      description: `Nuovo documento: ${doc.title || doc.file_name}`,
+      url: `/api/documents/download/${doc.id}`,
+      document_type: doc.document_type,
+    }));
+
+  // Prendi solo richieste ferie/permessi che sono approvate/rifiutate (non pending)
+  const lastApprovalsEvents = leaveRequests
+    .filter(r => r.status !== "pending")
+    .map((req) => ({
+      type: "approval",
+      id: req.id,
+      date: req.reviewed_at || req.updated_at || req.created_at,
+      who: req.profiles && (req.profiles.first_name || req.profiles.last_name)
+        ? `${req.profiles.first_name ?? ""} ${req.profiles.last_name ?? ""}`.trim()
+        : "Non specificato",
+      description: req.status === "approved"
+        ? "Richiesta ferie/permesso APPROVATA"
+        : "Richiesta ferie/permesso RIFIUTATA",
+      status: req.status,
+    }));
+
+  // Unifica e ordina per data
+  const boardEvents = [...lastDocumentsEvents, ...lastApprovalsEvents]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 10);
+
   // Aggiorna il renderDashboard in modo che usi i dati dinamici
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -272,23 +345,71 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
-      {/* Grafici */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Grafico Documenti Mensili */}
+        {/* BACHECA EVENTI - sostituisce Grafico Documenti Mensili */}
         <Card>
           <CardHeader>
-            <CardTitle>Documenti Mensili</CardTitle>
+            <CardTitle>Bacheca Eventi Recenti</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyDocumentsData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="documents" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoadingDocuments || isLoadingLeaveRequests ? (
+              <div className="text-center text-gray-500 py-10">Caricamento eventi...</div>
+            ) : (
+              <div className="divide-y">
+                {boardEvents.length === 0 ? (
+                  <div className="text-center py-8">
+                    <span className="text-gray-400">Nessun evento recente</span>
+                  </div>
+                ) : (
+                  boardEvents.map((ev) => (
+                    <div
+                      key={ev.type + "-" + ev.id}
+                      className="flex items-center py-4 gap-3 animate-fade-in"
+                    >
+                      {/* Icona evento */}
+                      <div>
+                        {ev.type === "document" ? (
+                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100">
+                            <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M4 4v16h16V4M16 2v4H8V2H2v20h20V2h-6z"></path></svg>
+                          </span>
+                        ) : (
+                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full
+                            ${ev.status === "approved" ? "bg-green-100" : "bg-red-100"}`}>
+                            {ev.status === "approved" ? (
+                              <svg className="h-5 w-5 text-green-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+                            ) : (
+                              <svg className="h-5 w-5 text-red-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      {/* Info evento */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-gray-800 font-medium">
+                          {ev.description}
+                        </div>
+                        <div className="text-xs text-gray-600 truncate">
+                          {ev.who}
+                        </div>
+                      </div>
+                      <div className="hidden sm:block text-xs text-gray-400 ml-3">
+                        {ev.date ? new Date(ev.date).toLocaleString("it-IT") : ""}
+                      </div>
+                      {ev.type === "document" && (
+                        <a
+                          href={ev.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-2 bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold hover:bg-blue-100 transition"
+                        >
+                          Scarica
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
