@@ -13,16 +13,16 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("[Brevo Email] Starting email function");
+  console.log("[Notification Email] Starting email function");
 
   try {
     const body = await req.json();
-    console.log("[Brevo Email] Request body:", JSON.stringify(body, null, 2));
+    console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
     const { recipientId, subject, shortText, userId } = body;
 
     if (!userId) {
-      console.error("[Brevo Email] Missing userId in request");
+      console.error("[Notification Email] Missing userId in request");
       return new Response(
         JSON.stringify({ error: "Missing userId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -30,7 +30,7 @@ serve(async (req) => {
     }
 
     if (!subject || !shortText) {
-      console.error("[Brevo Email] Missing subject or shortText");
+      console.error("[Notification Email] Missing subject or shortText");
       return new Response(
         JSON.stringify({ error: "Missing subject or shortText" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -43,7 +43,7 @@ serve(async (req) => {
     );
 
     // Get Brevo API key for admin
-    console.log("[Brevo Email] Looking for admin settings for user:", userId);
+    console.log("[Notification Email] Looking for admin settings for user:", userId);
     
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
@@ -52,7 +52,7 @@ serve(async (req) => {
       .single();
 
     if (settingsError) {
-      console.error("[Brevo Email] Error fetching admin settings:", settingsError);
+      console.error("[Notification Email] Error fetching admin settings:", settingsError);
       return new Response(
         JSON.stringify({ 
           error: "Failed to fetch admin settings", 
@@ -63,7 +63,7 @@ serve(async (req) => {
     }
 
     if (!adminSetting?.brevo_api_key) {
-      console.error("[Brevo Email] No Brevo API key found for admin:", userId);
+      console.error("[Notification Email] No Brevo API key found for admin:", userId);
       return new Response(
         JSON.stringify({ 
           error: "No Brevo API key configured for this admin. Please configure it in the admin settings." 
@@ -72,13 +72,31 @@ serve(async (req) => {
       );
     }
 
-    console.log("[Brevo Email] Found Brevo API key for admin");
+    console.log("[Notification Email] Found Brevo API key for admin");
+
+    // Get admin profile info for sender
+    const { data: adminProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, email")
+      .eq("id", userId)
+      .single();
+
+    if (profileError) {
+      console.error("[Notification Email] Error fetching admin profile:", profileError);
+    }
+
+    // Use admin email as sender or fallback to a default
+    const senderName = adminProfile?.first_name && adminProfile?.last_name 
+      ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche` 
+      : "Sistema Notifiche";
+    
+    const senderEmail = adminProfile?.email || "noreply@your-domain.com";
 
     // Get recipient emails
     let emails: string[] = [];
     
     if (recipientId && recipientId !== "ALL") {
-      console.log("[Brevo Email] Getting single recipient email:", recipientId);
+      console.log("[Notification Email] Getting single recipient email:", recipientId);
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("email")
@@ -86,7 +104,7 @@ serve(async (req) => {
         .single();
 
       if (profileError) {
-        console.error("[Brevo Email] Error fetching recipient profile:", profileError);
+        console.error("[Notification Email] Error fetching recipient profile:", profileError);
         return new Response(
           JSON.stringify({ error: "Failed to fetch recipient profile" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -97,7 +115,7 @@ serve(async (req) => {
         emails = [profile.email];
       }
     } else {
-      console.log("[Brevo Email] Getting all active user emails");
+      console.log("[Notification Email] Getting all active user emails");
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("email")
@@ -105,7 +123,7 @@ serve(async (req) => {
         .not("email", "is", null);
 
       if (profilesError) {
-        console.error("[Brevo Email] Error fetching profiles:", profilesError);
+        console.error("[Notification Email] Error fetching profiles:", profilesError);
         return new Response(
           JSON.stringify({ error: "Failed to fetch user profiles" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -118,20 +136,21 @@ serve(async (req) => {
     }
 
     if (emails.length === 0) {
-      console.error("[Brevo Email] No valid email addresses found");
+      console.error("[Notification Email] No valid email addresses found");
       return new Response(
         JSON.stringify({ error: "No valid email addresses found" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[Brevo Email] Sending to emails:", emails);
+    console.log("[Notification Email] Sending to emails:", emails.length, "recipients");
+    console.log("[Notification Email] Using sender:", senderEmail);
 
     // Send email via Brevo API
     const brevoPayload = {
       sender: { 
-        name: "Sistema Notifiche", 
-        email: "noreply@company.com" 
+        name: senderName, 
+        email: senderEmail
       },
       to: emails.map(email => ({ email })),
       subject: subject,
@@ -145,14 +164,15 @@ serve(async (req) => {
           </div>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
           <p style="font-size: 12px; color: #888; margin: 0;">
-            Questa è una notifica automatica dal sistema aziendale.
+            Questa è una notifica automatica dal sistema aziendale.<br>
+            Inviata da: ${senderEmail}
           </p>
         </div>
       `,
-      textContent: shortText
+      textContent: `${subject}\n\n${shortText}\n\n--- Notifica automatica dal sistema aziendale ---`
     };
 
-    console.log("[Brevo Email] Calling Brevo API...");
+    console.log("[Notification Email] Calling Brevo API...");
 
     const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -164,16 +184,21 @@ serve(async (req) => {
     });
 
     const brevoResponseText = await brevoResponse.text();
-    console.log("[Brevo Email] Brevo response status:", brevoResponse.status);
-    console.log("[Brevo Email] Brevo response:", brevoResponseText);
+    console.log("[Notification Email] Brevo response status:", brevoResponse.status);
+    console.log("[Notification Email] Brevo response:", brevoResponseText);
 
     if (!brevoResponse.ok) {
-      console.error("[Brevo Email] Brevo API error:", brevoResponse.status, brevoResponseText);
+      console.error("[Notification Email] Brevo API error:", brevoResponse.status, brevoResponseText);
       
       let errorMessage = "Failed to send email via Brevo";
       try {
         const errorData = JSON.parse(brevoResponseText);
         errorMessage = errorData.message || errorData.error || errorMessage;
+        
+        // Specific error handling for common Brevo issues
+        if (errorMessage.includes("sender") || errorMessage.includes("domain")) {
+          errorMessage = "Errore: L'indirizzo email del mittente non è verificato in Brevo. Verifica il dominio in Brevo: https://app.brevo.com/senders/domain";
+        }
       } catch (e) {
         errorMessage = brevoResponseText || errorMessage;
       }
@@ -182,25 +207,27 @@ serve(async (req) => {
         JSON.stringify({ 
           error: errorMessage,
           status: brevoResponse.status,
-          details: brevoResponseText
+          details: brevoResponseText,
+          suggestion: "Verifica che il dominio email sia configurato e verificato in Brevo"
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[Brevo Email] Email sent successfully!");
+    console.log("[Notification Email] Email sent successfully!");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "Email sent successfully",
-        recipients: emails.length
+        recipients: emails.length,
+        sender: senderEmail
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
-    console.error("[Brevo Email] Unexpected error:", error);
+    console.error("[Notification Email] Unexpected error:", error);
     return new Response(
       JSON.stringify({ 
         error: "Internal server error", 

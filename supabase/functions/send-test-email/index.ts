@@ -74,11 +74,29 @@ serve(async (req) => {
 
     console.log("[Test Email] Found Brevo API key for admin");
 
+    // Get admin profile info for sender
+    const { data: adminProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, email")
+      .eq("id", userId)
+      .single();
+
+    if (profileError) {
+      console.error("[Test Email] Error fetching admin profile:", profileError);
+    }
+
+    // Use admin email as sender or fallback to a default
+    const senderName = adminProfile?.first_name && adminProfile?.last_name 
+      ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche` 
+      : "Sistema Notifiche";
+    
+    const senderEmail = adminProfile?.email || "noreply@your-domain.com";
+
     // Send test email via Brevo API
     const brevoPayload = {
       sender: { 
-        name: "Sistema Notifiche - TEST", 
-        email: "noreply@company.com" 
+        name: senderName, 
+        email: senderEmail
       },
       to: [{ email: testEmail }],
       subject: `[TEST] ${subject}`,
@@ -98,14 +116,16 @@ serve(async (req) => {
           </div>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
           <p style="font-size: 12px; color: #888; margin: 0;">
-            Questa è un'email di prova dal sistema aziendale. Inviata a: ${testEmail}
+            Questa è un'email di prova dal sistema aziendale.<br>
+            Inviata da: ${senderEmail}<br>
+            Destinatario: ${testEmail}
           </p>
         </div>
       `,
-      textContent: `[TEST] ${subject}\n\n${content}\n\n--- Questa è un'email di prova ---`
+      textContent: `[TEST] ${subject}\n\n${content}\n\n--- Questa è un'email di prova ---\nInviata da: ${senderEmail}`
     };
 
-    console.log("[Test Email] Calling Brevo API...");
+    console.log("[Test Email] Calling Brevo API with sender:", senderEmail);
 
     const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -127,6 +147,11 @@ serve(async (req) => {
       try {
         const errorData = JSON.parse(brevoResponseText);
         errorMessage = errorData.message || errorData.error || errorMessage;
+        
+        // Specific error handling for common Brevo issues
+        if (errorMessage.includes("sender") || errorMessage.includes("domain")) {
+          errorMessage = "Errore: L'indirizzo email del mittente non è verificato in Brevo. Verifica il dominio in Brevo: https://app.brevo.com/senders/domain";
+        }
       } catch (e) {
         errorMessage = brevoResponseText || errorMessage;
       }
@@ -135,7 +160,8 @@ serve(async (req) => {
         JSON.stringify({ 
           error: errorMessage,
           status: brevoResponse.status,
-          details: brevoResponseText
+          details: brevoResponseText,
+          suggestion: "Verifica che il dominio email sia configurato e verificato in Brevo (https://app.brevo.com/senders/domain)"
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -147,7 +173,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: "Test email sent successfully",
-        recipient: testEmail
+        recipient: testEmail,
+        sender: senderEmail
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
