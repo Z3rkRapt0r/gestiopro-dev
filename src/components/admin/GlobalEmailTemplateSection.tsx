@@ -118,23 +118,47 @@ const GlobalEmailTemplateSection = () => {
       return;
     }
     setLoading(true);
-    // salvo footerText in subject, align in name
-    const { error } = await supabase.from("email_templates").upsert(
-      [
-        {
-          admin_id: profile.id,
-          name: logoAlign, // left, right o center
+
+    // Recupera se già esiste una riga per questo admin e topic
+    const { data: existing, error: getError } = await supabase
+      .from("email_templates")
+      .select("id")
+      .eq("admin_id", profile.id)
+      .eq("topic", "generale")
+      .maybeSingle();
+
+    let error = null;
+
+    if (existing?.id) {
+      // Fai update se esiste
+      const { error: updateError } = await supabase
+        .from("email_templates")
+        .update({
+          name: logoAlign,
           subject: footerText,
           is_default: false,
-          topic: "generale",
           content: "",
-        },
-      ],
-      {
-        onConflict: "admin_id,topic",
-        ignoreDuplicates: false,
-      }
-    );
+        })
+        .eq("id", existing.id);
+
+      error = updateError;
+    } else {
+      // Altrimenti inserisci nuovo
+      const { error: insertError } = await supabase
+        .from("email_templates")
+        .insert([
+          {
+            admin_id: profile.id,
+            name: logoAlign,
+            subject: footerText,
+            is_default: false,
+            topic: "generale",
+            content: "",
+          },
+        ]);
+      error = insertError;
+    }
+
     setLoading(false);
     if (error) {
       toast({
