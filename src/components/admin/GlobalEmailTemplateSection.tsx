@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AlignLeft, AlignRight, Image } from "lucide-react";
+import { AlignLeft, AlignRight, AlignCenter, Image } from "lucide-react";
 
 const DEFAULT_FOOTER = "Questo messaggio è stato generato automaticamente.";
 
@@ -22,12 +22,11 @@ const GlobalEmailTemplateSection = () => {
   const [footerText, setFooterText] = useState(DEFAULT_FOOTER);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoUploadFile, setLogoUploadFile] = useState<File | null>(null);
-  const [logoAlign, setLogoAlign] = useState<"left" | "right">("left");
+  const [logoAlign, setLogoAlign] = useState<"left" | "right" | "center">("left");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const inputLogoRef = useRef<HTMLInputElement>(null);
 
-  // Carica i dati salvati (logo, footer, allineamento)
   useEffect(() => {
     const loadData = async () => {
       if (!profile?.id) {
@@ -36,7 +35,7 @@ const GlobalEmailTemplateSection = () => {
       }
       setInitialLoading(true);
 
-      // 1. Carica il logo
+      // Carica il logo
       const { data: logoData } = await supabase
         .storage
         .from(LOGO_BUCKET)
@@ -47,7 +46,7 @@ const GlobalEmailTemplateSection = () => {
         setLogoUrl(null);
       }
 
-      // 2. Carica le impostazioni template (allineamento logo e footer)
+      // Carica le impostazioni template (allineamento logo e footer)
       const { data, error } = await supabase
         .from("email_templates")
         .select("subject,name")
@@ -58,7 +57,13 @@ const GlobalEmailTemplateSection = () => {
 
       if (!error && data) {
         setFooterText(data.subject || DEFAULT_FOOTER);
-        setLogoAlign((data.name === "right" ? "right" : "left") as "left" | "right");
+        const alignValue =
+          data.name === "right"
+            ? "right"
+            : data.name === "center"
+            ? "center"
+            : "left";
+        setLogoAlign(alignValue as "left" | "right" | "center");
       } else {
         setFooterText(DEFAULT_FOOTER);
         setLogoAlign("left");
@@ -118,11 +123,11 @@ const GlobalEmailTemplateSection = () => {
       [
         {
           admin_id: profile.id,
-          name: logoAlign, // left o right
+          name: logoAlign, // left, right o center
           subject: footerText,
           is_default: false,
           topic: "generale",
-          content: "", // pulito, non usato qui
+          content: "",
         },
       ],
       {
@@ -145,13 +150,17 @@ const GlobalEmailTemplateSection = () => {
     }
   };
 
-  // Anteprima HTML (non personalizzabile qui)
+  // Anteprima HTML
   const renderPreview = () => {
+    let textAlign = logoAlign;
+    if (logoAlign === "center") textAlign = "center";
+    else if (logoAlign === "right") textAlign = "right";
+    else textAlign = "left";
     return `
       <div style="font-family: sans-serif; border:1px solid #ccc; padding:32px; max-width:580px; margin:auto; background:white;">
         ${
           logoUrl
-            ? `<div style="text-align:${logoAlign};margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
+            ? `<div style="text-align:${textAlign};margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
             : ""
         }
         <div>
@@ -218,6 +227,16 @@ const GlobalEmailTemplateSection = () => {
                 disabled={loading || initialLoading}
               >
                 <AlignLeft />
+              </Button>
+              <Button
+                size="icon"
+                variant={logoAlign === "center" ? "default" : "outline"}
+                onClick={() => setLogoAlign("center")}
+                type="button"
+                title="Allinea al centro"
+                disabled={loading || initialLoading}
+              >
+                <AlignCenter />
               </Button>
               <Button
                 size="icon"
