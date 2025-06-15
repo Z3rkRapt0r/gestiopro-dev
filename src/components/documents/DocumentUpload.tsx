@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +61,7 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
 
   useEffect(() => {
     if (file) {
-      setSubject(file.name.replace(/\.[^/.]+$/, ''));
+      // Non aggiornare più il subject con il nome del file!
       if (!body) {
         setBody(defaultNotificationBody);
       }
@@ -227,9 +226,7 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
                 const selectedFile = e.target.files?.[0];
                 setFile(selectedFile || null);
                 setSubjectDirty(false);
-                if (selectedFile && !subject) {
-                  setSubject(selectedFile.name.replace(/\.[^/.]+$/, ''));
-                }
+                // RIMOSSO: nessun setSubject(selectedFile.name...) qui!
                 if (!body) {
                   setBody(defaultNotificationBody);
                 }
