@@ -1,22 +1,26 @@
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from "@/components/ui/table";
 import { getNotificationTypeLabel } from "@/utils/notificationUtils";
+import { Button } from "@/components/ui/button";
+import { RotateCcw } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
   const { notifications, loading, refreshNotifications } = useNotifications();
   const { profile } = useAuth();
+  const [innerRefreshKey, setInnerRefreshKey] = useState(0);
 
-  // Riguarda ogni volta che refreshKey cambia
+  // Riguarda ogni volta che refreshKey cambia o viene forzato
   useEffect(() => {
-    if (refreshKey !== undefined) {
+    if (refreshKey !== undefined || innerRefreshKey) {
       refreshNotifications();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey]);
+  }, [refreshKey, innerRefreshKey]);
 
   const sent = useMemo(
     () =>
@@ -24,17 +28,34 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
     [notifications, profile?.id]
   );
 
+  const handleManualRefresh = () => {
+    setInnerRefreshKey(k => k + 1);
+    toast({ title: "Cronologia aggiornata" });
+  };
+
   if (loading) {
     return <div className="text-center text-gray-500 py-8">Caricamento cronologia notifiche...</div>;
   }
 
   if (!sent.length) {
-    return <div className="text-gray-400 py-8 text-center">Nessuna notifica inviata ancora.</div>;
+    return (
+      <div className="flex flex-col items-center py-8 text-gray-400">
+        <Button variant="outline" size="sm" onClick={handleManualRefresh}>
+          <RotateCcw className="w-4 h-4 mr-2" /> Aggiorna
+        </Button>
+        <div className="mt-3">Nessuna notifica inviata ancora.</div>
+      </div>
+    );
   }
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4">Cronologia notifiche inviate</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Cronologia notifiche inviate</h2>
+        <Button variant="outline" size="icon" onClick={handleManualRefresh} title="Aggiorna cronologia">
+          <RotateCcw className="w-4 h-4" />
+        </Button>
+      </div>
       <div className="overflow-auto">
         <Table>
           <TableHeader>
