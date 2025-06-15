@@ -55,6 +55,8 @@ export const GlobalEmailTemplateForm = () => {
         .eq("topic", "generale")
         .maybeSingle();
 
+      console.log("[GlobalEmailTemplate] loaded template:", { data, error });
+
       if (!error && data) {
         // Su caricamento, imposto quello che viene da Supabase (solo una volta)
         setFooterText(data.subject || DEFAULT_FOOTER);
@@ -86,6 +88,8 @@ export const GlobalEmailTemplateForm = () => {
       .eq("is_default", false)
       .eq("topic", "generale")
       .maybeSingle();
+
+    console.log("[GlobalEmailTemplate] reloadTemplateSettings result:", { data, error });
 
     if (!error && data) {
       // Solo aggiorna se diversi per non sovrascrivere input utente post-save
@@ -152,6 +156,8 @@ export const GlobalEmailTemplateForm = () => {
       .eq("topic", "generale")
       .maybeSingle();
 
+    console.log("[GlobalEmailTemplate] existing template found before save:", { existing, getError });
+
     let error = null;
 
     if (existing?.id) {
@@ -166,8 +172,9 @@ export const GlobalEmailTemplateForm = () => {
         })
         .eq("id", existing.id);
       error = updateError;
+      console.log("[GlobalEmailTemplate] update response:", { updateError });
     } else {
-      const { error: insertError } = await supabase
+      const { error: insertError, data: insertData } = await supabase
         .from("email_templates")
         .insert([
           {
@@ -181,6 +188,7 @@ export const GlobalEmailTemplateForm = () => {
           },
         ]);
       error = insertError;
+      console.log("[GlobalEmailTemplate] insert response:", { insertData, insertError });
     }
 
     setLoading(false);
