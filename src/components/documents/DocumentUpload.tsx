@@ -197,6 +197,36 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
     // Admin: quando target specifico. Utente: sempre
     (isAdmin && (uploadTarget === 'specific_user' || targetUserId)) || (!isAdmin);
 
+  // Utilizzato per capire se l'utente ha cambiato subject manualmente
+  const [subjectDirty, setSubjectDirty] = useState(false);
+
+  useEffect(() => {
+    // Se il file viene caricato resetta le condizioni per default subject
+    setSubjectDirty(false);
+  }, [file]);
+
+  const handleDocumentTypeChange = (typeValue: string) => {
+    setDocumentType(typeValue);
+    // Trova label
+    const type = documentTypes.find(dt => dt.value === typeValue);
+    if (type) {
+      // Imposta l'oggetto della mail solo se non modificato manualmente oppure se era vuoto oppure corrispondeva al vecchio label
+      if (
+        !subjectDirty ||
+        !subject ||
+        documentTypes.some(dt => dt.label === subject)
+      ) {
+        setSubject(type.label);
+        setSubjectDirty(false);
+      }
+    }
+  };
+
+  const handleSubjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSubject(e.target.value);
+    setSubjectDirty(true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md">
@@ -258,44 +288,10 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
             </div>
           )}
 
-          {/* File */}
-          <div className="space-y-2">
-            <Label htmlFor="file">File</Label>
-            <Input
-              id="file"
-              type="file"
-              onChange={(e) => {
-                const selectedFile = e.target.files?.[0];
-                setFile(selectedFile || null);
-                if (selectedFile && !subject) {
-                  setSubject(selectedFile.name.replace(/\.[^/.]+$/, ''));
-                }
-                if (!body) {
-                  setBody(defaultNotificationBody);
-                }
-              }}
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx,.txt"
-              required
-            />
-          </div>
-
-          {/* Titolo/oggetto (solo se notifica è true, altrimenti disabled) */}
-          <div className="space-y-2">
-            <Label htmlFor="subject">Oggetto della mail</Label>
-            <Input
-              id="subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Oggetto della mail"
-              required={notifyRecipient}
-              disabled={!notifyRecipient}
-            />
-          </div>
-
-          {/* Tipo documento */}
+          {/* Tipo documento - ora PRIMA di file/oggetto! */}
           <div className="space-y-2">
             <Label htmlFor="type">Tipo Documento</Label>
-            <Select value={documentType} onValueChange={setDocumentType} required>
+            <Select value={documentType} onValueChange={handleDocumentTypeChange} required>
               <SelectTrigger>
                 <SelectValue placeholder="Seleziona il tipo di documento" />
               </SelectTrigger>
@@ -309,7 +305,42 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
             </Select>
           </div>
 
-          {/* Messaggio/descrizione (solo se notifica è true, altrimenti disabled) */}
+          {/* File */}
+          <div className="space-y-2">
+            <Label htmlFor="file">File</Label>
+            <Input
+              id="file"
+              type="file"
+              onChange={(e) => {
+                const selectedFile = e.target.files?.[0];
+                setFile(selectedFile || null);
+                setSubjectDirty(false); // File cambia: resetta dirty (lascia subject gestito su tipo doc o filename)
+                if (selectedFile && !subject) {
+                  setSubject(selectedFile.name.replace(/\.[^/.]+$/, ''));
+                }
+                if (!body) {
+                  setBody(defaultNotificationBody);
+                }
+              }}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx,.txt"
+              required
+            />
+          </div>
+
+          {/* Titolo/oggetto (dopo il tipo documento!) */}
+          <div className="space-y-2">
+            <Label htmlFor="subject">Oggetto della mail</Label>
+            <Input
+              id="subject"
+              value={subject}
+              onChange={handleSubjectChange}
+              placeholder="Oggetto della mail"
+              required={notifyRecipient}
+              disabled={!notifyRecipient}
+            />
+          </div>
+
+          {/* Messaggio/descrizione (dopo oggetto, come prima) */}
           <div className="space-y-2">
             <Label htmlFor="body">Messaggio per il destinatario</Label>
             <Textarea
