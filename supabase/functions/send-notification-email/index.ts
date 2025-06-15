@@ -1,6 +1,11 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  getGlobalEmailTemplate,
+  getLogoHtml,
+  generateEmailHtml,
+  buildDownloadSection,
+} from "./utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,37 +51,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // --- Inizio: Recupera impostazioni template globale email ---
-    let logoAlign: "left" | "center" | "right" = "left";
-    let footerText: string = DEFAULT_FOOTER;
-    let logoPublicUrl: string | null = null;
+    // RECUPERA IMPOSTAZIONI TEMPLATE GLOBALE
+    const { logoAlign, footerText, logoPublicUrl } = await getGlobalEmailTemplate(supabase, userId);
 
-    // 1. Recupera template globale "generale"
-    const { data: tpl, error: tplError } = await supabase
-      .from("email_templates")
-      .select("name,subject")
-      .eq("admin_id", userId)
-      .eq("topic", "generale")
-      .maybeSingle();
-
-    if (tpl) {
-      footerText = tpl.subject || DEFAULT_FOOTER;
-      if (tpl.name === "right" || tpl.name === "center") {
-        logoAlign = tpl.name;
-      }
-    }
-
-    // 2. Recupera URL pubblico del logo
-    const { data: logoData } = await supabase
-      .storage
-      .from(LOGO_BUCKET)
-      .getPublicUrl(`${userId}/${LOGO_PATH}`);
-    if (logoData?.publicUrl) {
-      logoPublicUrl = logoData.publicUrl;
-    }
-    // --- Fine impostazioni template globali ---
-
-    // Get Brevo API key for admin
+    // RECUPERA ADMIN SETTINGS
     console.log("[Notification Email] Looking for admin settings for user:", userId);
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
@@ -105,7 +83,7 @@ serve(async (req) => {
       );
     }
 
-    // Get admin profile info for sender name
+    // RECUPERA ADMIN PROFILE INFO
     const { data: adminProfile, error: profileError } = await supabase
       .from("profiles")
       .select("first_name, last_name")
@@ -118,7 +96,7 @@ serve(async (req) => {
     
     const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
 
-    // Get recipient emails
+    // RECUPERA EMAIL DESTINATARI
     let emails: string[] = [];
     if (recipientId && recipientId !== "ALL") {
       const { data: profile, error: profileError } = await supabase
@@ -149,36 +127,11 @@ serve(async (req) => {
       );
     }
 
-    // Allegato (se presente)
-    let downloadSection = '';
-    if (attachment_url) {
-      const bucket = "notification-attachments";
-      const storageUrl = Deno.env.get("SUPABASE_URL")?.replace(/^https?:\/\//, "") ?? "";
-      const bucketUrl = `https://${storageUrl}/storage/v1/object/public/${bucket}/${attachment_url}`;
-      downloadSection = `
-        <div style="margin-top: 20px; border-left: 4px solid #007bff; padding-left: 10px;">
-          <strong>Documento allegato disponibile</strong><br>
-          <span style="font-size: 14px; color: #333;">
-            Per visualizzare o scaricare il documento, clicca sul link sottostante.<br/>
-            <span style="font-size: 12px; color: #888;">È necessario effettuare l'accesso con il tuo account aziendale.</span>
-          </span>
-          <div style="margin-top: 8px;">
-            <a href="${bucketUrl}" target="_blank" style="color: #007bff; font-weight: bold;">Apri allegato</a>
-          </div>
-        </div>
-      `;
-    }
+    // COSTRUISCI HTML LOGO + SEZIONE DOWNLOAD
+    const logoHtml = getLogoHtml(logoPublicUrl, logoAlign);
+    const downloadSection = buildDownloadSection(attachment_url, Deno.env.get("SUPABASE_URL"));
 
-    // --- Costruzione layout personalizzato (logo, allineamento, footer) ---
-    let logoHtml = "";
-    if (logoPublicUrl) {
-      logoHtml = `
-        <div style="width:100%;text-align:${logoAlign};margin-bottom:16px;">
-          <img src="${logoPublicUrl}" alt="logo" style="max-height:60px;max-width:200px;" />
-        </div>
-      `;
-    }
-
+    // COMPOSIZIONE EMAIL PAYLOAD
     const brevoPayload = {
       sender: { 
         name: senderName, 
@@ -186,22 +139,13 @@ serve(async (req) => {
       },
       to: emails.map(email => ({ email })),
       subject: subject,
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background:white; border:1px solid #eee; padding:36px;">
-          ${logoHtml}
-          <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
-            ${subject}
-          </h2>
-          <div style="margin: 20px 0; line-height: 1.6; color: #555;">
-            ${shortText.replace(/\n/g, '<br>')}
-          </div>
-          ${downloadSection}
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <footer style="font-size:13px; color:#888; margin-top:30px; text-align:center;">
-            ${footerText}
-          </footer>
-        </div>
-      `,
+      htmlContent: generateEmailHtml({
+        subject,
+        shortText,
+        logoHtml,
+        downloadSection,
+        footerText,
+      }),
       textContent: `${subject}\n\n${shortText}\n${attachment_url ? "\nAllegato incluso, accedi al portale per scaricarlo." : ""}\n\n--- Notifica automatica dal sistema aziendale ---`
     };
 
