@@ -41,8 +41,8 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const isAdmin = profile?.role === 'admin';
 
-  // Nuovo stato: invia notifica dopo upload
-  const [notifyRecipient, setNotifyRecipient] = useState(false);
+  // Flag notifica ora sempre true di default e sempre visibile
+  const [notifyRecipient, setNotifyRecipient] = useState(true);
   const { sendNotification, loading: notificationLoading } = useNotificationForm();
 
   useEffect(() => {
@@ -115,14 +115,26 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
       isPersonalDocument
     );
 
-    // INVIA NOTIFICA SOLO SE RICHIESTO, SOLO SE DOCUMENTO PERSONALE
-    if (!error && notifyRecipient && isPersonalDocument && targetUserForUpload && targetUserForUpload !== user.id) {
-      await sendNotification({
-        recipientId: targetUserForUpload,
-        subject: title,
-        shortText: defaultNotificationText,
-        topic: "document",
-      });
+    // INVIA NOTIFICA SOLO SE RICHIESTO (ora sempe visibile e di default true): per doc personali NOTIFICA il destinatario, per doc aziendali (all_employees) invia a tutti
+    if (!error && notifyRecipient) {
+      // Se documento personale, notifica il destinatario (non se stesso)
+      if (isPersonalDocument && targetUserForUpload && targetUserForUpload !== user.id) {
+        await sendNotification({
+          recipientId: targetUserForUpload,
+          subject: title,
+          shortText: defaultNotificationText,
+          topic: "document",
+        });
+      }
+      // Se aziendale, notifica a tutti (recipientId = null, gestito in hook)
+      if (!isPersonalDocument) {
+        await sendNotification({
+          recipientId: null,
+          subject: title,
+          shortText: defaultNotificationTextAzienda,
+          topic: "document",
+        });
+      }
     }
 
     if (!error) {
@@ -144,7 +156,10 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
 
   const defaultNotificationText =
     "È stato caricato un nuovo documento per te. Accedi alla tua area personale per visualizzarlo e scaricarlo.";
+  const defaultNotificationTextAzienda =
+    "È stato caricato un nuovo documento aziendale. Accedi alla tua area personale per visualizzarlo e scaricarlo.";
 
+  // Checkbox visibile sempre e sempre true di default
   const shouldShowNotifyOption =
     // Opzione disponibile solo in contesti personali (no upload aziendale)
     // Admin: quando target specifico. Utente: sempre
@@ -260,20 +275,19 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
             />
           </div>
 
-          {shouldShowNotifyOption && (
-            <div className="flex items-center space-x-2">
-              <input
-                id="notify"
-                type="checkbox"
-                checked={notifyRecipient}
-                onChange={e => setNotifyRecipient(e.target.checked)}
-                className="border-gray-300 rounded focus:ring-blue-500 h-4 w-4"
-              />
-              <Label htmlFor="notify" className="cursor-pointer select-none">
-                Avvisa il destinatario del caricamento del documento (invia una notifica email)
-              </Label>
-            </div>
-          )}
+          {/* NOTIFICA: ora sempre visibile e checked di default */}
+          <div className="flex items-center space-x-2">
+            <input
+              id="notify"
+              type="checkbox"
+              checked={notifyRecipient}
+              onChange={e => setNotifyRecipient(e.target.checked)}
+              className="border-gray-300 rounded focus:ring-blue-500 h-4 w-4"
+            />
+            <Label htmlFor="notify" className="cursor-pointer select-none">
+              Avvisa il destinatario del caricamento del documento (invia una notifica email)
+            </Label>
+          </div>
 
           <div className="flex gap-2">
             <Button 
