@@ -135,6 +135,14 @@ export default function LeaveRequestsCardsGrid({
               ? `${req.profiles.first_name ?? ""} ${req.profiles.last_name ?? ""}`.trim()
               : "Non specificato";
 
+          const permessoOrario = req.type === "permesso" && req.time_from && req.time_to
+            ? `${req.time_from} - ${req.time_to}`
+            : req.type === "permesso" && req.time_from
+            ? req.time_from
+            : req.type === "permesso" && req.time_to
+            ? req.time_to
+            : null;
+
           return (
             <div
               key={req.id}
@@ -170,7 +178,12 @@ export default function LeaveRequestsCardsGrid({
                 <div className="flex items-center gap-1 ml-auto">
                   <span className="text-[12px] text-muted-foreground">
                     {req.type === "permesso" && req.day
-                      ? req.day
+                      ? (
+                        <>
+                          <span>{req.day}</span>
+                          {permessoOrario && <span className="mx-1 text-xs text-blue-900">({permessoOrario})</span>}
+                        </>
+                      )
                       : req.type === "ferie" && req.date_from && req.date_to
                       ? `${req.date_from} → ${req.date_to}`
                       : "-"}

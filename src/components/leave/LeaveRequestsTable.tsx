@@ -139,13 +139,34 @@ export default function LeaveRequestsTable({
               <TableCell className="p-1 text-center align-middle">
                 {editingId === req.id ? (
                   req.type === "permesso" ? (
-                    <input
-                      type="date"
-                      value={edited.day ?? ""}
-                      onChange={e => handleEditChange("day", e.target.value)}
-                      className="border px-1 rounded text-xs w-[78px] mx-auto block"
-                      style={{ height: '28px' }}
-                    />
+                    <div className="flex flex-col gap-1 items-center">
+                      <input
+                        type="date"
+                        value={edited.day ?? ""}
+                        onChange={e => handleEditChange("day", e.target.value)}
+                        className="border px-1 rounded text-xs w-[78px] mx-auto block"
+                        style={{ height: '28px' }}
+                      />
+                      <div className="flex flex-row gap-1">
+                        <input
+                          type="time"
+                          value={edited.time_from ?? ""}
+                          onChange={e => handleEditChange("time_from", e.target.value)}
+                          className="border px-1 rounded text-xs w-[68px]"
+                          style={{ height: '24px' }}
+                          placeholder="Da"
+                        />
+                        <span className="text-xs text-gray-400 leading-none">-</span>
+                        <input
+                          type="time"
+                          value={edited.time_to ?? ""}
+                          onChange={e => handleEditChange("time_to", e.target.value)}
+                          className="border px-1 rounded text-xs w-[68px]"
+                          style={{ height: '24px' }}
+                          placeholder="A"
+                        />
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center gap-0.5">
                       <input
@@ -166,7 +187,14 @@ export default function LeaveRequestsTable({
                     </div>
                   )
                 ) : req.type === "permesso" && req.day ? (
-                  <span className="whitespace-nowrap">{req.day}</span>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="whitespace-nowrap">{req.day}</span>
+                    {(req.time_from || req.time_to) && (
+                      <span className="whitespace-nowrap text-xs text-blue-900">
+                        ({[req.time_from, req.time_to].filter(Boolean).join(" - ")})
+                      </span>
+                    )}
+                  </div>
                 ) : req.type === "ferie" && req.date_from && req.date_to ? (
                   <span className="whitespace-nowrap">{req.date_from}<span className="mx-0.5">-</span>{req.date_to}</span>
                 ) : (
