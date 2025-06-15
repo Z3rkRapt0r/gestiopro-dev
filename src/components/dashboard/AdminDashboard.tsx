@@ -373,9 +373,10 @@ const AdminDashboard = () => {
                             <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M4 4v16h16V4M16 2v4H8V2H2v20h20V2h-6z"></path></svg>
                           </span>
                         ) : (
+                          // Solo per type === "approval" esiste status
                           <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full
-                            ${ev.status === "approved" ? "bg-green-100" : "bg-red-100"}`}>
-                            {ev.status === "approved" ? (
+                            ${'status' in ev && ev.status === "approved" ? "bg-green-100" : "bg-red-100"}`}>
+                            {"status" in ev && ev.status === "approved" ? (
                               <svg className="h-5 w-5 text-green-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
                             ) : (
                               <svg className="h-5 w-5 text-red-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -395,7 +396,8 @@ const AdminDashboard = () => {
                       <div className="hidden sm:block text-xs text-gray-400 ml-3">
                         {ev.date ? new Date(ev.date).toLocaleString("it-IT") : ""}
                       </div>
-                      {ev.type === "document" && (
+                      {/* Solo per DOCUMENT, forniamo il download */}
+                      {ev.type === "document" && "url" in ev && (
                         <a
                           href={ev.url}
                           target="_blank"
