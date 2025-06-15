@@ -104,10 +104,10 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
   ];
 
   const defaultNotificationBody =
-    "Gentile utente, è stato caricato un nuovo documento per te. Accedi alla tua area personale per visualizzarlo e scaricarlo.";
+    'Gentile utente, è stato caricato un nuovo documento per te.<br><a href="/" style="color:#007bff;text-decoration:underline;">Accedi alla tua area personale per visualizzarlo e scaricarlo</a>.';
 
   const defaultNotificationBodyAzienda =
-    "Gentile collaboratore, è stato caricato un nuovo documento aziendale. Visita la tua area personale per scaricarlo.";
+    'Gentile collaboratore, è stato caricato un nuovo documento aziendale.<br><a href="/" style="color:#007bff;text-decoration:underline;">Visita la tua area personale per scaricarlo</a>.';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -347,11 +347,14 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
               id="body"
               value={body}
               onChange={e => setBody(e.target.value)}
-              placeholder="Gentile utente, è stato caricato un nuovo documento per te. Accedi alla tua area personale per visualizzarlo e scaricarlo."
+              placeholder="Gentile utente, è stato caricato un nuovo documento per te.&#10;&lt;a href=&quot;/&quot;&gt;Accedi alla tua area personale per visualizzarlo e scaricarlo&lt;/a&gt;."
               required={notifyRecipient}
               disabled={!notifyRecipient}
               rows={3}
             />
+            <div className="text-xs text-muted-foreground">
+              Puoi usare HTML per link (esempio: {'<a href="/">Vai alla dashboard</a>'})
+            </div>
           </div>
 
           {/* Checkbox avvisa destinatario: sempre visibile! */}
