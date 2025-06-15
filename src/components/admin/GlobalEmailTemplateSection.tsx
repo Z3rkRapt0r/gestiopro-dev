@@ -39,11 +39,7 @@ const GlobalEmailTemplateSection = () => {
         .storage
         .from(LOGO_BUCKET)
         .getPublicUrl(`${profile.id}/${LOGO_PATH}`);
-      if (logoData?.publicUrl) {
-        setLogoUrl(logoData.publicUrl);
-      } else {
-        setLogoUrl(null);
-      }
+      setLogoUrl(logoData?.publicUrl || null);
 
       // Template
       const { data, error } = await supabase
@@ -56,6 +52,7 @@ const GlobalEmailTemplateSection = () => {
 
       if (!error && data) {
         setFooterText(data.subject || DEFAULT_FOOTER);
+
         const alignValue =
           data.name === "right"
             ? "right"
@@ -63,11 +60,16 @@ const GlobalEmailTemplateSection = () => {
             ? "center"
             : "left";
         setLogoAlign(alignValue as "left" | "right" | "center");
-        setSenderName(data.sender_name || "Admin SerramentiCorp - Sistema notifiche");
+        // SOLO SE IL CAMPO È DEFINITO, ALTRIMENTI LASCIARE QUELLO ESISTENTE
+        setSenderName(
+          typeof data.sender_name === "string" && data.sender_name.length > 0
+            ? data.sender_name
+            : ""
+        );
       } else {
         setFooterText(DEFAULT_FOOTER);
         setLogoAlign("left");
-        setSenderName("Admin SerramentiCorp - Sistema notifiche");
+        setSenderName(""); // Lascia campo vuoto se nuovo
       }
 
       setInitialLoading(false);
