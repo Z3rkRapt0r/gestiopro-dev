@@ -1,11 +1,9 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+// === CORS & Response Helpers ===
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+}
 
 function jsonResponse(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -18,6 +16,13 @@ function isBlank(str: unknown) {
   return typeof str !== "string" || !str.trim();
 }
 
+// === Supabase Fetch Helpers ===
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+/**
+ * Recupera la Brevo API Key dalle impostazioni admin.
+ */
 async function fetchAdminSettings(supabase: any, userId: string) {
   const { data, error } = await supabase
     .from("admin_settings")
@@ -30,6 +35,9 @@ async function fetchAdminSettings(supabase: any, userId: string) {
   return data.brevo_api_key;
 }
 
+/**
+ * Recupera nome/cognome admin per la firma.
+ */
 async function fetchAdminProfile(supabase: any, userId: string) {
   const { data, error } = await supabase
     .from("profiles")
@@ -43,6 +51,9 @@ async function fetchAdminProfile(supabase: any, userId: string) {
   return data;
 }
 
+/**
+ * Recupera la URL pubblica del logo (con cache-busting).
+ */
 async function fetchLogoUrl(supabase: any, userId: string) {
   try {
     const { data: logoData } = await supabase
@@ -50,7 +61,6 @@ async function fetchLogoUrl(supabase: any, userId: string) {
       .from("company-assets")
       .getPublicUrl(`${userId}/email-logo.png`);
     if (logoData?.publicUrl) {
-      // Aggiungi query param per evitare caching dell’immagine nella mail
       const cacheBuster = `v=${Date.now()}`;
       const logoUrlNoCache =
         logoData.publicUrl.indexOf("?") === -1
@@ -67,6 +77,9 @@ async function fetchLogoUrl(supabase: any, userId: string) {
   }
 }
 
+/**
+ * Estrae gli indirizzi email dei destinatari (uno o tutti).
+ */
 async function fetchRecipientEmails(supabase: any, recipientId: string | null) {
   if (recipientId && recipientId !== "ALL") {
     const { data: profile, error: profileError } = await supabase
@@ -93,6 +106,11 @@ async function fetchRecipientEmails(supabase: any, recipientId: string | null) {
   }
 }
 
+
+// === TEMPLATES & HTML HELPERS ===
+/**
+ * Costruisce la sezione download allegato per le mail.
+ */
 function buildAttachmentSection(bucketUrl: string | null) {
   if (!bucketUrl) return "";
   return `
@@ -109,6 +127,9 @@ function buildAttachmentSection(bucketUrl: string | null) {
   `;
 }
 
+/**
+ * Assembla il corpo HTML dell'email, inclusi logo e allegato.
+ */
 function buildHtmlContent({ subject, shortText, logoUrl, attachmentSection, senderEmail }: {
   subject: string,
   shortText: string,
@@ -141,7 +162,9 @@ function buildHtmlContent({ subject, shortText, logoUrl, attachmentSection, send
   `;
 }
 
+// === MAIN EDGE FUNCTION HANDLER ===
 serve(async (req) => {
+  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -149,6 +172,7 @@ serve(async (req) => {
   console.log("[Notification Email] Starting email function");
 
   try {
+    // --- Preprocessing and validation ---
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
@@ -165,11 +189,13 @@ serve(async (req) => {
       return jsonResponse({ error: "Missing subject or shortText" }, 400);
     }
 
+    // --- Supabase client init ---
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // --- Recupero API key Brevo ---
     let brevoApiKey: string;
     try {
       brevoApiKey = await fetchAdminSettings(supabase, userId);
@@ -179,16 +205,18 @@ serve(async (req) => {
       return jsonResponse({ error: err.message }, 400);
     }
 
+    // --- Profilo/nome mittente ---
     const adminProfile = await fetchAdminProfile(supabase, userId);
-
-    const logoUrl = await fetchLogoUrl(supabase, userId);
-
     const senderName =
       adminProfile?.first_name && adminProfile?.last_name
         ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche`
         : "Sistema Notifiche";
     const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
 
+    // --- Logo aziendale (con cache busting) ---
+    const logoUrl = await fetchLogoUrl(supabase, userId);
+
+    // --- Destinatari ---
     let emails: string[];
     try {
       emails = await fetchRecipientEmails(supabase, recipientId);
@@ -202,6 +230,7 @@ serve(async (req) => {
       return jsonResponse({ error: "No valid email addresses found" }, 400);
     }
 
+    // --- Section download allegato, se serve ---
     let downloadSection = '';
     let bucketUrl: string | null = null;
     if (attachment_url) {
@@ -211,6 +240,7 @@ serve(async (req) => {
       downloadSection = buildAttachmentSection(bucketUrl);
     }
 
+    // --- Corpo HTML email ---
     const htmlContent = buildHtmlContent({
       subject,
       shortText,
@@ -219,6 +249,7 @@ serve(async (req) => {
       senderEmail
     });
 
+    // --- Costruzione payload Brevo ---
     const brevoPayload = {
       sender: {
         name: senderName,
@@ -230,6 +261,7 @@ serve(async (req) => {
       textContent: `${subject}\n\n${shortText}\n${attachment_url ? "\nAllegato incluso, accedi al portale per scaricarlo." : ""}\n\n--- Notifica automatica dal sistema aziendale ---`
     };
 
+    // --- Invio via Brevo ---
     console.log("[Notification Email] Calling Brevo API...");
 
     const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -277,3 +309,4 @@ serve(async (req) => {
     }, 500);
   }
 });
+
