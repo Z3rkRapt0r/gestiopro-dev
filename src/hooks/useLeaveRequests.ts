@@ -102,7 +102,7 @@ export function useLeaveRequests() {
       id,
       status,
       admin_note
-    }: { id: string; status: "approved" | "rejected"; admin_note?: string }) => {
+    }: { id: string; status: "approved" | "rejected" | "pending"; admin_note?: string }) => {
       const { error, data } = await supabase
         .from("leave_requests")
         .update({
