@@ -28,52 +28,91 @@ const GlobalEmailTemplateSection = () => {
   const [testLoading, setTestLoading] = useState(false);
   const inputLogoRef = useRef<HTMLInputElement>(null);
 
+  // Se il logo allegato è presente, imposta direttamente come logoUploadFile ed esegui upload
   useEffect(() => {
-    const loadData = async () => {
-      if (!profile?.id) {
-        setInitialLoading(false);
-        return;
-      }
-      setInitialLoading(true);
-
-      // Carica il logo
-      const { data: logoData } = await supabase
-        .storage
+    // Carica il logo predefinito SE NON esiste già un logo per l'admin
+    // NOTA: l'immagine allegata deve essere caricata ONE-TIME come logo base del profilo admin
+    const autoUploadLogoFromAttachment = async () => {
+      if (!profile?.id) return;
+      // Controlla se c'è già un logo e se no caricalo
+      const { data: logoData } = await supabase.storage
         .from(LOGO_BUCKET)
         .getPublicUrl(`${profile.id}/${LOGO_PATH}`);
-      if (logoData?.publicUrl) {
-        setLogoUrl(logoData.publicUrl);
-      } else {
-        setLogoUrl(null);
+      if (logoData?.publicUrl) return; // già esiste un logo
+      // Carica quello fornito in allegato
+      const response = await fetch("/lovable-uploads/6ef558b5-05c5-4f90-8b0e-d42cb12af8e8.png");
+      const blob = await response.blob();
+      const file = new File([blob], "email-logo.png", { type: blob.type });
+      setLogoUploadFile(file);
+      setLoading(true);
+      await supabase.storage.createBucket(LOGO_BUCKET, { public: true }).catch(() => {});
+      const path = `${profile.id}/${LOGO_PATH}`;
+      await supabase.storage.from(LOGO_BUCKET).remove([path]).catch(() => {});
+      const { error } = await supabase.storage
+        .from(LOGO_BUCKET)
+        .upload(path, file, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType: file.type,
+        });
+      if (!error) {
+        const { data: newLogoData } = await supabase.storage.from(LOGO_BUCKET).getPublicUrl(path);
+        setLogoUrl(newLogoData?.publicUrl ?? null);
+        toast({
+          title: "Logo impostato",
+          description: "Il nuovo logo aziendale è stato impostato automaticamente.",
+        });
       }
-
-      // Carica le impostazioni template (allineamento logo e footer)
-      const { data, error } = await supabase
-        .from("email_templates")
-        .select("subject,name")
-        .eq("admin_id", profile.id)
-        .eq("is_default", false)
-        .eq("topic", "generale")
-        .maybeSingle();
-
-      if (!error && data) {
-        setFooterText(data.subject || DEFAULT_FOOTER);
-        const alignValue =
-          data.name === "right"
-            ? "right"
-            : data.name === "center"
-            ? "center"
-            : "left";
-        setLogoAlign(alignValue as "left" | "right" | "center");
-      } else {
-        setFooterText(DEFAULT_FOOTER);
-        setLogoAlign("left");
-      }
-
-      setInitialLoading(false);
+      setLoading(false);
     };
-    loadData();
+
+    autoUploadLogoFromAttachment();
     // eslint-disable-next-line
+  }, [profile?.id]);
+
+  // Carica il logo
+  useEffect(() => {
+    if (!profile?.id) {
+      setInitialLoading(false);
+      return;
+    }
+    setInitialLoading(true);
+
+    // Carica il logo
+    const { data: logoData } = await supabase
+      .storage
+      .from(LOGO_BUCKET)
+      .getPublicUrl(`${profile.id}/${LOGO_PATH}`);
+    if (logoData?.publicUrl) {
+      setLogoUrl(logoData.publicUrl);
+    } else {
+      setLogoUrl(null);
+    }
+
+    // Carica le impostazioni template (allineamento logo e footer)
+    const { data, error } = await supabase
+      .from("email_templates")
+      .select("subject,name")
+      .eq("admin_id", profile.id)
+      .eq("is_default", false)
+      .eq("topic", "generale")
+      .maybeSingle();
+
+    if (!error && data) {
+      setFooterText(data.subject || DEFAULT_FOOTER);
+      const alignValue =
+        data.name === "right"
+          ? "right"
+          : data.name === "center"
+          ? "center"
+          : "left";
+      setLogoAlign(alignValue as "left" | "right" | "center");
+    } else {
+      setFooterText(DEFAULT_FOOTER);
+      setLogoAlign("left");
+    }
+
+    setInitialLoading(false);
   }, [profile?.id]);
 
   // Upload logo su Supabase Storage
