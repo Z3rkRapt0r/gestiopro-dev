@@ -25,6 +25,7 @@ import AdminDocumentsSection from "./AdminDocumentsSection";
 import AdminNotificationsSection from "./AdminNotificationsSection";
 import NotificationForm from "@/components/notifications/NotificationForm";
 import NotificationsList from "@/components/notifications/NotificationsList";
+import AdminApprovalsSection from "@/components/leave/AdminApprovalsSection";
 
 import { useNavigate, useLocation } from "react-router-dom";
 import AdminSettingsSection from "@/components/admin/AdminSettingsSection";
@@ -531,6 +532,15 @@ const AdminDashboard = () => {
               <Settings className="mr-2 h-4 w-4" />
               Impostazioni
             </Button>
+            {/* NUOVO: pulsante approvazioni come le altre sezioni */}
+            <Button
+              variant={activeSection === "approvals" ? "default" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveSection("approvals")}
+            >
+              📝
+              <span className="ml-2">Approvazioni</span>
+            </Button>
           </div>
           {/* Main Content */}
           <div className="flex-1">
@@ -559,6 +569,7 @@ const AdminDashboard = () => {
                 <AdminSettingsSection />
               </div>
             )}
+            {activeSection === "approvals" && <AdminApprovalsSection />}
           </div>
         </div>
       </div>

@@ -136,6 +136,75 @@ export type Database = {
           },
         ]
       }
+      leave_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string | null
+          date_from: string | null
+          date_to: string | null
+          day: string | null
+          id: string
+          note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          time_from: string | null
+          time_to: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string | null
+          date_from?: string | null
+          date_to?: string | null
+          day?: string | null
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          time_from?: string | null
+          time_to?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string | null
+          date_from?: string | null
+          date_to?: string | null
+          day?: string | null
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          time_from?: string | null
+          time_to?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           body: string

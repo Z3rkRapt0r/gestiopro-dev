@@ -18,6 +18,7 @@ import NotificationsSection from "./NotificationsSection";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import EmployeeLeavePage from "@/components/leave/EmployeeLeavePage";
 
 const EmployeeDashboard = () => {
   const [activeSection, setActiveSection] = useState('documents');
@@ -159,6 +160,15 @@ const EmployeeDashboard = () => {
               <Mail className="mr-2 h-4 w-4" />
               Messaggi
             </Button>
+            
+            <Button
+              variant={activeSection === "leave" ? "default" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveSection("leave")}
+            >
+              🏖️
+              <span className="ml-2">Ferie e Permessi</span>
+            </Button>
           </div>
 
           {/* Main Content */}
@@ -168,6 +178,7 @@ const EmployeeDashboard = () => {
               {activeSection === 'notifications' && <NotificationsSection />}
               {activeSection === 'profile' && renderProfile()}
               {activeSection === 'messages' && <EmployeeMessagesSection />}
+              {activeSection === "leave" && <EmployeeLeavePage />}
             </Suspense>
           </div>
         </div>
