@@ -580,6 +580,8 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [notificationsRefreshKey, setNotificationsRefreshKey] = useState(0);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -674,9 +676,9 @@ const AdminDashboard = () => {
             {activeSection === 'notifications' && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">Invia nuova notifica</h2>
-                <NotificationForm onCreated={() => {/* force refresh notifications list logic */}} />
-                <h3 className="text-xl font-semibold mt-8">Notifiche inviate</h3>
-                <SentNotificationsHistory />
+                <NotificationForm onCreated={() => setNotificationsRefreshKey(prev => prev + 1)} />
+                <h3 className="text-xl font-semibold mt-8">Cronologia notifiche inviate</h3>
+                <SentNotificationsHistory refreshKey={notificationsRefreshKey} />
               </div>
             )}
             {/* SEZIONE IMPOSTAZIONI */}

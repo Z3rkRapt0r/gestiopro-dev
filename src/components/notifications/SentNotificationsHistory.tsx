@@ -1,17 +1,23 @@
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from "@/components/ui/table";
 import { getNotificationTypeLabel } from "@/utils/notificationUtils";
 
-const SentNotificationsHistory = () => {
-  const { notifications, loading } = useNotifications();
+const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
+  const { notifications, loading, refreshNotifications } = useNotifications();
   const { profile } = useAuth();
 
-  // Admin: mostra tutte quelle inviate da me
-  // Si assume che created_by === profile.id per notifiche inviate direttamente dall'admin
+  // Riguarda ogni volta che refreshKey cambia
+  useEffect(() => {
+    if (refreshKey !== undefined) {
+      refreshNotifications();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
+
   const sent = useMemo(
     () =>
       notifications.filter(n => n.created_by === profile?.id),

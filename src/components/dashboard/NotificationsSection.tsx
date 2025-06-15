@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import NotificationsList from "@/components/notifications/NotificationsList";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,29 +10,47 @@ const NotificationsSection = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [filter, setFilter] = useState<"all" | "personal" | "unread">("all");
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      let query = supabase
-        .from("notifications")
-        .select("*")
-        .order("created_at", { ascending: false });
+  const fetchNotifications = useCallback(async () => {
+    let query = supabase
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-      const { data } = await query;
+    const { data } = await query;
 
-      // Nuova logica di filtro:
-      setNotifications(
-        (data || []).filter((n) => {
-          if (filter === "personal")
-            return n.user_id === profile.id;
-          if (filter === "unread")
-            return !n.is_read && n.user_id === profile.id;
-          // tutte: personali (user_id mio) + generali (user_id nullo)
-          return n.user_id === profile.id || n.user_id === null;
-        })
-      );
-    };
-    fetchNotifications();
+    // Mapping dei dati per renderli compatibili con NotificationsList
+    const mapped = (data || []).map((n: any) => ({
+      id: n.id,
+      sender_id: n.created_by || null,
+      recipient_id: n.user_id ?? null,
+      is_global: n.user_id === null,
+      subject: n.title,
+      short_text: n.message,
+      body: n.body || null,
+      attachment_url: n.attachment_url || null,
+      read_by: n.is_read
+        ? [profile.id]
+        : [], // dato che la tabella usa solo is_read boolean
+      created_at: n.created_at,
+    }));
+
+    setNotifications(
+      mapped.filter((n) => {
+        if (filter === "personal")
+          return n.recipient_id === profile.id;
+        if (filter === "unread")
+          return n.read_by?.includes(profile.id) === false && n.recipient_id === profile.id;
+        // tutte: personali (user_id mio) + generali (user_id nullo)
+        return n.recipient_id === profile.id || n.is_global;
+      })
+    );
   }, [profile, filter]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchNotifications();
+    }
+  }, [profile, filter, fetchNotifications]);
 
   const markRead = async (id: string) => {
     await supabase
@@ -40,7 +58,9 @@ const NotificationsSection = () => {
       .update({ is_read: true })
       .eq("id", id);
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      prev.map((n) =>
+        n.id === id ? { ...n, is_read: true, read_by: [profile.id] } : n
+      )
     );
   };
 
