@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,8 +9,17 @@ export interface EmailTemplate {
   subject: string;
   content: string;
   is_default: boolean;
+  topic: string;
   created_at: string;
 }
+
+const TOPICS = [
+  { value: "generale", label: "Generale" },
+  { value: "documenti", label: "Documenti" },
+  { value: "assenze", label: "Assenze" },
+  { value: "promemoria", label: "Promemoria" },
+  { value: "altro", label: "Altro" },
+];
 
 export const useEmailTemplates = () => {
   const { profile } = useAuth();
@@ -44,7 +52,9 @@ export const useEmailTemplates = () => {
     }
   };
 
-  const saveTemplate = async (template: Omit<EmailTemplate, "id" | "created_at">) => {
+  const saveTemplate = async (
+    template: Omit<EmailTemplate, "id" | "created_at">
+  ) => {
     if (!profile?.id) return;
 
     setLoading(true);
@@ -57,24 +67,67 @@ export const useEmailTemplates = () => {
           subject: template.subject,
           content: template.content,
           is_default: template.is_default,
+          topic: template.topic ?? "generale",
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      setTemplates(prev => [data, ...prev]);
+      setTemplates((prev) => [data, ...prev]);
       toast({
         title: "Template salvato",
         description: "Il template è stato salvato con successo",
       });
-      
+
       return data;
     } catch (error: any) {
       console.error("Error saving template:", error);
       toast({
         title: "Errore",
         description: "Errore nel salvataggio del template",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateTemplate = async (
+    id: string,
+    template: Omit<EmailTemplate, "id" | "created_at">
+  ) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("email_templates")
+        .update({
+          name: template.name,
+          subject: template.subject,
+          content: template.content,
+          is_default: template.is_default,
+          topic: template.topic ?? "generale",
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setTemplates((prev) =>
+        prev.map((t) => (t.id === id ? data : t))
+      );
+      toast({
+        title: "Template aggiornato",
+        description: "Il template è stato aggiornato",
+      });
+      return data;
+    } catch (error: any) {
+      console.error("Error updating template:", error);
+      toast({
+        title: "Errore",
+        description: "Errore nell'aggiornamento del template",
         variant: "destructive",
       });
       throw error;
@@ -93,7 +146,7 @@ export const useEmailTemplates = () => {
 
       if (error) throw error;
 
-      setTemplates(prev => prev.filter(t => t.id !== templateId));
+      setTemplates((prev) => prev.filter((t) => t.id !== templateId));
       toast({
         title: "Template eliminato",
         description: "Il template è stato eliminato con successo",
@@ -115,7 +168,7 @@ export const useEmailTemplates = () => {
 
     setLoading(true);
     try {
-      const template = templates.find(t => t.id === templateId);
+      const template = templates.find((t) => t.id === templateId);
       if (!template) throw new Error("Template non trovato");
 
       const { data, error } = await supabase.functions.invoke('send-test-email', {
@@ -156,8 +209,10 @@ export const useEmailTemplates = () => {
     templates,
     loading,
     saveTemplate,
+    updateTemplate,
     deleteTemplate,
     sendTestEmail,
     refreshTemplates: loadTemplates,
+    TOPICS,
   };
 };

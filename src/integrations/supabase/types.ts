@@ -98,6 +98,7 @@ export type Database = {
           is_default: boolean
           name: string
           subject: string
+          topic: string
           updated_at: string | null
         }
         Insert: {
@@ -108,6 +109,7 @@ export type Database = {
           is_default?: boolean
           name: string
           subject: string
+          topic?: string
           updated_at?: string | null
         }
         Update: {
@@ -118,6 +120,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           subject?: string
+          topic?: string
           updated_at?: string | null
         }
         Relationships: [
