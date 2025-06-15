@@ -1,4 +1,3 @@
-
 /** Helpers per sezioni HTML email (logo, corpo, allegato) */
 
 export function buildAttachmentSection(bucketUrl: string | null) {
@@ -41,10 +40,6 @@ export function buildHtmlContent({ subject, shortText, logoUrl, attachmentSectio
       </div>
       ${attachmentSection}
       <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-      <p style="font-size: 12px; color: #888; margin: 0;">
-        Questa è una notifica automatica dal sistema aziendale.<br>
-        Inviata da: ${senderEmail}
-      </p>
       <div style="width:100%;text-align:center;margin-top:18px;">
         <span style="color:#888; font-size:13px;">
           &copy; A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820
@@ -53,4 +48,3 @@ export function buildHtmlContent({ subject, shortText, logoUrl, attachmentSectio
     </div>
   `;
 }
-
