@@ -1,15 +1,18 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileText, Users, User } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNotificationForm } from "@/hooks/useNotificationForm";
+import DocumentRecipientSelector from './DocumentRecipientSelector';
+import DocumentTypeSelector from './DocumentTypeSelector';
+import { defaultNotificationBody, defaultNotificationBodyAzienda } from './documentNotificationDefaults';
 
 // Definizione del tipo Profile
 interface Profile {
@@ -23,15 +26,24 @@ interface DocumentUploadProps {
   onSuccess?: () => void;
   open: boolean;
   setOpen: (open: boolean) => void;
-  targetUserId?: string; // <-- AGGIUNTO
+  targetUserId?: string;
 }
+
+const documentTypes = [
+  { value: 'payslip', label: 'Busta Paga' },
+  { value: 'transfer', label: 'Bonifico' },
+  { value: 'communication', label: 'Comunicazione' },
+  { value: 'medical_certificate', label: 'Certificato Medico' },
+  { value: 'leave_request', label: 'Richiesta Ferie' },
+  { value: 'expense_report', label: 'Nota Spese' },
+  { value: 'contract', label: 'Contratto' },
+  { value: 'other', label: 'Altro' },
+];
 
 const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUploadProps) => {
   const [file, setFile] = useState<File | null>(null);
-  const [subject, setSubject] = useState(""); // Oggetto mail (ex-Titolo)
-  const [body, setBody] = useState(""); // Corpo messaggio mail (ex-Descrizione)
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
   const [documentType, setDocumentType] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
@@ -42,15 +54,15 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
   const [uploadTarget, setUploadTarget] = useState<'self' | 'specific_user' | 'all_employees'>('self');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const isAdmin = profile?.role === 'admin';
-
-  // Flag notifica ora sempre true di default e sempre visibile
   const [notifyRecipient, setNotifyRecipient] = useState(true);
   const { sendNotification, loading: notificationLoading } = useNotificationForm();
-  // NOTA: notifyRecipient parte già true
+
+  // Utilizzato per capire se l'utente ha cambiato subject manualmente
+  const [subjectDirty, setSubjectDirty] = useState(false);
 
   useEffect(() => {
     if (file) {
-      setSubject(file.name.replace(/\.[^/.]+$/, '')); // Oggetto pre-auto dalla selezione file
+      setSubject(file.name.replace(/\.[^/.]+$/, ''));
       if (!body) {
         setBody(defaultNotificationBody);
       }
@@ -62,8 +74,6 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
       setFile(null);
       setSubject("");
       setBody("");
-      setTitle('');
-      setDescription('');
       setDocumentType('');
     }
   }, [open]);
@@ -92,22 +102,30 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
     }
   }, [isAdmin, open, targetUserId]);
 
-  const documentTypes = [
-    { value: 'payslip', label: 'Busta Paga' },
-    { value: 'transfer', label: 'Bonifico' },
-    { value: 'communication', label: 'Comunicazione' },
-    { value: 'medical_certificate', label: 'Certificato Medico' },
-    { value: 'leave_request', label: 'Richiesta Ferie' },
-    { value: 'expense_report', label: 'Nota Spese' },
-    { value: 'contract', label: 'Contratto' },
-    { value: 'other', label: 'Altro' },
-  ];
+  useEffect(() => {
+    setSubjectDirty(false);
+  }, [file]);
 
-  const defaultNotificationBody =
-    "Gentile utente, è stato caricato un nuovo documento per te.";
+  const handleDocumentTypeChange = (typeValue: string) => {
+    setDocumentType(typeValue);
+    // Trova label
+    const type = documentTypes.find(dt => dt.value === typeValue);
+    if (type) {
+      if (
+        !subjectDirty ||
+        !subject ||
+        documentTypes.some(dt => dt.label === subject)
+      ) {
+        setSubject(type.label);
+        setSubjectDirty(false);
+      }
+    }
+  };
 
-  const defaultNotificationBodyAzienda =
-    "Gentile collaboratore, è stato caricato un nuovo documento aziendale.";
+  const handleSubjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSubject(e.target.value);
+    setSubjectDirty(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +134,6 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
       alert("Seleziona un utente specifico.");
       return;
     }
-    // Devono essere obbligatori se notifico!
     if (notifyRecipient && (!subject.trim() || !body.trim())) {
       alert("Compila oggetto e messaggio della mail.");
       return;
@@ -140,19 +157,16 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
       }
     }
 
-    // Upload del documento (usa solo "subject" come titolo documento)
     const { error } = await uploadDocument(
       file,
       subject,
-      "", // description non più usata
+      "",
       documentType as any,
       targetUserForUpload,
       isPersonalDocument
     );
 
-    // Notifica email SOLO SE richiesto
     if (!error && notifyRecipient) {
-      // Personal: notifica il destinatario
       if (isPersonalDocument && targetUserForUpload && targetUserForUpload !== user.id) {
         await sendNotification({
           recipientId: targetUserForUpload,
@@ -161,7 +175,6 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
           topic: "document",
         });
       }
-      // Aziendale: notifica tutti
       if (!isPersonalDocument) {
         await sendNotification({
           recipientId: null,
@@ -179,53 +192,8 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
     setLoading(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      if (!subject) {
-        setSubject(selectedFile.name.replace(/\.[^/.]+$/, ''));
-      }
-      if (!body) {
-        setBody(defaultNotificationBody);
-      }
-    }
-  };
-
   const shouldShowNotifyOption =
-    // Opzione disponibile solo in contesti personali (no upload aziendale)
-    // Admin: quando target specifico. Utente: sempre
     (isAdmin && (uploadTarget === 'specific_user' || targetUserId)) || (!isAdmin);
-
-  // Utilizzato per capire se l'utente ha cambiato subject manualmente
-  const [subjectDirty, setSubjectDirty] = useState(false);
-
-  useEffect(() => {
-    // Se il file viene caricato resetta le condizioni per default subject
-    setSubjectDirty(false);
-  }, [file]);
-
-  const handleDocumentTypeChange = (typeValue: string) => {
-    setDocumentType(typeValue);
-    // Trova label
-    const type = documentTypes.find(dt => dt.value === typeValue);
-    if (type) {
-      // Imposta l'oggetto della mail solo se non modificato manualmente oppure se era vuoto oppure corrispondeva al vecchio label
-      if (
-        !subjectDirty ||
-        !subject ||
-        documentTypes.some(dt => dt.label === subject)
-      ) {
-        setSubject(type.label);
-        setSubjectDirty(false);
-      }
-    }
-  };
-
-  const handleSubjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSubject(e.target.value);
-    setSubjectDirty(true);
-  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -234,78 +202,22 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
           <DialogTitle>Carica Nuovo Documento</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Se admin e targetUserId NON c'è, mostra selettore destinatario */}
-          {isAdmin && !targetUserId && (
-            <div className="space-y-2">
-              <Label htmlFor="uploadTarget">Destinatario</Label>
-              <Select value={uploadTarget} onValueChange={(value) => setUploadTarget(value as any)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona destinatario" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="specific_user">
-                    <User className="inline mr-2 h-4 w-4" /> Utente Specifico
-                  </SelectItem>
-                  <SelectItem value="all_employees">
-                    <Users className="inline mr-2 h-4 w-4" /> Tutti i Dipendenti (Aziendale)
-                  </SelectItem>
-                  <SelectItem value="self">
-                    <User className="inline mr-2 h-4 w-4" /> Personale (per me Admin)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <DocumentRecipientSelector
+            isAdmin={isAdmin}
+            uploadTarget={uploadTarget}
+            setUploadTarget={setUploadTarget}
+            allProfiles={allProfiles}
+            targetUserId={targetUserId}
+            selectedUserId={selectedUserId}
+            setSelectedUserId={setSelectedUserId}
+          />
 
-          {/* Se l’admin è in modalità utente specifico, mostra drop-down. Se c’è targetUserId bloccato, mostra solo dati utente selezionato */}
-          {isAdmin && uploadTarget === 'specific_user' && (
-            <div className="space-y-2">
-              <Label htmlFor="specificUser">Seleziona Utente</Label>
-              {targetUserId ? (
-                // Mostra solo info dell’utente target, non editabile
-                <Input
-                  value={allProfiles.find((p) => p.id === targetUserId)
-                    ? `${allProfiles.find((p) => p.id === targetUserId)?.first_name || ''} ${allProfiles.find((p) => p.id === targetUserId)?.last_name || ''} (${allProfiles.find((p) => p.id === targetUserId)?.email || ''})`
-                    : targetUserId
-                  }
-                  readOnly
-                  disabled
-                />
-              ) : (
-                <Select value={selectedUserId} onValueChange={setSelectedUserId} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona un utente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allProfiles.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.first_name} {p.last_name} ({p.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          )}
+          <DocumentTypeSelector
+            value={documentType}
+            onChange={handleDocumentTypeChange}
+            documentTypes={documentTypes}
+          />
 
-          {/* Tipo documento - ora PRIMA di file/oggetto! */}
-          <div className="space-y-2">
-            <Label htmlFor="type">Tipo Documento</Label>
-            <Select value={documentType} onValueChange={handleDocumentTypeChange} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona il tipo di documento" />
-              </SelectTrigger>
-              <SelectContent>
-                {documentTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* File */}
           <div className="space-y-2">
             <Label htmlFor="file">File</Label>
             <Input
@@ -314,7 +226,7 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
               onChange={(e) => {
                 const selectedFile = e.target.files?.[0];
                 setFile(selectedFile || null);
-                setSubjectDirty(false); // File cambia: resetta dirty (lascia subject gestito su tipo doc o filename)
+                setSubjectDirty(false);
                 if (selectedFile && !subject) {
                   setSubject(selectedFile.name.replace(/\.[^/.]+$/, ''));
                 }
@@ -327,7 +239,6 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
             />
           </div>
 
-          {/* Titolo/oggetto (dopo il tipo documento!) */}
           <div className="space-y-2">
             <Label htmlFor="subject">Oggetto della mail</Label>
             <Input
@@ -340,14 +251,13 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
             />
           </div>
 
-          {/* Messaggio/descrizione (dopo oggetto, come prima) */}
           <div className="space-y-2">
             <Label htmlFor="body">Messaggio per il destinatario</Label>
             <Textarea
               id="body"
               value={body}
               onChange={e => setBody(e.target.value)}
-              placeholder="Gentile utente, è stato caricato un nuovo documento per te."
+              placeholder={defaultNotificationBody}
               required={notifyRecipient}
               disabled={!notifyRecipient}
               rows={3}
@@ -357,7 +267,6 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
             </div>
           </div>
 
-          {/* Checkbox avvisa destinatario: sempre visibile! */}
           <div className="flex items-center space-x-2">
             <input
               id="notify"
