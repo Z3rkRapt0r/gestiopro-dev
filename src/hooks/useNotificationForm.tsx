@@ -86,7 +86,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
         {
           body: {
             recipientId,
-            subject: topic || subject,
+            subject, // Usa SEMPRE il subject fornito! (modifica qui)
             shortText,
             userId: profile?.id,
           }
