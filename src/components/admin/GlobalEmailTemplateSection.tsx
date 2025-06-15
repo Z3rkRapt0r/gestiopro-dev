@@ -168,7 +168,33 @@ const GlobalEmailTemplateSection = () => {
           <h2 style="color: #2757d6;">Oggetto comunicazione</h2>
           <p>${DEMO_BODY}</p>
         </div>
-        <footer style="color:#888; font-size:13px; margin-top:36px;text-align:center;">${footerText}</footer>
+        <footer style="color:#888; font-size:13px; margin-top:36px; text-align:center;">
+          © A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820
+        </footer>
+      </div>
+    `;
+  };
+
+  // Anteprima HTML
+  const renderPreview = () => {
+    let textAlign = logoAlign;
+    if (logoAlign === "center") textAlign = "center";
+    else if (logoAlign === "right") textAlign = "right";
+    else textAlign = "left";
+    return `
+      <div style="font-family: sans-serif; border:1px solid #ccc; padding:32px; max-width:580px; margin:auto; background:white;">
+        ${
+          logoUrl
+            ? `<div style="text-align:${textAlign};margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
+            : ""
+        }
+        <div>
+          <h2 style="color: #2757d6;">Oggetto comunicazione</h2>
+          <p>${DEMO_BODY}</p>
+        </div>
+        <footer style="color:#888; font-size:13px; margin-top:36px; text-align:center;">
+          © A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820
+        </footer>
       </div>
     `;
   };
@@ -217,28 +243,6 @@ const GlobalEmailTemplateSection = () => {
     } finally {
       setTestLoading(false);
     }
-  };
-
-  // Anteprima HTML
-  const renderPreview = () => {
-    let textAlign = logoAlign;
-    if (logoAlign === "center") textAlign = "center";
-    else if (logoAlign === "right") textAlign = "right";
-    else textAlign = "left";
-    return `
-      <div style="font-family: sans-serif; border:1px solid #ccc; padding:32px; max-width:580px; margin:auto; background:white;">
-        ${
-          logoUrl
-            ? `<div style="text-align:${textAlign};margin-bottom:20px;"><img src="${logoUrl}" alt="logo" style="max-height:60px; max-width:180px;"/></div>`
-            : ""
-        }
-        <div>
-          <h2 style="color: #2757d6;">Oggetto comunicazione</h2>
-          <p>${DEMO_BODY}</p>
-        </div>
-        <footer style="color:#888; font-size:13px; margin-top:36px;text-align:center;">${footerText}</footer>
-      </div>
-    `;
   };
 
   return (
