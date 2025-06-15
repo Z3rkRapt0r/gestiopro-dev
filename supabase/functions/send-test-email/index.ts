@@ -74,10 +74,10 @@ serve(async (req) => {
 
     console.log("[Test Email] Found Brevo API key for admin");
 
-    // Get admin profile info for sender
+    // Get admin profile info for sender name
     const { data: adminProfile, error: profileError } = await supabase
       .from("profiles")
-      .select("first_name, last_name, email")
+      .select("first_name, last_name")
       .eq("id", userId)
       .single();
 
@@ -85,12 +85,12 @@ serve(async (req) => {
       console.error("[Test Email] Error fetching admin profile:", profileError);
     }
 
-    // Use admin email as sender or fallback to a default
+    // Use the verified Brevo email and admin name for sender
     const senderName = adminProfile?.first_name && adminProfile?.last_name 
       ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche` 
       : "Sistema Notifiche";
     
-    const senderEmail = adminProfile?.email || "noreply@your-domain.com";
+    const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
 
     // Send test email via Brevo API
     const brevoPayload = {
@@ -147,11 +147,6 @@ serve(async (req) => {
       try {
         const errorData = JSON.parse(brevoResponseText);
         errorMessage = errorData.message || errorData.error || errorMessage;
-        
-        // Specific error handling for common Brevo issues
-        if (errorMessage.includes("sender") || errorMessage.includes("domain")) {
-          errorMessage = "Errore: L'indirizzo email del mittente non è verificato in Brevo. Verifica il dominio in Brevo: https://app.brevo.com/senders/domain";
-        }
       } catch (e) {
         errorMessage = brevoResponseText || errorMessage;
       }
@@ -160,8 +155,7 @@ serve(async (req) => {
         JSON.stringify({ 
           error: errorMessage,
           status: brevoResponse.status,
-          details: brevoResponseText,
-          suggestion: "Verifica che il dominio email sia configurato e verificato in Brevo (https://app.brevo.com/senders/domain)"
+          details: brevoResponseText
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
