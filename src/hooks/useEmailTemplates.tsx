@@ -21,6 +21,14 @@ const TOPICS = [
   { value: "altro", label: "Altro" },
 ];
 
+const DOCUMENT_TYPES = [
+  { value: "contratto", label: "Contratto" },
+  { value: "cedolino", label: "Cedolino" },
+  { value: "ferie", label: "Ferie" },
+  { value: "malattia", label: "Malattia" },
+  { value: "altro", label: "Altro" },
+];
+
 export const useEmailTemplates = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -211,5 +219,6 @@ export const useEmailTemplates = () => {
     sendTestEmail,
     refreshTemplates: loadTemplates,
     TOPICS,
+    DOCUMENT_TYPES,
   };
 };
