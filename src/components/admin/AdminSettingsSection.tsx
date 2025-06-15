@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import EmailTemplatesSection from "./EmailTemplatesSection";
+import GlobalEmailTemplateSection from "./GlobalEmailTemplateSection";
 
 const AdminSettingsSection = () => {
   const { apiKey, loading, saveApiKey } = useAdminSettings();
@@ -20,13 +19,11 @@ const AdminSettingsSection = () => {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6">Impostazioni Amministratore</h1>
-      
       <Tabs defaultValue="brevo" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="brevo">Configurazione Brevo</TabsTrigger>
-          <TabsTrigger value="templates">Template Email</TabsTrigger>
+          <TabsTrigger value="emailtemplate">Modello Globale Email</TabsTrigger>
         </TabsList>
-        
         <TabsContent value="brevo" className="space-y-4">
           <h2 className="text-xl font-semibold mb-4">Impostazioni Invio Notifiche - Brevo</h2>
           <Input
@@ -47,13 +44,11 @@ const AdminSettingsSection = () => {
             Questa chiave viene salvata solo per il tuo profilo admin.
           </div>
         </TabsContent>
-        
-        <TabsContent value="templates">
-          <EmailTemplatesSection />
+        <TabsContent value="emailtemplate">
+          <GlobalEmailTemplateSection />
         </TabsContent>
       </Tabs>
     </div>
   );
 };
-
 export default AdminSettingsSection;
