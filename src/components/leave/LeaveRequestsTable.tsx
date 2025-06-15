@@ -82,20 +82,20 @@ export default function LeaveRequestsTable({
         <TableHead>
           <TableRow>
             {adminMode && (
-              <TableCell className="font-semibold text-xs p-1 text-center w-[80px] min-w-[48px] max-w-[100px]">
+              <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[70px] min-w-[56px] max-w-[72px]">
                 Utente
               </TableCell>
             )}
-            <TableCell className="font-semibold text-xs p-1 text-center w-[48px] min-w-[48px] max-w-[60px]">
+            <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[55px] min-w-[46px] max-w-[60px]">
               Tipo
             </TableCell>
-            <TableCell className="font-semibold text-xs p-1 text-center w-[90px] min-w-[48px] max-w-[110px]">
+            <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[80px] min-w-[70px] max-w-[90px]">
               Data
             </TableCell>
-            <TableCell className="font-semibold text-xs p-1 text-center w-[48px] min-w-[48px] max-w-[60px]">
+            <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[53px] min-w-[42px] max-w-[65px]">
               Stato
             </TableCell>
-            <TableCell className="font-semibold text-xs p-1 text-center w-[70px] min-w-[48px] max-w-[80px]">
+            <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[64px] min-w-[48px] max-w-[72px]">
               Azioni
             </TableCell>
           </TableRow>
