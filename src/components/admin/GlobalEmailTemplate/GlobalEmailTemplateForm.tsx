@@ -56,8 +56,8 @@ export const GlobalEmailTemplateForm = () => {
         .maybeSingle();
 
       if (!error && data) {
+        // Su caricamento, imposto quello che viene da Supabase (solo una volta)
         setFooterText(data.subject || DEFAULT_FOOTER);
-        // Migliorata la logica di fallback
         const alignValue =
           data.name === "right"
             ? "right"
@@ -76,7 +76,7 @@ export const GlobalEmailTemplateForm = () => {
     // eslint-disable-next-line
   }, [profile?.id]);
 
-  // Funzione separata per ricaricare anteprima con valori aggiornati dal db dopo il salvataggio
+  // Funzione per aggiornare solo se cambiato e NON sovrascrivere input utente
   const reloadTemplateSettings = async () => {
     if (!profile?.id) return;
     const { data, error } = await supabase
@@ -88,14 +88,16 @@ export const GlobalEmailTemplateForm = () => {
       .maybeSingle();
 
     if (!error && data) {
-      setFooterText(data.subject || DEFAULT_FOOTER);
+      // Solo aggiorna se diversi per non sovrascrivere input utente post-save
+      if (data.subject !== footerText) setFooterText(data.subject || DEFAULT_FOOTER);
       const alignValue =
         data.name === "right"
           ? "right"
           : data.name === "center"
           ? "center"
           : "left";
-      setLogoAlign(alignValue as "left" | "right" | "center");
+      if (alignValue !== logoAlign)
+        setLogoAlign(alignValue as "left" | "right" | "center");
     }
   };
 
@@ -105,14 +107,12 @@ export const GlobalEmailTemplateForm = () => {
     await supabase.storage.createBucket(LOGO_BUCKET, { public: true }).catch(() => {});
     const path = `${profile.id}/${LOGO_PATH}`;
 
-    // Step 1: Rimuovi esplicitamente eventuali versioni precedenti e svuota la cache locale
     await supabase.storage.from(LOGO_BUCKET).remove([path]).catch(() => {});
 
-    // Step 2: Effettua l'upload del nuovo file
     const { error } = await supabase.storage
       .from(LOGO_BUCKET)
       .upload(path, logoUploadFile, {
-        cacheControl: "0", // Nessuna cache!
+        cacheControl: "0",
         upsert: true,
         contentType: logoUploadFile.type,
       });
@@ -125,7 +125,6 @@ export const GlobalEmailTemplateForm = () => {
       setLoading(false);
       return;
     }
-    // Step 3: Ottieni subito la nuova url e aggiungi un param random per forzare il refresh anche nei browser/email-client
     const { data: logoData } = await supabase.storage.from(LOGO_BUCKET).getPublicUrl(path);
     setLogoUrl(logoData?.publicUrl ? logoData.publicUrl + `?t=${Date.now()}` : null);
     toast({
@@ -196,7 +195,8 @@ export const GlobalEmailTemplateForm = () => {
         title: "Salvato",
         description: "Le impostazioni sono state aggiornate.",
       });
-      await reloadTemplateSettings(); // Aggiorna stato e anteprima subito dopo il salvataggio
+      // Ricarica il dato dal backend solo se effettivamente cambiato
+      await reloadTemplateSettings();
     }
   };
 
@@ -233,7 +233,7 @@ export const GlobalEmailTemplateForm = () => {
       </div>
       <GlobalEmailFooterInput
         value={footerText}
-        onChange={setFooterText}
+        onChange={(val) => { setFooterText(val); }}
         loading={loading}
         initialLoading={initialLoading}
       />
@@ -247,7 +247,6 @@ export const GlobalEmailTemplateForm = () => {
         logoUrl={logoUrl}
         logoAlign={logoAlign}
         footerText={footerText}
-        // senderName={senderName} // NON PASSO PIU' senderName
         DEMO_BODY={DEMO_BODY}
       />
     </div>
