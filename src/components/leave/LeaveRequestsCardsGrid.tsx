@@ -28,8 +28,6 @@ export default function LeaveRequestsCardsGrid({
   const { toast } = useToast();
   const { profile } = useAuth();
 
-  // RIMUOVIAMO editingId (usato solo per vecchia modalita' inline, ora usiamo solo editDialog)
-  const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
   const [profileEditData, setProfileEditData] = useState<{
     open: boolean;
     profileId: string;
@@ -46,9 +44,8 @@ export default function LeaveRequestsCardsGrid({
   // Approva/rifiuta admin
   const handleAction = async (id: string, status: "approved" | "rejected" | "pending") => {
     try {
-      await updateStatusMutation.mutateAsync({ id, status, admin_note: adminNotes[id] || "" });
+      await updateStatusMutation.mutateAsync({ id, status });
       toast({ title: status === "approved" ? "Richiesta approvata" : status === "pending" ? "Richiesta riportata a pendente" : "Richiesta rifiutata" });
-      setAdminNotes((prev) => ({ ...prev, [id]: "" }));
     } catch {
       toast({ title: "Errore azione amministratore", variant: "destructive" });
     }
@@ -193,15 +190,6 @@ export default function LeaveRequestsCardsGrid({
               <div className="text-xs text-muted-foreground mb-2 min-h-[20px]">
                 {req.note}
               </div>
-              {adminMode && req.status === "pending" && (
-                <input
-                  type="text"
-                  placeholder="Note per amministratore..."
-                  value={adminNotes[req.id] || ""}
-                  onChange={e => setAdminNotes((prev) => ({ ...prev, [req.id]: e.target.value }))}
-                  className="block w-full text-xs border border-gray-300 rounded px-2 py-1 mb-1 focus:ring-2 focus:ring-primary/30 focus:outline-none"
-                />
-              )}
               <div className="flex gap-2 mt-auto justify-end">
                 {/* BOTTONI Modifica/Elimina solo se consentiti */}
                 {canEdit(req) && (
