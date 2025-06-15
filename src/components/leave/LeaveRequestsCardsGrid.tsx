@@ -44,10 +44,10 @@ export default function LeaveRequestsCardsGrid({
   }>({ open: false, req: null, loading: false });
 
   // Approva/rifiuta admin
-  const handleAction = async (id: string, status: "approved" | "rejected") => {
+  const handleAction = async (id: string, status: "approved" | "rejected" | "pending") => {
     try {
       await updateStatusMutation.mutateAsync({ id, status, admin_note: adminNotes[id] || "" });
-      toast({ title: status === "approved" ? "Richiesta approvata" : "Richiesta rifiutata" });
+      toast({ title: status === "approved" ? "Richiesta approvata" : status === "pending" ? "Richiesta riportata a pendente" : "Richiesta rifiutata" });
       setAdminNotes((prev) => ({ ...prev, [id]: "" }));
     } catch {
       toast({ title: "Errore azione amministratore", variant: "destructive" });
