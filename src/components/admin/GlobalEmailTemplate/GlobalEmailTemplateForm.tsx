@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,7 @@ export const GlobalEmailTemplateForm = () => {
       // Step 2: Ottieni SOLO l'ultimo template email personalizzato
       const { data, error } = await supabase
         .from("email_templates")
-        .select("subject,name,created_at")
+        .select("id,subject,name,created_at")
         .eq("admin_id", profile.id)
         .eq("is_default", false)
         .eq("topic", "generale")
@@ -84,7 +85,7 @@ export const GlobalEmailTemplateForm = () => {
     if (!profile?.id) return;
     const { data, error } = await supabase
       .from("email_templates")
-      .select("subject,name,created_at")
+      .select("id,subject,name,created_at")
       .eq("admin_id", profile.id)
       .eq("is_default", false)
       .eq("topic", "generale")
@@ -151,21 +152,19 @@ export const GlobalEmailTemplateForm = () => {
     }
     setLoading(true);
 
-    // Cerca SOLO l'ultimo template per update
-    const { data: existing, error: getError } = await supabase
+    // Recupero tutti i template esistenti per admin/topic
+    const { data: existingTemplates, error: queryError } = await supabase
       .from("email_templates")
       .select("id,created_at")
       .eq("admin_id", profile.id)
       .eq("topic", "generale")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: false });
 
-    console.log("[GlobalEmailTemplate] existing template found before save (fixed):", { existing, getError });
+    let mainTemplateId: string | null = null;
 
-    let error = null;
-
-    if (existing?.id) {
+    if (!queryError && existingTemplates && existingTemplates.length > 0) {
+      // Aggiorna quello più recente
+      mainTemplateId = existingTemplates[0].id;
       const { error: updateError } = await supabase
         .from("email_templates")
         .update({
@@ -175,10 +174,26 @@ export const GlobalEmailTemplateForm = () => {
           is_default: false,
           content: "",
         })
-        .eq("id", existing.id);
-      error = updateError;
-      console.log("[GlobalEmailTemplate] update response:", { updateError });
+        .eq("id", mainTemplateId);
+      if (updateError) {
+        toast({
+          title: "Errore salvataggio",
+          description: "Non è stato possibile aggiornare le impostazioni.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      // Elimina vecchi duplicati se presenti
+      const extraIds = existingTemplates.slice(1).map(tpl => tpl.id);
+      if (extraIds.length > 0) {
+        await supabase
+          .from("email_templates")
+          .delete()
+          .in("id", extraIds);
+      }
     } else {
+      // Nessun template esistente, inserisco nuovo (e sarà unico)
       const { error: insertError, data: insertData } = await supabase
         .from("email_templates")
         .insert([
@@ -191,28 +206,29 @@ export const GlobalEmailTemplateForm = () => {
             topic: "generale",
             content: "",
           },
-        ]);
-      error = insertError;
-      console.log("[GlobalEmailTemplate] insert response:", { insertData, insertError });
-      if (!insertData || insertData.length === 0) {
+        ])
+        .select();
+
+      if (insertError) {
+        toast({
+          title: "Errore salvataggio",
+          description: "Non è stato possibile salvare il modello.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      if (!insertData || !Array.isArray(insertData) || insertData.length === 0) {
         console.error("ATTENZIONE: nessun dato creato su insert, controllare le policy o errori DB!");
       }
     }
 
     setLoading(false);
-    if (error) {
-      toast({
-        title: "Errore salvataggio",
-        description: "Non è stato possibile salvare le impostazioni.",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Salvato",
-        description: "Le impostazioni sono state aggiornate.",
-      });
-      await reloadTemplateSettings();
-    }
+    toast({
+      title: "Salvato",
+      description: "Le impostazioni sono state aggiornate.",
+    });
+    await reloadTemplateSettings();
   };
 
   return (
@@ -267,3 +283,5 @@ export const GlobalEmailTemplateForm = () => {
     </div>
   );
 };
+
+// FINE FILE
