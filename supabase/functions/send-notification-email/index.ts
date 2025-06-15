@@ -1,166 +1,15 @@
 
-// === CORS & Response Helpers ===
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-}
-
-function jsonResponse(payload: unknown, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
-}
-
-function isBlank(str: unknown) {
-  return typeof str !== "string" || !str.trim();
-}
-
-// === Supabase Fetch Helpers ===
+// === IMPORTS (moduli helper interni) ===
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-/**
- * Recupera la Brevo API Key dalle impostazioni admin.
- */
-async function fetchAdminSettings(supabase: any, userId: string) {
-  const { data, error } = await supabase
-    .from("admin_settings")
-    .select("brevo_api_key")
-    .eq("admin_id", userId)
-    .maybeSingle();
-  if (error || !data?.brevo_api_key) {
-    throw new Error("No Brevo API key configured for this admin. Please configure it in the admin settings.");
-  }
-  return data.brevo_api_key;
-}
-
-/**
- * Recupera nome/cognome admin per la firma.
- */
-async function fetchAdminProfile(supabase: any, userId: string) {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("first_name, last_name")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error) {
-    console.error("[Notification Email] Error fetching admin profile:", error);
-    return null;
-  }
-  return data;
-}
-
-/**
- * Recupera la URL pubblica del logo (con cache-busting).
- */
-async function fetchLogoUrl(supabase: any, userId: string) {
-  try {
-    const { data: logoData } = await supabase
-      .storage
-      .from("company-assets")
-      .getPublicUrl(`${userId}/email-logo.png`);
-    if (logoData?.publicUrl) {
-      const cacheBuster = `v=${Date.now()}`;
-      const logoUrlNoCache =
-        logoData.publicUrl.indexOf("?") === -1
-          ? `${logoData.publicUrl}?${cacheBuster}`
-          : `${logoData.publicUrl}&${cacheBuster}`;
-      console.log("[Notification Email] Found logoUrl for admin:", logoUrlNoCache);
-      return logoUrlNoCache;
-    }
-    console.log("[Notification Email] No custom logo for admin, skipping logo.");
-    return null;
-  } catch (e) {
-    console.error("[Notification Email] Error checking logo:", e);
-    return null;
-  }
-}
-
-/**
- * Estrae gli indirizzi email dei destinatari (uno o tutti).
- */
-async function fetchRecipientEmails(supabase: any, recipientId: string | null) {
-  if (recipientId && recipientId !== "ALL") {
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq("id", recipientId)
-      .maybeSingle();
-
-    if (profileError) {
-      throw new Error("Failed to fetch recipient profile");
-    }
-    return profile?.email ? [profile.email] : [];
-  } else {
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq("is_active", true)
-      .not("email", "is", null);
-
-    if (profilesError) {
-      throw new Error("Failed to fetch user profiles");
-    }
-    return (profiles || []).map((p: any) => p.email).filter(Boolean);
-  }
-}
-
-
-// === TEMPLATES & HTML HELPERS ===
-/**
- * Costruisce la sezione download allegato per le mail.
- */
-function buildAttachmentSection(bucketUrl: string | null) {
-  if (!bucketUrl) return "";
-  return `
-    <div style="margin-top: 20px; border-left: 4px solid #007bff; padding-left: 10px;">
-      <strong>Documento allegato disponibile</strong><br>
-      <span style="font-size: 14px; color: #333;">
-        Per visualizzare o scaricare il documento, clicca sul link sottostante.<br/>
-        <span style="font-size: 12px; color: #888;">È necessario effettuare l'accesso con il tuo account aziendale.</span>
-      </span>
-      <div style="margin-top: 8px;">
-        <a href="${bucketUrl}" target="_blank" style="color: #007bff; font-weight: bold;">Apri allegato</a>
-      </div>
-    </div>
-  `;
-}
-
-/**
- * Assembla il corpo HTML dell'email, inclusi logo e allegato.
- */
-function buildHtmlContent({ subject, shortText, logoUrl, attachmentSection, senderEmail }: {
-  subject: string,
-  shortText: string,
-  logoUrl: string | null,
-  attachmentSection: string,
-  senderEmail: string
-}) {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      ${
-        logoUrl
-          ? `<div style="text-align:center;margin-bottom:24px;">
-              <img src="${logoUrl}" alt="Logo" style="max-height:60px;max-width:180px;" />
-            </div>`
-          : ""
-      }
-      <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
-        ${subject}
-      </h2>
-      <div style="margin: 20px 0; line-height: 1.6; color: #555;">
-        ${shortText.replace(/\n/g, '<br>')}
-      </div>
-      ${attachmentSection}
-      <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-      <p style="font-size: 12px; color: #888; margin: 0;">
-        Questa è una notifica automatica dal sistema aziendale.<br>
-        Inviata da: ${senderEmail}
-      </p>
-    </div>
-  `;
-}
+import { corsHeaders, jsonResponse, isBlank } from "./responseHelpers.ts";
+import {
+  fetchAdminSettings,
+  fetchAdminProfile,
+  fetchLogoUrl,
+  fetchRecipientEmails,
+} from "./supabaseFetchHelpers.ts";
+import { buildAttachmentSection, buildHtmlContent } from "./mailTemplates.ts";
 
 // === MAIN EDGE FUNCTION HANDLER ===
 serve(async (req) => {
@@ -309,4 +158,3 @@ serve(async (req) => {
     }, 500);
   }
 });
-
