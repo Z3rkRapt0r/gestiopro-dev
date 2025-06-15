@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import LeaveRequestForm from "./LeaveRequestForm";
-import LeaveRequestsTable from "./LeaveRequestsTable";
+import LeaveRequestsCardsGrid from "./LeaveRequestsCardsGrid";
 
 export default function EmployeeLeavePage() {
   const [formType, setFormType] = useState<"permesso" | "ferie" | null>(null);
@@ -51,7 +51,7 @@ export default function EmployeeLeavePage() {
           )}
           <h3 className="text-lg font-semibold mt-8 mb-2">Le mie richieste</h3>
           <div className="rounded border bg-muted/30 p-2">
-            <LeaveRequestsTable />
+            <LeaveRequestsCardsGrid />
           </div>
         </CardContent>
       </Card>

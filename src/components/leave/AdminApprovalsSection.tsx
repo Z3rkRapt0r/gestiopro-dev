@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import LeaveRequestsTable from "./LeaveRequestsTable";
+import LeaveRequestsCardsGrid from "./LeaveRequestsCardsGrid";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 
 export default function AdminApprovalsSection() {
@@ -29,7 +29,7 @@ export default function AdminApprovalsSection() {
           <TabsTrigger value="archive-ferie" className="flex-1">Archivio Ferie</TabsTrigger>
         </TabsList>
         <TabsContent value="pending">
-          <LeaveRequestsTable
+          <LeaveRequestsCardsGrid
             adminMode
             leaveRequests={pendingRequests}
             showEdit
@@ -37,7 +37,7 @@ export default function AdminApprovalsSection() {
           />
         </TabsContent>
         <TabsContent value="archive-permessi">
-          <LeaveRequestsTable
+          <LeaveRequestsCardsGrid
             adminMode
             leaveRequests={archivePermessi}
             archive
@@ -46,7 +46,7 @@ export default function AdminApprovalsSection() {
           />
         </TabsContent>
         <TabsContent value="archive-ferie">
-          <LeaveRequestsTable
+          <LeaveRequestsCardsGrid
             adminMode
             leaveRequests={archiveFerie}
             archive
