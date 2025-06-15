@@ -45,6 +45,12 @@ export function buildHtmlContent({ subject, shortText, logoUrl, attachmentSectio
         Questa è una notifica automatica dal sistema aziendale.<br>
         Inviata da: ${senderEmail}
       </p>
+      <div style="width:100%;text-align:center;margin-top:18px;">
+        <span style="color:#888; font-size:13px;">
+          &copy; A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820
+        </span>
+      </div>
     </div>
   `;
 }
+
