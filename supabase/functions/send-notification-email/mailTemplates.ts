@@ -1,4 +1,28 @@
-/** Helpers per sezioni HTML email (logo, corpo, allegato) */
+
+/** Helpers per sezioni HTML email (logo, corpo, allegato, pulsante vedi doc) */
+
+// Pulsante centrato che porta alla dashboard
+export function buildDashboardButton(buttonUrl: string) {
+  return `
+    <div style="width:100%;text-align:center;margin:28px 0 0 0;">
+      <a href="${buttonUrl}" target="_blank" style="
+        background-color:#007bff;
+        color:#fff;
+        padding:12px 26px;
+        border-radius:6px;
+        text-decoration:none;
+        font-size:16px;
+        font-weight:bold;
+        letter-spacing:0.5px;
+        display:inline-block;
+        box-shadow:0 1px 6px rgba(40,82,180,.06);
+        margin:auto;
+      ">
+        Visualizza documento
+      </a>
+    </div>
+  `;
+}
 
 export function buildAttachmentSection(bucketUrl: string | null) {
   if (!bucketUrl) return "";
@@ -23,6 +47,9 @@ export function buildHtmlContent({ subject, shortText, logoUrl, attachmentSectio
   attachmentSection: string,
   senderEmail: string
 }) {
+  // Aggiungi pulsante sempre dopo il messaggio
+  const dashboardButton = buildDashboardButton("https://alm-app.lovable.app/"); // TODO: usa la vera URL base della dashboard
+
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       ${
@@ -35,8 +62,9 @@ export function buildHtmlContent({ subject, shortText, logoUrl, attachmentSectio
       <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
         ${subject}
       </h2>
-      <div style="margin: 20px 0; line-height: 1.6; color: #555;">
+      <div style="margin: 20px 0 0 0; line-height: 1.6; color: #555;">
         ${shortText.replace(/\n/g, '<br>')}
+        ${dashboardButton}
       </div>
       ${attachmentSection}
       <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -48,3 +76,4 @@ export function buildHtmlContent({ subject, shortText, logoUrl, attachmentSectio
     </div>
   `;
 }
+

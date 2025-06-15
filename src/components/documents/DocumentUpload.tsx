@@ -104,10 +104,10 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
   ];
 
   const defaultNotificationBody =
-    'Gentile utente, è stato caricato un nuovo documento per te.<br><a href="/" style="color:#007bff;text-decoration:underline;">Accedi alla tua area personale per visualizzarlo e scaricarlo</a>.';
+    "Gentile utente, è stato caricato un nuovo documento per te.";
 
   const defaultNotificationBodyAzienda =
-    'Gentile collaboratore, è stato caricato un nuovo documento aziendale.<br><a href="/" style="color:#007bff;text-decoration:underline;">Visita la tua area personale per scaricarlo</a>.';
+    "Gentile collaboratore, è stato caricato un nuovo documento aziendale.";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -347,7 +347,7 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
               id="body"
               value={body}
               onChange={e => setBody(e.target.value)}
-              placeholder="Gentile utente, è stato caricato un nuovo documento per te.&#10;&lt;a href=&quot;/&quot;&gt;Accedi alla tua area personale per visualizzarlo e scaricarlo&lt;/a&gt;."
+              placeholder="Gentile utente, è stato caricato un nuovo documento per te."
               required={notifyRecipient}
               disabled={!notifyRecipient}
               rows={3}
