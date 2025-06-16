@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Image } from "lucide-react";
 import EmailTemplatePreview from "./EmailTemplatePreview";
 import TestEmailDialog from "./TestEmailDialog";
@@ -46,7 +48,9 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
     font_size: 'medium',
     button_color: '#007bff',
     button_text_color: '#ffffff',
-    border_radius: '6px'
+    border_radius: '6px',
+    show_details_button: true,
+    show_leave_details: true
   });
 
   // Check if this is a leave-related template
@@ -205,6 +209,50 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
                 <p className="text-sm text-gray-500 mt-1">
                   Usa "Mario Rossi" come placeholder per il nome del dipendente - verrà sostituito automaticamente.
                 </p>
+              </div>
+
+              <div>
+                <Label htmlFor="details">Dettagli Permesso/Ferie</Label>
+                <textarea
+                  id="details"
+                  value={template.details || ''}
+                  onChange={(e) => updateTemplate('details', e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                  placeholder="Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Questi dettagli verranno sostituiti con i dati reali della richiesta.
+                </p>
+              </div>
+
+              {/* Sezione Controlli Visibilità */}
+              <div className="space-y-3 pt-4 border-t">
+                <h4 className="font-medium">Controlli Visibilità</h4>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="show_details_button">Mostra Pulsante Dettagli</Label>
+                    <p className="text-sm text-gray-500">Visualizza il pulsante per accedere ai dettagli</p>
+                  </div>
+                  <Switch
+                    id="show_details_button"
+                    checked={template.show_details_button ?? true}
+                    onCheckedChange={(checked) => updateTemplate('show_details_button', checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="show_leave_details">Mostra Dettagli Permesso</Label>
+                    <p className="text-sm text-gray-500">Visualizza i dettagli del permesso/ferie nell'email</p>
+                  </div>
+                  <Switch
+                    id="show_leave_details"
+                    checked={template.show_leave_details ?? true}
+                    onCheckedChange={(checked) => updateTemplate('show_leave_details', checked)}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -365,47 +413,6 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
       </Card>
     </div>
   );
-};
-
-const handleLogoUpload = async () => {
-  if (!logoUploadFile || !profile?.id) return;
-  
-  setLoading(true);
-  const logoPath = `email-templates/${profile.id}/${templateType}/logo.${logoUploadFile.name.split('.').pop()}`;
-  
-  try {
-    const { error: uploadError } = await supabase.storage
-      .from('company-assets')
-      .upload(logoPath, logoUploadFile, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: logoUploadFile.type,
-      });
-
-    if (uploadError) {
-      throw uploadError;
-    }
-
-    const { data: logoData } = await supabase.storage
-      .from('company-assets')
-      .getPublicUrl(logoPath);
-
-    setTemplate(prev => ({ ...prev, logo_url: logoData?.publicUrl || '' }));
-    
-    toast({
-      title: "Logo caricato",
-      description: "Il logo è stato caricato con successo.",
-    });
-  } catch (error: any) {
-    console.error('Error uploading logo:', error);
-    toast({
-      title: "Errore",
-      description: error.message || "Errore nel caricamento del logo.",
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
 };
 
 export default EmailTemplateEditor;

@@ -1,9 +1,11 @@
-
 interface EmailTemplate {
   template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   name: string;
   subject: string;
   content: string;
+  details?: string;
+  show_details_button?: boolean;
+  show_leave_details?: boolean;
   primary_color: string;
   secondary_color: string;
   background_color: string;
@@ -64,18 +66,18 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
         };
       case 'permessi-richiesta':
         return {
-          content: 'Gentile Amministratore,\n\nMario Rossi ha inviato una nuova richiesta di permesso. Ti preghiamo di prenderne visione e procedere con l\'approvazione o il rifiuto.\n\nDettagli della richiesta:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica',
-          details: ''
+          content: template.content || 'Gentile Amministratore,\n\nMario Rossi ha inviato una nuova richiesta di permesso. Ti preghiamo di prenderne visione e procedere con l\'approvazione o il rifiuto.',
+          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica'
         };
       case 'permessi-approvazione':
         return {
-          content: 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata approvata dall\'amministratore.\n\nDettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Richiesta approvata. Ricorda di recuperare le ore.',
-          details: ''
+          content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata approvata dall\'amministratore.',
+          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Richiesta approvata. Ricorda di recuperare le ore.'
         };
       case 'permessi-rifiuto':
         return {
-          content: 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata rifiutata dall\'amministratore.\n\nDettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un\'altra data.',
-          details: ''
+          content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata rifiutata dall\'amministratore.',
+          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un\'altra data.'
         };
       default:
         return {
@@ -105,7 +107,25 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
   };
 
   const shouldShowButton = () => {
+    const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(template.template_type);
+    const hasButtonControl = template.show_details_button !== undefined;
+    
+    if (isLeaveTemplate && hasButtonControl) {
+      return template.show_details_button;
+    }
+    
     return ['documenti', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(template.template_type);
+  };
+
+  const shouldShowLeaveDetails = () => {
+    const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(template.template_type);
+    const hasDetailsControl = template.show_leave_details !== undefined;
+    
+    if (isLeaveTemplate && hasDetailsControl) {
+      return template.show_leave_details;
+    }
+    
+    return isLeaveTemplate;
   };
 
   const { content, details } = getRealisticContent();
@@ -158,7 +178,7 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
           <div style={{ margin: '0 0 16px 0', whiteSpace: 'pre-line' }}>
             {content}
           </div>
-          {details && (
+          {shouldShowLeaveDetails() && details && (
             <div style={{ 
               backgroundColor: `${template.secondary_color}15`,
               padding: '12px',
