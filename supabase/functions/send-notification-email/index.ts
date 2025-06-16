@@ -25,7 +25,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId } = body;
+    const { recipientId, subject, shortText, userId, topic } = body;
     const attachment_url = body.attachment_url ?? null;
 
     if (!userId) {
@@ -89,13 +89,17 @@ serve(async (req) => {
       downloadSection = buildAttachmentSection(bucketUrl);
     }
 
+    // --- Determina se è una email relativa ai documenti ---
+    const isDocumentEmail = topic === "document";
+
     // --- Corpo HTML email ---
     const htmlContent = buildHtmlContent({
       subject,
       shortText,
       logoUrl,
       attachmentSection: downloadSection,
-      senderEmail
+      senderEmail,
+      isDocumentEmail
     });
 
     // --- Costruzione payload Brevo ---

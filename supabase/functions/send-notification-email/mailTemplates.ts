@@ -1,8 +1,10 @@
 
 /** Helpers per sezioni HTML email (logo, corpo, allegato, pulsante vedi doc) */
 
-// Pulsante centrato che porta alla dashboard
-export function buildDashboardButton(buttonUrl: string) {
+// Pulsante centrato che porta alla dashboard - solo per documenti
+export function buildDashboardButton(buttonUrl: string, isDocumentEmail: boolean = false) {
+  if (!isDocumentEmail) return "";
+  
   return `
     <div style="width:100%;text-align:center;margin:28px 0 0 0;">
       <a href="${buttonUrl}" target="_blank" style="
@@ -40,15 +42,16 @@ export function buildAttachmentSection(bucketUrl: string | null) {
   `;
 }
 
-export function buildHtmlContent({ subject, shortText, logoUrl, attachmentSection, senderEmail }: {
+export function buildHtmlContent({ subject, shortText, logoUrl, attachmentSection, senderEmail, isDocumentEmail = false }: {
   subject: string,
   shortText: string,
   logoUrl: string | null,
   attachmentSection: string,
-  senderEmail: string
+  senderEmail: string,
+  isDocumentEmail?: boolean
 }) {
-  // Aggiungi pulsante sempre dopo il messaggio
-  const dashboardButton = buildDashboardButton("https://alm-app.lovable.app/"); // TODO: usa la vera URL base della dashboard
+  // Aggiungi pulsante solo se è una email relativa ai documenti
+  const dashboardButton = buildDashboardButton("https://alm-app.lovable.app/", isDocumentEmail);
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -76,4 +79,3 @@ export function buildHtmlContent({ subject, shortText, logoUrl, attachmentSectio
     </div>
   `;
 }
-

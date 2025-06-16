@@ -60,7 +60,7 @@ const EmployeeActivityFeed = ({ recentDocuments, recentNotifications }: Employee
                         {activity.title}
                       </p>
                       <div className="flex items-center space-x-2">
-                        {activity.type === 'notification' && !activity.isRead && (
+                        {activity.type === 'notification' && 'isRead' in activity && !activity.isRead && (
                           <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                         )}
                         <Badge variant="outline" className="text-xs">

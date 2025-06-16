@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -180,6 +179,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
             subject,
             shortText,
             userId: profile?.id,
+            topic, // Pass topic to determine if it's a document email
           }
         }
       );
