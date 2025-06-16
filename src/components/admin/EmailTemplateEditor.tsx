@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -167,6 +166,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
     try {
       const templateData = {
         ...template,
+        name: `Template ${templateType}`, // Aggiungiamo il campo name richiesto
         admin_id: profile.id,
         updated_at: new Date().toISOString()
       };
