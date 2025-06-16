@@ -19,7 +19,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId, topic } = body;
+    const { recipientId, subject, shortText, userId, topic, body: emailBody } = body;
 
     if (!userId) {
       console.error("[Notification Email] Missing userId in request");
@@ -211,9 +211,14 @@ serve(async (req) => {
         let emailSubject = emailTemplate?.subject || subject;
         let emailContent = emailTemplate?.content || shortText;
         
-        // If using template content, replace placeholders with actual recipient name
+        // If using template content, replace placeholders with actual data
         if (emailTemplate?.content && recipient.first_name && recipient.last_name) {
           emailContent = emailTemplate.content.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
+        }
+        
+        // For leave templates, add details section if emailBody is provided
+        if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailBody) {
+          emailContent += `\n\n${emailBody}`;
         }
         
         const htmlContent = buildHtmlContent({

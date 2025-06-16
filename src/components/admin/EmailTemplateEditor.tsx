@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +48,9 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
     button_text_color: '#ffffff',
     border_radius: '6px'
   });
+
+  // Check if this is a leave-related template
+  const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
 
   useEffect(() => {
     loadTemplate();
@@ -175,6 +177,38 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Sezione Contenuto Email - Solo per template P/F */}
+          {isLeaveTemplate && (
+            <div className="space-y-4 p-4 border rounded-lg bg-slate-50">
+              <h3 className="font-semibold text-lg">Contenuto Email</h3>
+              
+              <div>
+                <Label htmlFor="subject">Oggetto Email</Label>
+                <Input
+                  id="subject"
+                  value={template.subject || ''}
+                  onChange={(e) => updateTemplate('subject', e.target.value)}
+                  placeholder="Oggetto dell'email"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="content">Contenuto Email</Label>
+                <textarea
+                  id="content"
+                  value={template.content || ''}
+                  onChange={(e) => updateTemplate('content', e.target.value)}
+                  rows={6}
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                  placeholder="Contenuto principale dell'email"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Usa "Mario Rossi" come placeholder per il nome del dipendente - verrà sostituito automaticamente.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="primary_color">Colore Primario</Label>
@@ -331,6 +365,47 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
       </Card>
     </div>
   );
+};
+
+const handleLogoUpload = async () => {
+  if (!logoUploadFile || !profile?.id) return;
+  
+  setLoading(true);
+  const logoPath = `email-templates/${profile.id}/${templateType}/logo.${logoUploadFile.name.split('.').pop()}`;
+  
+  try {
+    const { error: uploadError } = await supabase.storage
+      .from('company-assets')
+      .upload(logoPath, logoUploadFile, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: logoUploadFile.type,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: logoData } = await supabase.storage
+      .from('company-assets')
+      .getPublicUrl(logoPath);
+
+    setTemplate(prev => ({ ...prev, logo_url: logoData?.publicUrl || '' }));
+    
+    toast({
+      title: "Logo caricato",
+      description: "Il logo è stato caricato con successo.",
+    });
+  } catch (error: any) {
+    console.error('Error uploading logo:', error);
+    toast({
+      title: "Errore",
+      description: error.message || "Errore nel caricamento del logo.",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
 };
 
 export default EmailTemplateEditor;

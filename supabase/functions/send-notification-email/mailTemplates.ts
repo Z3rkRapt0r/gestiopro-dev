@@ -1,9 +1,31 @@
-
 /** Helpers per sezioni HTML email (logo, corpo, allegato, pulsante vedi doc) */
 
-// Pulsante centrato che porta alla dashboard - solo per documenti
-export function buildDashboardButton(buttonUrl: string, isDocumentEmail: boolean = false, buttonColor: string = '#007bff', buttonTextColor: string = '#ffffff', borderRadius: string = '6px') {
-  if (!isDocumentEmail) return "";
+// Pulsante centrato che porta alla dashboard - per documenti e permessi
+export function buildDashboardButton(buttonUrl: string, templateType: string = 'documenti', buttonColor: string = '#007bff', buttonTextColor: string = '#ffffff', borderRadius: string = '6px') {
+  let buttonText = 'Visualizza';
+  
+  switch (templateType) {
+    case 'documenti':
+      buttonText = 'Visualizza documento';
+      break;
+    case 'permessi-richiesta':
+      buttonText = 'Gestisci Richiesta';
+      break;
+    case 'permessi-approvazione':
+    case 'permessi-rifiuto':
+      buttonText = 'Visualizza Dettagli';
+      break;
+    case 'approvazioni':
+      buttonText = 'Gestisci Richiesta';
+      break;
+    default:
+      buttonText = 'Visualizza';
+  }
+  
+  // Show button for documents and leave-related templates
+  if (!['documenti', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType)) {
+    return "";
+  }
   
   return `
     <div style="width:100%;text-align:center;margin:28px 0 0 0;">
@@ -20,7 +42,7 @@ export function buildDashboardButton(buttonUrl: string, isDocumentEmail: boolean
         box-shadow:0 1px 6px rgba(40,82,180,.06);
         margin:auto;
       ">
-        Visualizza documento
+        ${buttonText}
       </a>
     </div>
   `;
@@ -49,6 +71,7 @@ interface EmailTemplateData {
   attachmentSection: string;
   senderEmail: string;
   isDocumentEmail?: boolean;
+  templateType?: string;
   // Parametri per personalizzazione template
   primaryColor?: string;
   backgroundColor?: string;
@@ -91,6 +114,7 @@ export function buildHtmlContent({
   attachmentSection, 
   senderEmail, 
   isDocumentEmail = false,
+  templateType = 'documenti',
   primaryColor = '#007bff',
   backgroundColor = '#ffffff',
   textColor = '#333333',
@@ -106,8 +130,9 @@ export function buildHtmlContent({
   bodyAlignment = 'left',
   fontSize = 'medium'
 }: EmailTemplateData) {
-  // Aggiungi pulsante solo se è una email relativa ai documenti
-  const dashboardButton = buildDashboardButton("https://alm-app.lovable.app/", isDocumentEmail, buttonColor, buttonTextColor, borderRadius);
+  // Determine if we should show button based on template type
+  const shouldShowButton = isDocumentEmail || ['approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
+  const dashboardButton = shouldShowButton ? buildDashboardButton("https://alm-app.lovable.app/", templateType, buttonColor, buttonTextColor, borderRadius) : "";
 
   return `
     <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
