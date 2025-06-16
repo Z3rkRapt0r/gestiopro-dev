@@ -86,7 +86,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
         {
           body: {
             recipientId,
-            subject, // Usa SEMPRE il subject fornito! (modifica qui)
+            subject,
             shortText,
             userId: profile?.id,
           }
@@ -108,6 +108,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
         });
       }
       
+      // Chiama onCreated per aggiornare automaticamente la cronologia
       onCreated?.();
     } catch (e: any) {
       console.error("Notification error:", e);

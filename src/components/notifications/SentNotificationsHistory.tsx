@@ -3,120 +3,120 @@ import { useMemo, useEffect, useState } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from "@/components/ui/table";
-import { getNotificationTypeLabel } from "@/utils/notificationUtils";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { getNotificationTypeLabel, formatRelativeDate } from "@/utils/notificationUtils";
 import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Send } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
   const { notifications, loading, refreshNotifications } = useNotifications();
   const { profile } = useAuth();
-  const [innerRefreshKey, setInnerRefreshKey] = useState(0);
-  const [hasRefreshed, setHasRefreshed] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Log di debug per assicurarsi che i dati arrivino corretti
+  // Auto-refresh quando cambia refreshKey
   useEffect(() => {
-    if (!loading) {
-      // Mostra in console tutte le notifiche (per capire se arrivano aggiornate)
-      console.log("Notifiche caricate per lo storico inviate:", notifications);
+    if (refreshKey !== undefined) {
+      refreshNotifications();
     }
-  }, [notifications, loading]);
+  }, [refreshKey, refreshNotifications]);
 
-  // Forza il refresh ogni volta che si monta/quando cambia refreshKey/inner key
-  useEffect(() => {
-    refreshNotifications();
-    setHasRefreshed(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, innerRefreshKey]);
+  // Filtra solo le notifiche inviate dall'admin corrente
+  const sentNotifications = useMemo(() => {
+    return notifications
+      .filter(n => n.created_by === profile?.id)
+      .slice(0, 10); // Mostra solo le ultime 10
+  }, [notifications, profile?.id]);
 
-  // Filtra tutte le notifiche inviate dall’utente autenticato (cioè l’admin)
-  const sent = useMemo(
-    () =>
-      notifications.filter(n => n.created_by === profile?.id),
-    [notifications, profile?.id]
-  );
-
-  const handleManualRefresh = () => {
-    setInnerRefreshKey(k => k + 1);
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshNotifications();
+    setIsRefreshing(false);
     toast({ title: "Cronologia aggiornata" });
   };
 
-  if (loading) {
-    return <div className="text-center text-gray-500 py-8">Caricamento cronologia notifiche...</div>;
-  }
-
-  // Nessuna notifica inviata oppure non caricate ancora
-  if (hasRefreshed && !sent.length) {
+  if (loading && sentNotifications.length === 0) {
     return (
-      <div className="flex flex-col items-center py-8 text-gray-400">
-        <Button variant="outline" size="sm" onClick={handleManualRefresh}>
-          <RotateCcw className="w-4 h-4 mr-2" /> Aggiorna
-        </Button>
-        <div className="mt-3">Nessuna notifica inviata recentemente.</div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="w-5 h-5" />
+            Cronologia Notifiche Inviate
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-gray-500 py-8">
+            Caricamento cronologia...
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  // Se sono in caricamento oppure non ancora refreshato, mostra loading (copertura casi)
-  if (!hasRefreshed) {
-    return <div className="text-center text-gray-400 py-8">Caricamento dati...</div>;
-  }
-
-  // Tabella con la lista delle notifiche inviate
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">Cronologia notifiche inviate</h2>
-        <Button variant="outline" size="icon" onClick={handleManualRefresh} title="Aggiorna cronologia">
-          <RotateCcw className="w-4 h-4" />
-        </Button>
-      </div>
-      <div className="overflow-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Titolo</TableHead>
-              <TableHead>Messaggio</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Destinatario</TableHead>
-              <TableHead>Stato lettura</TableHead>
-              <TableHead>Data invio</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sent.map((n) => (
-              <TableRow key={n.id}>
-                <TableCell className="font-medium">{n.title}</TableCell>
-                <TableCell>{n.message}</TableCell>
-                <TableCell>
-                  <Badge className="bg-blue-100 text-blue-900">{getNotificationTypeLabel(n.type)}</Badge>
-                </TableCell>
-                <TableCell>
-                  {n.user_id === profile?.id ? (
-                    <span className="italic text-gray-500">Me stesso</span>
-                  ) : n.user_id ? (
-                    <span>Dipendente</span>
-                  ) : (
-                    <span className="italic text-gray-500">Tutti</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {n.is_read ? (
-                    <Badge className="bg-green-100 text-green-700">Letta</Badge>
-                  ) : (
-                    <Badge className="bg-yellow-100 text-yellow-800">Non letta</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {new Date(n.created_at).toLocaleString("it-IT")}
-                </TableCell>
-              </TableRow>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Send className="w-5 h-5" />
+            Cronologia Notifiche Inviate
+          </CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RotateCcw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Aggiorna
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {sentNotifications.length === 0 ? (
+          <div className="text-center text-gray-400 py-8">
+            <Send className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p>Nessuna notifica inviata</p>
+            <p className="text-sm">Le notifiche che invii appariranno qui</p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {sentNotifications.map((notification) => (
+              <div
+                key={notification.id}
+                className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-medium text-sm">{notification.title}</h4>
+                  <Badge 
+                    variant="secondary" 
+                    className="text-xs ml-2 shrink-0"
+                  >
+                    {getNotificationTypeLabel(notification.type)}
+                  </Badge>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                  {notification.message}
+                </p>
+                
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{formatRelativeDate(notification.created_at)}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant={notification.is_read ? "default" : "destructive"}
+                      className="text-xs"
+                    >
+                      {notification.is_read ? "Letta" : "Non letta"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
             ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
