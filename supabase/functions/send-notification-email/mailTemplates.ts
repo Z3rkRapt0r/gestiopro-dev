@@ -1,3 +1,4 @@
+
 /** Helpers per sezioni HTML email (logo, corpo, allegato, pulsante vedi doc) */
 
 // Pulsante centrato che porta alla dashboard - per documenti e permessi
@@ -94,7 +95,13 @@ interface EmailTemplateData {
   fontSize?: string;
   showDetailsButton?: boolean;
   showLeaveDetails?: boolean;
+  showAdminNotes?: boolean;
   leaveDetails?: string;
+  adminNotes?: string;
+  leaveDetailsBgColor?: string;
+  leaveDetailsTextColor?: string;
+  adminNotesBgColor?: string;
+  adminNotesTextColor?: string;
 }
 
 function getLogoSize(size?: string) {
@@ -139,7 +146,13 @@ export function buildHtmlContent({
   fontSize = 'medium',
   showDetailsButton = true,
   showLeaveDetails = true,
-  leaveDetails = ''
+  showAdminNotes = true,
+  leaveDetails = '',
+  adminNotes = '',
+  leaveDetailsBgColor = '#e3f2fd',
+  leaveDetailsTextColor = '#1565c0',
+  adminNotesBgColor = '#f8f9fa',
+  adminNotesTextColor = '#495057'
 }: EmailTemplateData) {
   // Determine if we should show button based on template type and settings
   const shouldShowButton = isDocumentEmail || (['approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && showDetailsButton);
@@ -148,6 +161,10 @@ export function buildHtmlContent({
   // Check if we should show leave details
   const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
   const shouldShowLeaveDetailsSection = isLeaveTemplate && showLeaveDetails && leaveDetails;
+
+  // Check if we should show admin notes
+  const isAdminActionTemplate = ['permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
+  const shouldShowAdminNotesSection = isAdminActionTemplate && showAdminNotes && adminNotes;
 
   return `
     <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -167,9 +184,18 @@ export function buildHtmlContent({
         <div style="margin: 0 0 16px 0; white-space: pre-line;">
           ${shortText.replace(/\n/g, '<br>')}
         </div>
+        
         ${shouldShowLeaveDetailsSection ? `
-          <div style="background-color: ${primaryColor}15; padding: 12px; border-radius: 6px; margin-top: 16px; font-size: 14px; white-space: pre-line;">
+          <div style="background-color: ${leaveDetailsBgColor}; color: ${leaveDetailsTextColor}; padding: 12px; border-radius: 6px; margin-top: 16px; font-size: 14px; white-space: pre-line;">
+            <strong>Dettagli richiesta:</strong><br/>
             ${leaveDetails.replace(/\n/g, '<br>')}
+          </div>
+        ` : ''}
+
+        ${shouldShowAdminNotesSection ? `
+          <div style="background-color: ${adminNotesBgColor}; color: ${adminNotesTextColor}; padding: 12px; border-radius: 6px; margin-top: 16px; font-size: 14px; white-space: pre-line; border-left: 3px solid ${adminNotesTextColor};">
+            <strong>Note amministratore:</strong><br/>
+            ${adminNotes.replace(/\n/g, '<br>')}
           </div>
         ` : ''}
       </div>

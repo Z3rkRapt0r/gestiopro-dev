@@ -76,19 +76,19 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
       case 'permessi-richiesta':
         return {
           content: template.content || 'Gentile Amministratore,\n\nMario Rossi ha inviato una nuova richiesta di permesso. Ti preghiamo di prenderne visione e procedere con l\'approvazione o il rifiuto.',
-          details: template.details || 'Dettagli richiesta:\nTipo: Permesso\nGiorno: 23 Giugno 2025\nOrario: 15:00 - 18:00\nMotivo: Visita medica',
+          details: template.details || 'Tipo: Permesso\nDal: 2025-06-29\nAl: 2025-07-01\nMotivo: Visita medica',
           adminNotes: ''
         };
       case 'permessi-approvazione':
         return {
           content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso/ferie è stata approvata dall\'amministratore.',
-          details: template.details || 'Dettagli richiesta:\nTipo: Permesso\nGiorno: 23 Giugno 2025\nOrario: 15:00 - 18:00\nMotivo: Visita medica',
-          adminNotes: 'Note amministratore: ricorda di recuperare le ore CUGHIUNEEE'
+          details: template.details || 'Tipo: Permesso\nDal: 2025-06-29\nAl: 2025-07-01\nMotivo: Visita medica',
+          adminNotes: 'Note amministratore: FOFOF'
         };
       case 'permessi-rifiuto':
         return {
           content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso/ferie è stata rifiutata dall\'amministratore.',
-          details: template.details || 'Dettagli richiesta:\nTipo: Permesso\nGiorno: 23 Giugno 2025\nOrario: 15:00 - 18:00\nMotivo: Visita medica',
+          details: template.details || 'Tipo: Permesso\nDal: 2025-06-29\nAl: 2025-07-01\nMotivo: Visita medica',
           adminNotes: 'Note amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un\'altra data.'
         };
       default:
@@ -194,6 +194,7 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
               fontSize: '14px',
               whiteSpace: 'pre-line'
             }}>
+              <strong>Dettagli richiesta:</strong><br/>
               {details}
             </div>
           )}

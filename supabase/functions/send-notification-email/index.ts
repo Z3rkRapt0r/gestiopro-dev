@@ -19,7 +19,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId, topic, body: emailBody } = body;
+    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote } = body;
 
     if (!userId) {
       console.error("[Notification Email] Missing userId in request");
@@ -129,7 +129,12 @@ serve(async (req) => {
       button_text_color: '#ffffff',
       border_radius: '6px',
       show_details_button: true,
-      show_leave_details: true
+      show_leave_details: true,
+      show_admin_notes: true,
+      admin_notes_bg_color: '#f8f9fa',
+      admin_notes_text_color: '#495057',
+      leave_details_bg_color: '#e3f2fd',
+      leave_details_text_color: '#1565c0'
     };
 
     // Use template logo if available, otherwise fallback to admin logo
@@ -142,7 +147,7 @@ serve(async (req) => {
     }
 
     console.log("[Notification Email] Using logoUrl:", logoUrl);
-    console.log("[Notification Email] Template settings - show_details_button:", templateData.show_details_button, "show_leave_details:", templateData.show_leave_details);
+    console.log("[Notification Email] Template settings - show_details_button:", templateData.show_details_button, "show_leave_details:", templateData.show_leave_details, "show_admin_notes:", templateData.show_admin_notes);
 
     // Get recipients list
     let recipients = [];
@@ -219,10 +224,16 @@ serve(async (req) => {
           emailContent = emailTemplate.content.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
         }
         
-        // Prepare leave details for templates that support them
+        // Prepare leave details and admin notes for templates that support them
         let leaveDetails = '';
+        let adminNotes = '';
+        
         if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailBody) {
           leaveDetails = emailBody;
+        }
+        
+        if (['permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && adminNote) {
+          adminNotes = adminNote;
         }
         
         const htmlContent = buildHtmlContent({
@@ -249,7 +260,13 @@ serve(async (req) => {
           fontSize: templateData.font_size,
           showDetailsButton: templateData.show_details_button,
           showLeaveDetails: templateData.show_leave_details,
-          leaveDetails
+          showAdminNotes: templateData.show_admin_notes,
+          leaveDetails,
+          adminNotes,
+          leaveDetailsBgColor: templateData.leave_details_bg_color,
+          leaveDetailsTextColor: templateData.leave_details_text_color,
+          adminNotesBgColor: templateData.admin_notes_bg_color,
+          adminNotesTextColor: templateData.admin_notes_text_color
         });
 
         const brevoPayload = {

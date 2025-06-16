@@ -32,7 +32,7 @@ export const useLeaveRequestNotifications = () => {
 
       const subject = `Nuova richiesta ${type} da ${employeeName}`;
       const message = `${employeeName} ha inviato una nuova richiesta di ${type}.`;
-      const body = `Dettagli richiesta:\n${details}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
+      const body = `${details}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
 
       const { data, error } = await supabase.functions.invoke('send-notification-email', {
         body: {
@@ -65,12 +65,12 @@ export const useLeaveRequestNotifications = () => {
   const notifyEmployee = async ({ requestId, employeeId, status, adminNote, type, details }: NotifyEmployeeParams) => {
     setLoading(true);
     try {
-      console.log('Sending leave request status notification to employee:', { requestId, employeeId, status, type });
+      console.log('Sending leave request status notification to employee:', { requestId, employeeId, status, type, adminNote });
 
       const statusText = status === 'approved' ? 'approvata' : 'rifiutata';
       const subject = `Richiesta ${type} ${statusText}`;
       const message = `La tua richiesta di ${type} è stata ${statusText}.`;
-      const body = `Dettagli richiesta:\n${details}\n${adminNote ? `\nNote amministratore: ${adminNote}` : ''}`;
+      const body = details;
 
       const topic = status === 'approved' ? 'permessi-approvazione' : 'permessi-rifiuto';
 
@@ -80,6 +80,7 @@ export const useLeaveRequestNotifications = () => {
           subject,
           shortText: message,
           body,
+          adminNote,
           userId: profile?.id,
           topic
         }
