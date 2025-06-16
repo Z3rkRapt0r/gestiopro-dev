@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -24,17 +25,38 @@ export function useLoginSettings() {
   useEffect(() => {
     async function loadSettings() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("dashboard_settings")
-        .select("*")
-        .single(); // Presuppone una singola riga
+      try {
+        // Prende il record più recente ordinando per updated_at
+        const { data, error } = await supabase
+          .from("dashboard_settings")
+          .select("login_logo_url, login_company_name, login_primary_color, login_secondary_color, login_background_color")
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (error) {
-        console.error("Errore durante il caricamento delle impostazioni:", error.message);
-      } else if (data) {
-        setSettings(data as LoginSettings);
+        if (error) {
+          console.error("Errore durante il caricamento delle impostazioni:", error.message);
+          setSettings(defaultLoginSettings);
+        } else if (data) {
+          // Mappa i dati dal database all'interfaccia LoginSettings
+          const loginSettings: LoginSettings = {
+            login_logo_url: data.login_logo_url || null,
+            login_company_name: data.login_company_name || defaultLoginSettings.login_company_name,
+            login_primary_color: data.login_primary_color || defaultLoginSettings.login_primary_color,
+            login_secondary_color: data.login_secondary_color || defaultLoginSettings.login_secondary_color,
+            login_background_color: data.login_background_color || defaultLoginSettings.login_background_color,
+          };
+          setSettings(loginSettings);
+        } else {
+          // Nessun dato trovato, usa i default
+          setSettings(defaultLoginSettings);
+        }
+      } catch (error) {
+        console.error("Errore durante il caricamento delle impostazioni:", error);
+        setSettings(defaultLoginSettings);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     loadSettings();
@@ -50,9 +72,7 @@ export function useLoginSettings() {
         },
         (payload) => {
           console.log("Modifica ricevuta:", payload);
-          if (payload.new) {
-            setSettings(payload.new as LoginSettings);
-          }
+          loadSettings(); // Ricarica le impostazioni quando cambiano
         }
       )
       .subscribe();
@@ -64,4 +84,3 @@ export function useLoginSettings() {
 
   return { settings, loading };
 }
-
