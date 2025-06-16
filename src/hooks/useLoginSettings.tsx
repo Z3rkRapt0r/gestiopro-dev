@@ -49,29 +49,36 @@ export function useLoginSettings() {
   const loadSettings = async () => {
     try {
       console.log('Loading login settings...');
-      // Carica tutte le impostazioni login disponibili e prendi la prima con valori non nulli
+      // Carica TUTTE le impostazioni dashboard e cerca quelle con dati login
       const { data, error } = await supabase
         .from("dashboard_settings")
         .select("login_logo_url, login_company_name, login_primary_color, login_secondary_color, login_background_color")
-        .not('login_company_name', 'is', null)
-        .limit(1)
-        .maybeSingle();
+        .order('updated_at', { ascending: false });
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error("Error loading login settings:", error);
         setSettings(defaultLoginSettings);
         return;
       }
 
-      console.log('Login settings loaded:', data);
+      console.log('All dashboard settings loaded:', data);
 
-      if (data) {
+      // Trova la prima riga che ha almeno una impostazione login configurata
+      const loginData = data?.find(row => 
+        row.login_company_name || 
+        row.login_logo_url || 
+        row.login_primary_color !== '#2563eb' ||
+        row.login_secondary_color !== '#64748b' ||
+        row.login_background_color !== '#f1f5f9'
+      );
+
+      if (loginData) {
         const newSettings = {
-          login_logo_url: data.login_logo_url,
-          login_company_name: data.login_company_name || "SerramentiCorp",
-          login_primary_color: data.login_primary_color || "#2563eb",
-          login_secondary_color: data.login_secondary_color || "#64748b",
-          login_background_color: data.login_background_color || "#f1f5f9",
+          login_logo_url: loginData.login_logo_url,
+          login_company_name: loginData.login_company_name || "SerramentiCorp",
+          login_primary_color: loginData.login_primary_color || "#2563eb",
+          login_secondary_color: loginData.login_secondary_color || "#64748b",
+          login_background_color: loginData.login_background_color || "#f1f5f9",
         };
         console.log('Setting new login settings:', newSettings);
         setSettings(newSettings);
