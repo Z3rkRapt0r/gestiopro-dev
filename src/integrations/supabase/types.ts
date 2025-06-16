@@ -198,6 +198,33 @@ export type Database = {
           },
         ]
       }
+      employee_logo_settings: {
+        Row: {
+          admin_id: string
+          created_at: string
+          employee_default_logo_url: string | null
+          employee_logo_enabled: boolean
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          employee_default_logo_url?: string | null
+          employee_logo_enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          employee_default_logo_url?: string | null
+          employee_logo_enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leave_requests: {
         Row: {
           admin_note: string | null

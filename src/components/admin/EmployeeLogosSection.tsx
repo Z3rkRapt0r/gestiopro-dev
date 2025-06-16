@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X, User } from "lucide-react";
+import { Upload, X, Building } from "lucide-react";
 
 interface EmployeeLogosSettings {
   employee_default_logo_url: string | null;
@@ -31,8 +31,9 @@ const EmployeeLogosSection = () => {
 
   const loadSettings = async () => {
     try {
+      console.log('Loading employee logos settings from new table...');
       const { data, error } = await supabase
-        .from("dashboard_settings")
+        .from("employee_logo_settings")
         .select("employee_default_logo_url, employee_logo_enabled")
         .eq("admin_id", profile?.id)
         .maybeSingle();
@@ -41,6 +42,8 @@ const EmployeeLogosSection = () => {
         console.error("Error loading employee logos settings:", error);
         return;
       }
+
+      console.log('Employee logos settings loaded:', data);
 
       if (data) {
         setSettings({
@@ -101,8 +104,9 @@ const EmployeeLogosSection = () => {
 
     setLoading(true);
     try {
+      console.log('Saving employee logos settings to new table...');
       const { error } = await supabase
-        .from("dashboard_settings")
+        .from("employee_logo_settings")
         .upsert(
           {
             admin_id: profile.id,
@@ -140,7 +144,7 @@ const EmployeeLogosSection = () => {
       <div>
         <h3 className="text-lg font-semibold mb-4">Logo per Dashboard Dipendenti</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Gestisci il logo di default che vedranno i dipendenti nella loro dashboard.
+          Gestisci il logo di default che vedranno i dipendenti nella loro dashboard. Questo logo sostituirà l'icona SVG nell'header.
         </p>
       </div>
 
@@ -155,7 +159,7 @@ const EmployeeLogosSection = () => {
             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
           <Label htmlFor="employee_logo_enabled">
-            Mostra logo personalizzato ai dipendenti
+            Mostra logo personalizzato ai dipendenti (sostituisce l'icona SVG)
           </Label>
         </div>
 
@@ -208,7 +212,7 @@ const EmployeeLogosSection = () => {
 
             {/* Anteprima Dashboard Dipendente */}
             <div className="border rounded-lg p-4 bg-gray-50">
-              <h4 className="text-sm font-medium mb-3">Anteprima Dashboard Dipendente</h4>
+              <h4 className="text-sm font-medium mb-3">Anteprima Header Dashboard Dipendente</h4>
               <div className="bg-white shadow-sm border-b p-4 rounded">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
@@ -220,7 +224,7 @@ const EmployeeLogosSection = () => {
                       />
                     ) : (
                       <div className="bg-blue-600 p-2 rounded">
-                        <User className="h-6 w-6 text-white" />
+                        <Building className="h-6 w-6 text-white" />
                       </div>
                     )}
                     <div className="ml-4">

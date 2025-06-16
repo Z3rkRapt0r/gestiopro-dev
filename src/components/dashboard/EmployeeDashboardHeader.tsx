@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { LogOut, Users } from "lucide-react";
+import { LogOut, Building } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { useEmployeeLogoSettings } from "@/hooks/useEmployeeLogoSettings";
@@ -10,7 +10,7 @@ const EmployeeDashboardHeader = () => {
   const { settings: dashboardSettings } = useDashboardSettings();
   const { settings: employeeLogoSettings } = useEmployeeLogoSettings();
 
-  // Determina quale logo mostrare
+  // Determina quale logo mostrare: prima il logo dedicato dipendenti, poi quello dashboard generale
   const logoToShow = employeeLogoSettings.employee_logo_enabled && employeeLogoSettings.employee_default_logo_url
     ? employeeLogoSettings.employee_default_logo_url
     : dashboardSettings.logo_url;
@@ -28,7 +28,7 @@ const EmployeeDashboardHeader = () => {
               />
             ) : (
               <div className="bg-blue-600 p-2 rounded">
-                <Users className="h-6 w-6 text-white" />
+                <Building className="h-6 w-6 text-white" />
               </div>
             )}
             <div className="ml-4">

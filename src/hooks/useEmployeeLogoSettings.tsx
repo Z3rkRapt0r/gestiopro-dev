@@ -26,7 +26,7 @@ export function useEmployeeLogoSettings() {
         { 
           event: '*', 
           schema: 'public', 
-          table: 'dashboard_settings' 
+          table: 'employee_logo_settings' 
         }, 
         () => {
           console.log('Employee logo settings changed, reloading...');
@@ -42,11 +42,14 @@ export function useEmployeeLogoSettings() {
 
   const loadSettings = async () => {
     try {
-      console.log('Loading employee logo settings...');
-      // Carica le impostazioni logo dipendenti da qualsiasi admin (prendiamo la prima trovata)
+      console.log('Loading employee logo settings from new table...');
+      
+      // Carica le impostazioni dalla nuova tabella employee_logo_settings
+      // ordinando per updated_at per prendere la più recente
       const { data, error } = await supabase
-        .from("dashboard_settings")
+        .from("employee_logo_settings")
         .select("employee_default_logo_url, employee_logo_enabled")
+        .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -56,7 +59,7 @@ export function useEmployeeLogoSettings() {
         return;
       }
 
-      console.log('Employee logo settings loaded:', data);
+      console.log('Employee logo settings loaded from new table:', data);
 
       if (data) {
         const newSettings = {
@@ -66,7 +69,7 @@ export function useEmployeeLogoSettings() {
         console.log('Setting new employee logo settings:', newSettings);
         setSettings(newSettings);
       } else {
-        console.log('No employee logo settings found, using defaults');
+        console.log('No employee logo settings found in new table, using defaults');
         setSettings(defaultEmployeeLogoSettings);
       }
     } catch (error) {
