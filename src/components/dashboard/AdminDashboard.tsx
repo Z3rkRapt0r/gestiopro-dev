@@ -520,14 +520,14 @@ const AdminDashboard = () => {
                   className="text-xl font-semibold"
                   style={{ color: dashboardSettings.primary_color }}
                 >
-                  {dashboardSettings.company_name || "SerramentiCorp Admin"}
+                  {dashboardSettings.company_name || "SerramentiCorp"}
                 </h1>
               </div>
             </div>
             
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Benvenuto in {dashboardSettings.company_name || "SerramentiCorp"}, {profile?.first_name} {profile?.last_name}
+                Benvenuto {profile?.first_name} {profile?.last_name}
               </span>
               <Button variant="ghost" onClick={signOut}>
                 <LogOut className="h-4 w-4 mr-2" />
