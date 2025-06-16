@@ -154,38 +154,86 @@ export type Database = {
       email_templates: {
         Row: {
           admin_id: string
+          background_color: string | null
+          body_alignment: string | null
+          border_radius: string | null
+          button_color: string | null
+          button_text_color: string | null
           content: string
           created_at: string | null
+          font_family: string | null
+          font_size: string | null
+          footer_color: string | null
+          footer_text: string | null
+          header_alignment: string | null
           id: string
           is_default: boolean
+          logo_alignment: string | null
+          logo_size: string | null
+          logo_url: string | null
           name: string
+          primary_color: string | null
+          secondary_color: string | null
           sender_name: string | null
           subject: string
-          topic: string
+          template_type: string
+          text_color: string | null
           updated_at: string | null
         }
         Insert: {
           admin_id: string
+          background_color?: string | null
+          body_alignment?: string | null
+          border_radius?: string | null
+          button_color?: string | null
+          button_text_color?: string | null
           content: string
           created_at?: string | null
+          font_family?: string | null
+          font_size?: string | null
+          footer_color?: string | null
+          footer_text?: string | null
+          header_alignment?: string | null
           id?: string
           is_default?: boolean
+          logo_alignment?: string | null
+          logo_size?: string | null
+          logo_url?: string | null
           name: string
+          primary_color?: string | null
+          secondary_color?: string | null
           sender_name?: string | null
           subject: string
-          topic?: string
+          template_type?: string
+          text_color?: string | null
           updated_at?: string | null
         }
         Update: {
           admin_id?: string
+          background_color?: string | null
+          body_alignment?: string | null
+          border_radius?: string | null
+          button_color?: string | null
+          button_text_color?: string | null
           content?: string
           created_at?: string | null
+          font_family?: string | null
+          font_size?: string | null
+          footer_color?: string | null
+          footer_text?: string | null
+          header_alignment?: string | null
           id?: string
           is_default?: boolean
+          logo_alignment?: string | null
+          logo_size?: string | null
+          logo_url?: string | null
           name?: string
+          primary_color?: string | null
+          secondary_color?: string | null
           sender_name?: string | null
           subject?: string
-          topic?: string
+          template_type?: string
+          text_color?: string | null
           updated_at?: string | null
         }
         Relationships: [

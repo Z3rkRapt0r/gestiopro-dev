@@ -66,7 +66,7 @@ const GlobalEmailTemplateSection = () => {
     // eslint-disable-next-line
   }, [profile?.id]);
 
-  // Carica il logo e le impostazioni template (usa funzione async interna)
+  // Carica il logo e le impostazioni template usando il nuovo campo template_type
   useEffect(() => {
     const loadData = async () => {
       if (!profile?.id) {
@@ -87,18 +87,18 @@ const GlobalEmailTemplateSection = () => {
 
       const { data, error } = await supabase
         .from("email_templates")
-        .select("subject,name")
+        .select("footer_text,logo_alignment")
         .eq("admin_id", profile.id)
         .eq("is_default", false)
-        .eq("topic", "generale")
+        .eq("template_type", "generale")
         .maybeSingle();
 
       if (!error && data) {
-        setFooterText(data.subject || DEFAULT_FOOTER);
+        setFooterText(data.footer_text || DEFAULT_FOOTER);
         const alignValue =
-          data.name === "right"
+          data.logo_alignment === "right"
             ? "right"
-            : data.name === "center"
+            : data.logo_alignment === "center"
             ? "center"
             : "left";
         setLogoAlign(alignValue as "left" | "right" | "center");
@@ -146,7 +146,7 @@ const GlobalEmailTemplateSection = () => {
     setLoading(false);
   };
 
-  // Salva solo allineamento logo e footer
+  // Salva solo allineamento logo e footer con la nuova struttura
   const handleSave = async () => {
     if (!profile?.id) {
       toast({
@@ -157,20 +157,22 @@ const GlobalEmailTemplateSection = () => {
       return;
     }
     setLoading(true);
-    // salvo footerText in subject, align in name
+    
     const { error } = await supabase.from("email_templates").upsert(
       [
         {
           admin_id: profile.id,
-          name: logoAlign, // left, right o center
-          subject: footerText,
-          is_default: false,
-          topic: "generale",
+          name: "Template Globale",
+          subject: "Email Generale",
           content: "",
+          template_type: "generale",
+          footer_text: footerText,
+          logo_alignment: logoAlign,
+          is_default: false,
         },
       ],
       {
-        onConflict: "admin_id,topic",
+        onConflict: "admin_id,template_type",
         ignoreDuplicates: false,
       }
     );

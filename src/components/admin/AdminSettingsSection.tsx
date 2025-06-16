@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import GlobalEmailTemplateSection from "./GlobalEmailTemplateSection";
 import DashboardCustomizationSection from "./DashboardCustomizationSection";
 import LoginCustomizationSection from "./LoginCustomizationSection";
 import EmployeeLogosSection from "./EmployeeLogosSection";
+import EmailTemplateManager from "./EmailTemplateManager";
 
 const AdminSettingsSection = () => {
   const { apiKey, loading, saveApiKey } = useAdminSettings();
@@ -35,7 +35,13 @@ const AdminSettingsSection = () => {
             value="emailtemplate" 
             className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
-            Modello Email
+            Modello Email Globale
+          </TabsTrigger>
+          <TabsTrigger 
+            value="emailtemplates" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
+          >
+            Modelli Email Avanzati
           </TabsTrigger>
           <TabsTrigger 
             value="dashboard" 
@@ -78,6 +84,9 @@ const AdminSettingsSection = () => {
         </TabsContent>
         <TabsContent value="emailtemplate">
           <GlobalEmailTemplateSection />
+        </TabsContent>
+        <TabsContent value="emailtemplates">
+          <EmailTemplateManager />
         </TabsContent>
         <TabsContent value="dashboard">
           <DashboardCustomizationSection />
