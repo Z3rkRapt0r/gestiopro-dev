@@ -154,6 +154,8 @@ export type Database = {
       email_templates: {
         Row: {
           admin_id: string
+          admin_notes_bg_color: string | null
+          admin_notes_text_color: string | null
           background_color: string | null
           body_alignment: string | null
           border_radius: string | null
@@ -169,6 +171,8 @@ export type Database = {
           header_alignment: string | null
           id: string
           is_default: boolean
+          leave_details_bg_color: string | null
+          leave_details_text_color: string | null
           logo_alignment: string | null
           logo_size: string | null
           logo_url: string | null
@@ -186,6 +190,8 @@ export type Database = {
         }
         Insert: {
           admin_id: string
+          admin_notes_bg_color?: string | null
+          admin_notes_text_color?: string | null
           background_color?: string | null
           body_alignment?: string | null
           border_radius?: string | null
@@ -201,6 +207,8 @@ export type Database = {
           header_alignment?: string | null
           id?: string
           is_default?: boolean
+          leave_details_bg_color?: string | null
+          leave_details_text_color?: string | null
           logo_alignment?: string | null
           logo_size?: string | null
           logo_url?: string | null
@@ -218,6 +226,8 @@ export type Database = {
         }
         Update: {
           admin_id?: string
+          admin_notes_bg_color?: string | null
+          admin_notes_text_color?: string | null
           background_color?: string | null
           body_alignment?: string | null
           border_radius?: string | null
@@ -233,6 +243,8 @@ export type Database = {
           header_alignment?: string | null
           id?: string
           is_default?: boolean
+          leave_details_bg_color?: string | null
+          leave_details_text_color?: string | null
           logo_alignment?: string | null
           logo_size?: string | null
           logo_url?: string | null
