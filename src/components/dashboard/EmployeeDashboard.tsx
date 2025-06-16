@@ -113,7 +113,7 @@ const EmployeeDashboard = () => {
                   className="text-xl font-semibold"
                   style={{ color: dashboardSettings.primary_color }}
                 >
-                  {dashboardSettings.company_name || "SerramentiCorp"}
+                  {dashboardSettings.company_name || "A.L.M Infissi"} - Gestionale
                 </h1>
               </div>
             </div>
@@ -137,8 +137,8 @@ const EmployeeDashboard = () => {
           subtitle="Visualizza i tuoi documenti, notifiche e statistiche"
         />
         
+        {/* Sidebar */}
         <div className="flex space-x-8">
-          {/* Sidebar */}
           <div className="w-64 space-y-2">
             <Button
               variant={activeSection === 'dashboard' ? 'default' : 'ghost'}
