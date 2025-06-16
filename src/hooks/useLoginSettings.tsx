@@ -28,21 +28,22 @@ export function useLoginSettings() {
       try {
         console.log('[useLoginSettings] Caricamento impostazioni login...');
         
-        // Prende il record più recente ordinando per updated_at
+        // Carica TUTTE le impostazioni dalla tabella dashboard_settings
+        // ordinando per updated_at per prendere la più recente
         const { data, error } = await supabase
           .from("dashboard_settings")
-          .select("login_logo_url, login_company_name, login_primary_color, login_secondary_color, login_background_color")
+          .select("*")
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        console.log('[useLoginSettings] Risposta database:', { data, error });
+        console.log('[useLoginSettings] Risposta database completa:', { data, error });
 
         if (error) {
           console.error("[useLoginSettings] Errore durante il caricamento delle impostazioni:", error.message);
           setSettings(defaultLoginSettings);
         } else if (data) {
-          // Mappa i dati dal database all'interfaccia LoginSettings
+          // Usa i dati dal database se presenti, altrimenti usa i default
           const loginSettings: LoginSettings = {
             login_logo_url: data.login_logo_url || null,
             login_company_name: data.login_company_name || defaultLoginSettings.login_company_name,
@@ -50,10 +51,11 @@ export function useLoginSettings() {
             login_secondary_color: data.login_secondary_color || defaultLoginSettings.login_secondary_color,
             login_background_color: data.login_background_color || defaultLoginSettings.login_background_color,
           };
-          console.log('[useLoginSettings] Impostazioni caricate:', loginSettings);
+          
+          console.log('[useLoginSettings] Impostazioni mappate dal DB:', loginSettings);
           setSettings(loginSettings);
         } else {
-          console.log('[useLoginSettings] Nessun dato trovato, uso i default');
+          console.log('[useLoginSettings] Nessun dato trovato nel database, uso i default');
           setSettings(defaultLoginSettings);
         }
       } catch (error) {
@@ -61,12 +63,13 @@ export function useLoginSettings() {
         setSettings(defaultLoginSettings);
       } finally {
         setLoading(false);
-        console.log('[useLoginSettings] Caricamento completato');
+        console.log('[useLoginSettings] Caricamento completato, settings finali:', settings);
       }
     }
 
     loadSettings();
 
+    // Imposta la subscription per gli aggiornamenti real-time
     const subscription = supabase
       .channel("dashboard_settings_changes")
       .on(
@@ -77,7 +80,7 @@ export function useLoginSettings() {
           table: "dashboard_settings",
         },
         (payload) => {
-          console.log("[useLoginSettings] Modifica ricevuta:", payload);
+          console.log("[useLoginSettings] Modifica ricevuta dal database:", payload);
           loadSettings(); // Ricarica le impostazioni quando cambiano
         }
       )
