@@ -17,7 +17,7 @@ type EmailTemplate = Database['public']['Tables']['email_templates']['Row'];
 type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Insert'];
 
 interface EmailTemplateEditorProps {
-  templateType: 'documenti' | 'notifiche' | 'approvazioni' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
+  templateType: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   defaultContent: string;
   defaultSubject: string;
 }
