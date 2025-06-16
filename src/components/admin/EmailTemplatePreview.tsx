@@ -24,6 +24,10 @@ interface EmailTemplate {
   button_color: string;
   button_text_color: string;
   border_radius: string;
+  admin_notes_bg_color?: string;
+  admin_notes_text_color?: string;
+  leave_details_bg_color?: string;
+  leave_details_text_color?: string;
 }
 
 interface EmailTemplatePreviewProps {
@@ -72,19 +76,19 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
       case 'permessi-richiesta':
         return {
           content: template.content || 'Gentile Amministratore,\n\nMario Rossi ha inviato una nuova richiesta di permesso. Ti preghiamo di prenderne visione e procedere con l\'approvazione o il rifiuto.',
-          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica',
+          details: template.details || 'Dettagli richiesta:\nTipo: Permesso\nGiorno: 23 Giugno 2025\nOrario: 15:00 - 18:00\nMotivo: Visita medica',
           adminNotes: ''
         };
       case 'permessi-approvazione':
         return {
-          content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata approvata dall\'amministratore.',
-          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica',
-          adminNotes: 'Note amministratore: Richiesta approvata. Ricorda di recuperare le ore.'
+          content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso/ferie è stata approvata dall\'amministratore.',
+          details: template.details || 'Dettagli richiesta:\nTipo: Permesso\nGiorno: 23 Giugno 2025\nOrario: 15:00 - 18:00\nMotivo: Visita medica',
+          adminNotes: 'Note amministratore: ricorda di recuperare le ore CUGHIUNEEE'
         };
       case 'permessi-rifiuto':
         return {
-          content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata rifiutata dall\'amministratore.',
-          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica',
+          content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso/ferie è stata rifiutata dall\'amministratore.',
+          details: template.details || 'Dettagli richiesta:\nTipo: Permesso\nGiorno: 23 Giugno 2025\nOrario: 15:00 - 18:00\nMotivo: Visita medica',
           adminNotes: 'Note amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un\'altra data.'
         };
       default:
@@ -182,7 +186,8 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
           
           {shouldShowLeaveDetails() && details && (
             <div style={{ 
-              backgroundColor: `${template.primary_color}15`,
+              backgroundColor: template.leave_details_bg_color || '#e3f2fd',
+              color: template.leave_details_text_color || '#1565c0',
               padding: '12px',
               borderRadius: '6px',
               marginTop: '16px',
@@ -195,14 +200,16 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
 
           {shouldShowAdminNotes() && adminNotes && (
             <div style={{ 
-              backgroundColor: `${template.secondary_color}15`,
+              backgroundColor: template.admin_notes_bg_color || '#f8f9fa',
+              color: template.admin_notes_text_color || '#495057',
               padding: '12px',
               borderRadius: '6px',
               marginTop: '16px',
               fontSize: '14px',
               whiteSpace: 'pre-line',
-              borderLeft: `3px solid ${template.secondary_color}`
+              borderLeft: `3px solid ${template.admin_notes_text_color || '#495057'}`
             }}>
+              <strong>Note amministratore:</strong><br/>
               {adminNotes}
             </div>
           )}

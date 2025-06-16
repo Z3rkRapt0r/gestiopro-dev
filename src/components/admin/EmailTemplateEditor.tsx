@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +18,10 @@ type EmailTemplate = Database['public']['Tables']['email_templates']['Row'] & {
   show_details_button?: boolean;
   show_leave_details?: boolean;
   show_admin_notes?: boolean;
+  admin_notes_bg_color?: string;
+  admin_notes_text_color?: string;
+  leave_details_bg_color?: string;
+  leave_details_text_color?: string;
 };
 
 type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Insert'] & {
@@ -26,6 +29,10 @@ type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Inse
   show_details_button?: boolean;
   show_leave_details?: boolean;
   show_admin_notes?: boolean;
+  admin_notes_bg_color?: string;
+  admin_notes_text_color?: string;
+  leave_details_bg_color?: string;
+  leave_details_text_color?: string;
 };
 
 interface EmailTemplateEditorProps {
@@ -63,7 +70,11 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
     border_radius: '6px',
     show_details_button: true,
     show_leave_details: true,
-    show_admin_notes: true
+    show_admin_notes: true,
+    admin_notes_bg_color: '#f8f9fa',
+    admin_notes_text_color: '#495057',
+    leave_details_bg_color: '#e3f2fd',
+    leave_details_text_color: '#1565c0'
   });
 
   // Check if this is a leave-related template
@@ -95,7 +106,11 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           ...data,
           show_details_button: data.show_details_button !== null ? data.show_details_button : true,
           show_leave_details: data.show_leave_details !== null ? data.show_leave_details : true,
-          show_admin_notes: data.show_admin_notes !== null ? data.show_admin_notes : true
+          show_admin_notes: data.show_admin_notes !== null ? data.show_admin_notes : true,
+          admin_notes_bg_color: data.admin_notes_bg_color || '#f8f9fa',
+          admin_notes_text_color: data.admin_notes_text_color || '#495057',
+          leave_details_bg_color: data.leave_details_bg_color || '#e3f2fd',
+          leave_details_text_color: data.leave_details_text_color || '#1565c0'
         };
         setTemplate(templateData);
       }
@@ -294,6 +309,60 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
               </div>
             )}
           </div>
+
+          {/* Sezione Colori Dettagli Permesso */}
+          {isLeaveTemplate && (
+            <div className="space-y-4 p-4 border rounded-lg bg-green-50">
+              <h4 className="font-medium">Colori Sezione Dettagli Permesso</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="leave_details_bg_color">Colore Sfondo Dettagli</Label>
+                  <Input
+                    id="leave_details_bg_color"
+                    type="color"
+                    value={template.leave_details_bg_color || '#e3f2fd'}
+                    onChange={(e) => updateTemplate('leave_details_bg_color', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="leave_details_text_color">Colore Testo Dettagli</Label>
+                  <Input
+                    id="leave_details_text_color"
+                    type="color"
+                    value={template.leave_details_text_color || '#1565c0'}
+                    onChange={(e) => updateTemplate('leave_details_text_color', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Sezione Colori Note Amministratore */}
+          {['permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && (
+            <div className="space-y-4 p-4 border rounded-lg bg-orange-50">
+              <h4 className="font-medium">Colori Sezione Note Amministratore</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="admin_notes_bg_color">Colore Sfondo Note</Label>
+                  <Input
+                    id="admin_notes_bg_color"
+                    type="color"
+                    value={template.admin_notes_bg_color || '#f8f9fa'}
+                    onChange={(e) => updateTemplate('admin_notes_bg_color', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="admin_notes_text_color">Colore Testo Note</Label>
+                  <Input
+                    id="admin_notes_text_color"
+                    type="color"
+                    value={template.admin_notes_text_color || '#495057'}
+                    onChange={(e) => updateTemplate('admin_notes_text_color', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
