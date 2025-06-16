@@ -49,7 +49,7 @@ interface EmailTemplateData {
   attachmentSection: string;
   senderEmail: string;
   isDocumentEmail?: boolean;
-  // Nuovi parametri per personalizzazione
+  // Parametri per personalizzazione template
   primaryColor?: string;
   backgroundColor?: string;
   textColor?: string;
@@ -60,6 +60,28 @@ interface EmailTemplateData {
   buttonColor?: string;
   buttonTextColor?: string;
   borderRadius?: string;
+  logoSize?: string;
+  headerAlignment?: string;
+  bodyAlignment?: string;
+  fontSize?: string;
+}
+
+function getLogoSize(size?: string) {
+  switch (size) {
+    case 'small': return '40px';
+    case 'medium': return '60px';
+    case 'large': return '80px';
+    default: return '60px';
+  }
+}
+
+function getFontSize(size?: string) {
+  switch (size) {
+    case 'small': return '14px';
+    case 'medium': return '16px';
+    case 'large': return '18px';
+    default: return '16px';
+  }
 }
 
 export function buildHtmlContent({ 
@@ -78,33 +100,40 @@ export function buildHtmlContent({
   fontFamily = 'Arial, sans-serif',
   buttonColor = '#007bff',
   buttonTextColor = '#ffffff',
-  borderRadius = '6px'
+  borderRadius = '6px',
+  logoSize = 'medium',
+  headerAlignment = 'center',
+  bodyAlignment = 'left',
+  fontSize = 'medium'
 }: EmailTemplateData) {
   // Aggiungi pulsante solo se è una email relativa ai documenti
   const dashboardButton = buildDashboardButton("https://alm-app.lovable.app/", isDocumentEmail, buttonColor, buttonTextColor, borderRadius);
 
   return `
-    <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor};">
+    <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
       ${
         logoUrl
           ? `<div style="text-align:${logoAlignment};margin-bottom:24px;">
-              <img src="${logoUrl}" alt="Logo" style="max-height:60px;max-width:180px;" />
+              <img src="${logoUrl}" alt="Logo" style="max-height:${getLogoSize(logoSize)};max-width:200px;object-fit:contain;" />
             </div>`
           : ""
       }
-      <h2 style="color: ${primaryColor}; border-bottom: 2px solid ${primaryColor}; padding-bottom: 10px;">
-        ${subject}
-      </h2>
-      <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${textColor};">
-        ${shortText.replace(/\n/g, '<br>')}
-        ${dashboardButton}
+      <div style="text-align:${headerAlignment};margin-bottom:24px;">
+        <h2 style="color: ${primaryColor}; margin: 0 0 16px 0; font-size: 24px; font-weight: bold;">
+          ${subject}
+        </h2>
       </div>
+      <div style="text-align: ${bodyAlignment}; line-height: 1.6; margin-bottom: 24px; font-size: ${getFontSize(fontSize)};">
+        <div style="margin: 0 0 16px 0; white-space: pre-line;">
+          ${shortText.replace(/\n/g, '<br>')}
+        </div>
+      </div>
+      ${dashboardButton}
       ${attachmentSection}
-      <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-      <div style="width:100%;text-align:center;margin-top:18px;">
-        <span style="color:${footerColor}; font-size:13px;">
+      <div style="border-top: 1px solid ${primaryColor}20; padding-top: 24px; margin-top: 32px; text-align: center;">
+        <p style="color: ${footerColor}; font-size: 13px; margin: 0; line-height: 1.4;">
           ${footerText}
-        </span>
+        </p>
       </div>
     </div>
   `;

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -110,13 +111,35 @@ serve(async (req) => {
 
     console.log("[Notification Email] Found email template:", emailTemplate);
 
-    // Get logo URL for admin
-    const { data: logoData } = await supabase.storage
-      .from('company-assets')
-      .getPublicUrl(`${userId}/email-logo.png?v=${Date.now()}`);
+    // Use template data with fallback to defaults
+    const templateData = emailTemplate || {
+      primary_color: '#007bff',
+      secondary_color: '#6c757d',
+      background_color: '#ffffff',
+      text_color: '#333333',
+      logo_alignment: 'center',
+      logo_size: 'medium',
+      footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+      footer_color: '#888888',
+      header_alignment: 'center',
+      body_alignment: 'left',
+      font_family: 'Arial, sans-serif',
+      font_size: 'medium',
+      button_color: '#007bff',
+      button_text_color: '#ffffff',
+      border_radius: '6px'
+    };
 
-    const logoUrl = emailTemplate?.logo_url || logoData?.publicUrl;
-    console.log("[Notification Email] Found logoUrl for admin:", logoUrl);
+    // Use template logo if available, otherwise fallback to admin logo
+    let logoUrl = templateData.logo_url;
+    if (!logoUrl) {
+      const { data: logoData } = await supabase.storage
+        .from('company-assets')
+        .getPublicUrl(`${userId}/email-logo.png?v=${Date.now()}`);
+      logoUrl = logoData?.publicUrl;
+    }
+
+    console.log("[Notification Email] Using logoUrl:", logoUrl);
 
     // Get recipients list
     let recipients = [];
@@ -181,26 +204,38 @@ serve(async (req) => {
 
     for (const recipient of recipients) {
       try {
-        // Build email content using template settings or defaults
-        const templateData = emailTemplate || {
-          primary_color: '#007bff',
-          background_color: '#ffffff',
-          text_color: '#333333',
-          logo_alignment: 'center',
-          footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
-          footer_color: '#888888',
-          font_family: 'Arial, sans-serif',
-          button_color: '#007bff',
-          button_text_color: '#ffffff',
-          border_radius: '6px'
-        };
-
         const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
         const isDocumentEmail = templateType === 'documenti';
         
+        // Get realistic content based on template type
+        let emailContent = shortText;
+        let emailSubject = subject;
+        
+        // Use template subject and content if available
+        if (emailTemplate?.subject) {
+          emailSubject = emailTemplate.subject;
+        }
+        
+        // Generate realistic content based on template type if no custom content
+        if (!shortText || shortText.length < 10) {
+          switch (templateType) {
+            case 'documenti':
+              emailContent = `Gentile ${recipient.first_name || 'utente'},\n\nÈ disponibile un nuovo documento per la tua revisione. Il documento contiene informazioni importanti che richiedono la tua attenzione immediata.\n\nTi preghiamo di accedere alla dashboard per visualizzare e scaricare il documento.`;
+              break;
+            case 'notifiche':
+              emailContent = `Gentile ${recipient.first_name || 'utente'},\n\nHai ricevuto una nuova notifica importante dal sistema aziendale. Ti invitiamo a prenderne visione accedendo alla tua dashboard personale.\n\nLa notifica riguarda aggiornamenti importanti.`;
+              break;
+            case 'approvazioni':
+              emailContent = `Gentile Amministratore,\n\nÈ necessaria la tua approvazione per una richiesta di ${recipient.first_name || 'un utente'}. La richiesta riguarda autorizzazioni importanti.\n\nAccedi alla dashboard per visualizzare i dettagli e procedere con l'approvazione o il rifiuto.`;
+              break;
+            default:
+              emailContent = shortText || `Gentile ${recipient.first_name || 'utente'},\n\nHai ricevuto una comunicazione importante dal sistema aziendale.`;
+          }
+        }
+        
         const htmlContent = buildHtmlContent({
-          subject,
-          shortText,
+          subject: emailSubject,
+          shortText: emailContent,
           logoUrl,
           attachmentSection,
           senderEmail,
@@ -220,9 +255,9 @@ serve(async (req) => {
         const brevoPayload = {
           sender: { name: senderName, email: senderEmail },
           to: [{ email: recipient.email }],
-          subject: subject,
+          subject: emailSubject,
           htmlContent,
-          textContent: `${subject}\n\n${shortText}\n\nInviato da: ${senderName}`
+          textContent: `${emailSubject}\n\n${emailContent}\n\nInviato da: ${senderName}`
         };
 
         const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
