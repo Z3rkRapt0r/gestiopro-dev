@@ -15,7 +15,6 @@ import EmailTemplatePreview from "./EmailTemplatePreview";
 interface EmailTemplate {
   id?: string;
   template_type: 'documenti' | 'notifiche' | 'approvazioni';
-  name: string;
   subject: string;
   content: string;
   primary_color: string;
@@ -50,7 +49,6 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
   const inputLogoRef = useRef<HTMLInputElement>(null);
   const [template, setTemplate] = useState<EmailTemplate>({
     template_type: templateType,
-    name: `Template ${templateType}`,
     subject: defaultSubject,
     content: defaultContent,
     primary_color: '#007bff',
@@ -91,10 +89,28 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
       }
 
       if (data) {
-        // Assicuriamoci che template_type sia del tipo corretto
-        const templateData = {
-          ...data,
-          template_type: data.template_type as 'documenti' | 'notifiche' | 'approvazioni'
+        // Mappiamo i valori dal database ai tipi TypeScript corretti
+        const templateData: EmailTemplate = {
+          id: data.id,
+          template_type: data.template_type as 'documenti' | 'notifiche' | 'approvazioni',
+          subject: data.subject,
+          content: data.content,
+          primary_color: data.primary_color || '#007bff',
+          secondary_color: data.secondary_color || '#6c757d',
+          background_color: data.background_color || '#ffffff',
+          text_color: data.text_color || '#333333',
+          logo_url: data.logo_url || undefined,
+          logo_alignment: (data.logo_alignment as 'left' | 'center' | 'right') || 'center',
+          logo_size: (data.logo_size as 'small' | 'medium' | 'large') || 'medium',
+          footer_text: data.footer_text || '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+          footer_color: data.footer_color || '#888888',
+          header_alignment: (data.header_alignment as 'left' | 'center' | 'right') || 'center',
+          body_alignment: (data.body_alignment as 'left' | 'center' | 'right' | 'justify') || 'left',
+          font_family: data.font_family || 'Arial, sans-serif',
+          font_size: (data.font_size as 'small' | 'medium' | 'large') || 'medium',
+          button_color: data.button_color || '#007bff',
+          button_text_color: data.button_text_color || '#ffffff',
+          border_radius: data.border_radius || '6px'
         };
         setTemplate(templateData);
       }
