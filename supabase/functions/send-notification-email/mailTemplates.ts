@@ -1,7 +1,12 @@
 /** Helpers per sezioni HTML email (logo, corpo, allegato, pulsante vedi doc) */
 
 // Pulsante centrato che porta alla dashboard - per documenti e permessi
-export function buildDashboardButton(buttonUrl: string, templateType: string = 'documenti', buttonColor: string = '#007bff', buttonTextColor: string = '#ffffff', borderRadius: string = '6px') {
+export function buildDashboardButton(buttonUrl: string, templateType: string = 'documenti', buttonColor: string = '#007bff', buttonTextColor: string = '#ffffff', borderRadius: string = '6px', showButton: boolean = true) {
+  // Se il pulsante è disabilitato nel template, non mostrarlo
+  if (!showButton) {
+    return "";
+  }
+  
   let buttonText = 'Visualizza';
   
   switch (templateType) {
@@ -87,6 +92,9 @@ interface EmailTemplateData {
   headerAlignment?: string;
   bodyAlignment?: string;
   fontSize?: string;
+  showDetailsButton?: boolean;
+  showLeaveDetails?: boolean;
+  leaveDetails?: string;
 }
 
 function getLogoSize(size?: string) {
@@ -128,11 +136,18 @@ export function buildHtmlContent({
   logoSize = 'medium',
   headerAlignment = 'center',
   bodyAlignment = 'left',
-  fontSize = 'medium'
+  fontSize = 'medium',
+  showDetailsButton = true,
+  showLeaveDetails = true,
+  leaveDetails = ''
 }: EmailTemplateData) {
-  // Determine if we should show button based on template type
-  const shouldShowButton = isDocumentEmail || ['approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
-  const dashboardButton = shouldShowButton ? buildDashboardButton("https://alm-app.lovable.app/", templateType, buttonColor, buttonTextColor, borderRadius) : "";
+  // Determine if we should show button based on template type and settings
+  const shouldShowButton = isDocumentEmail || (['approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && showDetailsButton);
+  const dashboardButton = shouldShowButton ? buildDashboardButton("https://alm-app.lovable.app/", templateType, buttonColor, buttonTextColor, borderRadius, showDetailsButton) : "";
+
+  // Check if we should show leave details
+  const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
+  const shouldShowLeaveDetailsSection = isLeaveTemplate && showLeaveDetails && leaveDetails;
 
   return `
     <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -152,6 +167,11 @@ export function buildHtmlContent({
         <div style="margin: 0 0 16px 0; white-space: pre-line;">
           ${shortText.replace(/\n/g, '<br>')}
         </div>
+        ${shouldShowLeaveDetailsSection ? `
+          <div style="background-color: ${primaryColor}15; padding: 12px; border-radius: 6px; margin-top: 16px; font-size: 14px; white-space: pre-line;">
+            ${leaveDetails.replace(/\n/g, '<br>')}
+          </div>
+        ` : ''}
       </div>
       ${dashboardButton}
       ${attachmentSection}

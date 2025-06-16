@@ -127,7 +127,9 @@ serve(async (req) => {
       font_size: 'medium',
       button_color: '#007bff',
       button_text_color: '#ffffff',
-      border_radius: '6px'
+      border_radius: '6px',
+      show_details_button: true,
+      show_leave_details: true
     };
 
     // Use template logo if available, otherwise fallback to admin logo
@@ -140,6 +142,7 @@ serve(async (req) => {
     }
 
     console.log("[Notification Email] Using logoUrl:", logoUrl);
+    console.log("[Notification Email] Template settings - show_details_button:", templateData.show_details_button, "show_leave_details:", templateData.show_leave_details);
 
     // Get recipients list
     let recipients = [];
@@ -216,9 +219,10 @@ serve(async (req) => {
           emailContent = emailTemplate.content.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
         }
         
-        // For leave templates, add details section if emailBody is provided
+        // Prepare leave details for templates that support them
+        let leaveDetails = '';
         if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailBody) {
-          emailContent += `\n\n${emailBody}`;
+          leaveDetails = emailBody;
         }
         
         const htmlContent = buildHtmlContent({
@@ -228,6 +232,7 @@ serve(async (req) => {
           attachmentSection,
           senderEmail,
           isDocumentEmail,
+          templateType,
           primaryColor: templateData.primary_color,
           backgroundColor: templateData.background_color,
           textColor: templateData.text_color,
@@ -241,7 +246,10 @@ serve(async (req) => {
           logoSize: templateData.logo_size,
           headerAlignment: templateData.header_alignment,
           bodyAlignment: templateData.body_alignment,
-          fontSize: templateData.font_size
+          fontSize: templateData.font_size,
+          showDetailsButton: templateData.show_details_button,
+          showLeaveDetails: templateData.show_leave_details,
+          leaveDetails
         });
 
         const brevoPayload = {
