@@ -10,12 +10,7 @@ interface LoginSettings {
   login_background_color: string;
 }
 
-const defaultLoginSettings: LoginSettings = {
-  login_logo_url: null,
-  login_company_name: "SerramentiCorp",
-  login_primary_color: "#2563eb",
-  login_secondary_color: "#64748b",
-  login_background_color: "#f1f5f9",
+
 };
 
 export function useLoginSettings() {
