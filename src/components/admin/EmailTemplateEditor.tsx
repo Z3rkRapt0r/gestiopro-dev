@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,7 @@ import EmailTemplatePreview from "./EmailTemplatePreview";
 
 interface EmailTemplate {
   id?: string;
+  name?: string; // Added the missing name property
   template_type: 'documenti' | 'notifiche' | 'approvazioni';
   subject: string;
   content: string;
@@ -91,6 +93,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
         // Mappiamo i valori dal database ai tipi TypeScript corretti
         const templateData: EmailTemplate = {
           id: data.id,
+          name: data.name,
           template_type: data.template_type as 'documenti' | 'notifiche' | 'approvazioni',
           subject: data.subject,
           content: data.content,
