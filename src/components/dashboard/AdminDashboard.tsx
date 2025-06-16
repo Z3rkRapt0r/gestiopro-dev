@@ -18,6 +18,7 @@ import AdminApprovalsSection from "@/components/leave/AdminApprovalsSection";
 import SentNotificationsHistory from "@/components/notifications/SentNotificationsHistory";
 import { useNavigate, useLocation } from "react-router-dom";
 import AdminSettingsSection from "@/components/admin/AdminSettingsSection";
+import DashboardHeader from "./DashboardHeader";
 interface Employee {
   id: string;
   first_name: string | null;
@@ -519,6 +520,11 @@ const AdminDashboard = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <DashboardHeader 
+          title="Dashboard Amministratore"
+          subtitle="Gestisci dipendenti, documenti e notifiche"
+        />
+        
         <div className="flex space-x-8">
           {/* Sidebar */}
           <div className="w-64 space-y-2">

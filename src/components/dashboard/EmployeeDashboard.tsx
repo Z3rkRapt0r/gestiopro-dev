@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import EmployeeLeavePage from "@/components/leave/EmployeeLeavePage";
+import DashboardHeader from "./DashboardHeader";
 
 const EmployeeDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -88,33 +88,12 @@ const EmployeeDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <div className="bg-green-600 p-2 rounded">
-                <User className="h-6 w-6 text-white"  />
-              </div>
-              <div className="ml-4">
-                <h1 className="text-xl font-semibold text-gray-900">Area Personale</h1>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                Benvenuto, {profile?.first_name} {profile?.last_name}
-              </span>
-              <Button variant="ghost" onClick={signOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Esci
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <DashboardHeader 
+          title="Dashboard Dipendente"
+          subtitle="Visualizza i tuoi documenti, notifiche e statistiche"
+        />
+        
         <div className="flex space-x-8">
           {/* Sidebar */}
           <div className="w-64 space-y-2">
