@@ -267,6 +267,42 @@ export type Database = {
           },
         ]
       }
+      login_settings: {
+        Row: {
+          admin_id: string
+          background_color: string
+          company_name: string
+          created_at: string
+          id: string
+          logo_url: string | null
+          primary_color: string
+          secondary_color: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          background_color?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          background_color?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           body: string

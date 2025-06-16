@@ -96,13 +96,13 @@ const NewAuthPage = () => {
     return (
       <div 
         className="min-h-screen flex items-center justify-center p-4"
-        style={{ backgroundColor: loginSettings.login_background_color }}
+        style={{ backgroundColor: loginSettings.background_color }}
       >
         <div className="w-full max-w-md">
           <Card className="shadow-2xl border-0">
             <CardContent className="p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: loginSettings.login_primary_color }}></div>
-              <p className="text-center mt-4 text-sm" style={{ color: loginSettings.login_secondary_color }}>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: loginSettings.primary_color }}></div>
+              <p className="text-center mt-4 text-sm" style={{ color: loginSettings.secondary_color }}>
                 Caricamento...
               </p>
             </CardContent>
@@ -116,38 +116,38 @@ const NewAuthPage = () => {
     <div 
       className="min-h-screen flex items-center justify-center p-4"
       style={{ 
-        background: `linear-gradient(135deg, ${loginSettings.login_background_color}ee, ${loginSettings.login_background_color})` 
+        background: `linear-gradient(135deg, ${loginSettings.background_color}ee, ${loginSettings.background_color})` 
       }}
     >
       <div className="w-full max-w-md">
         {/* Header con logo e nome azienda */}
         <div className="text-center mb-8">
           <div className="flex justify-center items-center mb-6">
-            {loginSettings.login_logo_url ? (
+            {loginSettings.logo_url ? (
               <div>
                 <img
-                  src={loginSettings.login_logo_url}
-                  alt={`${loginSettings.login_company_name} Logo`}
+                  src={loginSettings.logo_url}
+                  alt={`${loginSettings.company_name} Logo`}
                   className="h-20 w-auto object-contain drop-shadow-lg max-w-full"
                   onError={(e) => {
-                    console.error('[NewAuthPage] Errore caricamento logo:', loginSettings.login_logo_url);
+                    console.error('[NewAuthPage] Errore caricamento logo:', loginSettings.logo_url);
                     // Fallback in caso di errore nel caricamento dell'immagine
                     (e.target as HTMLImageElement).style.display = 'none';
                     const fallback = document.createElement('div');
                     fallback.className = 'p-4 rounded-full shadow-lg flex items-center justify-center';
-                    fallback.style.backgroundColor = loginSettings.login_primary_color;
+                    fallback.style.backgroundColor = loginSettings.primary_color;
                     fallback.innerHTML = `<svg class="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7L12 12L22 7L12 2Z"/><path d="M2 17L12 22L22 17"/><path d="M2 12L12 17L22 12"/></svg>`;
                     (e.target as HTMLImageElement).parentNode?.appendChild(fallback);
                   }}
                   onLoad={() => {
-                    console.log('[NewAuthPage] Logo caricato con successo:', loginSettings.login_logo_url);
+                    console.log('[NewAuthPage] Logo caricato con successo:', loginSettings.logo_url);
                   }}
                 />
               </div>
             ) : (
               <div 
                 className="p-4 rounded-full shadow-lg flex items-center justify-center"
-                style={{ backgroundColor: loginSettings.login_primary_color }}
+                style={{ backgroundColor: loginSettings.primary_color }}
               >
                 <Building className="h-10 w-10 text-white" />
               </div>
@@ -155,13 +155,13 @@ const NewAuthPage = () => {
           </div>
           <h1 
             className="text-4xl font-bold mb-3 drop-shadow-sm"
-            style={{ color: loginSettings.login_primary_color }}
+            style={{ color: loginSettings.primary_color }}
           >
-            {loginSettings.login_company_name}
+            {loginSettings.company_name}
           </h1>
           <p 
             className="text-lg font-medium"
-            style={{ color: loginSettings.login_secondary_color }}
+            style={{ color: loginSettings.secondary_color }}
           >
             Sistema di Gestione Aziendale
           </p>
@@ -172,14 +172,14 @@ const NewAuthPage = () => {
           <CardHeader className="text-center pb-4">
             <CardTitle 
               className="text-2xl font-semibold"
-              style={{ color: loginSettings.login_primary_color }}
+              style={{ color: loginSettings.primary_color }}
             >
               {authMode === 'login' ? 'Accesso' : 'Recupera Password'}
             </CardTitle>
             {authMode === 'forgot-password' && (
               <p 
                 className="text-sm mt-2"
-                style={{ color: loginSettings.login_secondary_color }}
+                style={{ color: loginSettings.secondary_color }}
               >
                 Inserisci la tua email per ricevere le istruzioni di recupero
               </p>
@@ -189,24 +189,24 @@ const NewAuthPage = () => {
             {authMode === 'login' ? (
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" style={{ color: loginSettings.login_secondary_color }}>
+                  <Label htmlFor="email" style={{ color: loginSettings.secondary_color }}>
                     Email
                   </Label>
                   <div className="relative">
                     <Mail 
                       className="absolute left-3 top-3 h-4 w-4" 
-                      style={{ color: loginSettings.login_secondary_color }}
+                      style={{ color: loginSettings.secondary_color }}
                     />
                     <Input
                       id="email"
                       type="email"
-                      placeholder={`tua.email@${loginSettings.login_company_name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`}
+                      placeholder={`tua.email@${loginSettings.company_name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-10 border-2 focus:ring-2"
                       style={{ 
-                        borderColor: `${loginSettings.login_primary_color}30`,
-                        '--tw-ring-color': `${loginSettings.login_primary_color}50`
+                        borderColor: `${loginSettings.primary_color}30`,
+                        '--tw-ring-color': `${loginSettings.primary_color}50`
                       } as React.CSSProperties}
                       required
                     />
@@ -214,13 +214,13 @@ const NewAuthPage = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="password" style={{ color: loginSettings.login_secondary_color }}>
+                  <Label htmlFor="password" style={{ color: loginSettings.secondary_color }}>
                     Password
                   </Label>
                   <div className="relative">
                     <Lock 
                       className="absolute left-3 top-3 h-4 w-4" 
-                      style={{ color: loginSettings.login_secondary_color }}
+                      style={{ color: loginSettings.secondary_color }}
                     />
                     <Input
                       id="password"
@@ -230,8 +230,8 @@ const NewAuthPage = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-10 pr-10 border-2 focus:ring-2"
                       style={{ 
-                        borderColor: `${loginSettings.login_primary_color}30`,
-                        '--tw-ring-color': `${loginSettings.login_primary_color}50`
+                        borderColor: `${loginSettings.primary_color}30`,
+                        '--tw-ring-color': `${loginSettings.primary_color}50`
                       } as React.CSSProperties}
                       required
                     />
@@ -239,7 +239,7 @@ const NewAuthPage = () => {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-3 hover:opacity-70 transition-opacity"
-                      style={{ color: loginSettings.login_secondary_color }}
+                      style={{ color: loginSettings.secondary_color }}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -251,7 +251,7 @@ const NewAuthPage = () => {
                     type="button"
                     onClick={() => setAuthMode('forgot-password')}
                     className="text-sm hover:underline font-medium transition-all"
-                    style={{ color: loginSettings.login_primary_color }}
+                    style={{ color: loginSettings.primary_color }}
                   >
                     Password dimenticata?
                   </button>
@@ -260,7 +260,7 @@ const NewAuthPage = () => {
                 <Button 
                   type="submit" 
                   className="w-full text-white font-semibold py-3 hover:opacity-90 transition-all shadow-lg"
-                  style={{ backgroundColor: loginSettings.login_primary_color }}
+                  style={{ backgroundColor: loginSettings.primary_color }}
                   disabled={isLoading || loading}
                 >
                   {isLoading ? "Accesso in corso..." : "Accedi"}
@@ -269,24 +269,24 @@ const NewAuthPage = () => {
             ) : (
               <form onSubmit={handleForgotPassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="reset-email" style={{ color: loginSettings.login_secondary_color }}>
+                  <Label htmlFor="reset-email" style={{ color: loginSettings.secondary_color }}>
                     Email
                   </Label>
                   <div className="relative">
                     <Mail 
                       className="absolute left-3 top-3 h-4 w-4" 
-                      style={{ color: loginSettings.login_secondary_color }}
+                      style={{ color: loginSettings.secondary_color }}
                     />
                     <Input
                       id="reset-email"
                       type="email"
-                      placeholder={`tua.email@${loginSettings.login_company_name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`}
+                      placeholder={`tua.email@${loginSettings.company_name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`}
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       className="pl-10 border-2 focus:ring-2"
                       style={{ 
-                        borderColor: `${loginSettings.login_primary_color}30`,
-                        '--tw-ring-color': `${loginSettings.login_primary_color}50`
+                        borderColor: `${loginSettings.primary_color}30`,
+                        '--tw-ring-color': `${loginSettings.primary_color}50`
                       } as React.CSSProperties}
                       required
                     />
@@ -296,7 +296,7 @@ const NewAuthPage = () => {
                 <Button 
                   type="submit" 
                   className="w-full text-white font-semibold py-3 hover:opacity-90 transition-all shadow-lg"
-                  style={{ backgroundColor: loginSettings.login_primary_color }}
+                  style={{ backgroundColor: loginSettings.primary_color }}
                   disabled={isLoading}
                 >
                   {isLoading ? "Invio in corso..." : "Invia Email di Recupero"}
@@ -307,7 +307,7 @@ const NewAuthPage = () => {
                   variant="ghost"
                   onClick={() => setAuthMode('login')}
                   className="w-full font-medium"
-                  style={{ color: loginSettings.login_primary_color }}
+                  style={{ color: loginSettings.primary_color }}
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Torna al Login
@@ -316,7 +316,7 @@ const NewAuthPage = () => {
             )}
             
             <div className="text-center text-sm border-t pt-4">
-              <p style={{ color: loginSettings.login_secondary_color }}>
+              <p style={{ color: loginSettings.secondary_color }}>
                 Contatta l'amministratore per ottenere le credenziali di accesso
               </p>
             </div>
@@ -327,9 +327,9 @@ const NewAuthPage = () => {
         <div className="text-center mt-6">
           <p 
             className="text-xs opacity-75"
-            style={{ color: loginSettings.login_secondary_color }}
+            style={{ color: loginSettings.secondary_color }}
           >
-            Powered by {loginSettings.login_company_name}
+            Powered by {loginSettings.company_name}
           </p>
         </div>
       </div>

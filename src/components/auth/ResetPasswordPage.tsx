@@ -105,12 +105,12 @@ const ResetPasswordPage = () => {
     return (
       <div 
         className="min-h-screen flex items-center justify-center p-4"
-        style={{ backgroundColor: loginSettings.login_background_color }}
+        style={{ backgroundColor: loginSettings.background_color }}
       >
         <Card className="w-full max-w-md shadow-2xl">
           <CardContent className="p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: loginSettings.login_primary_color }}></div>
-            <p className="text-center mt-4 text-sm" style={{ color: loginSettings.login_secondary_color }}>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: loginSettings.primary_color }}></div>
+            <p className="text-center mt-4 text-sm" style={{ color: loginSettings.secondary_color }}>
               Caricamento...
             </p>
           </CardContent>
@@ -124,23 +124,23 @@ const ResetPasswordPage = () => {
       <div 
         className="min-h-screen flex items-center justify-center p-4"
         style={{ 
-          background: `linear-gradient(135deg, ${loginSettings.login_background_color}ee, ${loginSettings.login_background_color})` 
+          background: `linear-gradient(135deg, ${loginSettings.background_color}ee, ${loginSettings.background_color})` 
         }}
       >
         <div className="w-full max-w-md">
           {/* Header con logo e nome azienda */}
           <div className="text-center mb-8">
             <div className="flex justify-center items-center mb-6">
-              {loginSettings.login_logo_url ? (
+              {loginSettings.logo_url ? (
                 <img
-                  src={loginSettings.login_logo_url}
-                  alt={`${loginSettings.login_company_name} Logo`}
+                  src={loginSettings.logo_url}
+                  alt={`${loginSettings.company_name} Logo`}
                   className="h-16 w-auto object-contain drop-shadow-lg"
                 />
               ) : (
                 <div 
                   className="p-3 rounded-full shadow-lg"
-                  style={{ backgroundColor: loginSettings.login_primary_color }}
+                  style={{ backgroundColor: loginSettings.primary_color }}
                 >
                   <Building className="h-8 w-8 text-white" />
                 </div>
@@ -152,22 +152,22 @@ const ResetPasswordPage = () => {
             <CardContent className="text-center p-8">
               <div 
                 className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                style={{ backgroundColor: `${loginSettings.login_primary_color}20` }}
+                style={{ backgroundColor: `${loginSettings.primary_color}20` }}
               >
-                <CheckCircle className="h-8 w-8" style={{ color: loginSettings.login_primary_color }} />
+                <CheckCircle className="h-8 w-8" style={{ color: loginSettings.primary_color }} />
               </div>
               <h1 
                 className="text-2xl font-bold mb-2"
-                style={{ color: loginSettings.login_primary_color }}
+                style={{ color: loginSettings.primary_color }}
               >
                 Password Aggiornata!
               </h1>
-              <p className="mb-4" style={{ color: loginSettings.login_secondary_color }}>
+              <p className="mb-4" style={{ color: loginSettings.secondary_color }}>
                 La tua password è stata aggiornata con successo.
               </p>
               <p 
                 className="text-sm"
-                style={{ color: loginSettings.login_secondary_color }}
+                style={{ color: loginSettings.secondary_color }}
               >
                 Verrai reindirizzato automaticamente alla pagina di login...
               </p>
@@ -182,23 +182,23 @@ const ResetPasswordPage = () => {
     <div 
       className="min-h-screen flex items-center justify-center p-4"
       style={{ 
-        background: `linear-gradient(135deg, ${loginSettings.login_background_color}ee, ${loginSettings.login_background_color})` 
+        background: `linear-gradient(135deg, ${loginSettings.background_color}ee, ${loginSettings.background_color})` 
       }}
     >
       <div className="w-full max-w-md">
         {/* Header con logo e nome azienda */}
         <div className="text-center mb-8">
           <div className="flex justify-center items-center mb-6">
-            {loginSettings.login_logo_url ? (
+            {loginSettings.logo_url ? (
               <img
-                src={loginSettings.login_logo_url}
-                alt={`${loginSettings.login_company_name} Logo`}
+                src={loginSettings.logo_url}
+                alt={`${loginSettings.company_name} Logo`}
                 className="h-16 w-auto object-contain drop-shadow-lg"
               />
             ) : (
               <div 
                 className="p-3 rounded-full shadow-lg"
-                style={{ backgroundColor: loginSettings.login_primary_color }}
+                style={{ backgroundColor: loginSettings.primary_color }}
               >
                 <Building className="h-8 w-8 text-white" />
               </div>
@@ -206,9 +206,9 @@ const ResetPasswordPage = () => {
           </div>
           <h1 
             className="text-3xl font-bold mb-2"
-            style={{ color: loginSettings.login_primary_color }}
+            style={{ color: loginSettings.primary_color }}
           >
-            {loginSettings.login_company_name}
+            {loginSettings.company_name}
           </h1>
         </div>
 
@@ -216,13 +216,13 @@ const ResetPasswordPage = () => {
           <CardHeader className="text-center">
             <CardTitle 
               className="text-2xl"
-              style={{ color: loginSettings.login_primary_color }}
+              style={{ color: loginSettings.primary_color }}
             >
               Nuova Password
             </CardTitle>
             <p 
               className="text-sm mt-2"
-              style={{ color: loginSettings.login_secondary_color }}
+              style={{ color: loginSettings.secondary_color }}
             >
               Inserisci la tua nuova password
             </p>
@@ -230,13 +230,13 @@ const ResetPasswordPage = () => {
           <CardContent>
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password" style={{ color: loginSettings.login_secondary_color }}>
+                <Label htmlFor="password" style={{ color: loginSettings.secondary_color }}>
                   Nuova Password
                 </Label>
                 <div className="relative">
                   <Lock 
                     className="absolute left-3 top-3 h-4 w-4" 
-                    style={{ color: loginSettings.login_secondary_color }}
+                    style={{ color: loginSettings.secondary_color }}
                   />
                   <Input
                     id="password"
@@ -246,8 +246,8 @@ const ResetPasswordPage = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10 border-2 focus:ring-2"
                     style={{ 
-                      borderColor: `${loginSettings.login_primary_color}30`,
-                      '--tw-ring-color': `${loginSettings.login_primary_color}50`
+                      borderColor: `${loginSettings.primary_color}30`,
+                      '--tw-ring-color': `${loginSettings.primary_color}50`
                     } as React.CSSProperties}
                     required
                     minLength={6}
@@ -256,7 +256,7 @@ const ResetPasswordPage = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 hover:opacity-70 transition-opacity"
-                    style={{ color: loginSettings.login_secondary_color }}
+                    style={{ color: loginSettings.secondary_color }}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -264,13 +264,13 @@ const ResetPasswordPage = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="confirm-password" style={{ color: loginSettings.login_secondary_color }}>
+                <Label htmlFor="confirm-password" style={{ color: loginSettings.secondary_color }}>
                   Conferma Password
                 </Label>
                 <div className="relative">
                   <Lock 
                     className="absolute left-3 top-3 h-4 w-4" 
-                    style={{ color: loginSettings.login_secondary_color }}
+                    style={{ color: loginSettings.secondary_color }}
                   />
                   <Input
                     id="confirm-password"
@@ -280,8 +280,8 @@ const ResetPasswordPage = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pl-10 pr-10 border-2 focus:ring-2"
                     style={{ 
-                      borderColor: `${loginSettings.login_primary_color}30`,
-                      '--tw-ring-color': `${loginSettings.login_primary_color}50`
+                      borderColor: `${loginSettings.primary_color}30`,
+                      '--tw-ring-color': `${loginSettings.primary_color}50`
                     } as React.CSSProperties}
                     required
                     minLength={6}
@@ -290,7 +290,7 @@ const ResetPasswordPage = () => {
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-3 hover:opacity-70 transition-opacity"
-                    style={{ color: loginSettings.login_secondary_color }}
+                    style={{ color: loginSettings.secondary_color }}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -300,7 +300,7 @@ const ResetPasswordPage = () => {
               <Button 
                 type="submit" 
                 className="w-full text-white font-semibold py-3 hover:opacity-90 transition-all shadow-lg"
-                style={{ backgroundColor: loginSettings.login_primary_color }}
+                style={{ backgroundColor: loginSettings.primary_color }}
                 disabled={isLoading}
               >
                 {isLoading ? "Aggiornamento..." : "Aggiorna Password"}
@@ -313,9 +313,9 @@ const ResetPasswordPage = () => {
         <div className="text-center mt-6">
           <p 
             className="text-xs opacity-75"
-            style={{ color: loginSettings.login_secondary_color }}
+            style={{ color: loginSettings.secondary_color }}
           >
-            Powered by {loginSettings.login_company_name}
+            Powered by {loginSettings.company_name}
           </p>
         </div>
       </div>

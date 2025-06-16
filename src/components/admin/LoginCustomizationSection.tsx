@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,11 +9,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload, X } from "lucide-react";
 
 interface LoginSettings {
-  login_logo_url: string | null;
-  login_company_name: string;
-  login_primary_color: string;
-  login_secondary_color: string;
-  login_background_color: string;
+  logo_url: string | null;
+  company_name: string;
+  primary_color: string;
+  secondary_color: string;
+  background_color: string;
 }
 
 const LoginCustomizationSection = () => {
@@ -21,11 +22,11 @@ const LoginCustomizationSection = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [settings, setSettings] = useState<LoginSettings>({
-    login_logo_url: null,
-    login_company_name: "SerramentiCorp",
-    login_primary_color: "#2563eb",
-    login_secondary_color: "#64748b",
-    login_background_color: "#f1f5f9",
+    logo_url: null,
+    company_name: "ALM Infissi",
+    primary_color: "#2563eb",
+    secondary_color: "#64748b",
+    background_color: "#f1f5f9",
   });
 
   useEffect(() => {
@@ -36,16 +37,16 @@ const LoginCustomizationSection = () => {
 
   const loadSettings = async () => {
     try {
-      console.log('LoadSettings - profile?.id:', profile?.id);
+      console.log('LoadSettings - admin_id:', profile?.id);
       
-      // Prima verifichiamo se esistono impostazioni per questo admin
+      // Carica le impostazioni dalla nuova tabella login_settings
       const { data: existingSettings, error: fetchError } = await supabase
-        .from("dashboard_settings")
+        .from("login_settings")
         .select("*")
         .eq("admin_id", profile?.id)
         .maybeSingle();
 
-      console.log('Existing settings for admin:', existingSettings);
+      console.log('Existing login settings:', existingSettings);
       console.log('Fetch error:', fetchError);
 
       if (fetchError && fetchError.code !== 'PGRST116') {
@@ -55,62 +56,19 @@ const LoginCustomizationSection = () => {
 
       if (existingSettings) {
         setSettings({
-          login_logo_url: existingSettings.login_logo_url,
-          login_company_name: existingSettings.login_company_name || "SerramentiCorp",
-          login_primary_color: existingSettings.login_primary_color || "#2563eb",
-          login_secondary_color: existingSettings.login_secondary_color || "#64748b",
-          login_background_color: existingSettings.login_background_color || "#f1f5f9",
+          logo_url: existingSettings.logo_url,
+          company_name: existingSettings.company_name || "ALM Infissi",
+          primary_color: existingSettings.primary_color || "#2563eb",
+          secondary_color: existingSettings.secondary_color || "#64748b",
+          background_color: existingSettings.background_color || "#f1f5f9",
         });
-        console.log('Loaded existing settings');
+        console.log('Loaded existing login settings');
       } else {
-        console.log('No existing settings found, using defaults');
+        console.log('No existing login settings found, using defaults');
       }
     } catch (error) {
       console.error("Error loading login settings:", error);
     }
-  };
-
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !profile?.id) return;
-
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `login-${profile.id}-${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("company-logos")
-        .upload(fileName, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("company-logos")
-        .getPublicUrl(fileName);
-
-      setSettings(prev => ({ ...prev, login_logo_url: publicUrl }));
-
-      toast({
-        title: "Logo login caricato",
-        description: "Il logo per la pagina di login è stato caricato con successo",
-      });
-    } catch (error: any) {
-      console.error("Error uploading login logo:", error);
-      toast({
-        title: "Errore",
-        description: error.message || "Errore durante il caricamento del logo",
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleRemoveLogo = () => {
-    setSettings(prev => ({ ...prev, login_logo_url: null }));
   };
 
   const handleSave = async () => {
@@ -128,27 +86,27 @@ const LoginCustomizationSection = () => {
       console.log('Saving login settings for admin_id:', profile.id);
       console.log('Settings to save:', settings);
 
-      // Prima verifichiamo se esiste già una riga per questo admin
+      // Verifica se esiste già una riga per questo admin nella tabella login_settings
       const { data: existingRow } = await supabase
-        .from("dashboard_settings")
+        .from("login_settings")
         .select("id")
         .eq("admin_id", profile.id)
         .maybeSingle();
 
-      console.log('Existing row:', existingRow);
+      console.log('Existing login_settings row:', existingRow);
 
       let result;
       
       if (existingRow) {
         // Aggiorna la riga esistente
         result = await supabase
-          .from("dashboard_settings")
+          .from("login_settings")
           .update({
-            login_logo_url: settings.login_logo_url,
-            login_company_name: settings.login_company_name,
-            login_primary_color: settings.login_primary_color,
-            login_secondary_color: settings.login_secondary_color,
-            login_background_color: settings.login_background_color,
+            logo_url: settings.logo_url,
+            company_name: settings.company_name,
+            primary_color: settings.primary_color,
+            secondary_color: settings.secondary_color,
+            background_color: settings.background_color,
             updated_at: new Date().toISOString(),
           })
           .eq("admin_id", profile.id)
@@ -156,14 +114,14 @@ const LoginCustomizationSection = () => {
       } else {
         // Crea una nuova riga
         result = await supabase
-          .from("dashboard_settings")
+          .from("login_settings")
           .insert({
             admin_id: profile.id,
-            login_logo_url: settings.login_logo_url,
-            login_company_name: settings.login_company_name,
-            login_primary_color: settings.login_primary_color,
-            login_secondary_color: settings.login_secondary_color,
-            login_background_color: settings.login_background_color,
+            logo_url: settings.logo_url,
+            company_name: settings.company_name,
+            primary_color: settings.primary_color,
+            secondary_color: settings.secondary_color,
+            background_color: settings.background_color,
           })
           .select();
       }
@@ -174,9 +132,9 @@ const LoginCustomizationSection = () => {
         throw result.error;
       }
 
-      // Verifichiamo che i dati siano stati salvati
+      // Verifica che i dati siano stati salvati
       const { data: verification } = await supabase
-        .from("dashboard_settings")
+        .from("login_settings")
         .select("*")
         .eq("admin_id", profile.id)
         .maybeSingle();
@@ -211,13 +169,13 @@ const LoginCustomizationSection = () => {
       <div className="space-y-4">
         {/* Nome Azienda Login */}
         <div>
-          <Label htmlFor="login_company_name">Nome Azienda per Login</Label>
+          <Label htmlFor="company_name">Nome Azienda per Login</Label>
           <Input
-            id="login_company_name"
+            id="company_name"
             type="text"
             placeholder="Inserisci il nome dell'azienda per il login"
-            value={settings.login_company_name}
-            onChange={(e) => setSettings(prev => ({ ...prev, login_company_name: e.target.value }))}
+            value={settings.company_name}
+            onChange={(e) => setSettings(prev => ({ ...prev, company_name: e.target.value }))}
           />
         </div>
 
@@ -225,10 +183,10 @@ const LoginCustomizationSection = () => {
         <div>
           <Label>Logo per Pagina di Login</Label>
           <div className="mt-2">
-            {settings.login_logo_url ? (
+            {settings.logo_url ? (
               <div className="flex items-center space-x-4">
                 <img
-                  src={settings.login_logo_url}
+                  src={settings.logo_url}
                   alt="Logo Login"
                   className="h-16 w-auto object-contain border rounded"
                 />
@@ -236,7 +194,7 @@ const LoginCustomizationSection = () => {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setSettings(prev => ({ ...prev, login_logo_url: null }))}
+                  onClick={() => setSettings(prev => ({ ...prev, logo_url: null }))}
                   disabled={uploading}
                 >
                   <X className="h-4 w-4 mr-2" />
@@ -277,7 +235,7 @@ const LoginCustomizationSection = () => {
                             .from("company-logos")
                             .getPublicUrl(fileName);
 
-                          setSettings(prev => ({ ...prev, login_logo_url: publicUrl }));
+                          setSettings(prev => ({ ...prev, logo_url: publicUrl }));
 
                           toast({
                             title: "Logo login caricato",
@@ -306,57 +264,57 @@ const LoginCustomizationSection = () => {
         {/* Colori Login */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="login_primary_color">Colore Primario Login</Label>
+            <Label htmlFor="primary_color">Colore Primario Login</Label>
             <div className="flex items-center space-x-2">
               <input
-                id="login_primary_color"
+                id="primary_color"
                 type="color"
-                value={settings.login_primary_color}
-                onChange={(e) => setSettings(prev => ({ ...prev, login_primary_color: e.target.value }))}
+                value={settings.primary_color}
+                onChange={(e) => setSettings(prev => ({ ...prev, primary_color: e.target.value }))}
                 className="w-10 h-10 border rounded cursor-pointer"
               />
               <Input
                 type="text"
-                value={settings.login_primary_color}
-                onChange={(e) => setSettings(prev => ({ ...prev, login_primary_color: e.target.value }))}
+                value={settings.primary_color}
+                onChange={(e) => setSettings(prev => ({ ...prev, primary_color: e.target.value }))}
                 className="flex-1"
               />
             </div>
           </div>
 
           <div>
-            <Label htmlFor="login_secondary_color">Colore Secondario Login</Label>
+            <Label htmlFor="secondary_color">Colore Secondario Login</Label>
             <div className="flex items-center space-x-2">
               <input
-                id="login_secondary_color"
+                id="secondary_color"
                 type="color"
-                value={settings.login_secondary_color}
-                onChange={(e) => setSettings(prev => ({ ...prev, login_secondary_color: e.target.value }))}
+                value={settings.secondary_color}
+                onChange={(e) => setSettings(prev => ({ ...prev, secondary_color: e.target.value }))}
                 className="w-10 h-10 border rounded cursor-pointer"
               />
               <Input
                 type="text"
-                value={settings.login_secondary_color}
-                onChange={(e) => setSettings(prev => ({ ...prev, login_secondary_color: e.target.value }))}
+                value={settings.secondary_color}
+                onChange={(e) => setSettings(prev => ({ ...prev, secondary_color: e.target.value }))}
                 className="flex-1"
               />
             </div>
           </div>
 
           <div>
-            <Label htmlFor="login_background_color">Colore Sfondo Login</Label>
+            <Label htmlFor="background_color">Colore Sfondo Login</Label>
             <div className="flex items-center space-x-2">
               <input
-                id="login_background_color"
+                id="background_color"
                 type="color"
-                value={settings.login_background_color}
-                onChange={(e) => setSettings(prev => ({ ...prev, login_background_color: e.target.value }))}
+                value={settings.background_color}
+                onChange={(e) => setSettings(prev => ({ ...prev, background_color: e.target.value }))}
                 className="w-10 h-10 border rounded cursor-pointer"
               />
               <Input
                 type="text"
-                value={settings.login_background_color}
-                onChange={(e) => setSettings(prev => ({ ...prev, login_background_color: e.target.value }))}
+                value={settings.background_color}
+                onChange={(e) => setSettings(prev => ({ ...prev, background_color: e.target.value }))}
                 className="flex-1"
               />
             </div>
@@ -364,23 +322,23 @@ const LoginCustomizationSection = () => {
         </div>
 
         {/* Anteprima Login */}
-        <div className="border rounded-lg p-6" style={{ backgroundColor: settings.login_background_color }}>
+        <div className="border rounded-lg p-6" style={{ backgroundColor: settings.background_color }}>
           <h4 className="text-sm font-medium mb-4 text-gray-900">Anteprima Pagina di Login</h4>
           <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
             <div className="text-center mb-6">
-              {settings.login_logo_url && (
+              {settings.logo_url && (
                 <div className="flex justify-center mb-4">
                   <img
-                    src={settings.login_logo_url}
+                    src={settings.logo_url}
                     alt="Logo Preview"
                     className="h-12 w-auto object-contain"
                   />
                 </div>
               )}
-              <h1 className="text-2xl font-bold mb-2" style={{ color: settings.login_primary_color }}>
-                {settings.login_company_name}
+              <h1 className="text-2xl font-bold mb-2" style={{ color: settings.primary_color }}>
+                {settings.company_name}
               </h1>
-              <p style={{ color: settings.login_secondary_color }}>
+              <p style={{ color: settings.secondary_color }}>
                 Sistema di Gestione Aziendale
               </p>
             </div>
@@ -405,7 +363,7 @@ const LoginCustomizationSection = () => {
               </div>
               <button 
                 className="w-full py-2 px-4 rounded text-white font-medium"
-                style={{ backgroundColor: settings.login_primary_color }}
+                style={{ backgroundColor: settings.primary_color }}
                 disabled
               >
                 Accedi
