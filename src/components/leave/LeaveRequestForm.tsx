@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -237,7 +236,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
             <Checkbox
               id="notify-admin"
               checked={notifyAdmin}
-              onCheckedChange={setNotifyAdmin}
+              onCheckedChange={(checked) => setNotifyAdmin(checked === true)}
             />
             <label htmlFor="notify-admin" className="text-sm font-medium flex items-center gap-2">
               <Mail className="w-4 h-4" />

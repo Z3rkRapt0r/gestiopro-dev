@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,8 +15,8 @@ import TestEmailDialog from "./TestEmailDialog";
 
 interface EmailTemplate {
   id?: string;
-  name: string; // Changed to required to match database schema
-  template_type: 'documenti' | 'notifiche' | 'approvazioni';
+  name: string;
+  template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   subject: string;
   content: string;
   primary_color: string;
@@ -37,7 +38,7 @@ interface EmailTemplate {
 }
 
 interface EmailTemplateEditorProps {
-  templateType: 'documenti' | 'notifiche' | 'approvazioni';
+  templateType: 'documenti' | 'notifiche' | 'approvazioni' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   defaultContent: string;
   defaultSubject: string;
 }

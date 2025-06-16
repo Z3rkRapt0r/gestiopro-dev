@@ -1,28 +1,24 @@
-
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { LeaveRequest } from "@/hooks/useLeaveRequests";
+import { useLeaveRequests, LeaveRequest } from "@/hooks/useLeaveRequests";
 
 interface EditLeaveRequestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   request: LeaveRequest | null;
-  onSave: (values: Partial<LeaveRequest>) => Promise<void>;
-  loading: boolean;
 }
 
 export default function EditLeaveRequestDialog({
   open,
   onOpenChange,
-  request,
-  onSave,
-  loading
+  request
 }: EditLeaveRequestDialogProps) {
   const { toast } = useToast();
+  const { updateRequestMutation } = useLeaveRequests();
 
   // Stati locali per i campi editabili
   const [note, setNote] = useState("");
@@ -48,19 +44,27 @@ export default function EditLeaveRequestDialog({
   // Handler submit
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const values: Partial<LeaveRequest> = {
-      note,
-    };
-    if (request.type === "permesso") {
-      values.day = day || null;
-      values.time_from = timeFrom || null;
-      values.time_to = timeTo || null;
+    try {
+      const values: Partial<LeaveRequest> = {
+        note,
+      };
+      if (request.type === "permesso") {
+        values.day = day || null;
+        values.time_from = timeFrom || null;
+        values.time_to = timeTo || null;
+      }
+      if (request.type === "ferie") {
+        values.date_from = dateFrom || null;
+        values.date_to = dateTo || null;
+      }
+      
+      await updateRequestMutation.mutateAsync({ id: request.id, ...values });
+      toast({ title: "Richiesta aggiornata con successo" });
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Error updating leave request:', error);
+      toast({ title: "Errore nell'aggiornamento", variant: "destructive" });
     }
-    if (request.type === "ferie") {
-      values.date_from = dateFrom || null;
-      values.date_to = dateTo || null;
-    }
-    await onSave(values);
   };
 
   return (
@@ -105,8 +109,8 @@ export default function EditLeaveRequestDialog({
             <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Eventuali dettagli..." />
           </div>
           <DialogFooter className="space-x-2 flex-row justify-end">
-            <Button type="submit" disabled={loading}>
-              {loading ? "Salvataggio..." : "Salva"}
+            <Button type="submit" disabled={updateRequestMutation.isPending}>
+              {updateRequestMutation.isPending ? "Salvataggio..." : "Salva"}
             </Button>
             <DialogClose asChild>
               <Button type="button" variant="outline">

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,7 +87,7 @@ export default function AdminLeaveRequestActions({ request, onUpdate }: AdminLea
         <Checkbox
           id={`notify-${request.id}`}
           checked={notifyEmployee}
-          onCheckedChange={setNotifyEmployee}
+          onCheckedChange={(checked) => setNotifyEmployee(checked === true)}
         />
         <label htmlFor={`notify-${request.id}`} className="text-sm font-medium flex items-center gap-2">
           <Mail className="w-4 h-4" />
