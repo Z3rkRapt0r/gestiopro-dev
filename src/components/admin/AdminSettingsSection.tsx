@@ -21,15 +21,15 @@ const AdminSettingsSection = () => {
   }, [apiKey]);
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded shadow">
+    <div className="max-w-6xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6">Impostazioni Amministratore</h1>
       <Tabs defaultValue="brevo" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="brevo">Configurazione Brevo</TabsTrigger>
-          <TabsTrigger value="emailtemplate">Modello Globale Email</TabsTrigger>
-          <TabsTrigger value="dashboard">Personalizzazione Dashboard</TabsTrigger>
-          <TabsTrigger value="login">Personalizzazione Login</TabsTrigger>
-          <TabsTrigger value="employeelogos">Loghi Dipendenti</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsTrigger value="brevo" className="text-xs sm:text-sm">Configurazione Brevo</TabsTrigger>
+          <TabsTrigger value="emailtemplate" className="text-xs sm:text-sm">Modello Globale Email</TabsTrigger>
+          <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Personalizzazione Dashboard</TabsTrigger>
+          <TabsTrigger value="login" className="text-xs sm:text-sm">Personalizzazione Login</TabsTrigger>
+          <TabsTrigger value="employeelogos" className="text-xs sm:text-sm">Loghi Dipendenti</TabsTrigger>
         </TabsList>
         <TabsContent value="brevo" className="space-y-4">
           <h2 className="text-xl font-semibold mb-4">Impostazioni Invio Notifiche - Brevo</h2>
