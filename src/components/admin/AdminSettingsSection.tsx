@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GlobalEmailTemplateSection from "./GlobalEmailTemplateSection";
 import DashboardCustomizationSection from "./DashboardCustomizationSection";
+import LoginCustomizationSection from "./LoginCustomizationSection";
+import EmployeeLogosSection from "./EmployeeLogosSection";
 
 const AdminSettingsSection = () => {
   const { apiKey, loading, saveApiKey } = useAdminSettings();
@@ -22,10 +24,12 @@ const AdminSettingsSection = () => {
     <div className="max-w-4xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6">Impostazioni Amministratore</h1>
       <Tabs defaultValue="brevo" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="brevo">Configurazione Brevo</TabsTrigger>
           <TabsTrigger value="emailtemplate">Modello Globale Email</TabsTrigger>
           <TabsTrigger value="dashboard">Personalizzazione Dashboard</TabsTrigger>
+          <TabsTrigger value="login">Personalizzazione Login</TabsTrigger>
+          <TabsTrigger value="employeelogos">Loghi Dipendenti</TabsTrigger>
         </TabsList>
         <TabsContent value="brevo" className="space-y-4">
           <h2 className="text-xl font-semibold mb-4">Impostazioni Invio Notifiche - Brevo</h2>
@@ -52,6 +56,12 @@ const AdminSettingsSection = () => {
         </TabsContent>
         <TabsContent value="dashboard">
           <DashboardCustomizationSection />
+        </TabsContent>
+        <TabsContent value="login">
+          <LoginCustomizationSection />
+        </TabsContent>
+        <TabsContent value="employeelogos">
+          <EmployeeLogosSection />
         </TabsContent>
       </Tabs>
     </div>

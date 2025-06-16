@@ -3,19 +3,26 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
+import { useEmployeeLogoSettings } from "@/hooks/useEmployeeLogoSettings";
 
 const EmployeeDashboardHeader = () => {
   const { profile, signOut } = useAuth();
   const { settings: dashboardSettings } = useDashboardSettings();
+  const { settings: employeeLogoSettings } = useEmployeeLogoSettings();
+
+  // Determina quale logo mostrare
+  const logoToShow = employeeLogoSettings.employee_logo_enabled && employeeLogoSettings.employee_default_logo_url
+    ? employeeLogoSettings.employee_default_logo_url
+    : dashboardSettings.logo_url;
 
   return (
     <header className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            {dashboardSettings.logo_url ? (
+            {logoToShow ? (
               <img
-                src={dashboardSettings.logo_url}
+                src={logoToShow}
                 alt="Logo"
                 className="h-8 w-auto object-contain"
               />
