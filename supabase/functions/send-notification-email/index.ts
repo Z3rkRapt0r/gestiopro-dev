@@ -207,30 +207,13 @@ serve(async (req) => {
         const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
         const isDocumentEmail = templateType === 'documenti';
         
-        // Get realistic content based on template type
-        let emailContent = shortText;
-        let emailSubject = subject;
+        // Use template subject and content if available, otherwise use provided values
+        let emailSubject = emailTemplate?.subject || subject;
+        let emailContent = emailTemplate?.content || shortText;
         
-        // Use template subject and content if available
-        if (emailTemplate?.subject) {
-          emailSubject = emailTemplate.subject;
-        }
-        
-        // Generate realistic content based on template type if no custom content
-        if (!shortText || shortText.length < 10) {
-          switch (templateType) {
-            case 'documenti':
-              emailContent = `Gentile ${recipient.first_name || 'utente'},\n\nÈ disponibile un nuovo documento per la tua revisione. Il documento contiene informazioni importanti che richiedono la tua attenzione immediata.\n\nTi preghiamo di accedere alla dashboard per visualizzare e scaricare il documento.`;
-              break;
-            case 'notifiche':
-              emailContent = `Gentile ${recipient.first_name || 'utente'},\n\nHai ricevuto una nuova notifica importante dal sistema aziendale. Ti invitiamo a prenderne visione accedendo alla tua dashboard personale.\n\nLa notifica riguarda aggiornamenti importanti.`;
-              break;
-            case 'approvazioni':
-              emailContent = `Gentile Amministratore,\n\nÈ necessaria la tua approvazione per una richiesta di ${recipient.first_name || 'un utente'}. La richiesta riguarda autorizzazioni importanti.\n\nAccedi alla dashboard per visualizzare i dettagli e procedere con l'approvazione o il rifiuto.`;
-              break;
-            default:
-              emailContent = shortText || `Gentile ${recipient.first_name || 'utente'},\n\nHai ricevuto una comunicazione importante dal sistema aziendale.`;
-          }
+        // If using template content, replace placeholders with actual recipient name
+        if (emailTemplate?.content && recipient.first_name && recipient.last_name) {
+          emailContent = emailTemplate.content.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
         }
         
         const htmlContent = buildHtmlContent({
@@ -249,7 +232,11 @@ serve(async (req) => {
           fontFamily: templateData.font_family,
           buttonColor: templateData.button_color,
           buttonTextColor: templateData.button_text_color,
-          borderRadius: templateData.border_radius
+          borderRadius: templateData.border_radius,
+          logoSize: templateData.logo_size,
+          headerAlignment: templateData.header_alignment,
+          bodyAlignment: templateData.body_alignment,
+          fontSize: templateData.font_size
         });
 
         const brevoPayload = {
