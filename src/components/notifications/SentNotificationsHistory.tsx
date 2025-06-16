@@ -3,9 +3,10 @@ import { useMemo, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getNotificationTypeLabel, formatRelativeDate } from "@/utils/notificationUtils";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Send } from "lucide-react";
+import { RotateCcw, Send, FileText, MessageSquare, Megaphone, Settings } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,6 +27,7 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
   const [notifications, setNotifications] = useState<SentNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("all");
 
   const fetchSentNotifications = async () => {
     if (!profile?.id) return;
@@ -39,7 +41,7 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
         .select('*')
         .eq('admin_id', profile.id)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50);
 
       if (error) {
         console.error('Error fetching sent notifications:', error);
@@ -47,8 +49,6 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
       }
 
       console.log("SentNotificationsHistory: fetched sent notifications", data?.length || 0);
-      console.log("SentNotificationsHistory: sent notifications data", data);
-
       setNotifications(data || []);
     } catch (error) {
       console.error('Error in fetchSentNotifications:', error);
@@ -57,18 +57,60 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
     }
   };
 
-  // Refresh iniziale al mount
+  // Raggruppa le notifiche per tipo
+  const notificationsByType = useMemo(() => {
+    const grouped = notifications.reduce((acc, notification) => {
+      const type = notification.type || 'system';
+      if (!acc[type]) {
+        acc[type] = [];
+      }
+      acc[type].push(notification);
+      return acc;
+    }, {} as Record<string, SentNotification[]>);
+
+    return grouped;
+  }, [notifications]);
+
+  // Calcola i conteggi per ogni tipo
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.keys(notificationsByType).forEach(type => {
+      counts[type] = notificationsByType[type].length;
+    });
+    return counts;
+  }, [notificationsByType]);
+
+  // Filtra le notifiche in base al tab attivo
+  const filteredNotifications = useMemo(() => {
+    if (activeTab === "all") {
+      return notifications;
+    }
+    return notificationsByType[activeTab] || [];
+  }, [activeTab, notifications, notificationsByType]);
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'document':
+        return <FileText className="w-4 h-4" />;
+      case 'message':
+        return <MessageSquare className="w-4 h-4" />;
+      case 'announcement':
+        return <Megaphone className="w-4 h-4" />;
+      case 'system':
+      default:
+        return <Settings className="w-4 h-4" />;
+    }
+  };
+
   useEffect(() => {
     fetchSentNotifications();
   }, [profile?.id]);
 
-  // Forza il refresh ogni volta che cambia refreshKey
   useEffect(() => {
     if (refreshKey !== undefined && refreshKey > 0) {
       console.log("SentNotificationsHistory: refreshKey changed to", refreshKey, "- forcing refresh");
       const forceRefresh = async () => {
         setIsRefreshing(true);
-        // Piccolo delay per assicurarsi che il database sia aggiornato
         await new Promise(resolve => setTimeout(resolve, 500));
         await fetchSentNotifications();
         setIsRefreshing(false);
@@ -129,40 +171,115 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
             <p className="text-sm">Le notifiche che invii appariranno qui</p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-medium text-sm">{notification.title}</h4>
-                  <Badge 
-                    variant="secondary" 
-                    className="text-xs ml-2 shrink-0"
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="all" className="flex items-center gap-1 text-xs">
+                <Send className="w-3 h-3" />
+                Tutte ({notifications.length})
+              </TabsTrigger>
+              <TabsTrigger value="document" className="flex items-center gap-1 text-xs">
+                <FileText className="w-3 h-3" />
+                Documenti ({typeCounts.document || 0})
+              </TabsTrigger>
+              <TabsTrigger value="message" className="flex items-center gap-1 text-xs">
+                <MessageSquare className="w-3 h-3" />
+                Messaggi ({typeCounts.message || 0})
+              </TabsTrigger>
+              <TabsTrigger value="announcement" className="flex items-center gap-1 text-xs">
+                <Megaphone className="w-3 h-3" />
+                Annunci ({typeCounts.announcement || 0})
+              </TabsTrigger>
+              <TabsTrigger value="system" className="flex items-center gap-1 text-xs">
+                <Settings className="w-3 h-3" />
+                Sistema ({typeCounts.system || 0})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all" className="mt-4">
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {filteredNotifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
                   >
-                    {getNotificationTypeLabel(notification.type)}
-                  </Badge>
-                </div>
-                
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                  {notification.message}
-                </p>
-                
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{formatRelativeDate(notification.created_at)}</span>
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant="outline"
-                      className="text-xs"
-                    >
-                      {notification.recipient_id ? "Singolo" : "Tutti"}
-                    </Badge>
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-medium text-sm">{notification.title}</h4>
+                      <Badge 
+                        variant="secondary" 
+                        className="text-xs ml-2 shrink-0 flex items-center gap-1"
+                      >
+                        {getTypeIcon(notification.type)}
+                        {getNotificationTypeLabel(notification.type)}
+                      </Badge>
+                    </div>
+                    
+                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                      {notification.message}
+                    </p>
+                    
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{formatRelativeDate(notification.created_at)}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {notification.recipient_id ? "Singolo" : "Tutti"}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
+            </TabsContent>
+
+            {Object.keys(notificationsByType).map((type) => (
+              <TabsContent key={type} value={type} className="mt-4">
+                {filteredNotifications.length === 0 ? (
+                  <div className="text-center text-gray-400 py-8">
+                    {getTypeIcon(type)}
+                    <p className="mt-2">Nessuna notifica di tipo "{getNotificationTypeLabel(type)}"</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {filteredNotifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="font-medium text-sm">{notification.title}</h4>
+                          <Badge 
+                            variant="secondary" 
+                            className="text-xs ml-2 shrink-0 flex items-center gap-1"
+                          >
+                            {getTypeIcon(notification.type)}
+                            {getNotificationTypeLabel(notification.type)}
+                          </Badge>
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                          {notification.message}
+                        </p>
+                        
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{formatRelativeDate(notification.created_at)}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {notification.recipient_id ? "Singolo" : "Tutti"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
             ))}
-          </div>
+          </Tabs>
         )}
       </CardContent>
     </Card>
