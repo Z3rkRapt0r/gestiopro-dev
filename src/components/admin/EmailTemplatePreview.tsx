@@ -1,3 +1,4 @@
+
 interface EmailTemplate {
   template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   name: string;
@@ -6,6 +7,7 @@ interface EmailTemplate {
   details?: string;
   show_details_button?: boolean;
   show_leave_details?: boolean;
+  show_admin_notes?: boolean;
   primary_color: string;
   secondary_color: string;
   background_color: string;
@@ -52,37 +54,44 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
       case 'documenti':
         return {
           content: 'Gentile Mario Rossi,\n\nÈ disponibile un nuovo documento per la tua revisione. Il documento "Contratto 2025" contiene informazioni importanti che richiedono la tua attenzione immediata.\n\nTi preghiamo di accedere alla dashboard per visualizzare e scaricare il documento.',
-          details: 'Documento: Contratto 2025\nCaricato da: Amministratore\nData: 16 Giugno 2025'
+          details: 'Documento: Contratto 2025\nCaricato da: Amministratore\nData: 16 Giugno 2025',
+          adminNotes: ''
         };
       case 'notifiche':
         return {
           content: 'Gentile Mario Rossi,\n\nHai ricevuto una nuova notifica importante dal sistema aziendale. Ti invitiamo a prenderne visione accedendo alla tua dashboard personale.\n\nLa notifica riguarda aggiornamenti sulla policy aziendale.',
-          details: 'Tipo: Aggiornamento policy\nPriorità: Alta\nData: 16 Giugno 2025'
+          details: 'Tipo: Aggiornamento policy\nPriorità: Alta\nData: 16 Giugno 2025',
+          adminNotes: ''
         };
       case 'approvazioni':
         return {
           content: 'Gentile Amministratore,\n\nÈ necessaria la tua approvazione per una richiesta di Mario Rossi. La richiesta riguarda l\'autorizzazione per l\'accesso a documenti riservati.\n\nAccedi alla dashboard per visualizzare i dettagli e procedere con l\'approvazione o il rifiuto.',
-          details: 'Richiesta: Accesso documenti riservati\nRichiedente: Mario Rossi\nData richiesta: 16 Giugno 2025'
+          details: 'Richiesta: Accesso documenti riservati\nRichiedente: Mario Rossi\nData richiesta: 16 Giugno 2025',
+          adminNotes: ''
         };
       case 'permessi-richiesta':
         return {
           content: template.content || 'Gentile Amministratore,\n\nMario Rossi ha inviato una nuova richiesta di permesso. Ti preghiamo di prenderne visione e procedere con l\'approvazione o il rifiuto.',
-          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica'
+          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica',
+          adminNotes: ''
         };
       case 'permessi-approvazione':
         return {
           content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata approvata dall\'amministratore.',
-          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Richiesta approvata. Ricorda di recuperare le ore.'
+          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica',
+          adminNotes: 'Note amministratore: Richiesta approvata. Ricorda di recuperare le ore.'
         };
       case 'permessi-rifiuto':
         return {
           content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata rifiutata dall\'amministratore.',
-          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un\'altra data.'
+          details: template.details || 'Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica',
+          adminNotes: 'Note amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un\'altra data.'
         };
       default:
         return {
           content: 'Gentile utente,\n\nQuesto è un messaggio di esempio dal sistema di gestione aziendale. Il contenuto verrà personalizzato in base al tipo di notifica.',
-          details: ''
+          details: '',
+          adminNotes: ''
         };
     }
   };
@@ -107,28 +116,20 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
   };
 
   const shouldShowButton = () => {
-    const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(template.template_type);
-    const hasButtonControl = template.show_details_button !== undefined;
-    
-    if (isLeaveTemplate && hasButtonControl) {
-      return template.show_details_button;
-    }
-    
-    return ['documenti', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(template.template_type);
+    return template.show_details_button !== false;
   };
 
   const shouldShowLeaveDetails = () => {
     const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(template.template_type);
-    const hasDetailsControl = template.show_leave_details !== undefined;
-    
-    if (isLeaveTemplate && hasDetailsControl) {
-      return template.show_leave_details;
-    }
-    
-    return isLeaveTemplate;
+    return isLeaveTemplate && template.show_leave_details !== false;
   };
 
-  const { content, details } = getRealisticContent();
+  const shouldShowAdminNotes = () => {
+    const isAdminActionTemplate = ['permessi-approvazione', 'permessi-rifiuto'].includes(template.template_type);
+    return isAdminActionTemplate && template.show_admin_notes !== false;
+  };
+
+  const { content, details, adminNotes } = getRealisticContent();
 
   return (
     <div className="border rounded-lg p-4 bg-gray-50 max-h-[600px] overflow-auto">
@@ -178,9 +179,10 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
           <div style={{ margin: '0 0 16px 0', whiteSpace: 'pre-line' }}>
             {content}
           </div>
+          
           {shouldShowLeaveDetails() && details && (
             <div style={{ 
-              backgroundColor: `${template.secondary_color}15`,
+              backgroundColor: `${template.primary_color}15`,
               padding: '12px',
               borderRadius: '6px',
               marginTop: '16px',
@@ -188,6 +190,20 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
               whiteSpace: 'pre-line'
             }}>
               {details}
+            </div>
+          )}
+
+          {shouldShowAdminNotes() && adminNotes && (
+            <div style={{ 
+              backgroundColor: `${template.secondary_color}15`,
+              padding: '12px',
+              borderRadius: '6px',
+              marginTop: '16px',
+              fontSize: '14px',
+              whiteSpace: 'pre-line',
+              borderLeft: `3px solid ${template.secondary_color}`
+            }}>
+              {adminNotes}
             </div>
           )}
         </div>

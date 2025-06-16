@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,12 +18,14 @@ type EmailTemplate = Database['public']['Tables']['email_templates']['Row'] & {
   details?: string;
   show_details_button?: boolean;
   show_leave_details?: boolean;
+  show_admin_notes?: boolean;
 };
 
 type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Insert'] & {
   details?: string;
   show_details_button?: boolean;
   show_leave_details?: boolean;
+  show_admin_notes?: boolean;
 };
 
 interface EmailTemplateEditorProps {
@@ -59,23 +62,12 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
     button_text_color: '#ffffff',
     border_radius: '6px',
     show_details_button: true,
-    show_leave_details: true
+    show_leave_details: true,
+    show_admin_notes: true
   });
 
   // Check if this is a leave-related template
   const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
-  
-  // Check if this template can have a button
-  const canHaveButton = ['documenti', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
-
-  // Debug logging
-  console.log('EmailTemplateEditor Debug:', {
-    templateType,
-    canHaveButton,
-    isLeaveTemplate,
-    showDetailsButton: template.show_details_button,
-    showLeaveDetails: template.show_leave_details
-  });
 
   useEffect(() => {
     loadTemplate();
@@ -102,9 +94,9 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
         const templateData = {
           ...data,
           show_details_button: data.show_details_button !== null ? data.show_details_button : true,
-          show_leave_details: data.show_leave_details !== null ? data.show_leave_details : true
+          show_leave_details: data.show_leave_details !== null ? data.show_leave_details : true,
+          show_admin_notes: data.show_admin_notes !== null ? data.show_admin_notes : true
         };
-        console.log('Loaded template data:', templateData);
         setTemplate(templateData);
       }
     } catch (error) {
@@ -191,7 +183,6 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
   };
 
   const updateTemplate = (field: keyof EmailTemplate, value: any) => {
-    console.log('Updating template field:', field, 'with value:', value);
     setTemplate(prev => ({ ...prev, [field]: value }));
   };
 
@@ -210,15 +201,6 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Debug info - remove this after testing */}
-          <div className="p-2 bg-gray-100 rounded text-xs">
-            <div>Template Type: {templateType}</div>
-            <div>Can Have Button: {canHaveButton.toString()}</div>
-            <div>Is Leave Template: {isLeaveTemplate.toString()}</div>
-            <div>Show Details Button: {String(template.show_details_button)}</div>
-            <div>Show Leave Details: {String(template.show_leave_details)}</div>
-          </div>
-
           {/* Sezione Contenuto Email - Solo per template P/F */}
           {isLeaveTemplate && (
             <div className="space-y-4 p-4 border rounded-lg bg-slate-50">
@@ -266,11 +248,10 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
             </div>
           )}
 
-          {/* Sezione Controlli Visibilità - Sempre visibile per template con pulsanti o leave templates */}
+          {/* Sezione Controlli Visibilità */}
           <div className="space-y-3 p-4 border rounded-lg bg-blue-50">
             <h4 className="font-medium">Controlli Visibilità</h4>
             
-            {/* Mostra controllo pulsante per tutti i template che possono avere pulsanti */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label htmlFor="show_details_button">Mostra Pulsante Dettagli</Label>
@@ -283,7 +264,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
               />
             </div>
 
-            {/* Mostra controllo dettagli leave solo per template leave */}
+            {/* Controllo dettagli leave solo per template leave */}
             {isLeaveTemplate && (
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
@@ -294,6 +275,21 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
                   id="show_leave_details"
                   checked={template.show_leave_details === true}
                   onCheckedChange={(checked) => updateTemplate('show_leave_details', checked)}
+                />
+              </div>
+            )}
+
+            {/* Controllo note amministratore solo per template approvazione/rifiuto */}
+            {['permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && (
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="show_admin_notes">Mostra Note Amministratore</Label>
+                  <p className="text-sm text-gray-500">Visualizza le note dell'amministratore nell'email</p>
+                </div>
+                <Switch
+                  id="show_admin_notes"
+                  checked={template.show_admin_notes === true}
+                  onCheckedChange={(checked) => updateTemplate('show_admin_notes', checked)}
                 />
               </div>
             )}
