@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,25 +36,34 @@ const LoginCustomizationSection = () => {
 
   const loadSettings = async () => {
     try {
-      const { data, error } = await supabase
+      console.log('LoadSettings - profile?.id:', profile?.id);
+      
+      // Prima verifichiamo se esistono impostazioni per questo admin
+      const { data: existingSettings, error: fetchError } = await supabase
         .from("dashboard_settings")
-        .select("login_logo_url, login_company_name, login_primary_color, login_secondary_color, login_background_color")
+        .select("*")
         .eq("admin_id", profile?.id)
         .maybeSingle();
 
-      if (error) {
-        console.error("Error loading login settings:", error);
+      console.log('Existing settings for admin:', existingSettings);
+      console.log('Fetch error:', fetchError);
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error("Error loading login settings:", fetchError);
         return;
       }
 
-      if (data) {
+      if (existingSettings) {
         setSettings({
-          login_logo_url: data.login_logo_url,
-          login_company_name: data.login_company_name || "SerramentiCorp",
-          login_primary_color: data.login_primary_color || "#2563eb",
-          login_secondary_color: data.login_secondary_color || "#64748b",
-          login_background_color: data.login_background_color || "#f1f5f9",
+          login_logo_url: existingSettings.login_logo_url,
+          login_company_name: existingSettings.login_company_name || "SerramentiCorp",
+          login_primary_color: existingSettings.login_primary_color || "#2563eb",
+          login_secondary_color: existingSettings.login_secondary_color || "#64748b",
+          login_background_color: existingSettings.login_background_color || "#f1f5f9",
         });
+        console.log('Loaded existing settings');
+      } else {
+        console.log('No existing settings found, using defaults');
       }
     } catch (error) {
       console.error("Error loading login settings:", error);
@@ -106,30 +114,74 @@ const LoginCustomizationSection = () => {
   };
 
   const handleSave = async () => {
-    if (!profile?.id) return;
+    if (!profile?.id) {
+      toast({
+        title: "Errore",
+        description: "Profilo admin non trovato. Effettua nuovamente il login.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      console.log('Saving login settings for admin_id:', profile.id);
+      console.log('Settings to save:', settings);
+
+      // Prima verifichiamo se esiste già una riga per questo admin
+      const { data: existingRow } = await supabase
         .from("dashboard_settings")
-        .upsert(
-          {
+        .select("id")
+        .eq("admin_id", profile.id)
+        .maybeSingle();
+
+      console.log('Existing row:', existingRow);
+
+      let result;
+      
+      if (existingRow) {
+        // Aggiorna la riga esistente
+        result = await supabase
+          .from("dashboard_settings")
+          .update({
+            login_logo_url: settings.login_logo_url,
+            login_company_name: settings.login_company_name,
+            login_primary_color: settings.login_primary_color,
+            login_secondary_color: settings.login_secondary_color,
+            login_background_color: settings.login_background_color,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("admin_id", profile.id)
+          .select();
+      } else {
+        // Crea una nuova riga
+        result = await supabase
+          .from("dashboard_settings")
+          .insert({
             admin_id: profile.id,
             login_logo_url: settings.login_logo_url,
             login_company_name: settings.login_company_name,
             login_primary_color: settings.login_primary_color,
             login_secondary_color: settings.login_secondary_color,
             login_background_color: settings.login_background_color,
-          },
-          {
-            onConflict: "admin_id",
-            ignoreDuplicates: false,
-          }
-        );
-
-      if (error) {
-        throw error;
+          })
+          .select();
       }
+
+      console.log('Save result:', result);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      // Verifichiamo che i dati siano stati salvati
+      const { data: verification } = await supabase
+        .from("dashboard_settings")
+        .select("*")
+        .eq("admin_id", profile.id)
+        .maybeSingle();
+
+      console.log('Verification after save:', verification);
 
       toast({
         title: "Impostazioni login salvate",
@@ -184,7 +236,7 @@ const LoginCustomizationSection = () => {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={handleRemoveLogo}
+                  onClick={() => setSettings(prev => ({ ...prev, login_logo_url: null }))}
                   disabled={uploading}
                 >
                   <X className="h-4 w-4 mr-2" />
@@ -204,7 +256,44 @@ const LoginCustomizationSection = () => {
                       type="file"
                       className="sr-only"
                       accept="image/*"
-                      onChange={handleLogoUpload}
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file || !profile?.id) return;
+
+                        setUploading(true);
+                        try {
+                          const fileExt = file.name.split('.').pop();
+                          const fileName = `login-${profile.id}-${Date.now()}.${fileExt}`;
+
+                          const { error: uploadError } = await supabase.storage
+                            .from("company-logos")
+                            .upload(fileName, file);
+
+                          if (uploadError) {
+                            throw uploadError;
+                          }
+
+                          const { data: { publicUrl } } = supabase.storage
+                            .from("company-logos")
+                            .getPublicUrl(fileName);
+
+                          setSettings(prev => ({ ...prev, login_logo_url: publicUrl }));
+
+                          toast({
+                            title: "Logo login caricato",
+                            description: "Il logo per la pagina di login è stato caricato con successo",
+                          });
+                        } catch (error: any) {
+                          console.error("Error uploading login logo:", error);
+                          toast({
+                            title: "Errore",
+                            description: error.message || "Errore durante il caricamento del logo",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
                       disabled={uploading}
                     />
                   </label>
