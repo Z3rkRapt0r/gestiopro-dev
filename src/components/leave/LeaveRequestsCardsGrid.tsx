@@ -1,333 +1,183 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { User2, Sun, Sparkles, Check, XCircle, Edit, Trash } from "lucide-react";
+import { LeaveRequest } from "@/hooks/useLeaveRequests";
 import { useState } from "react";
-import { useLeaveRequests, LeaveRequest } from "@/hooks/useLeaveRequests";
+import { useLeaveRequests } from "@/hooks/useLeaveRequests";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Clock, FileText, Edit2, Trash2, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import EditProfileDialog from "./EditProfileDialog";
 import EditLeaveRequestDialog from "./EditLeaveRequestDialog";
+import AdminLeaveRequestActions from "./AdminLeaveRequestActions";
 
 interface LeaveRequestsCardsGridProps {
   adminMode?: boolean;
-  leaveRequests?: LeaveRequest[];
+  leaveRequests?: any[];
   archive?: boolean;
   showEdit?: boolean;
   showDelete?: boolean;
 }
 
 export default function LeaveRequestsCardsGrid({
-  adminMode,
-  leaveRequests: propLeaveRequests,
+  adminMode = false,
+  leaveRequests: propRequests,
   archive = false,
   showEdit = false,
   showDelete = false,
 }: LeaveRequestsCardsGridProps) {
-  const { leaveRequests: hookLeaveRequests, isLoading, updateStatusMutation, updateRequestMutation, deleteRequestMutation } = useLeaveRequests();
-  const leaveRequests = propLeaveRequests ?? hookLeaveRequests;
+  const { leaveRequests: hookRequests, isLoading, deleteRequestMutation } = useLeaveRequests();
   const { toast } = useToast();
-  const { profile } = useAuth();
+  const [editingRequest, setEditingRequest] = useState<any>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const [profileEditData, setProfileEditData] = useState<{
-    open: boolean;
-    profileId: string;
-    first: string;
-    last: string;
-  }>({ open: false, profileId: "", first: "", last: "" });
+  const requests = propRequests || hookRequests || [];
 
-  const [editDialog, setEditDialog] = useState<{
-    open: boolean;
-    req: LeaveRequest | null;
-    loading: boolean;
-  }>({ open: false, req: null, loading: false });
-
-  // Approva/rifiuta admin
-  const handleAction = async (id: string, status: "approved" | "rejected" | "pending") => {
-    try {
-      await updateStatusMutation.mutateAsync({ id, status });
-      toast({ title: status === "approved" ? "Richiesta approvata" : status === "pending" ? "Richiesta riportata a pendente" : "Richiesta rifiutata" });
-    } catch {
-      toast({ title: "Errore azione amministratore", variant: "destructive" });
-    }
-  };
-
-  // NUOVA: handler per apertura dialog modifica richiesta
-  const openEditDialog = (req: LeaveRequest) => {
-    console.log('Apro la modale di modifica per richiesta:', req);
-    setEditDialog({ open: true, req, loading: false });
-  };
-
-  // Submit modifica
-  const submitEditDialog = async (values: Partial<LeaveRequest>) => {
-    if (!editDialog.req) return;
-    setEditDialog(val => ({ ...val, loading: true }));
-    try {
-      await updateRequestMutation.mutateAsync({ ...values, id: editDialog.req.id });
-      toast({ title: "Richiesta aggiornata!" });
-      setEditDialog({ open: false, req: null, loading: false });
-    } catch {
-      toast({ title: "Errore salvataggio", variant: "destructive" });
-      setEditDialog(val => ({ ...val, loading: false }));
-    }
-  };
-
-  // *** ELIMINA *** con log + fix invalidate query
   const handleDelete = async (id: string) => {
-    console.log('Chiamato handleDelete per richiesta:', id);
-    if (!window.confirm("Sei sicuro di voler eliminare questa richiesta?")) return;
-    try {
-      await deleteRequestMutation.mutateAsync({ id });
-      toast({ title: "Richiesta eliminata!" });
-    } catch {
-      toast({ title: "Errore eliminazione", variant: "destructive" });
+    if (window.confirm("Sei sicuro di voler eliminare questa richiesta?")) {
+      try {
+        await deleteRequestMutation.mutateAsync({ id });
+        toast({ title: "Richiesta eliminata con successo" });
+      } catch (error) {
+        toast({ title: "Errore nell'eliminazione", variant: "destructive" });
+      }
     }
   };
 
-  if (isLoading)
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="secondary">In attesa</Badge>;
+      case "approved":
+        return <Badge variant="default" className="bg-green-500">Approvata</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Rifiutata</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("it-IT");
+  };
+
+  if (isLoading) {
+    return <div className="text-center py-4">Caricamento...</div>;
+  }
+
+  if (requests.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
-        Caricamento richieste...
+      <div className="text-center py-8 text-muted-foreground">
+        {archive ? "Nessuna richiesta approvata" : "Nessuna richiesta trovata"}
       </div>
     );
-
-  if (!leaveRequests || leaveRequests.length === 0)
-    return (
-      <div className="py-8 text-center text-sm text-muted-foreground">Nessuna richiesta trovata.</div>
-    );
-
-  // --- LOGICA BOTTONI ---
-  // MODIFICA: Solo OWNER, solo richieste PENDING e non admin
-  const canEdit = (req: LeaveRequest) =>
-    profile?.id === req.user_id && req.status === "pending" && !adminMode;
-
-  // ELIMINA: 
-  // - archivio: tutte proprie richieste (approved/rejected/pending) si possono eliminare
-  // - altrimenti, solo pending proprie richieste, e non adminMode
-  const canDelete = (req: LeaveRequest) => {
-    if (!profile) return false;
-    if (archive && profile.id === req.user_id) return true;
-    return !archive && profile.id === req.user_id && req.status === "pending" && !adminMode;
-  };
+  }
 
   return (
-    <>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {leaveRequests.map((req: LeaveRequest) => {
-          const isOwn = profile?.id === req.user_id;
-          const typeIcon = req.type === "ferie" ? <Sun className="w-4 h-4 text-blue-700" /> : <Sparkles className="w-4 h-4 text-violet-700" />;
-          const statusIcon =
-            req.status === "pending"
-              ? <Sparkles className="w-4 h-4 text-yellow-700" />
-              : req.status === "approved"
-              ? <Check className="w-4 h-4 text-green-700" />
-              : <XCircle className="w-4 h-4 text-red-700" />;
-          const statusBg =
-            req.status === "pending"
-              ? "bg-yellow-100"
-              : req.status === "approved"
-              ? "bg-green-100"
-              : "bg-red-100";
-          const fullName =
-            req.profiles && (req.profiles.first_name || req.profiles.last_name)
-              ? `${req.profiles.first_name ?? ""} ${req.profiles.last_name ?? ""}`.trim()
-              : "Non specificato";
-
-          const permessoOrario = req.type === "permesso" && req.time_from && req.time_to
-            ? `${req.time_from} - ${req.time_to}`
-            : req.type === "permesso" && req.time_from
-            ? req.time_from
-            : req.type === "permesso" && req.time_to
-            ? req.time_to
-            : null;
-
-          return (
-            <div
-              key={req.id}
-              className={`relative rounded-xl border shadow hover:shadow-md transition-shadow bg-white flex flex-col gap-2 px-3 py-4 min-h-[160px] ${statusBg}`}
-            >
-              <div className="flex items-center mb-1 justify-between gap-2">
-                <Badge
-                  className={`gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center bg-gray-100 ${req.type === "ferie" ? "text-blue-800" : "text-violet-800"}`}
-                  variant="secondary"
-                >
-                  {typeIcon}
-                  <span className="capitalize pl-0.5">{req.type}</span>
-                </Badge>
-                <Badge
-                  className={`gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center ${req.status === "pending"
-                    ? "bg-yellow-200/90 text-yellow-800"
-                    : req.status === "approved"
-                    ? "bg-green-200/90 text-green-800"
-                    : "bg-red-200/80 text-red-800"
-                  }`}
-                  variant="secondary"
-                >
-                  {statusIcon}
-                  <span className="capitalize pl-0.5">{req.status}</span>
-                </Badge>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {requests.map((request) => (
+        <Card key={request.id} className="relative">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg capitalize flex items-center gap-2">
+                {request.type === "permesso" ? <Clock className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
+                {request.type}
+              </CardTitle>
+              {getStatusBadge(request.status)}
+            </div>
+            {adminMode && request.profiles && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="w-4 h-4" />
+                {request.profiles.first_name} {request.profiles.last_name}
               </div>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <div className="flex items-center gap-1 bg-gray-50 rounded px-2 py-1 min-w-[120px]">
-                  <span className="truncate font-semibold text-[13px] max-w-[400px]" title={fullName}>
-                    {fullName}
-                  </span>
+            )}
+          </CardHeader>
+
+          <CardContent className="space-y-3">
+            {request.type === "permesso" ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  <span>{formatDate(request.day)}</span>
                 </div>
-                <div className="flex items-center gap-1 ml-auto">
-                  <span className="text-[12px] text-muted-foreground">
-                    {req.type === "permesso" && req.day
-                      ? (
-                        <>
-                          <span>{req.day}</span>
-                          {permessoOrario && <span className="mx-1 text-xs text-blue-900">({permessoOrario})</span>}
-                        </>
-                      )
-                      : req.type === "ferie" && req.date_from && req.date_to
-                      ? `${req.date_from} → ${req.date_to}`
-                      : "-"}
-                  </span>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="w-4 h-4" />
+                  <span>{request.time_from} - {request.time_to}</span>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground mb-2 min-h-[20px]">
-                {req.note}
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  <span>Dal {formatDate(request.date_from)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  <span>Al {formatDate(request.date_to)}</span>
+                </div>
               </div>
-              <div className="flex gap-2 mt-auto justify-end">
-                {/* BOTTONI Modifica/Elimina solo se consentiti */}
-                {canEdit(req) && (
+            )}
+
+            {request.note && (
+              <div className="flex items-start gap-2 text-sm">
+                <FileText className="w-4 h-4 mt-0.5" />
+                <span className="text-muted-foreground">{request.note}</span>
+              </div>
+            )}
+
+            {request.admin_note && (
+              <div className="flex items-start gap-2 text-sm p-2 bg-blue-50 rounded">
+                <FileText className="w-4 h-4 mt-0.5" />
+                <div>
+                  <div className="font-medium text-blue-700">Note amministratore:</div>
+                  <div className="text-blue-600">{request.admin_note}</div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-2 border-t">
+              <span className="text-xs text-muted-foreground">
+                {formatDate(request.created_at)}
+              </span>
+              
+              <div className="flex gap-1">
+                {showEdit && (
                   <Button
-                    size="icon"
-                    variant="ghost"
-                    className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
-                    onClick={() => openEditDialog(req)}
-                    title="Modifica richiesta"
-                    style={{ minWidth: 28, minHeight: 28 }}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditingRequest(request)}
                   >
-                    {/* icona Modifica */}
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 0 1 2.828 2.828L11.829 17.828A2 2 0 0 1 9 19H5v-4a2 2 0 0 1 .586-1.414z"></path></svg>
+                    <Edit2 className="w-4 h-4" />
                   </Button>
                 )}
-                {canDelete(req) && (
+                {showDelete && (
                   <Button
-                    size="icon"
-                    variant="ghost"
-                    className="hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
-                    onClick={() => handleDelete(req.id)}
-                    title="Elimina richiesta"
-                    style={{ minWidth: 28, minHeight: 28 }}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDelete(request.id)}
                   >
-                    {/* icona Cestino */}
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3m5 0H6m13 0h-1"></path></svg>
+                    <Trash2 className="w-4 h-4" />
                   </Button>
-                )}
-                {/* AZIONI ADMIN */}
-                {adminMode && (
-                  <>
-                    {/* Se pending: approva/rifiuta */}
-                    {req.status === "pending" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="border-green-500 bg-green-50 hover:bg-green-100 h-7 w-7 p-0 flex items-center justify-center"
-                          onClick={() => handleAction(req.id, "approved")}
-                          title="Approva"
-                          style={{ minWidth: 28, minHeight: 28 }}
-                        >
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="border-red-400 bg-red-50 hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
-                          onClick={() => handleAction(req.id, "rejected")}
-                          title="Rifiuta"
-                          style={{ minWidth: 28, minHeight: 28 }}
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                    {/* Se approved o rejected: Riporta a pendente */}
-                    {(req.status === "approved" || req.status === "rejected") && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="border-yellow-400 bg-yellow-50 hover:bg-yellow-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => handleAction(req.id, "pending")}
-                        title="Riporta a pendente"
-                        style={{ minWidth: 28, minHeight: 28 }}
-                      >
-                        {/* Icona "pending": Sparkles */}
-                        <Sparkles className="w-4 h-4 text-yellow-700" />
-                      </Button>
-                    )}
-                    {showEdit && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => openEditDialog(req)}
-                        title="Modifica"
-                        style={{ minWidth: 28, minHeight: 28 }}
-                      >
-                        {/* icona Modifica */}
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 0 1 2.828 2.828L11.829 17.828A2 2 0 0 1 9 19H5v-4a2 2 0 0 1 .586-1.414z"></path></svg>
-                      </Button>
-                    )}
-                    {showDelete && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => handleDelete(req.id)}
-                        title="Elimina"
-                        style={{ minWidth: 28, minHeight: 28 }}
-                      >
-                        {/* icona Cestino */}
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3m5 0H6m13 0h-1"></path></svg>
-                      </Button>
-                    )}
-                  </>
                 )}
               </div>
             </div>
-          );
-        })}
-      </div>
-      {/* Dialog modifica dipendente su propria richiesta */}
-      <EditLeaveRequestDialog
-        open={editDialog.open}
-        onOpenChange={open =>
-          setEditDialog(val => ({ ...val, open }))
-        }
-        request={editDialog.req}
-        loading={editDialog.loading}
-        onSave={submitEditDialog}
-      />
-      {/* Popup modale di modifica nome/cognome */}
-      <EditProfileDialog
-        open={profileEditData.open}
-        onOpenChange={open =>
-          setProfileEditData(val => ({ ...val, open }))
-        }
-        profileId={profileEditData.profileId}
-        initialFirstName={profileEditData.first}
-        initialLastName={profileEditData.last}
-        onSuccess={(newFirst, newLast) => {
-          // Aggiorna i nomi anche in cache (soft update)
-          // Meglio ancora, invalidate la query leaveRequests (già fa mutation), qui aggiorniamo subito in UI
-          if (hookLeaveRequests) {
-            const idx = hookLeaveRequests.findIndex(r => r.user_id === profileEditData.profileId);
-            if (idx !== -1) {
-              hookLeaveRequests[idx].profiles = {
-                ...hookLeaveRequests[idx].profiles,
-                first_name: newFirst,
-                last_name: newLast,
-                email: hookLeaveRequests[idx].profiles?.email ?? "",
-              };
-            }
-          }
-        }}
-      />
-    </>
+
+            {adminMode && request.status === "pending" && (
+              <AdminLeaveRequestActions 
+                request={request} 
+                onUpdate={() => setRefreshKey(prev => prev + 1)}
+              />
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      {editingRequest && (
+        <EditLeaveRequestDialog
+          request={editingRequest}
+          open={!!editingRequest}
+          onOpenChange={(open) => !open && setEditingRequest(null)}
+        />
+      )}
+    </div>
   );
 }

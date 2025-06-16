@@ -282,6 +282,7 @@ export type Database = {
           day: string | null
           id: string
           note: string | null
+          notify_employee: boolean | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
@@ -299,6 +300,7 @@ export type Database = {
           day?: string | null
           id?: string
           note?: string | null
+          notify_employee?: boolean | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -316,6 +318,7 @@ export type Database = {
           day?: string | null
           id?: string
           note?: string | null
+          notify_employee?: boolean | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string

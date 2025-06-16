@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -72,6 +71,12 @@ serve(async (req) => {
       templateType = 'approvazioni';
     } else if (topic === 'notifications' || topic === 'notification') {
       templateType = 'notifiche';
+    } else if (topic === 'permessi-richiesta') {
+      templateType = 'permessi-richiesta';
+    } else if (topic === 'permessi-approvazione') {
+      templateType = 'permessi-approvazione';
+    } else if (topic === 'permessi-rifiuto') {
+      templateType = 'permessi-rifiuto';
     } else {
       // Fallback to subject analysis if topic is not clear
       const lowerSubject = subject.toLowerCase();
@@ -79,6 +84,14 @@ serve(async (req) => {
         templateType = 'documenti';
       } else if (lowerSubject.includes('approv')) {
         templateType = 'approvazioni';
+      } else if (lowerSubject.includes('permesso') || lowerSubject.includes('ferie')) {
+        if (lowerSubject.includes('approvata')) {
+          templateType = 'permessi-approvazione';
+        } else if (lowerSubject.includes('rifiutata')) {
+          templateType = 'permessi-rifiuto';
+        } else {
+          templateType = 'permessi-richiesta';
+        }
       }
     }
 
@@ -108,17 +121,32 @@ serve(async (req) => {
     // Get recipients list
     let recipients = [];
     if (!recipientId) {
-      // Send to all active employees
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, email, first_name, last_name")
-        .eq("is_active", true);
-        
-      if (profilesError) {
-        console.error("[Notification Email] Error fetching profiles:", profilesError);
-        throw profilesError;
+      // For leave requests to admin, send to all admins
+      if (templateType === 'permessi-richiesta') {
+        const { data: adminProfiles, error: adminProfilesError } = await supabase
+          .from("profiles")
+          .select("id, email, first_name, last_name")
+          .eq("role", "admin")
+          .eq("is_active", true);
+          
+        if (adminProfilesError) {
+          console.error("[Notification Email] Error fetching admin profiles:", adminProfilesError);
+          throw adminProfilesError;
+        }
+        recipients = adminProfiles || [];
+      } else {
+        // Send to all active employees for other notifications
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, email, first_name, last_name")
+          .eq("is_active", true);
+          
+        if (profilesError) {
+          console.error("[Notification Email] Error fetching profiles:", profilesError);
+          throw profilesError;
+        }
+        recipients = profiles || [];
       }
-      recipients = profiles || [];
     } else {
       // Send to specific recipient
       const { data: profile, error: profileError } = await supabase
