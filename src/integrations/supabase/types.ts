@@ -161,6 +161,7 @@ export type Database = {
           button_text_color: string | null
           content: string
           created_at: string | null
+          details: string | null
           font_family: string | null
           font_size: string | null
           footer_color: string | null
@@ -175,6 +176,8 @@ export type Database = {
           primary_color: string | null
           secondary_color: string | null
           sender_name: string | null
+          show_details_button: boolean | null
+          show_leave_details: boolean | null
           subject: string
           template_type: string
           text_color: string | null
@@ -189,6 +192,7 @@ export type Database = {
           button_text_color?: string | null
           content: string
           created_at?: string | null
+          details?: string | null
           font_family?: string | null
           font_size?: string | null
           footer_color?: string | null
@@ -203,6 +207,8 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           sender_name?: string | null
+          show_details_button?: boolean | null
+          show_leave_details?: boolean | null
           subject: string
           template_type?: string
           text_color?: string | null
@@ -217,6 +223,7 @@ export type Database = {
           button_text_color?: string | null
           content?: string
           created_at?: string | null
+          details?: string | null
           font_family?: string | null
           font_size?: string | null
           footer_color?: string | null
@@ -231,6 +238,8 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           sender_name?: string | null
+          show_details_button?: boolean | null
+          show_leave_details?: boolean | null
           subject?: string
           template_type?: string
           text_color?: string | null
