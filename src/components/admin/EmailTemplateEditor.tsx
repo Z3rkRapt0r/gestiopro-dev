@@ -266,40 +266,38 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
             </div>
           )}
 
-          {/* Sezione Controlli Visibilità */}
-          {(canHaveButton || isLeaveTemplate) && (
-            <div className="space-y-3 p-4 border rounded-lg bg-blue-50">
-              <h4 className="font-medium">Controlli Visibilità</h4>
-              
-              {canHaveButton && (
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label htmlFor="show_details_button">Mostra Pulsante Dettagli</Label>
-                    <p className="text-sm text-gray-500">Visualizza il pulsante per accedere ai dettagli</p>
-                  </div>
-                  <Switch
-                    id="show_details_button"
-                    checked={template.show_details_button === true}
-                    onCheckedChange={(checked) => updateTemplate('show_details_button', checked)}
-                  />
-                </div>
-              )}
-
-              {isLeaveTemplate && (
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label htmlFor="show_leave_details">Mostra Dettagli Permesso</Label>
-                    <p className="text-sm text-gray-500">Visualizza i dettagli del permesso/ferie nell'email</p>
-                  </div>
-                  <Switch
-                    id="show_leave_details"
-                    checked={template.show_leave_details === true}
-                    onCheckedChange={(checked) => updateTemplate('show_leave_details', checked)}
-                  />
-                </div>
-              )}
+          {/* Sezione Controlli Visibilità - Sempre visibile per template con pulsanti o leave templates */}
+          <div className="space-y-3 p-4 border rounded-lg bg-blue-50">
+            <h4 className="font-medium">Controlli Visibilità</h4>
+            
+            {/* Mostra controllo pulsante per tutti i template che possono avere pulsanti */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="show_details_button">Mostra Pulsante Dettagli</Label>
+                <p className="text-sm text-gray-500">Visualizza il pulsante per accedere ai dettagli</p>
+              </div>
+              <Switch
+                id="show_details_button"
+                checked={template.show_details_button === true}
+                onCheckedChange={(checked) => updateTemplate('show_details_button', checked)}
+              />
             </div>
-          )}
+
+            {/* Mostra controllo dettagli leave solo per template leave */}
+            {isLeaveTemplate && (
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="show_leave_details">Mostra Dettagli Permesso</Label>
+                  <p className="text-sm text-gray-500">Visualizza i dettagli del permesso/ferie nell'email</p>
+                </div>
+                <Switch
+                  id="show_leave_details"
+                  checked={template.show_leave_details === true}
+                  onCheckedChange={(checked) => updateTemplate('show_leave_details', checked)}
+                />
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
