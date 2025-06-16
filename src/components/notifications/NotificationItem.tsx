@@ -9,9 +9,11 @@ import {
   MessageSquare, 
   Megaphone, 
   Settings,
-  Trash2 
+  Trash2,
+  Download
 } from 'lucide-react';
 import { formatRelativeDate, getNotificationTypeLabel } from '@/utils/notificationUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationItemProps {
   notification: any;
@@ -32,6 +34,10 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }: Notification
       default:
         return <Settings className="h-5 w-5 text-gray-600" />;
     }
+  };
+
+  const getAttachmentUrl = (path: string) => {
+    return supabase.storage.from("notification-attachments").getPublicUrl(path).data.publicUrl;
   };
 
   return (
@@ -56,10 +62,29 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }: Notification
               {!notification.is_read && (
                 <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
               )}
+              {notification.attachment_url && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(getAttachmentUrl(notification.attachment_url), "_blank");
+                  }}
+                  className="h-6 w-6 p-0"
+                  title="Scarica allegato"
+                >
+                  <Download className="h-3 w-3" />
+                </Button>
+              )}
             </div>
             <p className="text-sm text-gray-600 mb-2 line-clamp-2">
               {notification.message}
             </p>
+            {notification.body && (
+              <div className="text-xs text-gray-500 border-l-2 border-blue-400 pl-3 mt-2 whitespace-pre-line">
+                {notification.body}
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <p className="text-xs text-gray-400">
