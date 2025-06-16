@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import EmployeeDocumentsPage from "@/components/dashboard/EmployeeDocumentsPage";
+import ResetPasswordPage from "@/components/auth/ResetPasswordPage";
 import { AuthProvider } from "@/hooks/useAuth";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
 
@@ -20,6 +22,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             {/* Route per la dashboard admin */}
             <Route path="/admin" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
