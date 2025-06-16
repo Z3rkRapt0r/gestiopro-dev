@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,8 @@ import {
   LogOut, 
   Mail,
   User,
-  BarChart3
+  BarChart3,
+  Users
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -22,12 +24,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import EmployeeLeavePage from "@/components/leave/EmployeeLeavePage";
 import DashboardHeader from "./DashboardHeader";
+import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 
 const EmployeeDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const { profile, signOut } = useAuth();
   const { documents } = useDocuments();
   const { notifications } = useNotifications();
+  const { settings: dashboardSettings } = useDashboardSettings();
 
   const myDocuments = documents.filter(doc => doc.user_id === profile?.id);
   const unreadNotifications = notifications.filter(n => !n.is_read && n.user_id === profile?.id);
@@ -88,6 +92,45 @@ const EmployeeDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              {dashboardSettings.logo_url ? (
+                <img
+                  src={dashboardSettings.logo_url}
+                  alt="Logo"
+                  className="h-8 w-auto object-contain"
+                />
+              ) : (
+                <div className="bg-blue-600 p-2 rounded">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+              )}
+              <div className="ml-4">
+                <h1 
+                  className="text-xl font-semibold"
+                  style={{ color: dashboardSettings.primary_color }}
+                >
+                  {dashboardSettings.company_name || "SerramentiCorp"}
+                </h1>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">
+                Benvenuto {profile?.first_name} {profile?.last_name}
+              </span>
+              <Button variant="ghost" onClick={signOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Esci
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <DashboardHeader 
           title="Dashboard Dipendente"
