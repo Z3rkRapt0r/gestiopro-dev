@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LeaveRequestsCardsGrid from "./LeaveRequestsCardsGrid";
+import EmployeeLeaveArchive from "./EmployeeLeaveArchive";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 
 export default function AdminApprovalsSection() {
@@ -18,6 +19,36 @@ export default function AdminApprovalsSection() {
 
   // Solo pending
   const pendingRequests = (leaveRequests ?? []).filter((x) => x.status === "pending");
+
+  // Raggruppa per dipendente
+  const groupByEmployee = (requests: typeof leaveRequests) => {
+    const grouped = new Map();
+    
+    requests?.forEach(req => {
+      const employeeKey = req.user_id;
+      if (!grouped.has(employeeKey)) {
+        grouped.set(employeeKey, {
+          employee: {
+            id: req.user_id,
+            first_name: req.profiles?.first_name || null,
+            last_name: req.profiles?.last_name || null,
+            email: req.profiles?.email || null,
+          },
+          requests: []
+        });
+      }
+      grouped.get(employeeKey).requests.push(req);
+    });
+    
+    return Array.from(grouped.values()).sort((a, b) => {
+      const nameA = `${a.employee.first_name || ''} ${a.employee.last_name || ''}`.trim();
+      const nameB = `${b.employee.first_name || ''} ${b.employee.last_name || ''}`.trim();
+      return nameA.localeCompare(nameB);
+    });
+  };
+
+  const groupedPermessi = groupByEmployee(archivePermessi);
+  const groupedFerie = groupByEmployee(archiveFerie);
 
   return (
     <div className="max-w-6xl mx-auto py-8">
@@ -37,22 +68,40 @@ export default function AdminApprovalsSection() {
           />
         </TabsContent>
         <TabsContent value="archive-permessi">
-          <LeaveRequestsCardsGrid
-            adminMode
-            leaveRequests={archivePermessi}
-            archive
-            showEdit
-            showDelete
-          />
+          <div className="space-y-4">
+            {groupedPermessi.length > 0 ? (
+              groupedPermessi.map(({ employee, requests }) => (
+                <EmployeeLeaveArchive
+                  key={employee.id}
+                  employee={employee}
+                  leaveRequests={requests}
+                  type="permesso"
+                />
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nessun permesso approvato trovato.
+              </div>
+            )}
+          </div>
         </TabsContent>
         <TabsContent value="archive-ferie">
-          <LeaveRequestsCardsGrid
-            adminMode
-            leaveRequests={archiveFerie}
-            archive
-            showEdit
-            showDelete
-          />
+          <div className="space-y-4">
+            {groupedFerie.length > 0 ? (
+              groupedFerie.map(({ employee, requests }) => (
+                <EmployeeLeaveArchive
+                  key={employee.id}
+                  employee={employee}
+                  leaveRequests={requests}
+                  type="ferie"
+                />
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nessuna ferie approvata trovata.
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
