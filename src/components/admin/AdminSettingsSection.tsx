@@ -24,12 +24,37 @@ const AdminSettingsSection = () => {
     <div className="max-w-6xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6">Impostazioni Amministratore</h1>
       <Tabs defaultValue="brevo" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-6">
-          <TabsTrigger value="brevo" className="text-xs sm:text-sm">Configurazione Brevo</TabsTrigger>
-          <TabsTrigger value="emailtemplate" className="text-xs sm:text-sm">Modello Globale Email</TabsTrigger>
-          <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Personalizzazione Dashboard</TabsTrigger>
-          <TabsTrigger value="login" className="text-xs sm:text-sm">Personalizzazione Login</TabsTrigger>
-          <TabsTrigger value="employeelogos" className="text-xs sm:text-sm">Loghi Dipendenti</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 mb-6 h-auto bg-gray-100 p-1 rounded-lg">
+          <TabsTrigger 
+            value="brevo" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+          >
+            Configurazione Brevo
+          </TabsTrigger>
+          <TabsTrigger 
+            value="emailtemplate" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+          >
+            Modello Globale Email
+          </TabsTrigger>
+          <TabsTrigger 
+            value="dashboard" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+          >
+            Personalizzazione Dashboard
+          </TabsTrigger>
+          <TabsTrigger 
+            value="login" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+          >
+            Personalizzazione Login
+          </TabsTrigger>
+          <TabsTrigger 
+            value="employeelogos" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+          >
+            Loghi Dipendenti
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="brevo" className="space-y-4">
           <h2 className="text-xl font-semibold mb-4">Impostazioni Invio Notifiche - Brevo</h2>
@@ -67,4 +92,5 @@ const AdminSettingsSection = () => {
     </div>
   );
 };
+
 export default AdminSettingsSection;

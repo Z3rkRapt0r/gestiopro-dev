@@ -24,10 +24,31 @@ export function useLoginSettings() {
 
   useEffect(() => {
     loadSettings();
+    
+    // Setup real-time subscription per aggiornamenti automatici
+    const subscription = supabase
+      .channel('dashboard_settings_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'dashboard_settings' 
+        }, 
+        () => {
+          console.log('Dashboard settings changed, reloading...');
+          loadSettings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadSettings = async () => {
     try {
+      console.log('Loading login settings...');
       // Carica le impostazioni login da qualsiasi admin (prendiamo la prima trovata)
       const { data, error } = await supabase
         .from("dashboard_settings")
@@ -41,15 +62,20 @@ export function useLoginSettings() {
         return;
       }
 
+      console.log('Login settings loaded:', data);
+
       if (data) {
-        setSettings({
+        const newSettings = {
           login_logo_url: data.login_logo_url,
           login_company_name: data.login_company_name || "SerramentiCorp",
           login_primary_color: data.login_primary_color || "#2563eb",
           login_secondary_color: data.login_secondary_color || "#64748b",
           login_background_color: data.login_background_color || "#f1f5f9",
-        });
+        };
+        console.log('Setting new login settings:', newSettings);
+        setSettings(newSettings);
       } else {
+        console.log('No login settings found, using defaults');
         setSettings(defaultLoginSettings);
       }
     } catch (error) {

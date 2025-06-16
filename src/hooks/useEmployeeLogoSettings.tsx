@@ -18,10 +18,31 @@ export function useEmployeeLogoSettings() {
 
   useEffect(() => {
     loadSettings();
+    
+    // Setup real-time subscription per aggiornamenti automatici
+    const subscription = supabase
+      .channel('employee_logo_settings_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'dashboard_settings' 
+        }, 
+        () => {
+          console.log('Employee logo settings changed, reloading...');
+          loadSettings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadSettings = async () => {
     try {
+      console.log('Loading employee logo settings...');
       // Carica le impostazioni logo dipendenti da qualsiasi admin (prendiamo la prima trovata)
       const { data, error } = await supabase
         .from("dashboard_settings")
@@ -35,12 +56,17 @@ export function useEmployeeLogoSettings() {
         return;
       }
 
+      console.log('Employee logo settings loaded:', data);
+
       if (data) {
-        setSettings({
+        const newSettings = {
           employee_default_logo_url: data.employee_default_logo_url,
           employee_logo_enabled: data.employee_logo_enabled ?? true,
-        });
+        };
+        console.log('Setting new employee logo settings:', newSettings);
+        setSettings(newSettings);
       } else {
+        console.log('No employee logo settings found, using defaults');
         setSettings(defaultEmployeeLogoSettings);
       }
     } catch (error) {
