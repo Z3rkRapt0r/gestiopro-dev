@@ -1,6 +1,5 @@
 
 import { useMemo, useEffect, useState } from "react";
-import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -8,54 +7,81 @@ import { getNotificationTypeLabel, formatRelativeDate } from "@/utils/notificati
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Send } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface SentNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  created_by: string | null;
+  created_at: string;
+  body?: string;
+  attachment_url?: string;
+}
 
 const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
-  const { notifications, loading, refreshNotifications } = useNotifications();
   const { profile } = useAuth();
+  const [notifications, setNotifications] = useState<SentNotification[]>([]);
+  const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchSentNotifications = async () => {
+    if (!profile?.id) return;
+    
+    console.log("SentNotificationsHistory: fetching notifications for admin", profile.id);
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('created_by', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Error fetching sent notifications:', error);
+        return;
+      }
+
+      console.log("SentNotificationsHistory: fetched notifications", data?.length || 0);
+      setNotifications(data || []);
+    } catch (error) {
+      console.error('Error in fetchSentNotifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refresh iniziale al mount
+  useEffect(() => {
+    fetchSentNotifications();
+  }, [profile?.id]);
 
   // Forza il refresh ogni volta che cambia refreshKey
   useEffect(() => {
     if (refreshKey !== undefined && refreshKey > 0) {
-      console.log("SentNotificationsHistory: refreshKey changed to", refreshKey);
+      console.log("SentNotificationsHistory: refreshKey changed to", refreshKey, "- forcing refresh");
       const forceRefresh = async () => {
         setIsRefreshing(true);
-        await refreshNotifications();
+        await fetchSentNotifications();
         setIsRefreshing(false);
       };
       forceRefresh();
     }
   }, [refreshKey]);
 
-  // Refresh iniziale al mount
-  useEffect(() => {
-    refreshNotifications();
-  }, []);
-
-  // Filtra solo le notifiche inviate dall'admin corrente
-  const sentNotifications = useMemo(() => {
-    console.log("SentNotificationsHistory: filtering notifications", {
-      totalNotifications: notifications.length,
-      adminId: profile?.id,
-      refreshKey
-    });
-    
-    const filtered = notifications
-      .filter(n => n.created_by === profile?.id)
-      .slice(0, 10); // Mostra solo le ultime 10
-    
-    console.log("SentNotificationsHistory: filtered notifications", filtered.length);
-    return filtered;
-  }, [notifications, profile?.id, refreshKey]);
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await refreshNotifications();
+    await fetchSentNotifications();
     setIsRefreshing(false);
     toast({ title: "Cronologia aggiornata" });
   };
 
-  if (loading && sentNotifications.length === 0) {
+  if (loading && notifications.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -93,7 +119,7 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
         </div>
       </CardHeader>
       <CardContent>
-        {sentNotifications.length === 0 ? (
+        {notifications.length === 0 ? (
           <div className="text-center text-gray-400 py-8">
             <Send className="w-12 h-12 mx-auto mb-3 text-gray-300" />
             <p>Nessuna notifica inviata</p>
@@ -101,7 +127,7 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
           </div>
         ) : (
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {sentNotifications.map((notification) => (
+            {notifications.map((notification) => (
               <div
                 key={notification.id}
                 className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
