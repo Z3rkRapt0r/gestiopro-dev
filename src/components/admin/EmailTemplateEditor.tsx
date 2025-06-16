@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,8 +13,17 @@ import EmailTemplatePreview from "./EmailTemplatePreview";
 import TestEmailDialog from "./TestEmailDialog";
 import type { Database } from "@/integrations/supabase/types";
 
-type EmailTemplate = Database['public']['Tables']['email_templates']['Row'];
-type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Insert'];
+type EmailTemplate = Database['public']['Tables']['email_templates']['Row'] & {
+  details?: string;
+  show_details_button?: boolean;
+  show_leave_details?: boolean;
+};
+
+type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Insert'] & {
+  details?: string;
+  show_details_button?: boolean;
+  show_leave_details?: boolean;
+};
 
 interface EmailTemplateEditorProps {
   templateType: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
@@ -34,6 +42,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
     template_type: templateType,
     subject: defaultSubject,
     content: defaultContent,
+    details: '',
     primary_color: '#007bff',
     secondary_color: '#6c757d',
     background_color: '#ffffff',
@@ -219,7 +228,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
                   onChange={(e) => updateTemplate('details', e.target.value)}
                   rows={4}
                   className="w-full px-3 py-2 border border-input rounded-md text-sm"
-                  placeholder="Dettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica"
+                  placeholder="Dettagli:&#10;Tipo: Permesso&#10;Giorno: 18 Giugno 2025&#10;Orario: 14:00 - 16:00&#10;Motivo: Visita medica"
                 />
                 <p className="text-sm text-gray-500 mt-1">
                   Questi dettagli verranno sostituiti con i dati reali della richiesta.
