@@ -4,14 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle, Building } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useLoginSettings } from '@/hooks/useLoginSettings';
 
 const ResetPasswordPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { settings: loginSettings, loading: settingsLoading } = useLoginSettings();
   
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -99,20 +101,17 @@ const ResetPasswordPage = () => {
     }
   };
 
-  if (isSuccess) {
+  if (settingsLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div 
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ backgroundColor: loginSettings.login_background_color }}
+      >
         <Card className="w-full max-w-md shadow-2xl">
-          <CardContent className="text-center p-8">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Password Aggiornata!
-            </h1>
-            <p className="text-gray-600 mb-4">
-              La tua password è stata aggiornata con successo.
-            </p>
-            <p className="text-sm text-gray-500">
-              Verrai reindirizzato automaticamente alla pagina di login...
+          <CardContent className="p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: loginSettings.login_primary_color }}></div>
+            <p className="text-center mt-4 text-sm" style={{ color: loginSettings.login_secondary_color }}>
+              Caricamento...
             </p>
           </CardContent>
         </Card>
@@ -120,36 +119,144 @@ const ResetPasswordPage = () => {
     );
   }
 
+  if (isSuccess) {
+    return (
+      <div 
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ 
+          background: `linear-gradient(135deg, ${loginSettings.login_background_color}ee, ${loginSettings.login_background_color})` 
+        }}
+      >
+        <div className="w-full max-w-md">
+          {/* Header con logo e nome azienda */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center items-center mb-6">
+              {loginSettings.login_logo_url ? (
+                <img
+                  src={loginSettings.login_logo_url}
+                  alt={`${loginSettings.login_company_name} Logo`}
+                  className="h-16 w-auto object-contain drop-shadow-lg"
+                />
+              ) : (
+                <div 
+                  className="p-3 rounded-full shadow-lg"
+                  style={{ backgroundColor: loginSettings.login_primary_color }}
+                >
+                  <Building className="h-8 w-8 text-white" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Card className="shadow-2xl border-0 backdrop-blur-sm bg-white/95">
+            <CardContent className="text-center p-8">
+              <div 
+                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ backgroundColor: `${loginSettings.login_primary_color}20` }}
+              >
+                <CheckCircle className="h-8 w-8" style={{ color: loginSettings.login_primary_color }} />
+              </div>
+              <h1 
+                className="text-2xl font-bold mb-2"
+                style={{ color: loginSettings.login_primary_color }}
+              >
+                Password Aggiornata!
+              </h1>
+              <p className="mb-4" style={{ color: loginSettings.login_secondary_color }}>
+                La tua password è stata aggiornata con successo.
+              </p>
+              <p 
+                className="text-sm"
+                style={{ color: loginSettings.login_secondary_color }}
+              >
+                Verrai reindirizzato automaticamente alla pagina di login...
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ 
+        background: `linear-gradient(135deg, ${loginSettings.login_background_color}ee, ${loginSettings.login_background_color})` 
+      }}
+    >
       <div className="w-full max-w-md">
-        <Card className="shadow-2xl">
+        {/* Header con logo e nome azienda */}
+        <div className="text-center mb-8">
+          <div className="flex justify-center items-center mb-6">
+            {loginSettings.login_logo_url ? (
+              <img
+                src={loginSettings.login_logo_url}
+                alt={`${loginSettings.login_company_name} Logo`}
+                className="h-16 w-auto object-contain drop-shadow-lg"
+              />
+            ) : (
+              <div 
+                className="p-3 rounded-full shadow-lg"
+                style={{ backgroundColor: loginSettings.login_primary_color }}
+              >
+                <Building className="h-8 w-8 text-white" />
+              </div>
+            )}
+          </div>
+          <h1 
+            className="text-3xl font-bold mb-2"
+            style={{ color: loginSettings.login_primary_color }}
+          >
+            {loginSettings.login_company_name}
+          </h1>
+        </div>
+
+        <Card className="shadow-2xl border-0 backdrop-blur-sm bg-white/95">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Nuova Password</CardTitle>
-            <p className="text-sm text-gray-600 mt-2">
+            <CardTitle 
+              className="text-2xl"
+              style={{ color: loginSettings.login_primary_color }}
+            >
+              Nuova Password
+            </CardTitle>
+            <p 
+              className="text-sm mt-2"
+              style={{ color: loginSettings.login_secondary_color }}
+            >
               Inserisci la tua nuova password
             </p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password">Nuova Password</Label>
+                <Label htmlFor="password" style={{ color: loginSettings.login_secondary_color }}>
+                  Nuova Password
+                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock 
+                    className="absolute left-3 top-3 h-4 w-4" 
+                    style={{ color: loginSettings.login_secondary_color }}
+                  />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10"
+                    className="pl-10 pr-10 border-2 focus:ring-2"
+                    style={{ 
+                      borderColor: `${loginSettings.login_primary_color}30`,
+                      '--tw-ring-color': `${loginSettings.login_primary_color}50`
+                    } as React.CSSProperties}
                     required
                     minLength={6}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-3 hover:opacity-70 transition-opacity"
+                    style={{ color: loginSettings.login_secondary_color }}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -157,23 +264,33 @@ const ResetPasswordPage = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Conferma Password</Label>
+                <Label htmlFor="confirm-password" style={{ color: loginSettings.login_secondary_color }}>
+                  Conferma Password
+                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock 
+                    className="absolute left-3 top-3 h-4 w-4" 
+                    style={{ color: loginSettings.login_secondary_color }}
+                  />
                   <Input
                     id="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pl-10 pr-10"
+                    className="pl-10 pr-10 border-2 focus:ring-2"
+                    style={{ 
+                      borderColor: `${loginSettings.login_primary_color}30`,
+                      '--tw-ring-color': `${loginSettings.login_primary_color}50`
+                    } as React.CSSProperties}
                     required
                     minLength={6}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-3 hover:opacity-70 transition-opacity"
+                    style={{ color: loginSettings.login_secondary_color }}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -182,7 +299,8 @@ const ResetPasswordPage = () => {
               
               <Button 
                 type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full text-white font-semibold py-3 hover:opacity-90 transition-all shadow-lg"
+                style={{ backgroundColor: loginSettings.login_primary_color }}
                 disabled={isLoading}
               >
                 {isLoading ? "Aggiornamento..." : "Aggiorna Password"}
@@ -190,6 +308,16 @@ const ResetPasswordPage = () => {
             </form>
           </CardContent>
         </Card>
+
+        {/* Footer */}
+        <div className="text-center mt-6">
+          <p 
+            className="text-xs opacity-75"
+            style={{ color: loginSettings.login_secondary_color }}
+          >
+            Powered by {loginSettings.login_company_name}
+          </p>
+        </div>
       </div>
     </div>
   );
