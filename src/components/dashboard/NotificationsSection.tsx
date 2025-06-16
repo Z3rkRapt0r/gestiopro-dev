@@ -3,85 +3,31 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import NotificationsList from "@/components/notifications/NotificationsList";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { useNotifications } from "@/hooks/useNotifications";
 import { toast } from "@/components/ui/use-toast";
 import { RotateCcw } from "lucide-react";
 
 const NotificationsSection = () => {
   const { profile } = useAuth();
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<"all" | "personal" | "unread">("all");
-  const [refreshFlag, setRefreshFlag] = useState(0);
+  const { notifications, loading, markAsRead, refreshNotifications } = useNotifications();
+  const [filter, setFilter] = useState<"all" | "unread">("all");
 
-  const fetchNotifications = useCallback(async () => {
-    if (!profile?.id) return;
-    setLoading(true);
-    let query = supabase
-      .from("notifications")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    const { data, error } = await query;
-
-    if (error) {
-      toast({ title: "Errore", description: "Errore di caricamento notifiche", variant: "destructive" });
-      setNotifications([]);
-      setLoading(false);
-      return;
+  const filteredNotifications = notifications.filter((notification) => {
+    if (filter === "unread") {
+      return !notification.is_read;
     }
+    return true; // "all"
+  });
 
-    // Mapping dei dati per renderli compatibili con NotificationsList
-    const mapped = (data || []).map((n: any) => ({
-      id: n.id,
-      sender_id: n.created_by || null,
-      recipient_id: n.user_id ?? null,
-      is_global: n.user_id === null,
-      subject: n.title,
-      short_text: n.message,
-      body: n.body || null,
-      attachment_url: n.attachment_url || null,
-      read_by: n.is_read
-        ? [profile.id]
-        : [], // dato che la tabella usa solo is_read boolean
-      created_at: n.created_at,
-    }));
-
-    setNotifications(
-      mapped.filter((n) => {
-        if (filter === "personal")
-          return n.recipient_id === profile.id;
-        if (filter === "unread")
-          return n.read_by?.includes(profile.id) === false && n.recipient_id === profile.id;
-        // tutte: personali (user_id mio) + generali (user_id nullo)
-        return n.recipient_id === profile.id || n.is_global;
-      })
-    );
-
-    setLoading(false);
-  }, [profile, filter]);
-
-  useEffect(() => {
-    if (profile?.id) {
-      fetchNotifications();
+  const handleMarkRead = async (id: string, currentReadStatus: boolean) => {
+    if (!currentReadStatus) {
+      await markAsRead(id);
+      toast({ title: "Notifica segnata come letta" });
     }
-  }, [profile, filter, fetchNotifications, refreshFlag]);
-
-  const markRead = async (id: string) => {
-    await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("id", id);
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, is_read: true, read_by: [profile.id] } : n
-      )
-    );
-    toast({ title: "Notifica segnata come letta" });
   };
 
   const onRefresh = () => {
-    setRefreshFlag((f) => f + 1);
+    refreshNotifications();
     toast({ title: "Notifiche aggiornate" });
   };
 
@@ -89,9 +35,12 @@ const NotificationsSection = () => {
     <div>
       <div className="flex gap-2 justify-between mb-2 items-center">
         <div className="flex gap-2">
-          <Button variant={filter === "all" ? "default" : "ghost"} onClick={() => setFilter("all")}>Tutte</Button>
-          <Button variant={filter === "personal" ? "default" : "ghost"} onClick={() => setFilter("personal")}>Personali</Button>
-          <Button variant={filter === "unread" ? "default" : "ghost"} onClick={() => setFilter("unread")}>Non lette</Button>
+          <Button variant={filter === "all" ? "default" : "ghost"} onClick={() => setFilter("all")}>
+            Tutte ({notifications.length})
+          </Button>
+          <Button variant={filter === "unread" ? "default" : "ghost"} onClick={() => setFilter("unread")}>
+            Non lette ({notifications.filter(n => !n.is_read).length})
+          </Button>
         </div>
         <Button size="icon" variant="outline" onClick={onRefresh} title="Aggiorna notifiche" disabled={loading}>
           <RotateCcw className={loading ? "animate-spin" : ""} />
@@ -99,13 +48,42 @@ const NotificationsSection = () => {
       </div>
       {loading ? (
         <div className="text-center py-4 text-gray-500">Caricamento...</div>
-      ) : notifications.length === 0 ? (
-        <div className="text-gray-400 py-8 text-center">Nessuna notifica trovata.</div>
+      ) : filteredNotifications.length === 0 ? (
+        <div className="text-gray-400 py-8 text-center">
+          {filter === "unread" ? "Nessuna notifica non letta." : "Nessuna notifica trovata."}
+        </div>
       ) : (
-        <NotificationsList
-          notifications={notifications}
-          onMarkRead={markRead}
-        />
+        <div className="space-y-3">
+          {filteredNotifications.map((notification) => (
+            <div
+              key={notification.id}
+              className={`border rounded-lg p-4 ${
+                notification.is_read ? 'bg-gray-50' : 'bg-blue-50 border-blue-200'
+              } hover:shadow-sm transition-all cursor-pointer`}
+              onClick={() => handleMarkRead(notification.id, notification.is_read)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-medium text-gray-900">{notification.title}</h3>
+                    {!notification.is_read && (
+                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
+                  {notification.body && (
+                    <div className="text-xs text-gray-500 border-l-2 border-blue-400 pl-3 mt-2 whitespace-pre-line">
+                      {notification.body}
+                    </div>
+                  )}
+                  <div className="text-xs text-gray-400 mt-2">
+                    {new Date(notification.created_at).toLocaleString('it-IT')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

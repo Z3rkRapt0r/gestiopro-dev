@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +9,8 @@ interface Notification {
   user_id: string;
   title: string;
   message: string;
+  body?: string;
+  attachment_url?: string;
   type: 'document' | 'system' | 'message' | 'announcement';
   is_read: boolean;
   created_by: string | null;
@@ -25,16 +28,19 @@ export const useNotifications = () => {
 
     setLoading(true);
     try {
-      // Ottimizziamo la select per solo i campi necessari
+      console.log('Fetching notifications for user:', user.id);
       const { data, error } = await supabase
         .from('notifications')
-        .select('id, user_id, title, message, type, is_read, created_by, created_at')
+        .select('id, user_id, title, message, body, attachment_url, type, is_read, created_by, created_at')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching notifications:', error);
         return;
       }
+
+      console.log('Fetched notifications:', data);
 
       // Ensure type is properly typed
       const typedNotifications: Notification[] = (data || []).map(notification => ({
