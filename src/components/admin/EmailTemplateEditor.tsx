@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Image } from "lucide-react";
 import EmailTemplatePreview from "./EmailTemplatePreview";
-import TestEmailDialog from "./TestEmailDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type EmailTemplate = Database['public']['Tables']['email_templates']['Row'] & {
@@ -93,6 +93,8 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
   const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
   // Check if this is a notification template
   const isNotificationTemplate = templateType === 'notifiche';
+  // Check if this is a document template
+  const isDocumentTemplate = templateType === 'documenti';
 
   useEffect(() => {
     loadTemplate();
@@ -223,15 +225,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Configurazione Template</CardTitle>
-            <TestEmailDialog
-              templateType={templateType}
-              subject={template.subject || ''}
-              content={template.content || ''}
-              disabled={loading}
-            />
-          </div>
+          <CardTitle>Configurazione Template</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Avviso per le notifiche - Solo per template notifiche */}
@@ -239,6 +233,16 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
             <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
               <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
                 <strong>Nota:</strong> Per le notifiche, oggetto e messaggio saranno dinamici in base ai dati inseriti. 
+                Questi campi sono solo per l'anteprima.
+              </p>
+            </div>
+          )}
+
+          {/* Avviso per i documenti - Solo per template documenti */}
+          {isDocumentTemplate && (
+            <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
+              <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                <strong>Nota:</strong> Per i documenti, oggetto e messaggio saranno dinamici in base ai dati inseriti. 
                 Questi campi sono solo per l'anteprima.
               </p>
             </div>
@@ -316,21 +320,6 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
               />
             </div>
 
-            {/* Controllo dettagli leave solo per template leave */}
-            {isLeaveTemplate && (
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label htmlFor="show_leave_details">Mostra Dettagli Permesso</Label>
-                  <p className="text-sm text-gray-500">Visualizza i dettagli del permesso/ferie nell'email</p>
-                </div>
-                <Switch
-                  id="show_leave_details"
-                  checked={template.show_leave_details === true}
-                  onCheckedChange={(checked) => updateTemplate('show_leave_details', checked)}
-                />
-              </div>
-            )}
-
             {/* Controllo note amministratore solo per template approvazione/rifiuto */}
             {['permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && (
               <div className="flex items-center justify-between">
@@ -346,33 +335,6 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
               </div>
             )}
           </div>
-
-          {/* Sezione Colori Dettagli Permesso */}
-          {isLeaveTemplate && (
-            <div className="space-y-4 p-4 border rounded-lg bg-green-50">
-              <h4 className="font-medium">Colori Sezione Dettagli Permesso</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="leave_details_bg_color">Colore Sfondo Dettagli</Label>
-                  <Input
-                    id="leave_details_bg_color"
-                    type="color"
-                    value={template.leave_details_bg_color || '#e3f2fd'}
-                    onChange={(e) => updateTemplate('leave_details_bg_color', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="leave_details_text_color">Colore Testo Dettagli</Label>
-                  <Input
-                    id="leave_details_text_color"
-                    type="color"
-                    value={template.leave_details_text_color || '#1565c0'}
-                    onChange={(e) => updateTemplate('leave_details_text_color', e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Sezione Colori Note Amministratore */}
           {['permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && (
