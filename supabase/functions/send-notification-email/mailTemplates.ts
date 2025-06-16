@@ -1,3 +1,4 @@
+
 /** Helpers per sezioni HTML email (logo, corpo, allegato, pulsante vedi doc) */
 
 // Pulsante centrato che porta alla dashboard - per documenti e permessi
@@ -109,7 +110,7 @@ interface EmailTemplateData {
   customBlockText?: string;
   customBlockBgColor?: string;
   customBlockTextColor?: string;
-  // Parametri per contenuto dinamico notifiche
+  // Parametri per contenuto dinamico notifiche e documenti
   dynamicSubject?: string;
   dynamicContent?: string;
 }
@@ -186,9 +187,11 @@ export function buildHtmlContent({
   const isNotificationTemplate = templateType === 'notifiche';
   const shouldShowCustomBlockSection = isNotificationTemplate && showCustomBlock && customBlockText;
 
-  // Per le notifiche, usa contenuto dinamico se disponibile, altrimenti usa quello del template
-  const finalSubject = (isNotificationTemplate && dynamicSubject) ? dynamicSubject : subject;
-  const finalContent = (isNotificationTemplate && dynamicContent) ? dynamicContent : shortText;
+  // Per notifiche e documenti, usa contenuto dinamico se disponibile, altrimenti usa quello del template
+  const isDocumentTemplate = templateType === 'documenti';
+  const isDynamicTemplate = isNotificationTemplate || isDocumentTemplate;
+  const finalSubject = (isDynamicTemplate && dynamicSubject) ? dynamicSubject : subject;
+  const finalContent = (isDynamicTemplate && dynamicContent) ? dynamicContent : shortText;
 
   return `
     <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">

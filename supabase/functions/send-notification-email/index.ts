@@ -218,20 +218,20 @@ serve(async (req) => {
       try {
         const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
         
-        // Determine if this should show button - notifications should always show button unless explicitly disabled
+        // Determine if this should show button - notifications and documents should always show button unless explicitly disabled
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // Per le notifiche, usa sempre il contenuto dinamico dal request
+        // Per documenti e notifiche, usa sempre il contenuto dinamico dal request
         let emailSubject = subject;
         let emailContent = shortText;
         
-        // Per i template non-notifiche, usa il contenuto del template se disponibile
-        if (templateType !== 'notifiche' && emailTemplate) {
+        // Per i template di permessi, usa il contenuto del template se disponibile
+        if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailTemplate) {
           emailSubject = emailTemplate.subject || subject;
           emailContent = emailTemplate.content || shortText;
           
-          // Replace placeholders with actual data for non-notification templates
+          // Replace placeholders with actual data for leave templates
           if (recipient.first_name && recipient.last_name) {
             emailContent = emailContent.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
           }
@@ -255,7 +255,7 @@ serve(async (req) => {
           logoUrl,
           attachmentSection,
           senderEmail,
-          isDocumentEmail: isDocumentEmail || isNotificationEmail, // This makes notifications show the button
+          isDocumentEmail: isDocumentEmail || isNotificationEmail, // This makes notifications and documents show the button
           templateType,
           primaryColor: templateData.primary_color,
           backgroundColor: templateData.background_color,
@@ -284,9 +284,9 @@ serve(async (req) => {
           customBlockText: templateData.custom_block_text,
           customBlockBgColor: templateData.custom_block_bg_color,
           customBlockTextColor: templateData.custom_block_text_color,
-          // Passa il contenuto dinamico per le notifiche
-          dynamicSubject: templateType === 'notifiche' ? emailSubject : '',
-          dynamicContent: templateType === 'notifiche' ? emailContent : ''
+          // Passa il contenuto dinamico per documenti e notifiche
+          dynamicSubject: (['notifiche', 'documenti'].includes(templateType)) ? emailSubject : '',
+          dynamicContent: (['notifiche', 'documenti'].includes(templateType)) ? emailContent : ''
         });
 
         const brevoPayload = {
