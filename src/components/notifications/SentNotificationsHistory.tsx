@@ -14,19 +14,39 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
   const { profile } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Auto-refresh quando cambia refreshKey
+  // Forza il refresh ogni volta che cambia refreshKey
   useEffect(() => {
-    if (refreshKey !== undefined) {
-      refreshNotifications();
+    if (refreshKey !== undefined && refreshKey > 0) {
+      console.log("SentNotificationsHistory: refreshKey changed to", refreshKey);
+      const forceRefresh = async () => {
+        setIsRefreshing(true);
+        await refreshNotifications();
+        setIsRefreshing(false);
+      };
+      forceRefresh();
     }
-  }, [refreshKey, refreshNotifications]);
+  }, [refreshKey]);
+
+  // Refresh iniziale al mount
+  useEffect(() => {
+    refreshNotifications();
+  }, []);
 
   // Filtra solo le notifiche inviate dall'admin corrente
   const sentNotifications = useMemo(() => {
-    return notifications
+    console.log("SentNotificationsHistory: filtering notifications", {
+      totalNotifications: notifications.length,
+      adminId: profile?.id,
+      refreshKey
+    });
+    
+    const filtered = notifications
       .filter(n => n.created_by === profile?.id)
       .slice(0, 10); // Mostra solo le ultime 10
-  }, [notifications, profile?.id]);
+    
+    console.log("SentNotificationsHistory: filtered notifications", filtered.length);
+    return filtered;
+  }, [notifications, profile?.id, refreshKey]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

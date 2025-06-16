@@ -109,6 +109,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
       }
       
       // Chiama onCreated per aggiornare automaticamente la cronologia
+      console.log("useNotificationForm: calling onCreated callback");
       onCreated?.();
     } catch (e: any) {
       console.error("Notification error:", e);
