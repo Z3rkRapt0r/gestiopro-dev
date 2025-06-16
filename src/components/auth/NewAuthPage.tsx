@@ -26,6 +26,10 @@ const NewAuthPage = () => {
   // Forgot Password State
   const [resetEmail, setResetEmail] = useState('');
 
+  // Debug logs
+  console.log('[NewAuthPage] loginSettings:', loginSettings);
+  console.log('[NewAuthPage] settingsLoading:', settingsLoading);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -120,20 +124,26 @@ const NewAuthPage = () => {
         <div className="text-center mb-8">
           <div className="flex justify-center items-center mb-6">
             {loginSettings.login_logo_url ? (
-              <img
-                src={loginSettings.login_logo_url}
-                alt={`${loginSettings.login_company_name} Logo`}
-                className="h-20 w-auto object-contain drop-shadow-lg max-w-full"
-                onError={(e) => {
-                  // Fallback in caso di errore nel caricamento dell'immagine
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  const fallback = document.createElement('div');
-                  fallback.className = 'p-4 rounded-full shadow-lg flex items-center justify-center';
-                  fallback.style.backgroundColor = loginSettings.login_primary_color;
-                  fallback.innerHTML = `<svg class="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7L12 12L22 7L12 2Z"/><path d="M2 17L12 22L22 17"/><path d="M2 12L12 17L22 12"/></svg>`;
-                  (e.target as HTMLImageElement).parentNode?.appendChild(fallback);
-                }}
-              />
+              <div>
+                <img
+                  src={loginSettings.login_logo_url}
+                  alt={`${loginSettings.login_company_name} Logo`}
+                  className="h-20 w-auto object-contain drop-shadow-lg max-w-full"
+                  onError={(e) => {
+                    console.error('[NewAuthPage] Errore caricamento logo:', loginSettings.login_logo_url);
+                    // Fallback in caso di errore nel caricamento dell'immagine
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    const fallback = document.createElement('div');
+                    fallback.className = 'p-4 rounded-full shadow-lg flex items-center justify-center';
+                    fallback.style.backgroundColor = loginSettings.login_primary_color;
+                    fallback.innerHTML = `<svg class="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7L12 12L22 7L12 2Z"/><path d="M2 17L12 22L22 17"/><path d="M2 12L12 17L22 12"/></svg>`;
+                    (e.target as HTMLImageElement).parentNode?.appendChild(fallback);
+                  }}
+                  onLoad={() => {
+                    console.log('[NewAuthPage] Logo caricato con successo:', loginSettings.login_logo_url);
+                  }}
+                />
+              </div>
             ) : (
               <div 
                 className="p-4 rounded-full shadow-lg flex items-center justify-center"

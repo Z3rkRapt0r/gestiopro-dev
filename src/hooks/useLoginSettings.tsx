@@ -26,6 +26,8 @@ export function useLoginSettings() {
     async function loadSettings() {
       setLoading(true);
       try {
+        console.log('[useLoginSettings] Caricamento impostazioni login...');
+        
         // Prende il record più recente ordinando per updated_at
         const { data, error } = await supabase
           .from("dashboard_settings")
@@ -34,8 +36,10 @@ export function useLoginSettings() {
           .limit(1)
           .maybeSingle();
 
+        console.log('[useLoginSettings] Risposta database:', { data, error });
+
         if (error) {
-          console.error("Errore durante il caricamento delle impostazioni:", error.message);
+          console.error("[useLoginSettings] Errore durante il caricamento delle impostazioni:", error.message);
           setSettings(defaultLoginSettings);
         } else if (data) {
           // Mappa i dati dal database all'interfaccia LoginSettings
@@ -46,16 +50,18 @@ export function useLoginSettings() {
             login_secondary_color: data.login_secondary_color || defaultLoginSettings.login_secondary_color,
             login_background_color: data.login_background_color || defaultLoginSettings.login_background_color,
           };
+          console.log('[useLoginSettings] Impostazioni caricate:', loginSettings);
           setSettings(loginSettings);
         } else {
-          // Nessun dato trovato, usa i default
+          console.log('[useLoginSettings] Nessun dato trovato, uso i default');
           setSettings(defaultLoginSettings);
         }
       } catch (error) {
-        console.error("Errore durante il caricamento delle impostazioni:", error);
+        console.error("[useLoginSettings] Errore durante il caricamento delle impostazioni:", error);
         setSettings(defaultLoginSettings);
       } finally {
         setLoading(false);
+        console.log('[useLoginSettings] Caricamento completato');
       }
     }
 
@@ -71,7 +77,7 @@ export function useLoginSettings() {
           table: "dashboard_settings",
         },
         (payload) => {
-          console.log("Modifica ricevuta:", payload);
+          console.log("[useLoginSettings] Modifica ricevuta:", payload);
           loadSettings(); // Ricarica le impostazioni quando cambiano
         }
       )
