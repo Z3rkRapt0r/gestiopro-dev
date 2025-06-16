@@ -1,9 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import GlobalEmailTemplateSection from "./GlobalEmailTemplateSection";
 import DashboardCustomizationSection from "./DashboardCustomizationSection";
 import LoginCustomizationSection from "./LoginCustomizationSection";
 import EmployeeLogosSection from "./EmployeeLogosSection";
@@ -32,16 +32,10 @@ const AdminSettingsSection = () => {
             Configurazione Brevo
           </TabsTrigger>
           <TabsTrigger 
-            value="emailtemplate" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
-          >
-            Modello Email Globale
-          </TabsTrigger>
-          <TabsTrigger 
             value="emailtemplates" 
             className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
-            Modelli Email Avanzati
+            Modelli Email
           </TabsTrigger>
           <TabsTrigger 
             value="dashboard" 
@@ -81,9 +75,6 @@ const AdminSettingsSection = () => {
             Puoi generare una nuova chiave su <a className="underline" href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer">brevo.com</a> <br />
             Questa chiave viene salvata solo per il tuo profilo admin.
           </div>
-        </TabsContent>
-        <TabsContent value="emailtemplate">
-          <GlobalEmailTemplateSection />
         </TabsContent>
         <TabsContent value="emailtemplates">
           <EmailTemplateManager />

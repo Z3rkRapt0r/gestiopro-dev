@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Image } from "lucide-react";
 import EmailTemplatePreview from "./EmailTemplatePreview";
 
 interface EmailTemplate {
@@ -45,6 +46,8 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
   const { profile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [logoUploadFile, setLogoUploadFile] = useState<File | null>(null);
+  const inputLogoRef = useRef<HTMLInputElement>(null);
   const [template, setTemplate] = useState<EmailTemplate>({
     template_type: templateType,
     name: `Template ${templateType}`,
@@ -88,10 +91,56 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
       }
 
       if (data) {
-        setTemplate(data);
+        // Assicuriamoci che template_type sia del tipo corretto
+        const templateData = {
+          ...data,
+          template_type: data.template_type as 'documenti' | 'notifiche' | 'approvazioni'
+        };
+        setTemplate(templateData);
       }
     } catch (error) {
       console.error('Error in loadTemplate:', error);
+    }
+  };
+
+  const handleLogoUpload = async () => {
+    if (!logoUploadFile || !profile?.id) return;
+    
+    setLoading(true);
+    const logoPath = `email-templates/${profile.id}/${templateType}/logo.${logoUploadFile.name.split('.').pop()}`;
+    
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('company-assets')
+        .upload(logoPath, logoUploadFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: logoUploadFile.type,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: logoData } = await supabase.storage
+        .from('company-assets')
+        .getPublicUrl(logoPath);
+
+      setTemplate(prev => ({ ...prev, logo_url: logoData?.publicUrl || '' }));
+      
+      toast({
+        title: "Logo caricato",
+        description: "Il logo è stato caricato con successo.",
+      });
+    } catch (error: any) {
+      console.error('Error uploading logo:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nel caricamento del logo.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -143,25 +192,6 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           <CardTitle>Configurazione Template</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="subject">Oggetto</Label>
-              <Input
-                id="subject"
-                value={template.subject}
-                onChange={(e) => updateTemplate('subject', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="name">Nome Template</Label>
-              <Input
-                id="name"
-                value={template.name}
-                onChange={(e) => updateTemplate('name', e.target.value)}
-              />
-            </div>
-          </div>
-
           <div>
             <Label htmlFor="content">Contenuto</Label>
             <Textarea
@@ -215,13 +245,40 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           </div>
 
           <div>
-            <Label htmlFor="logo_url">URL Logo</Label>
-            <Input
-              id="logo_url"
-              value={template.logo_url || ''}
-              onChange={(e) => updateTemplate('logo_url', e.target.value)}
-              placeholder="https://esempio.com/logo.png"
-            />
+            <Label>Logo Template</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => inputLogoRef.current?.click()}
+                type="button"
+                title="Carica logo"
+                disabled={loading}
+              >
+                <Image />
+              </Button>
+              <input
+                ref={inputLogoRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  if (e.target.files?.[0]) setLogoUploadFile(e.target.files[0]);
+                }}
+                disabled={loading}
+              />
+              <Button
+                onClick={handleLogoUpload}
+                variant="secondary"
+                disabled={loading || !logoUploadFile}
+                type="button"
+              >
+                Carica Logo
+              </Button>
+              {template.logo_url && (
+                <img src={template.logo_url} alt="logo template" className="h-8 ml-2 rounded shadow" />
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
