@@ -234,62 +234,13 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Sezione Contenuto Email - Solo per template P/F e Notifiche */}
-          {(isLeaveTemplate || isNotificationTemplate) && (
-            <div className="space-y-4 p-4 border rounded-lg bg-slate-50">
-              <h3 className="font-semibold text-lg">Contenuto Email</h3>
-              
-              {isNotificationTemplate && (
-                <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                  <strong>Nota:</strong> Per le notifiche, oggetto e messaggio saranno dinamici in base ai dati inseriti. 
-                  Questi campi sono solo per l'anteprima.
-                </p>
-              )}
-              
-              <div>
-                <Label htmlFor="subject">Oggetto Email</Label>
-                <Input
-                  id="subject"
-                  value={template.subject || ''}
-                  onChange={(e) => updateTemplate('subject', e.target.value)}
-                  placeholder="Oggetto dell'email"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="content">Contenuto Email</Label>
-                <textarea
-                  id="content"
-                  value={template.content || ''}
-                  onChange={(e) => updateTemplate('content', e.target.value)}
-                  rows={6}
-                  className="w-full px-3 py-2 border border-input rounded-md text-sm"
-                  placeholder="Contenuto principale dell'email"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  {isNotificationTemplate 
-                    ? "Questo contenuto è solo per l'anteprima. Il contenuto reale sarà dinamico."
-                    : 'Usa "Mario Rossi" come placeholder per il nome del dipendente - verrà sostituito automaticamente.'
-                  }
-                </p>
-              </div>
-
-              {isLeaveTemplate && (
-                <div>
-                  <Label htmlFor="details">Dettagli Permesso/Ferie</Label>
-                  <textarea
-                    id="details"
-                    value={template.details || ''}
-                    onChange={(e) => updateTemplate('details', e.target.value)}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-input rounded-md text-sm"
-                    placeholder="Dettagli:&#10;Tipo: Permesso&#10;Giorno: 18 Giugno 2025&#10;Orario: 14:00 - 16:00&#10;Motivo: Visita medica"
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Questi dettagli verranno sostituiti con i dati reali della richiesta.
-                  </p>
-                </div>
-              )}
+          {/* Avviso per le notifiche - Solo per template notifiche */}
+          {isNotificationTemplate && (
+            <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
+              <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                <strong>Nota:</strong> Per le notifiche, oggetto e messaggio saranno dinamici in base ai dati inseriti. 
+                Questi campi sono solo per l'anteprima.
+              </p>
             </div>
           )}
 
