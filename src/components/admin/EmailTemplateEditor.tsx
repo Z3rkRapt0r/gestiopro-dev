@@ -68,6 +68,15 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
   // Check if this template can have a button
   const canHaveButton = ['documenti', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
 
+  // Debug logging
+  console.log('EmailTemplateEditor Debug:', {
+    templateType,
+    canHaveButton,
+    isLeaveTemplate,
+    showDetailsButton: template.show_details_button,
+    showLeaveDetails: template.show_leave_details
+  });
+
   useEffect(() => {
     loadTemplate();
   }, [profile?.id, templateType]);
@@ -89,7 +98,14 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
       }
 
       if (data) {
-        setTemplate(data);
+        // Ensure boolean values are properly set with defaults
+        const templateData = {
+          ...data,
+          show_details_button: data.show_details_button !== null ? data.show_details_button : true,
+          show_leave_details: data.show_leave_details !== null ? data.show_leave_details : true
+        };
+        console.log('Loaded template data:', templateData);
+        setTemplate(templateData);
       }
     } catch (error) {
       console.error('Error in loadTemplate:', error);
@@ -175,6 +191,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
   };
 
   const updateTemplate = (field: keyof EmailTemplate, value: any) => {
+    console.log('Updating template field:', field, 'with value:', value);
     setTemplate(prev => ({ ...prev, [field]: value }));
   };
 
@@ -193,6 +210,15 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Debug info - remove this after testing */}
+          <div className="p-2 bg-gray-100 rounded text-xs">
+            <div>Template Type: {templateType}</div>
+            <div>Can Have Button: {canHaveButton.toString()}</div>
+            <div>Is Leave Template: {isLeaveTemplate.toString()}</div>
+            <div>Show Details Button: {String(template.show_details_button)}</div>
+            <div>Show Leave Details: {String(template.show_leave_details)}</div>
+          </div>
+
           {/* Sezione Contenuto Email - Solo per template P/F */}
           {isLeaveTemplate && (
             <div className="space-y-4 p-4 border rounded-lg bg-slate-50">
@@ -253,7 +279,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
                   </div>
                   <Switch
                     id="show_details_button"
-                    checked={template.show_details_button ?? true}
+                    checked={template.show_details_button === true}
                     onCheckedChange={(checked) => updateTemplate('show_details_button', checked)}
                   />
                 </div>
@@ -267,7 +293,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
                   </div>
                   <Switch
                     id="show_leave_details"
-                    checked={template.show_leave_details ?? true}
+                    checked={template.show_leave_details === true}
                     onCheckedChange={(checked) => updateTemplate('show_leave_details', checked)}
                   />
                 </div>
