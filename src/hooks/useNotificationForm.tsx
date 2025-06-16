@@ -75,24 +75,24 @@ export const useNotificationForm = (onCreated?: () => void) => {
 
         console.log('Found active profiles:', profiles);
 
-        // Per ogni dipendente attivo, crea una notifica
-        for (const p of profiles || []) {
-          console.log('Creating notification for user:', p.id, p.email);
+        // Per ogni dipendente attivo, crea una notifica nella tabella notifications
+        const notificationsToInsert = (profiles || []).map(p => ({
+          user_id: p.id,
+          ...notificationData
+        }));
+
+        console.log('Creating notifications for all employees:', notificationsToInsert);
+        
+        const { error: insertError } = await supabase
+          .from("notifications")
+          .insert(notificationsToInsert);
           
-          const { error: insertError } = await supabase
-            .from("notifications")
-            .insert({
-              user_id: p.id,
-              ...notificationData
-            });
-            
-          if (insertError) {
-            console.error('Error inserting notification for user:', p.id, insertError);
-            throw insertError;
-          }
-          
-          console.log('Notification created successfully for user:', p.id);
+        if (insertError) {
+          console.error('Error inserting notifications:', insertError);
+          throw insertError;
         }
+        
+        console.log('Notifications created successfully for all employees');
       } else {
         // Notifica singolo dipendente
         console.log('useNotificationForm: Sending to single employee:', recipientId);
