@@ -1,4 +1,3 @@
-
 interface EmailTemplate {
   template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   name: string;
@@ -105,7 +104,7 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
       case 'documenti':
         return 'Visualizza Documento';
       case 'notifiche':
-        return 'Visualizza Notifica';
+        return 'Visualizza';
       case 'approvazioni':
         return 'Gestisci Richiesta';
       case 'permessi-richiesta':
@@ -120,6 +119,7 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
   };
 
   const shouldShowButton = () => {
+    // Show button for all template types unless explicitly disabled
     return template.show_details_button !== false;
   };
 

@@ -14,6 +14,9 @@ export function buildDashboardButton(buttonUrl: string, templateType: string = '
     case 'documenti':
       buttonText = 'Visualizza documento';
       break;
+    case 'notifiche':
+      buttonText = 'Visualizza';
+      break;
     case 'permessi-richiesta':
       buttonText = 'Gestisci Richiesta';
       break;
@@ -28,8 +31,8 @@ export function buildDashboardButton(buttonUrl: string, templateType: string = '
       buttonText = 'Visualizza';
   }
   
-  // Show button for documents and leave-related templates
-  if (!['documenti', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType)) {
+  // Show button for documents, notifications and leave-related templates
+  if (!['documenti', 'notifiche', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType)) {
     return "";
   }
   

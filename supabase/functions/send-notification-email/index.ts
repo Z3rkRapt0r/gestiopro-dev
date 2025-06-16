@@ -213,7 +213,10 @@ serve(async (req) => {
     for (const recipient of recipients) {
       try {
         const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
+        
+        // Determine if this should show button - notifications should always show button unless explicitly disabled
         const isDocumentEmail = templateType === 'documenti';
+        const isNotificationEmail = templateType === 'notifiche';
         
         // Use template subject and content if available, otherwise use provided values
         let emailSubject = emailTemplate?.subject || subject;
@@ -242,7 +245,7 @@ serve(async (req) => {
           logoUrl,
           attachmentSection,
           senderEmail,
-          isDocumentEmail,
+          isDocumentEmail: isDocumentEmail || isNotificationEmail, // This makes notifications show the button
           templateType,
           primaryColor: templateData.primary_color,
           backgroundColor: templateData.background_color,
