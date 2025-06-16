@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,8 @@ import {
   Bell, 
   LogOut, 
   Mail,
-  User
+  User,
+  BarChart3
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -15,13 +17,14 @@ import { useNotifications } from "@/hooks/useNotifications";
 import DocumentsSection from "./DocumentsSection";
 import EmployeeMessagesSection from "./EmployeeMessagesSection";
 import NotificationsSection from "./NotificationsSection";
+import EmployeeDashboardSection from "./EmployeeDashboardSection";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import EmployeeLeavePage from "@/components/leave/EmployeeLeavePage";
 
 const EmployeeDashboard = () => {
-  const [activeSection, setActiveSection] = useState('documents');
+  const [activeSection, setActiveSection] = useState('dashboard');
   const { profile, signOut } = useAuth();
   const { documents } = useDocuments();
   const { notifications } = useNotifications();
@@ -116,6 +119,15 @@ const EmployeeDashboard = () => {
           {/* Sidebar */}
           <div className="w-64 space-y-2">
             <Button
+              variant={activeSection === 'dashboard' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setActiveSection('dashboard')}
+            >
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
+            
+            <Button
               variant={activeSection === 'documents' ? 'default' : 'ghost'}
               className="w-full justify-start"
               onClick={() => setActiveSection('documents')}
@@ -174,6 +186,7 @@ const EmployeeDashboard = () => {
           {/* Main Content */}
           <div className="flex-1">
             <Suspense fallback={<SectionSkeleton />}>
+              {activeSection === 'dashboard' && <EmployeeDashboardSection />}
               {activeSection === 'documents' && <DocumentsSection />}
               {activeSection === 'notifications' && <NotificationsSection />}
               {activeSection === 'profile' && renderProfile()}
