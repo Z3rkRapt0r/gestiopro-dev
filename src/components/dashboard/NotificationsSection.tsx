@@ -1,23 +1,71 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import NotificationsList from "@/components/notifications/NotificationsList";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { toast } from "@/components/ui/use-toast";
-import { RotateCcw } from "lucide-react";
+import { 
+  RotateCcw, 
+  User, 
+  Users, 
+  AlertCircle,
+  CheckCircle,
+  Circle,
+  FileText,
+  MessageSquare,
+  Megaphone,
+  Settings,
+  Download
+} from "lucide-react";
+import { formatRelativeDate, getNotificationTypeLabel } from "@/utils/notificationUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 const NotificationsSection = () => {
   const { profile } = useAuth();
   const { notifications, loading, markAsRead, refreshNotifications } = useNotifications();
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [activeTab, setActiveTab] = useState<"personal" | "general" | "unread">("unread");
 
-  const filteredNotifications = notifications.filter((notification) => {
-    if (filter === "unread") {
-      return !notification.is_read;
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'document':
+        return <FileText className="h-4 w-4 text-blue-600" />;
+      case 'message':
+        return <MessageSquare className="h-4 w-4 text-green-600" />;
+      case 'announcement':
+        return <Megaphone className="h-4 w-4 text-purple-600" />;
+      case 'system':
+      default:
+        return <Settings className="h-4 w-4 text-gray-600" />;
     }
-    return true; // "all"
+  };
+
+  const getAttachmentUrl = (path: string) => {
+    return supabase.storage.from("notification-attachments").getPublicUrl(path).data.publicUrl;
+  };
+
+  // Filtro le notifiche in base alla tab attiva
+  const filteredNotifications = notifications.filter((notification) => {
+    switch (activeTab) {
+      case "personal":
+        // Notifiche personali (inviate specificamente a questo utente)
+        return notification.created_by !== null;
+      case "general":
+        // Notifiche generali (potrebbero essere inviate a tutti - per ora mostriamo tutte)
+        return true;
+      case "unread":
+        // Notifiche non lette
+        return !notification.is_read;
+      default:
+        return true;
+    }
   });
+
+  const personalCount = notifications.filter(n => n.created_by !== null).length;
+  const generalCount = notifications.length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const handleMarkRead = async (id: string, currentReadStatus: boolean) => {
     if (!currentReadStatus) {
@@ -32,59 +80,265 @@ const NotificationsSection = () => {
   };
 
   return (
-    <div>
-      <div className="flex gap-2 justify-between mb-2 items-center">
-        <div className="flex gap-2">
-          <Button variant={filter === "all" ? "default" : "ghost"} onClick={() => setFilter("all")}>
-            Tutte ({notifications.length})
-          </Button>
-          <Button variant={filter === "unread" ? "default" : "ghost"} onClick={() => setFilter("unread")}>
-            Non lette ({notifications.filter(n => !n.is_read).length})
-          </Button>
-        </div>
-        <Button size="icon" variant="outline" onClick={onRefresh} title="Aggiorna notifiche" disabled={loading}>
-          <RotateCcw className={loading ? "animate-spin" : ""} />
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-900">Notifiche</h2>
+        <Button 
+          size="icon" 
+          variant="outline" 
+          onClick={onRefresh} 
+          title="Aggiorna notifiche" 
+          disabled={loading}
+        >
+          <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </div>
-      {loading ? (
-        <div className="text-center py-4 text-gray-500">Caricamento...</div>
-      ) : filteredNotifications.length === 0 ? (
-        <div className="text-gray-400 py-8 text-center">
-          {filter === "unread" ? "Nessuna notifica non letta." : "Nessuna notifica trovata."}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredNotifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`border rounded-lg p-4 ${
-                notification.is_read ? 'bg-gray-50' : 'bg-blue-50 border-blue-200'
-              } hover:shadow-sm transition-all cursor-pointer`}
-              onClick={() => handleMarkRead(notification.id, notification.is_read)}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-medium text-gray-900">{notification.title}</h3>
-                    {!notification.is_read && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
-                  {notification.body && (
-                    <div className="text-xs text-gray-500 border-l-2 border-blue-400 pl-3 mt-2 whitespace-pre-line">
-                      {notification.body}
+
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "personal" | "general" | "unread")}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="unread" className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            Non lette ({unreadCount})
+          </TabsTrigger>
+          <TabsTrigger value="personal" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Personali ({personalCount})
+          </TabsTrigger>
+          <TabsTrigger value="general" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Generali ({generalCount})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="unread" className="mt-4">
+          {loading ? (
+            <div className="text-center py-4 text-gray-500">Caricamento...</div>
+          ) : filteredNotifications.length === 0 ? (
+            <Card className="p-8 text-center">
+              <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Tutte le notifiche sono state lette!</h3>
+              <p className="text-gray-500">Non hai notifiche non lette al momento.</p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredNotifications.map((notification) => (
+                <Card
+                  key={notification.id}
+                  className="p-4 cursor-pointer transition-all hover:shadow-sm bg-blue-50 border-blue-200 hover:bg-blue-100"
+                  onClick={() => handleMarkRead(notification.id, notification.is_read)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <div className="flex-shrink-0 mt-1">
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h3 className="font-medium text-gray-900 truncate">
+                            {notification.title}
+                          </h3>
+                          <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+                          {notification.attachment_url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(getAttachmentUrl(notification.attachment_url), "_blank");
+                              }}
+                              className="h-6 w-6 p-0"
+                              title="Scarica allegato"
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {notification.message}
+                        </p>
+                        {notification.body && (
+                          <div className="text-xs text-gray-500 border-l-2 border-blue-400 pl-3 mt-2 whitespace-pre-line">
+                            {notification.body}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-xs text-gray-400">
+                            {formatRelativeDate(notification.created_at)}
+                          </p>
+                          <Badge variant="outline" className="text-xs">
+                            {getNotificationTypeLabel(notification.type)}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  <div className="text-xs text-gray-400 mt-2">
-                    {new Date(notification.created_at).toLocaleString('it-IT')}
+                    <div className="flex-shrink-0 ml-2 mt-1">
+                      <Circle className="h-5 w-5 text-blue-600" />
+                    </div>
                   </div>
-                </div>
-              </div>
+                </Card>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </TabsContent>
+
+        <TabsContent value="personal" className="mt-4">
+          {loading ? (
+            <div className="text-center py-4 text-gray-500">Caricamento...</div>
+          ) : filteredNotifications.length === 0 ? (
+            <Card className="p-8 text-center">
+              <User className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna notifica personale</h3>
+              <p className="text-gray-500">Non hai ricevuto notifiche personali.</p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredNotifications.map((notification) => (
+                <Card
+                  key={notification.id}
+                  className={`p-4 cursor-pointer transition-all hover:shadow-sm ${
+                    notification.is_read ? 'bg-gray-50' : 'bg-blue-50 border-blue-200'
+                  }`}
+                  onClick={() => handleMarkRead(notification.id, notification.is_read)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <div className="flex-shrink-0 mt-1">
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h3 className="font-medium text-gray-900 truncate">
+                            {notification.title}
+                          </h3>
+                          {!notification.is_read && (
+                            <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+                          )}
+                          {notification.attachment_url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(getAttachmentUrl(notification.attachment_url), "_blank");
+                              }}
+                              className="h-6 w-6 p-0"
+                              title="Scarica allegato"
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {notification.message}
+                        </p>
+                        {notification.body && (
+                          <div className="text-xs text-gray-500 border-l-2 border-blue-400 pl-3 mt-2 whitespace-pre-line">
+                            {notification.body}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-xs text-gray-400">
+                            {formatRelativeDate(notification.created_at)}
+                          </p>
+                          <Badge variant="outline" className="text-xs">
+                            {getNotificationTypeLabel(notification.type)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 ml-2 mt-1">
+                      {notification.is_read ? (
+                        <CheckCircle className="h-5 w-5 text-gray-400" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-blue-600" />
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="general" className="mt-4">
+          {loading ? (
+            <div className="text-center py-4 text-gray-500">Caricamento...</div>
+          ) : filteredNotifications.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna notifica generale</h3>
+              <p className="text-gray-500">Non sono presenti notifiche generali.</p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredNotifications.map((notification) => (
+                <Card
+                  key={notification.id}
+                  className={`p-4 cursor-pointer transition-all hover:shadow-sm ${
+                    notification.is_read ? 'bg-gray-50' : 'bg-blue-50 border-blue-200'
+                  }`}
+                  onClick={() => handleMarkRead(notification.id, notification.is_read)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <div className="flex-shrink-0 mt-1">
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h3 className="font-medium text-gray-900 truncate">
+                            {notification.title}
+                          </h3>
+                          {!notification.is_read && (
+                            <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+                          )}
+                          {notification.attachment_url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(getAttachmentUrl(notification.attachment_url), "_blank");
+                              }}
+                              className="h-6 w-6 p-0"
+                              title="Scarica allegato"
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {notification.message}
+                        </p>
+                        {notification.body && (
+                          <div className="text-xs text-gray-500 border-l-2 border-blue-400 pl-3 mt-2 whitespace-pre-line">
+                            {notification.body}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-xs text-gray-400">
+                            {formatRelativeDate(notification.created_at)}
+                          </p>
+                          <Badge variant="outline" className="text-xs">
+                            {getNotificationTypeLabel(notification.type)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 ml-2 mt-1">
+                      {notification.is_read ? (
+                        <CheckCircle className="h-5 w-5 text-gray-400" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-blue-600" />
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
