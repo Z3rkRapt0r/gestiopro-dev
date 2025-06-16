@@ -42,7 +42,7 @@ const TestEmailDialog = ({ templateType, subject, content, disabled }: TestEmail
           subject,
           content,
           userId: profile.id,
-          templateType
+          templateType // Pass the template type to use correct template
         }
       });
 

@@ -179,7 +179,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
             subject,
             shortText,
             userId: profile?.id,
-            topic, // Pass topic to determine if it's a document email
+            topic, // Pass topic to determine template type
           }
         }
       );

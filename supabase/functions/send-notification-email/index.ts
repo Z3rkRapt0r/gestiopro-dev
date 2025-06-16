@@ -1,19 +1,14 @@
 
-// === IMPORTS (moduli helper interni) ===
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, jsonResponse, isBlank } from "./responseHelpers.ts";
-import {
-  fetchAdminSettings,
-  fetchAdminProfile,
-  fetchLogoUrl,
-  fetchRecipientEmails,
-} from "./supabaseFetchHelpers.ts";
-import { buildAttachmentSection, buildHtmlContent } from "./mailTemplates.ts";
+import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
 
-// === MAIN EDGE FUNCTION HANDLER ===
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 serve(async (req) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -21,144 +16,221 @@ serve(async (req) => {
   console.log("[Notification Email] Starting email function");
 
   try {
-    // --- Preprocessing and validation ---
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
     const { recipientId, subject, shortText, userId, topic } = body;
-    const attachment_url = body.attachment_url ?? null;
 
     if (!userId) {
       console.error("[Notification Email] Missing userId in request");
-      return jsonResponse({ error: "Missing userId" }, 400);
+      return new Response(
+        JSON.stringify({ error: "Missing userId" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    if (isBlank(subject) || isBlank(shortText)) {
-      console.error("[Notification Email] Missing subject or shortText");
-      return jsonResponse({ error: "Missing subject or shortText" }, 400);
-    }
-
-    // --- Supabase client init ---
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // --- Recupero API key Brevo ---
-    let brevoApiKey: string;
-    try {
-      brevoApiKey = await fetchAdminSettings(supabase, userId);
-      console.log("[Notification Email] Found Brevo API key for admin");
-    } catch (err: any) {
-      console.error("[Notification Email]", err.message);
-      return jsonResponse({ error: err.message }, 400);
+    // Get Brevo API key for admin
+    const { data: adminSetting, error: settingsError } = await supabase
+      .from("admin_settings")
+      .select("brevo_api_key")
+      .eq("admin_id", userId)
+      .single();
+
+    if (settingsError) {
+      console.error("[Notification Email] Error fetching admin settings:", settingsError);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to fetch admin settings", 
+          details: settingsError.message 
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // --- Profilo/nome mittente ---
-    const adminProfile = await fetchAdminProfile(supabase, userId);
-    const senderName =
-      adminProfile?.first_name && adminProfile?.last_name
-        ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche`
-        : "Sistema Notifiche";
-    const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
-
-    // --- Logo aziendale (con cache busting) ---
-    const logoUrl = await fetchLogoUrl(supabase, userId);
-
-    // --- Destinatari ---
-    let emails: string[];
-    try {
-      emails = await fetchRecipientEmails(supabase, recipientId);
-    } catch (err: any) {
-      console.error("[Notification Email]", err.message);
-      return jsonResponse({ error: err.message }, 500);
+    if (!adminSetting?.brevo_api_key) {
+      console.error("[Notification Email] No Brevo API key found for admin:", userId);
+      return new Response(
+        JSON.stringify({ 
+          error: "No Brevo API key configured for this admin" 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    if (emails.length === 0) {
-      console.error("[Notification Email] No valid email addresses found");
-      return jsonResponse({ error: "No valid email addresses found" }, 400);
+    console.log("[Notification Email] Found Brevo API key for admin");
+
+    // Determine template type based on topic or subject
+    let templateType = 'notifiche'; // default
+    if (topic === 'documents' || subject.toLowerCase().includes('documento')) {
+      templateType = 'documenti';
+    } else if (topic === 'approvals' || subject.toLowerCase().includes('approv')) {
+      templateType = 'approvazioni';
     }
 
-    // --- Section download allegato, se serve ---
-    let downloadSection = '';
-    let bucketUrl: string | null = null;
-    if (attachment_url) {
-      const bucket = "notification-attachments";
-      const storageUrl = Deno.env.get("SUPABASE_URL")?.replace(/^https?:\/\//, "") ?? "";
-      bucketUrl = `https://${storageUrl}/storage/v1/object/public/${bucket}/${attachment_url}`;
-      downloadSection = buildAttachmentSection(bucketUrl);
+    // Get email template for the specific template type
+    console.log("[Notification Email] Looking for email template:", templateType);
+    const { data: emailTemplate, error: templateError } = await supabase
+      .from("email_templates")
+      .select("*")
+      .eq("admin_id", userId)
+      .eq("template_type", templateType)
+      .maybeSingle();
+
+    if (templateError) {
+      console.error("[Notification Email] Error fetching email template:", templateError);
     }
 
-    // --- Determina se è una email relativa ai documenti ---
-    const isDocumentEmail = topic === "document";
+    console.log("[Notification Email] Found email template:", emailTemplate);
 
-    // --- Corpo HTML email ---
-    const htmlContent = buildHtmlContent({
-      subject,
-      shortText,
-      logoUrl,
-      attachmentSection: downloadSection,
-      senderEmail,
-      isDocumentEmail
-    });
+    // Get logo URL for admin
+    const { data: logoData } = await supabase.storage
+      .from('company-assets')
+      .getPublicUrl(`${userId}/email-logo.png?v=${Date.now()}`);
 
-    // --- Costruzione payload Brevo ---
-    const brevoPayload = {
-      sender: {
-        name: senderName,
-        email: senderEmail
-      },
-      to: emails.map(email => ({ email })),
-      subject: subject,
-      htmlContent: htmlContent,
-      textContent: `${subject}\n\n${shortText}\n${attachment_url ? "\nAllegato incluso, accedi al portale per scaricarlo." : ""}\n\n--- Notifica automatica dal sistema aziendale ---`
-    };
+    const logoUrl = emailTemplate?.logo_url || logoData?.publicUrl;
+    console.log("[Notification Email] Found logoUrl for admin:", logoUrl);
 
-    // --- Invio via Brevo ---
-    console.log("[Notification Email] Calling Brevo API...");
-
-    const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": brevoApiKey,
-      },
-      body: JSON.stringify(brevoPayload),
-    });
-
-    const brevoResponseText = await brevoResponse.text();
-    console.log("[Notification Email] Brevo response status:", brevoResponse.status);
-    console.log("[Notification Email] Brevo response:", brevoResponseText);
-
-    if (!brevoResponse.ok) {
-      console.error("[Notification Email] Brevo API error:", brevoResponse.status, brevoResponseText);
-      let errorMessage = "Failed to send email via Brevo";
-      try {
-        const errorData = JSON.parse(brevoResponseText);
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } catch (e) {
-        errorMessage = brevoResponseText || errorMessage;
+    // Get recipients list
+    let recipients = [];
+    if (!recipientId) {
+      // Send to all active employees
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, email, first_name, last_name")
+        .eq("is_active", true);
+        
+      if (profilesError) {
+        console.error("[Notification Email] Error fetching profiles:", profilesError);
+        throw profilesError;
       }
-      return jsonResponse({
-        error: errorMessage,
-        status: brevoResponse.status,
-        details: brevoResponseText
-      }, 500);
+      recipients = profiles || [];
+    } else {
+      // Send to specific recipient
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, email, first_name, last_name")
+        .eq("id", recipientId)
+        .single();
+        
+      if (profileError) {
+        console.error("[Notification Email] Error fetching recipient profile:", profileError);
+        throw profileError;
+      }
+      recipients = profile ? [profile] : [];
+    }
+
+    console.log("[Notification Email] Recipients found:", recipients.length);
+
+    // Get admin profile for sender info
+    const { data: adminProfile, error: adminProfileError } = await supabase
+      .from("profiles")
+      .select("first_name, last_name")
+      .eq("id", userId)
+      .single();
+
+    const senderName = adminProfile?.first_name && adminProfile?.last_name 
+      ? `${adminProfile.first_name} ${adminProfile.last_name}` 
+      : "Sistema Notifiche";
+    const senderEmail = "zerkraptor@gmail.com";
+
+    let successCount = 0;
+    const errors = [];
+
+    for (const recipient of recipients) {
+      try {
+        // Build email content using template settings or defaults
+        const templateData = emailTemplate || {
+          primary_color: '#007bff',
+          background_color: '#ffffff',
+          text_color: '#333333',
+          logo_alignment: 'center',
+          footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+          footer_color: '#888888',
+          font_family: 'Arial, sans-serif',
+          button_color: '#007bff',
+          button_text_color: '#ffffff',
+          border_radius: '6px'
+        };
+
+        const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
+        const isDocumentEmail = templateType === 'documenti';
+        
+        const htmlContent = buildHtmlContent({
+          subject,
+          shortText,
+          logoUrl,
+          attachmentSection,
+          senderEmail,
+          isDocumentEmail,
+          primaryColor: templateData.primary_color,
+          backgroundColor: templateData.background_color,
+          textColor: templateData.text_color,
+          logoAlignment: templateData.logo_alignment,
+          footerText: templateData.footer_text,
+          footerColor: templateData.footer_color,
+          fontFamily: templateData.font_family,
+          buttonColor: templateData.button_color,
+          buttonTextColor: templateData.button_text_color,
+          borderRadius: templateData.border_radius
+        });
+
+        const brevoPayload = {
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email: recipient.email }],
+          subject: subject,
+          htmlContent,
+          textContent: `${subject}\n\n${shortText}\n\nInviato da: ${senderName}`
+        };
+
+        const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "api-key": adminSetting.brevo_api_key,
+          },
+          body: JSON.stringify(brevoPayload),
+        });
+
+        if (brevoResponse.ok) {
+          successCount++;
+          console.log(`[Notification Email] Email sent to ${recipient.email}`);
+        } else {
+          const errorText = await brevoResponse.text();
+          console.error(`[Notification Email] Failed to send to ${recipient.email}:`, errorText);
+          errors.push(`${recipient.email}: ${errorText}`);
+        }
+      } catch (error) {
+        console.error(`[Notification Email] Error sending to ${recipient.email}:`, error);
+        errors.push(`${recipient.email}: ${error.message}`);
+      }
     }
 
     console.log("[Notification Email] Email sent successfully!");
 
-    return jsonResponse({
-      success: true,
-      message: "Email sent successfully",
-      recipients: emails.length,
-      sender: senderEmail
-    });
-  } catch (error: any) {
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: "Email sent successfully",
+        recipients: successCount,
+        sender: senderEmail,
+        errors: errors.length > 0 ? errors : undefined
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
     console.error("[Notification Email] Unexpected error:", error);
-    return jsonResponse({
-      error: "Internal server error",
-      details: error.message
-    }, 500);
+    return new Response(
+      JSON.stringify({ 
+        error: "Internal server error", 
+        details: error.message 
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

@@ -7,6 +7,63 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper per costruire il contenuto HTML dell'email con personalizzazioni
+function buildTestHtmlContent(template: any, subject: string, content: string) {
+  const isDocumentEmail = template.template_type === 'documenti';
+  
+  // Pulsante per email documenti
+  const dashboardButton = isDocumentEmail ? `
+    <div style="width:100%;text-align:center;margin:28px 0 0 0;">
+      <a href="https://alm-app.lovable.app/" target="_blank" style="
+        background-color:${template.button_color || '#007bff'};
+        color:${template.button_text_color || '#ffffff'};
+        padding:12px 26px;
+        border-radius:${template.border_radius || '6px'};
+        text-decoration:none;
+        font-size:16px;
+        font-weight:bold;
+        letter-spacing:0.5px;
+        display:inline-block;
+        box-shadow:0 1px 6px rgba(40,82,180,.06);
+        margin:auto;
+      ">
+        Visualizza documento
+      </a>
+    </div>
+  ` : "";
+
+  return `
+    <div style="font-family: ${template.font_family || 'Arial, sans-serif'}; max-width: 600px; margin: 0 auto; background-color: ${template.background_color || '#ffffff'}; color: ${template.text_color || '#333333'};">
+      ${
+        template.logo_url
+          ? `<div style="text-align:${template.logo_alignment || 'center'};margin-bottom:24px;">
+              <img src="${template.logo_url}" alt="Logo" style="max-height:${template.logo_size === 'small' ? '40px' : template.logo_size === 'large' ? '80px' : '60px'};max-width:180px;" />
+            </div>`
+          : ""
+      }
+      <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid ${template.primary_color || '#007bff'}; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: ${template.primary_color || '#007bff'};">🧪 Questa è un'email di prova</h3>
+        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">
+          Template: ${template.name || template.template_type}
+        </p>
+      </div>
+      <h2 style="color: ${template.primary_color || '#007bff'}; border-bottom: 2px solid ${template.primary_color || '#007bff'}; padding-bottom: 10px; text-align: ${template.header_alignment || 'center'};">
+        ${subject}
+      </h2>
+      <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${template.text_color || '#333333'}; text-align: ${template.body_alignment || 'left'};">
+        ${content.replace(/\n/g, '<br>')}
+        ${dashboardButton}
+      </div>
+      <hr style="border: none; border-top: 1px solid ${template.secondary_color || '#eee'}; margin: 30px 0;">
+      <div style="width:100%;text-align:center;margin-top:18px;">
+        <span style="color:${template.footer_color || '#888888'}; font-size:13px;">
+          ${template.footer_text || '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820'}
+        </span>
+      </div>
+    </div>
+  `;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -19,7 +76,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Test Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { templateId, testEmail, userId, subject, content } = body;
+    const { templateType, testEmail, userId, subject, content } = body;
 
     if (!userId) {
       console.error("[Test Email] Missing userId in request");
@@ -74,6 +131,41 @@ serve(async (req) => {
 
     console.log("[Test Email] Found Brevo API key for admin");
 
+    // Get email template for the specific template type
+    console.log("[Test Email] Looking for email template:", templateType);
+    const { data: emailTemplate, error: templateError } = await supabase
+      .from("email_templates")
+      .select("*")
+      .eq("admin_id", userId)
+      .eq("template_type", templateType)
+      .maybeSingle();
+
+    if (templateError) {
+      console.error("[Test Email] Error fetching email template:", templateError);
+    }
+
+    console.log("[Test Email] Found email template:", emailTemplate);
+
+    // Use template data or defaults
+    const template = emailTemplate || {
+      template_type: templateType,
+      name: `Template ${templateType}`,
+      primary_color: '#007bff',
+      secondary_color: '#6c757d',
+      background_color: '#ffffff',
+      text_color: '#333333',
+      logo_alignment: 'center',
+      logo_size: 'medium',
+      footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+      footer_color: '#888888',
+      header_alignment: 'center',
+      body_alignment: 'left',
+      font_family: 'Arial, sans-serif',
+      button_color: '#007bff',
+      button_text_color: '#ffffff',
+      border_radius: '6px'
+    };
+
     // Get admin profile info for sender name
     const { data: adminProfile, error: profileError } = await supabase
       .from("profiles")
@@ -92,6 +184,9 @@ serve(async (req) => {
     
     const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
 
+    // Generate HTML content using template settings
+    const htmlContent = buildTestHtmlContent(template, subject, content);
+
     // Send test email via Brevo API
     const brevoPayload = {
       sender: { 
@@ -100,28 +195,7 @@ serve(async (req) => {
       },
       to: [{ email: testEmail }],
       subject: `[TEST] ${subject}`,
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; margin-bottom: 20px;">
-            <h3 style="margin: 0; color: #007bff;">🧪 Questa è un'email di prova</h3>
-            <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">
-              Template: ${templateId ? "Template personalizzato" : "Email diretta"}
-            </p>
-          </div>
-          <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
-            ${subject}
-          </h2>
-          <div style="margin: 20px 0; line-height: 1.6; color: #555;">
-            ${content.replace(/\n/g, '<br>')}
-          </div>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="font-size: 12px; color: #888; margin: 0;">
-            Questa è un'email di prova dal sistema aziendale.<br>
-            Inviata da: ${senderEmail}<br>
-            Destinatario: ${testEmail}
-          </p>
-        </div>
-      `,
+      htmlContent,
       textContent: `[TEST] ${subject}\n\n${content}\n\n--- Questa è un'email di prova ---\nInviata da: ${senderEmail}`
     };
 
