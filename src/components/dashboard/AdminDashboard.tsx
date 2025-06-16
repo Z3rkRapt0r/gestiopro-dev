@@ -19,6 +19,8 @@ import SentNotificationsHistory from "@/components/notifications/SentNotificatio
 import { useNavigate, useLocation } from "react-router-dom";
 import AdminSettingsSection from "@/components/admin/AdminSettingsSection";
 import DashboardHeader from "./DashboardHeader";
+import { useDashboardSettings } from "@/hooks/useDashboardSettings";
+
 interface Employee {
   id: string;
   first_name: string | null;
@@ -31,6 +33,7 @@ interface Employee {
   created_at?: string;
   updated_at?: string;
 }
+
 const AdminDashboard = () => {
   const [searchParams] = typeof window !== "undefined" ? [new URLSearchParams(window.location.search)] : [new URLSearchParams()];
   const sectionFromQuery = searchParams.get("section");
@@ -52,6 +55,9 @@ const AdminDashboard = () => {
   const {
     toast
   } = useToast();
+
+  // Dashboard settings per l'header personalizzato
+  const { settings: dashboardSettings, loading: dashboardLoading } = useDashboardSettings();
 
   // Funzione per raggruppare documenti per mese (ultimi 12 mesi)
   function getMonthlyDocumentsStats(documents: any[]) {
@@ -498,17 +504,30 @@ const AdminDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <div className="bg-blue-600 p-2 rounded">
-                <Users className="h-6 w-6 text-white" />
-              </div>
+              {dashboardSettings.logo_url ? (
+                <img
+                  src={dashboardSettings.logo_url}
+                  alt="Logo"
+                  className="h-8 w-auto object-contain"
+                />
+              ) : (
+                <div className="bg-blue-600 p-2 rounded">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+              )}
               <div className="ml-4">
-                <h1 className="text-xl font-semibold text-gray-900">SerramentiCorp Admin</h1>
+                <h1 
+                  className="text-xl font-semibold"
+                  style={{ color: dashboardSettings.primary_color }}
+                >
+                  {dashboardSettings.company_name || "SerramentiCorp Admin"}
+                </h1>
               </div>
             </div>
             
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Benvenuto, {profile?.first_name} {profile?.last_name}
+                Benvenuto in {dashboardSettings.company_name || "SerramentiCorp"}, {profile?.first_name} {profile?.last_name}
               </span>
               <Button variant="ghost" onClick={signOut}>
                 <LogOut className="h-4 w-4 mr-2" />
@@ -586,4 +605,5 @@ const AdminDashboard = () => {
       {employeeToEdit && <EditEmployeeForm employee={employeeToEdit} onClose={() => setEmployeeToEdit(null)} onEmployeeUpdated={handleEmployeeUpdated} />}
     </div>;
 };
+
 export default AdminDashboard;
