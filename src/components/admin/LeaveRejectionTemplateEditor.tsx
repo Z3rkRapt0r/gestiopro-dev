@@ -2,7 +2,7 @@
 import EmailTemplateEditor from "./EmailTemplateEditor";
 
 const LeaveRejectionTemplateEditor = () => {
-  const defaultContent = "La tua richiesta di permesso/ferie è stata rifiutata. Controlla le note dell'amministratore per maggiori dettagli.";
+  const defaultContent = "Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata rifiutata dall'amministratore.\n\nDettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un'altra data.";
   const defaultSubject = "Richiesta Rifiutata";
 
   return (

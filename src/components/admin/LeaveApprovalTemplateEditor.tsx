@@ -2,7 +2,7 @@
 import EmailTemplateEditor from "./EmailTemplateEditor";
 
 const LeaveApprovalTemplateEditor = () => {
-  const defaultContent = "La tua richiesta di permesso/ferie è stata approvata. Puoi consultare i dettagli nella tua dashboard personale.";
+  const defaultContent = "Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata approvata dall'amministratore.\n\nDettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Richiesta approvata. Ricorda di recuperare le ore.";
   const defaultSubject = "Richiesta Approvata";
 
   return (
