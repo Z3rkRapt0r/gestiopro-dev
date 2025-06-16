@@ -163,6 +163,9 @@ export type Database = {
           button_text_color: string | null
           content: string
           created_at: string | null
+          custom_block_bg_color: string | null
+          custom_block_text: string | null
+          custom_block_text_color: string | null
           details: string | null
           font_family: string | null
           font_size: string | null
@@ -181,6 +184,7 @@ export type Database = {
           secondary_color: string | null
           sender_name: string | null
           show_admin_notes: boolean | null
+          show_custom_block: boolean | null
           show_details_button: boolean | null
           show_leave_details: boolean | null
           subject: string
@@ -199,6 +203,9 @@ export type Database = {
           button_text_color?: string | null
           content: string
           created_at?: string | null
+          custom_block_bg_color?: string | null
+          custom_block_text?: string | null
+          custom_block_text_color?: string | null
           details?: string | null
           font_family?: string | null
           font_size?: string | null
@@ -217,6 +224,7 @@ export type Database = {
           secondary_color?: string | null
           sender_name?: string | null
           show_admin_notes?: boolean | null
+          show_custom_block?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
           subject: string
@@ -235,6 +243,9 @@ export type Database = {
           button_text_color?: string | null
           content?: string
           created_at?: string | null
+          custom_block_bg_color?: string | null
+          custom_block_text?: string | null
+          custom_block_text_color?: string | null
           details?: string | null
           font_family?: string | null
           font_size?: string | null
@@ -253,6 +264,7 @@ export type Database = {
           secondary_color?: string | null
           sender_name?: string | null
           show_admin_notes?: boolean | null
+          show_custom_block?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
           subject?: string
