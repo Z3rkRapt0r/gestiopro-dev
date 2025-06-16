@@ -64,6 +64,9 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
 
   // Check if this is a leave-related template
   const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
+  
+  // Check if this template can have a button
+  const canHaveButton = ['documenti', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
 
   useEffect(() => {
     loadTemplate();
@@ -234,11 +237,15 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
                   Questi dettagli verranno sostituiti con i dati reali della richiesta.
                 </p>
               </div>
+            </div>
+          )}
 
-              {/* Sezione Controlli Visibilità */}
-              <div className="space-y-3 pt-4 border-t">
-                <h4 className="font-medium">Controlli Visibilità</h4>
-                
+          {/* Sezione Controlli Visibilità */}
+          {(canHaveButton || isLeaveTemplate) && (
+            <div className="space-y-3 p-4 border rounded-lg bg-blue-50">
+              <h4 className="font-medium">Controlli Visibilità</h4>
+              
+              {canHaveButton && (
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <Label htmlFor="show_details_button">Mostra Pulsante Dettagli</Label>
@@ -250,7 +257,9 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
                     onCheckedChange={(checked) => updateTemplate('show_details_button', checked)}
                   />
                 </div>
+              )}
 
+              {isLeaveTemplate && (
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <Label htmlFor="show_leave_details">Mostra Dettagli Permesso</Label>
@@ -262,7 +271,7 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
                     onCheckedChange={(checked) => updateTemplate('show_leave_details', checked)}
                   />
                 </div>
-              </div>
+              )}
             </div>
           )}
 
