@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Image } from "lucide-react";
 import EmailTemplatePreview from "./EmailTemplatePreview";
+import TestEmailDialog from "./TestEmailDialog";
 
 interface EmailTemplate {
   id?: string;
@@ -207,7 +208,15 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Configurazione Template</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Configurazione Template</CardTitle>
+            <TestEmailDialog
+              templateType={templateType}
+              subject={template.subject}
+              content={template.content}
+              disabled={loading}
+            />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
