@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNotificationForm } from "@/hooks/useNotificationForm";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
@@ -77,12 +76,12 @@ const NotificationForm = ({ onCreated }: Props) => {
         </SelectContent>
       </Select>
       <Input
-        placeholder="Oggetto (opzionale, se serve diverso dall’argomento)"
+        placeholder="Oggetto (opzionale, se serve diverso dall'argomento)"
         value={subject}
         onChange={e => setSubject(e.target.value)}
       />
       <Textarea
-        placeholder="Messaggio breve"
+        placeholder="Messaggio"
         required
         value={shortText}
         onChange={e => setShortText(e.target.value)}
