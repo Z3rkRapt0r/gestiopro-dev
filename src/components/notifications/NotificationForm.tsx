@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNotificationForm } from "@/hooks/useNotificationForm";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
@@ -20,28 +21,27 @@ interface Props {
 const NotificationForm = ({ onCreated }: Props) => {
   const [subject, setSubject] = useState("");
   const [shortText, setShortText] = useState("");
-  const [body, setBody] = useState("");
   const [topic, setTopic] = useState("");
   const [recipientId, setRecipientId] = useState<string>("ALL");
-  const [file, setFile] = useState<File | null>(null);
 
   const { employees, loading: loadingEmployees } = useActiveEmployees();
   const { sendNotification, loading } = useNotificationForm(onCreated);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Use custom subject if provided, otherwise use topic
+    const finalSubject = subject.trim() || topic;
+    
     await sendNotification({
       recipientId: recipientId === "ALL" ? null : recipientId,
-      subject: topic || subject,
+      subject: finalSubject,
       shortText,
-      body,
-      file,
+      body: undefined,
+      file: null,
       topic,
     });
     setSubject("");
     setShortText("");
-    setBody("");
-    setFile(null);
     setTopic("");
     setRecipientId("ALL");
   };
@@ -85,16 +85,6 @@ const NotificationForm = ({ onCreated }: Props) => {
         required
         value={shortText}
         onChange={e => setShortText(e.target.value)}
-      />
-      <Textarea
-        placeholder="Messaggio completo (opzionale)"
-        value={body}
-        onChange={e => setBody(e.target.value)}
-      />
-      <Input
-        type="file"
-        accept=".pdf,.doc,.docx,.jpg,.png,.jpeg,.gif"
-        onChange={e => setFile(e.target.files?.[0] || null)}
       />
       <Button type="submit" disabled={loading || loadingEmployees}>
         Invia notifica
