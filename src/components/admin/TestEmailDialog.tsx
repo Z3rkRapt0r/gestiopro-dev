@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Mail } from "lucide-react";
 
 interface TestEmailDialogProps {
-  templateType: 'documenti' | 'notifiche' | 'approvazioni';
+  templateType: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   subject: string;
   content: string;
   disabled?: boolean;
