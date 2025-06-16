@@ -49,7 +49,17 @@ export function useLoginSettings() {
   const loadSettings = async () => {
     try {
       console.log('Loading login settings...');
-      // Carica TUTTE le impostazioni dashboard e cerca quelle con dati login
+      
+      // Prima, controlliamo tutte le righe nel database
+      const { data: allData, error: allError } = await supabase
+        .from("dashboard_settings")
+        .select("*")
+        .order('updated_at', { ascending: false });
+
+      console.log('ALL dashboard_settings rows:', allData);
+      console.log('Total rows in dashboard_settings:', allData?.length);
+
+      // Ora carichiamo solo i campi login
       const { data, error } = await supabase
         .from("dashboard_settings")
         .select("login_logo_url, login_company_name, login_primary_color, login_secondary_color, login_background_color")
@@ -63,14 +73,30 @@ export function useLoginSettings() {
 
       console.log('All dashboard settings loaded:', data);
 
-      // Trova la prima riga che ha almeno una impostazione login configurata
-      const loginData = data?.find(row => 
-        row.login_company_name || 
-        row.login_logo_url || 
-        row.login_primary_color !== '#2563eb' ||
-        row.login_secondary_color !== '#64748b' ||
-        row.login_background_color !== '#f1f5f9'
-      );
+      // Trova la prima riga che ha almeno una impostazione login NON di default
+      const loginData = data?.find(row => {
+        const hasCustomCompanyName = row.login_company_name && row.login_company_name !== "SerramentiCorp";
+        const hasCustomLogo = row.login_logo_url;
+        const hasCustomPrimaryColor = row.login_primary_color && row.login_primary_color !== '#2563eb';
+        const hasCustomSecondaryColor = row.login_secondary_color && row.login_secondary_color !== '#64748b';
+        const hasCustomBackgroundColor = row.login_background_color && row.login_background_color !== '#f1f5f9';
+        
+        const hasAnyCustomSetting = hasCustomCompanyName || hasCustomLogo || hasCustomPrimaryColor || hasCustomSecondaryColor || hasCustomBackgroundColor;
+        
+        console.log('Checking row:', row);
+        console.log('Has custom settings:', {
+          hasCustomCompanyName,
+          hasCustomLogo, 
+          hasCustomPrimaryColor,
+          hasCustomSecondaryColor,
+          hasCustomBackgroundColor,
+          hasAnyCustomSetting
+        });
+        
+        return hasAnyCustomSetting;
+      });
+
+      console.log('Found login data:', loginData);
 
       if (loginData) {
         const newSettings = {
@@ -83,7 +109,7 @@ export function useLoginSettings() {
         console.log('Setting new login settings:', newSettings);
         setSettings(newSettings);
       } else {
-        console.log('No login settings found, using defaults');
+        console.log('No custom login settings found, using defaults');
         setSettings(defaultLoginSettings);
       }
     } catch (error) {
