@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getNotificationTypeLabel, formatRelativeDate } from "@/utils/notificationUtils";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Send, FileText, MessageSquare, Megaphone, Settings } from "lucide-react";
+import { RotateCcw, Send, Building2, AlertTriangle, Calendar, Shield, Settings } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -90,12 +90,14 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'document':
-        return <FileText className="w-4 h-4" />;
-      case 'message':
-        return <MessageSquare className="w-4 h-4" />;
-      case 'announcement':
-        return <Megaphone className="w-4 h-4" />;
+      case 'Aggiornamenti aziendali':
+        return <Building2 className="w-4 h-4" />;
+      case 'Comunicazioni importanti':
+        return <AlertTriangle className="w-4 h-4" />;
+      case 'Eventi':
+        return <Calendar className="w-4 h-4" />;
+      case 'Avvisi sicurezza':
+        return <Shield className="w-4 h-4" />;
       case 'system':
       default:
         return <Settings className="w-4 h-4" />;
@@ -172,22 +174,26 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="all" className="flex items-center gap-1 text-xs">
                 <Send className="w-3 h-3" />
                 Tutte ({notifications.length})
               </TabsTrigger>
-              <TabsTrigger value="document" className="flex items-center gap-1 text-xs">
-                <FileText className="w-3 h-3" />
-                Documenti ({typeCounts.document || 0})
+              <TabsTrigger value="Aggiornamenti aziendali" className="flex items-center gap-1 text-xs">
+                <Building2 className="w-3 h-3" />
+                Aziendali ({typeCounts['Aggiornamenti aziendali'] || 0})
               </TabsTrigger>
-              <TabsTrigger value="message" className="flex items-center gap-1 text-xs">
-                <MessageSquare className="w-3 h-3" />
-                Messaggi ({typeCounts.message || 0})
+              <TabsTrigger value="Comunicazioni importanti" className="flex items-center gap-1 text-xs">
+                <AlertTriangle className="w-3 h-3" />
+                Importanti ({typeCounts['Comunicazioni importanti'] || 0})
               </TabsTrigger>
-              <TabsTrigger value="announcement" className="flex items-center gap-1 text-xs">
-                <Megaphone className="w-3 h-3" />
-                Annunci ({typeCounts.announcement || 0})
+              <TabsTrigger value="Eventi" className="flex items-center gap-1 text-xs">
+                <Calendar className="w-3 h-3" />
+                Eventi ({typeCounts.Eventi || 0})
+              </TabsTrigger>
+              <TabsTrigger value="Avvisi sicurezza" className="flex items-center gap-1 text-xs">
+                <Shield className="w-3 h-3" />
+                Sicurezza ({typeCounts['Avvisi sicurezza'] || 0})
               </TabsTrigger>
               <TabsTrigger value="system" className="flex items-center gap-1 text-xs">
                 <Settings className="w-3 h-3" />
