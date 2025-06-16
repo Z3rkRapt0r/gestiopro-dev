@@ -49,14 +49,15 @@ export function useLoginSettings() {
   const loadSettings = async () => {
     try {
       console.log('Loading login settings...');
-      // Carica le impostazioni login da qualsiasi admin (prendiamo la prima trovata)
+      // Carica tutte le impostazioni login disponibili e prendi la prima con valori non nulli
       const { data, error } = await supabase
         .from("dashboard_settings")
         .select("login_logo_url, login_company_name, login_primary_color, login_secondary_color, login_background_color")
+        .not('login_company_name', 'is', null)
         .limit(1)
         .maybeSingle();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error("Error loading login settings:", error);
         setSettings(defaultLoginSettings);
         return;
