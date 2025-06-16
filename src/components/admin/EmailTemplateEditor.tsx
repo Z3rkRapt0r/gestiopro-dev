@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Image } from "lucide-react";
 import EmailTemplatePreview from "./EmailTemplatePreview";
@@ -175,16 +175,6 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="content">Contenuto</Label>
-            <Textarea
-              id="content"
-              value={template.content || ''}
-              onChange={(e) => updateTemplate('content', e.target.value)}
-              rows={4}
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="primary_color">Colore Primario</Label>
@@ -295,11 +285,12 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
 
           <div>
             <Label htmlFor="footer_text">Testo Footer</Label>
-            <Textarea
+            <textarea
               id="footer_text"
               value={template.footer_text || ''}
               onChange={(e) => updateTemplate('footer_text', e.target.value)}
               rows={2}
+              className="w-full px-3 py-2 border border-input rounded-md text-sm"
             />
           </div>
 

@@ -1,6 +1,6 @@
 
 interface EmailTemplate {
-  template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
+  template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   name: string;
   subject: string;
   content: string;
@@ -45,22 +45,43 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
     }
   };
 
-  const getSampleContent = () => {
+  const getRealisticContent = () => {
     switch (template.template_type) {
       case 'documenti':
-        return 'È disponibile un nuovo documento per la tua revisione. Puoi accedere al documento tramite il pulsante sottostante.';
+        return {
+          content: 'Gentile Mario Rossi,\n\nÈ disponibile un nuovo documento per la tua revisione. Il documento "Contratto 2025" contiene informazioni importanti che richiedono la tua attenzione immediata.\n\nTi preghiamo di accedere alla dashboard per visualizzare e scaricare il documento.',
+          details: 'Documento: Contratto 2025\nCaricato da: Amministratore\nData: 16 Giugno 2025'
+        };
       case 'notifiche':
-        return 'Hai ricevuto una nuova notifica importante. Ti invitiamo a prenderne visione.';
+        return {
+          content: 'Gentile Mario Rossi,\n\nHai ricevuto una nuova notifica importante dal sistema aziendale. Ti invitiamo a prenderne visione accedendo alla tua dashboard personale.\n\nLa notifica riguarda aggiornamenti sulla policy aziendale.',
+          details: 'Tipo: Aggiornamento policy\nPriorità: Alta\nData: 16 Giugno 2025'
+        };
       case 'approvazioni':
-        return 'È necessaria la tua approvazione per una richiesta. Clicca sul pulsante per visualizzare i dettagli.';
+        return {
+          content: 'Gentile Amministratore,\n\nÈ necessaria la tua approvazione per una richiesta di Mario Rossi. La richiesta riguarda l\'autorizzazione per l\'accesso a documenti riservati.\n\nAccedi alla dashboard per visualizzare i dettagli e procedere con l\'approvazione o il rifiuto.',
+          details: 'Richiesta: Accesso documenti riservati\nRichiedente: Mario Rossi\nData richiesta: 16 Giugno 2025'
+        };
       case 'permessi-richiesta':
-        return 'Hai ricevuto una nuova richiesta di permesso/ferie da parte di un dipendente. Accedi alla dashboard per visualizzare i dettagli.';
+        return {
+          content: 'Gentile Amministratore,\n\nMario Rossi ha inviato una nuova richiesta di permesso. Ti preghiamo di prenderne visione e procedere con l\'approvazione o il rifiuto.\n\nDettagli della richiesta:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica',
+          details: ''
+        };
       case 'permessi-approvazione':
-        return 'La tua richiesta di permesso/ferie è stata approvata. Puoi consultare i dettagli nella tua dashboard personale.';
+        return {
+          content: 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata approvata dall\'amministratore.\n\nDettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Richiesta approvata. Ricorda di recuperare le ore.',
+          details: ''
+        };
       case 'permessi-rifiuto':
-        return 'La tua richiesta di permesso/ferie è stata rifiutata. Controlla le note dell\'amministratore per maggiori dettagli.';
+        return {
+          content: 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata rifiutata dall\'amministratore.\n\nDettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un\'altra data.',
+          details: ''
+        };
       default:
-        return template.content;
+        return {
+          content: 'Gentile utente,\n\nQuesto è un messaggio di esempio dal sistema di gestione aziendale. Il contenuto verrà personalizzato in base al tipo di notifica.',
+          details: ''
+        };
     }
   };
 
@@ -71,17 +92,23 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
       case 'notifiche':
         return 'Visualizza Notifica';
       case 'approvazioni':
-        return 'Approva/Rifiuta';
+        return 'Gestisci Richiesta';
       case 'permessi-richiesta':
         return 'Gestisci Richiesta';
       case 'permessi-approvazione':
         return 'Visualizza Dettagli';
       case 'permessi-rifiuto':
-        return 'Visualizza Motivi';
+        return 'Visualizza Dettagli';
       default:
-        return 'Azione';
+        return 'Visualizza';
     }
   };
+
+  const shouldShowButton = () => {
+    return ['documenti', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(template.template_type);
+  };
+
+  const { content, details } = getRealisticContent();
 
   return (
     <div className="border rounded-lg p-4 bg-gray-50 max-h-[600px] overflow-auto">
@@ -128,17 +155,24 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
           lineHeight: '1.6',
           marginBottom: '24px'
         }}>
-          <p style={{ margin: '0 0 16px 0' }}>
-            {getSampleContent()}
-          </p>
-          {template.content && (
-            <p style={{ margin: '0' }}>
-              {template.content}
-            </p>
+          <div style={{ margin: '0 0 16px 0', whiteSpace: 'pre-line' }}>
+            {content}
+          </div>
+          {details && (
+            <div style={{ 
+              backgroundColor: `${template.secondary_color}15`,
+              padding: '12px',
+              borderRadius: '6px',
+              marginTop: '16px',
+              fontSize: '14px',
+              whiteSpace: 'pre-line'
+            }}>
+              {details}
+            </div>
           )}
         </div>
 
-        {(template.template_type === 'documenti' || template.template_type === 'approvazioni' || template.template_type.startsWith('permessi-')) && (
+        {shouldShowButton() && (
           <div style={{ textAlign: 'center', margin: '32px 0' }}>
             <a 
               href="#" 
