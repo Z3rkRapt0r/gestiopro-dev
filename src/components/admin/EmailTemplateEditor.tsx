@@ -22,6 +22,10 @@ type EmailTemplate = Database['public']['Tables']['email_templates']['Row'] & {
   admin_notes_text_color?: string;
   leave_details_bg_color?: string;
   leave_details_text_color?: string;
+  show_custom_block?: boolean;
+  custom_block_text?: string;
+  custom_block_bg_color?: string;
+  custom_block_text_color?: string;
 };
 
 type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Insert'] & {
@@ -33,6 +37,10 @@ type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Inse
   admin_notes_text_color?: string;
   leave_details_bg_color?: string;
   leave_details_text_color?: string;
+  show_custom_block?: boolean;
+  custom_block_text?: string;
+  custom_block_bg_color?: string;
+  custom_block_text_color?: string;
 };
 
 interface EmailTemplateEditorProps {
@@ -74,11 +82,17 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
     admin_notes_bg_color: '#f8f9fa',
     admin_notes_text_color: '#495057',
     leave_details_bg_color: '#e3f2fd',
-    leave_details_text_color: '#1565c0'
+    leave_details_text_color: '#1565c0',
+    show_custom_block: false,
+    custom_block_text: 'Informazioni importanti',
+    custom_block_bg_color: '#fff3cd',
+    custom_block_text_color: '#856404'
   });
 
   // Check if this is a leave-related template
   const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
+  // Check if this is a notification template
+  const isNotificationTemplate = templateType === 'notifiche';
 
   useEffect(() => {
     loadTemplate();
@@ -110,7 +124,11 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           admin_notes_bg_color: data.admin_notes_bg_color || '#f8f9fa',
           admin_notes_text_color: data.admin_notes_text_color || '#495057',
           leave_details_bg_color: data.leave_details_bg_color || '#e3f2fd',
-          leave_details_text_color: data.leave_details_text_color || '#1565c0'
+          leave_details_text_color: data.leave_details_text_color || '#1565c0',
+          show_custom_block: data.show_custom_block !== null ? data.show_custom_block : false,
+          custom_block_text: data.custom_block_text || 'Informazioni importanti',
+          custom_block_bg_color: data.custom_block_bg_color || '#fff3cd',
+          custom_block_text_color: data.custom_block_text_color || '#856404'
         };
         setTemplate(templateData);
       }
@@ -216,10 +234,17 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Sezione Contenuto Email - Solo per template P/F */}
-          {isLeaveTemplate && (
+          {/* Sezione Contenuto Email - Solo per template P/F e Notifiche */}
+          {(isLeaveTemplate || isNotificationTemplate) && (
             <div className="space-y-4 p-4 border rounded-lg bg-slate-50">
               <h3 className="font-semibold text-lg">Contenuto Email</h3>
+              
+              {isNotificationTemplate && (
+                <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                  <strong>Nota:</strong> Per le notifiche, oggetto e messaggio saranno dinamici in base ai dati inseriti. 
+                  Questi campi sono solo per l'anteprima.
+                </p>
+              )}
               
               <div>
                 <Label htmlFor="subject">Oggetto Email</Label>
@@ -242,24 +267,85 @@ const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: E
                   placeholder="Contenuto principale dell'email"
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  Usa "Mario Rossi" come placeholder per il nome del dipendente - verrà sostituito automaticamente.
+                  {isNotificationTemplate 
+                    ? "Questo contenuto è solo per l'anteprima. Il contenuto reale sarà dinamico."
+                    : 'Usa "Mario Rossi" come placeholder per il nome del dipendente - verrà sostituito automaticamente.'
+                  }
                 </p>
               </div>
 
-              <div>
-                <Label htmlFor="details">Dettagli Permesso/Ferie</Label>
-                <textarea
-                  id="details"
-                  value={template.details || ''}
-                  onChange={(e) => updateTemplate('details', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-input rounded-md text-sm"
-                  placeholder="Dettagli:&#10;Tipo: Permesso&#10;Giorno: 18 Giugno 2025&#10;Orario: 14:00 - 16:00&#10;Motivo: Visita medica"
+              {isLeaveTemplate && (
+                <div>
+                  <Label htmlFor="details">Dettagli Permesso/Ferie</Label>
+                  <textarea
+                    id="details"
+                    value={template.details || ''}
+                    onChange={(e) => updateTemplate('details', e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                    placeholder="Dettagli:&#10;Tipo: Permesso&#10;Giorno: 18 Giugno 2025&#10;Orario: 14:00 - 16:00&#10;Motivo: Visita medica"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Questi dettagli verranno sostituiti con i dati reali della richiesta.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sezione Blocco Personalizzabile - Solo per notifiche */}
+          {isNotificationTemplate && (
+            <div className="space-y-4 p-4 border rounded-lg bg-yellow-50">
+              <h4 className="font-medium">Blocco Informativo Personalizzabile</h4>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="show_custom_block">Mostra Blocco Personalizzato</Label>
+                  <p className="text-sm text-gray-500">Visualizza un blocco informativo sopra il messaggio principale</p>
+                </div>
+                <Switch
+                  id="show_custom_block"
+                  checked={template.show_custom_block === true}
+                  onCheckedChange={(checked) => updateTemplate('show_custom_block', checked)}
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  Questi dettagli verranno sostituiti con i dati reali della richiesta.
-                </p>
               </div>
+
+              {template.show_custom_block && (
+                <>
+                  <div>
+                    <Label htmlFor="custom_block_text">Testo Blocco Personalizzato</Label>
+                    <textarea
+                      id="custom_block_text"
+                      value={template.custom_block_text || ''}
+                      onChange={(e) => updateTemplate('custom_block_text', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                      placeholder="Informazioni aggiuntive da mostrare sempre nelle notifiche..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="custom_block_bg_color">Colore Sfondo Blocco</Label>
+                      <Input
+                        id="custom_block_bg_color"
+                        type="color"
+                        value={template.custom_block_bg_color || '#fff3cd'}
+                        onChange={(e) => updateTemplate('custom_block_bg_color', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="custom_block_text_color">Colore Testo Blocco</Label>
+                      <Input
+                        id="custom_block_text_color"
+                        type="color"
+                        value={template.custom_block_text_color || '#856404'}
+                        onChange={(e) => updateTemplate('custom_block_text_color', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

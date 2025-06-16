@@ -27,6 +27,10 @@ interface EmailTemplate {
   admin_notes_text_color?: string;
   leave_details_bg_color?: string;
   leave_details_text_color?: string;
+  show_custom_block?: boolean;
+  custom_block_text?: string;
+  custom_block_bg_color?: string;
+  custom_block_text_color?: string;
 }
 
 interface EmailTemplatePreviewProps {
@@ -133,6 +137,10 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
     return isAdminActionTemplate && template.show_admin_notes !== false;
   };
 
+  const shouldShowCustomBlock = () => {
+    return template.template_type === 'notifiche' && template.show_custom_block === true && template.custom_block_text;
+  };
+
   const { content, details, adminNotes } = getRealisticContent();
 
   return (
@@ -180,6 +188,23 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
           lineHeight: '1.6',
           marginBottom: '24px'
         }}>
+          {/* Blocco personalizzabile per notifiche */}
+          {shouldShowCustomBlock() && (
+            <div style={{ 
+              backgroundColor: template.custom_block_bg_color || '#fff3cd',
+              color: template.custom_block_text_color || '#856404',
+              padding: '12px',
+              borderRadius: '6px',
+              marginBottom: '16px',
+              fontSize: '14px',
+              whiteSpace: 'pre-line',
+              borderLeft: `3px solid ${template.custom_block_text_color || '#856404'}`
+            }}>
+              <strong>Informazioni:</strong><br/>
+              {template.custom_block_text}
+            </div>
+          )}
+
           <div style={{ margin: '0 0 16px 0', whiteSpace: 'pre-line' }}>
             {content}
           </div>

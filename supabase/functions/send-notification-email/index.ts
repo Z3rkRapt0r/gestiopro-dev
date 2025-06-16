@@ -134,7 +134,11 @@ serve(async (req) => {
       admin_notes_bg_color: '#f8f9fa',
       admin_notes_text_color: '#495057',
       leave_details_bg_color: '#e3f2fd',
-      leave_details_text_color: '#1565c0'
+      leave_details_text_color: '#1565c0',
+      show_custom_block: false,
+      custom_block_text: '',
+      custom_block_bg_color: '#fff3cd',
+      custom_block_text_color: '#856404'
     };
 
     // Use template logo if available, otherwise fallback to admin logo
@@ -218,13 +222,19 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // Use template subject and content if available, otherwise use provided values
-        let emailSubject = emailTemplate?.subject || subject;
-        let emailContent = emailTemplate?.content || shortText;
+        // Per le notifiche, usa sempre il contenuto dinamico dal request
+        let emailSubject = subject;
+        let emailContent = shortText;
         
-        // If using template content, replace placeholders with actual data
-        if (emailTemplate?.content && recipient.first_name && recipient.last_name) {
-          emailContent = emailTemplate.content.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
+        // Per i template non-notifiche, usa il contenuto del template se disponibile
+        if (templateType !== 'notifiche' && emailTemplate) {
+          emailSubject = emailTemplate.subject || subject;
+          emailContent = emailTemplate.content || shortText;
+          
+          // Replace placeholders with actual data for non-notification templates
+          if (recipient.first_name && recipient.last_name) {
+            emailContent = emailContent.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
+          }
         }
         
         // Prepare leave details and admin notes for templates that support them
@@ -240,8 +250,8 @@ serve(async (req) => {
         }
         
         const htmlContent = buildHtmlContent({
-          subject: emailSubject,
-          shortText: emailContent,
+          subject: emailTemplate?.subject || 'Default Subject', // Usa il subject del template per il design
+          shortText: emailTemplate?.content || 'Default Content', // Usa il content del template per il design
           logoUrl,
           attachmentSection,
           senderEmail,
@@ -269,13 +279,20 @@ serve(async (req) => {
           leaveDetailsBgColor: templateData.leave_details_bg_color,
           leaveDetailsTextColor: templateData.leave_details_text_color,
           adminNotesBgColor: templateData.admin_notes_bg_color,
-          adminNotesTextColor: templateData.admin_notes_text_color
+          adminNotesTextColor: templateData.admin_notes_text_color,
+          showCustomBlock: templateData.show_custom_block,
+          customBlockText: templateData.custom_block_text,
+          customBlockBgColor: templateData.custom_block_bg_color,
+          customBlockTextColor: templateData.custom_block_text_color,
+          // Passa il contenuto dinamico per le notifiche
+          dynamicSubject: templateType === 'notifiche' ? emailSubject : '',
+          dynamicContent: templateType === 'notifiche' ? emailContent : ''
         });
 
         const brevoPayload = {
           sender: { name: senderName, email: senderEmail },
           to: [{ email: recipient.email }],
-          subject: emailSubject,
+          subject: emailSubject, // Usa sempre il subject dinamico per l'email effettiva
           htmlContent,
           textContent: `${emailSubject}\n\n${emailContent}\n\nInviato da: ${senderName}`
         };

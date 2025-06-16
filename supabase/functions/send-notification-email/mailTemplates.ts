@@ -1,4 +1,3 @@
-
 /** Helpers per sezioni HTML email (logo, corpo, allegato, pulsante vedi doc) */
 
 // Pulsante centrato che porta alla dashboard - per documenti e permessi
@@ -105,6 +104,14 @@ interface EmailTemplateData {
   leaveDetailsTextColor?: string;
   adminNotesBgColor?: string;
   adminNotesTextColor?: string;
+  // Nuovi parametri per blocco personalizzabile
+  showCustomBlock?: boolean;
+  customBlockText?: string;
+  customBlockBgColor?: string;
+  customBlockTextColor?: string;
+  // Parametri per contenuto dinamico notifiche
+  dynamicSubject?: string;
+  dynamicContent?: string;
 }
 
 function getLogoSize(size?: string) {
@@ -155,10 +162,16 @@ export function buildHtmlContent({
   leaveDetailsBgColor = '#e3f2fd',
   leaveDetailsTextColor = '#1565c0',
   adminNotesBgColor = '#f8f9fa',
-  adminNotesTextColor = '#495057'
+  adminNotesTextColor = '#495057',
+  showCustomBlock = false,
+  customBlockText = '',
+  customBlockBgColor = '#fff3cd',
+  customBlockTextColor = '#856404',
+  dynamicSubject = '',
+  dynamicContent = ''
 }: EmailTemplateData) {
   // Determine if we should show button based on template type and settings
-  const shouldShowButton = isDocumentEmail || (['approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && showDetailsButton);
+  const shouldShowButton = isDocumentEmail || (['approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto', 'notifiche'].includes(templateType) && showDetailsButton);
   const dashboardButton = shouldShowButton ? buildDashboardButton("https://alm-app.lovable.app/", templateType, buttonColor, buttonTextColor, borderRadius, showDetailsButton) : "";
 
   // Check if we should show leave details
@@ -168,6 +181,14 @@ export function buildHtmlContent({
   // Check if we should show admin notes
   const isAdminActionTemplate = ['permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
   const shouldShowAdminNotesSection = isAdminActionTemplate && showAdminNotes && adminNotes;
+
+  // Check if we should show custom block (solo per notifiche)
+  const isNotificationTemplate = templateType === 'notifiche';
+  const shouldShowCustomBlockSection = isNotificationTemplate && showCustomBlock && customBlockText;
+
+  // Per le notifiche, usa contenuto dinamico se disponibile, altrimenti usa quello del template
+  const finalSubject = (isNotificationTemplate && dynamicSubject) ? dynamicSubject : subject;
+  const finalContent = (isNotificationTemplate && dynamicContent) ? dynamicContent : shortText;
 
   return `
     <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -180,12 +201,20 @@ export function buildHtmlContent({
       }
       <div style="text-align:${headerAlignment};margin-bottom:24px;">
         <h2 style="color: ${primaryColor}; margin: 0 0 16px 0; font-size: 24px; font-weight: bold;">
-          ${subject}
+          ${finalSubject}
         </h2>
       </div>
       <div style="text-align: ${bodyAlignment}; line-height: 1.6; margin-bottom: 24px; font-size: ${getFontSize(fontSize)};">
+        
+        ${shouldShowCustomBlockSection ? `
+          <div style="background-color: ${customBlockBgColor}; color: ${customBlockTextColor}; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; white-space: pre-line; border-left: 3px solid ${customBlockTextColor};">
+            <strong>Informazioni:</strong><br/>
+            ${customBlockText.replace(/\n/g, '<br>')}
+          </div>
+        ` : ''}
+
         <div style="margin: 0 0 16px 0; white-space: pre-line;">
-          ${shortText.replace(/\n/g, '<br>')}
+          ${finalContent.replace(/\n/g, '<br>')}
         </div>
         
         ${shouldShowLeaveDetailsSection ? `
