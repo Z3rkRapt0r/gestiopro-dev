@@ -1,6 +1,6 @@
 
 interface EmailTemplate {
-  template_type: 'documenti' | 'notifiche' | 'approvazioni';
+  template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   name: string;
   subject: string;
   content: string;
@@ -53,6 +53,12 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
         return 'Hai ricevuto una nuova notifica importante. Ti invitiamo a prenderne visione.';
       case 'approvazioni':
         return 'È necessaria la tua approvazione per una richiesta. Clicca sul pulsante per visualizzare i dettagli.';
+      case 'permessi-richiesta':
+        return 'Hai ricevuto una nuova richiesta di permesso/ferie da parte di un dipendente. Accedi alla dashboard per visualizzare i dettagli.';
+      case 'permessi-approvazione':
+        return 'La tua richiesta di permesso/ferie è stata approvata. Puoi consultare i dettagli nella tua dashboard personale.';
+      case 'permessi-rifiuto':
+        return 'La tua richiesta di permesso/ferie è stata rifiutata. Controlla le note dell\'amministratore per maggiori dettagli.';
       default:
         return template.content;
     }
@@ -66,6 +72,12 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
         return 'Visualizza Notifica';
       case 'approvazioni':
         return 'Approva/Rifiuta';
+      case 'permessi-richiesta':
+        return 'Gestisci Richiesta';
+      case 'permessi-approvazione':
+        return 'Visualizza Dettagli';
+      case 'permessi-rifiuto':
+        return 'Visualizza Motivi';
       default:
         return 'Azione';
     }
@@ -126,7 +138,7 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
           )}
         </div>
 
-        {(template.template_type === 'documenti' || template.template_type === 'approvazioni') && (
+        {(template.template_type === 'documenti' || template.template_type === 'approvazioni' || template.template_type.startsWith('permessi-')) && (
           <div style={{ textAlign: 'center', margin: '32px 0' }}>
             <a 
               href="#" 
