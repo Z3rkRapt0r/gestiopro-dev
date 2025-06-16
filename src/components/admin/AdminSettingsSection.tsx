@@ -24,34 +24,34 @@ const AdminSettingsSection = () => {
     <div className="max-w-6xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6">Impostazioni Amministratore</h1>
       <Tabs defaultValue="brevo" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-6 h-auto bg-gray-100 p-1 rounded-lg">
+        <TabsList className="flex flex-wrap justify-start gap-1 mb-6 h-auto bg-gray-100 p-1 rounded-lg w-full">
           <TabsTrigger 
             value="brevo" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
             Configurazione Brevo
           </TabsTrigger>
           <TabsTrigger 
             value="emailtemplate" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
-            Modello Globale Email
+            Modello Email
           </TabsTrigger>
           <TabsTrigger 
             value="dashboard" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
-            Personalizzazione Dashboard
+            Dashboard
           </TabsTrigger>
           <TabsTrigger 
             value="login" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
-            Personalizzazione Login
+            Login
           </TabsTrigger>
           <TabsTrigger 
             value="employeelogos" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 whitespace-nowrap"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
             Loghi Dipendenti
           </TabsTrigger>
