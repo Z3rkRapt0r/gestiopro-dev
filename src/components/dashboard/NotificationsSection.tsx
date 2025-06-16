@@ -46,6 +46,20 @@ const NotificationsSection = () => {
     return supabase.storage.from("notification-attachments").getPublicUrl(path).data.publicUrl;
   };
 
+  // Funzione per determinare se una notifica è generale - SPOSTATA PRIMA DEL SUO UTILIZZO
+  const isGeneralNotification = (notification: any) => {
+    // Una notifica è generale se il tipo suggerisce che è rivolta a tutti
+    // o se contiene indicatori specifici nel titolo/messaggio
+    const generalTypes = ['announcement', 'system'];
+    const generalKeywords = ['tutti', 'generale', 'comunicazione aziendale', 'avviso generale'];
+    
+    return generalTypes.includes(notification.type) || 
+           generalKeywords.some(keyword => 
+             notification.title?.toLowerCase().includes(keyword) || 
+             notification.message?.toLowerCase().includes(keyword)
+           );
+  };
+
   // Filtro le notifiche in base alla tab attiva
   const filteredNotifications = notifications.filter((notification) => {
     switch (activeTab) {
@@ -62,20 +76,6 @@ const NotificationsSection = () => {
         return true;
     }
   });
-
-  // Funzione per determinare se una notifica è generale
-  const isGeneralNotification = (notification: any) => {
-    // Una notifica è generale se il tipo suggerisce che è rivolta a tutti
-    // o se contiene indicatori specifici nel titolo/messaggio
-    const generalTypes = ['announcement', 'system'];
-    const generalKeywords = ['tutti', 'generale', 'comunicazione aziendale', 'avviso generale'];
-    
-    return generalTypes.includes(notification.type) || 
-           generalKeywords.some(keyword => 
-             notification.title?.toLowerCase().includes(keyword) || 
-             notification.message?.toLowerCase().includes(keyword)
-           );
-  };
 
   const personalCount = notifications.filter(n => n.created_by !== null && !isGeneralNotification(n)).length;
   const generalCount = notifications.filter(n => isGeneralNotification(n)).length;
