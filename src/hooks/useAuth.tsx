@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -192,14 +193,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     setLoading(true);
     try {
+      // Clear local state first to prevent UI flickering
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+
+      // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();
+      
+      // Even if there's an error (like session missing), we still consider it a successful logout
+      // since the local state has been cleared
       if (error) {
-        console.error('Error signing out from Supabase:', error);
-        toast({
-          title: "Errore di disconnessione",
-          description: error.message,
-          variant: "destructive",
-        });
+        console.warn('[useAuth] Warning during sign out (but continuing):', error.message);
+        // Only show error if it's not about missing session
+        if (!error.message.includes('session') && !error.message.includes('Session')) {
+          toast({
+            title: "Avviso",
+            description: "Disconnessione completata localmente",
+            variant: "default",
+          });
+        }
       } else {
         toast({
           title: "Disconnesso",
@@ -207,16 +220,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       }
     } catch (e: any) {
-      console.error('Exception during sign out process:', e);
-      toast({
-        title: "Errore imprevisto durante la disconnessione",
-        description: e.message || "Si è verificato un errore sconosciuto.",
-        variant: "destructive",
-      });
-    } finally {
+      console.error('[useAuth] Exception during sign out process:', e);
+      // Clear state anyway since we want to log out regardless
       setUser(null);
       setProfile(null);
       setSession(null);
+      
+      toast({
+        title: "Disconnesso",
+        description: "Disconnessione completata",
+      });
+    } finally {
       setLoading(false);
     }
   };
