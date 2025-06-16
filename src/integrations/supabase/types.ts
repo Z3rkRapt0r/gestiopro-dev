@@ -176,6 +176,7 @@ export type Database = {
           primary_color: string | null
           secondary_color: string | null
           sender_name: string | null
+          show_admin_notes: boolean | null
           show_details_button: boolean | null
           show_leave_details: boolean | null
           subject: string
@@ -207,6 +208,7 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           sender_name?: string | null
+          show_admin_notes?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
           subject: string
@@ -238,6 +240,7 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           sender_name?: string | null
+          show_admin_notes?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
           subject?: string
