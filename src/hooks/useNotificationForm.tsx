@@ -78,6 +78,27 @@ export const useNotificationForm = (onCreated?: () => void) => {
           });
       }
 
+      // Salva nella cronologia delle notifiche inviate
+      console.log("Saving to sent_notifications table...");
+      const { error: sentNotificationError } = await supabase
+        .from("sent_notifications")
+        .insert({
+          admin_id: profile?.id,
+          recipient_id: recipientId,
+          title: subject,
+          message: shortText,
+          body,
+          type: topic || "system",
+          attachment_url
+        });
+
+      if (sentNotificationError) {
+        console.error("Error saving to sent_notifications:", sentNotificationError);
+        throw sentNotificationError;
+      }
+
+      console.log("Successfully saved to sent_notifications table");
+
       // Invio email tramite Edge Function Brevo
       console.log("Calling send-notification-email function...");
       

@@ -328,6 +328,45 @@ export type Database = {
         }
         Relationships: []
       }
+      sent_notifications: {
+        Row: {
+          admin_id: string
+          attachment_url: string | null
+          body: string | null
+          created_at: string
+          id: string
+          message: string
+          recipient_id: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          attachment_url?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          recipient_id?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          attachment_url?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          recipient_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -11,15 +11,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface SentNotification {
   id: string;
-  user_id: string;
+  admin_id: string;
+  recipient_id: string | null;
   title: string;
   message: string;
-  type: string;
-  is_read: boolean;
-  created_by: string | null;
-  created_at: string;
   body?: string;
+  type: string;
   attachment_url?: string;
+  created_at: string;
 }
 
 const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
@@ -31,14 +30,14 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
   const fetchSentNotifications = async () => {
     if (!profile?.id) return;
     
-    console.log("SentNotificationsHistory: fetching notifications for admin", profile.id);
+    console.log("SentNotificationsHistory: fetching sent notifications for admin", profile.id);
     setLoading(true);
     
     try {
       const { data, error } = await supabase
-        .from('notifications')
+        .from('sent_notifications')
         .select('*')
-        .eq('created_by', profile.id)
+        .eq('admin_id', profile.id)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -47,22 +46,10 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
         return;
       }
 
-      console.log("SentNotificationsHistory: raw data fetched", data);
-      console.log("SentNotificationsHistory: filtering notifications created by", profile.id);
-      
-      // Log ogni notifica per debug
-      data?.forEach((notif, index) => {
-        console.log(`Notification ${index}:`, {
-          id: notif.id,
-          title: notif.title,
-          created_by: notif.created_by,
-          created_at: notif.created_at,
-          message: notif.message.substring(0, 50) + '...'
-        });
-      });
+      console.log("SentNotificationsHistory: fetched sent notifications", data?.length || 0);
+      console.log("SentNotificationsHistory: sent notifications data", data);
 
       setNotifications(data || []);
-      console.log("SentNotificationsHistory: final notifications count", data?.length || 0);
     } catch (error) {
       console.error('Error in fetchSentNotifications:', error);
     } finally {
@@ -166,10 +153,10 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
                   <span>{formatRelativeDate(notification.created_at)}</span>
                   <div className="flex items-center gap-2">
                     <Badge 
-                      variant={notification.is_read ? "default" : "destructive"}
+                      variant="outline"
                       className="text-xs"
                     >
-                      {notification.is_read ? "Letta" : "Non letta"}
+                      {notification.recipient_id ? "Singolo" : "Tutti"}
                     </Badge>
                   </div>
                 </div>
