@@ -47,8 +47,22 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
         return;
       }
 
-      console.log("SentNotificationsHistory: fetched notifications", data?.length || 0);
+      console.log("SentNotificationsHistory: raw data fetched", data);
+      console.log("SentNotificationsHistory: filtering notifications created by", profile.id);
+      
+      // Log ogni notifica per debug
+      data?.forEach((notif, index) => {
+        console.log(`Notification ${index}:`, {
+          id: notif.id,
+          title: notif.title,
+          created_by: notif.created_by,
+          created_at: notif.created_at,
+          message: notif.message.substring(0, 50) + '...'
+        });
+      });
+
       setNotifications(data || []);
+      console.log("SentNotificationsHistory: final notifications count", data?.length || 0);
     } catch (error) {
       console.error('Error in fetchSentNotifications:', error);
     } finally {
@@ -67,6 +81,8 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
       console.log("SentNotificationsHistory: refreshKey changed to", refreshKey, "- forcing refresh");
       const forceRefresh = async () => {
         setIsRefreshing(true);
+        // Piccolo delay per assicurarsi che il database sia aggiornato
+        await new Promise(resolve => setTimeout(resolve, 500));
         await fetchSentNotifications();
         setIsRefreshing(false);
       };
