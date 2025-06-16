@@ -25,7 +25,7 @@ export function useEmployeeLogoSettings() {
       // Carica le impostazioni logo dipendenti da qualsiasi admin (prendiamo la prima trovata)
       const { data, error } = await supabase
         .from("dashboard_settings")
-        .select("*")
+        .select("employee_default_logo_url, employee_logo_enabled")
         .limit(1)
         .maybeSingle();
 

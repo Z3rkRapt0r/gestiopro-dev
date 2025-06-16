@@ -46,7 +46,14 @@ export type Database = {
           admin_id: string
           company_name: string | null
           created_at: string | null
+          employee_default_logo_url: string | null
+          employee_logo_enabled: boolean | null
           id: string
+          login_background_color: string | null
+          login_company_name: string | null
+          login_logo_url: string | null
+          login_primary_color: string | null
+          login_secondary_color: string | null
           logo_url: string | null
           primary_color: string | null
           secondary_color: string | null
@@ -56,7 +63,14 @@ export type Database = {
           admin_id: string
           company_name?: string | null
           created_at?: string | null
+          employee_default_logo_url?: string | null
+          employee_logo_enabled?: boolean | null
           id?: string
+          login_background_color?: string | null
+          login_company_name?: string | null
+          login_logo_url?: string | null
+          login_primary_color?: string | null
+          login_secondary_color?: string | null
           logo_url?: string | null
           primary_color?: string | null
           secondary_color?: string | null
@@ -66,7 +80,14 @@ export type Database = {
           admin_id?: string
           company_name?: string | null
           created_at?: string | null
+          employee_default_logo_url?: string | null
+          employee_logo_enabled?: boolean | null
           id?: string
+          login_background_color?: string | null
+          login_company_name?: string | null
+          login_logo_url?: string | null
+          login_primary_color?: string | null
+          login_secondary_color?: string | null
           logo_url?: string | null
           primary_color?: string | null
           secondary_color?: string | null

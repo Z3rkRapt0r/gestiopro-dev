@@ -33,7 +33,7 @@ const EmployeeLogosSection = () => {
     try {
       const { data, error } = await supabase
         .from("dashboard_settings")
-        .select("*")
+        .select("employee_default_logo_url, employee_logo_enabled")
         .eq("admin_id", profile?.id)
         .maybeSingle();
 

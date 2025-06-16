@@ -31,7 +31,7 @@ export function useLoginSettings() {
       // Carica le impostazioni login da qualsiasi admin (prendiamo la prima trovata)
       const { data, error } = await supabase
         .from("dashboard_settings")
-        .select("*")
+        .select("login_logo_url, login_company_name, login_primary_color, login_secondary_color, login_background_color")
         .limit(1)
         .maybeSingle();
 
