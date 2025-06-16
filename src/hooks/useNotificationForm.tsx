@@ -29,53 +29,87 @@ export const useNotificationForm = (onCreated?: () => void) => {
     setLoading(true);
 
     try {
+      console.log('useNotificationForm: Starting notification send process');
+      console.log('Parameters:', { recipientId, subject, shortText, body, topic });
+      
       let attachment_url: string | null = null;
 
       if (file) {
+        console.log('useNotificationForm: Uploading file...');
         const filename = `${Date.now()}_${file.name}`;
         const { data, error } = await supabase.storage
           .from("notification-attachments")
           .upload(filename, file);
 
-        if (error) throw error;
+        if (error) {
+          console.error('File upload error:', error);
+          throw error;
+        }
         attachment_url = data?.path || null;
+        console.log('File uploaded successfully:', attachment_url);
       }
+
+      const notificationData = {
+        title: subject,
+        message: shortText,
+        type: topic || "system",
+        body,
+        attachment_url,
+        created_by: profile?.id
+      };
+
+      console.log('Notification data to insert:', notificationData);
 
       if (!recipientId) {
         // Tutti i dipendenti
+        console.log('useNotificationForm: Sending to all employees');
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id")
+          .select("id, email, first_name, last_name")
           .eq("is_active", true);
-        if (profilesError) throw profilesError;
+          
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          throw profilesError;
+        }
+
+        console.log('Found active profiles:', profiles);
 
         // Per ogni dipendente attivo, crea una notifica
         for (const p of profiles || []) {
-          await supabase
+          console.log('Creating notification for user:', p.id, p.email);
+          
+          const { error: insertError } = await supabase
             .from("notifications")
             .insert({
               user_id: p.id,
-              title: subject,
-              message: shortText,
-              type: topic || "system",
-              body,
-              attachment_url,
-              created_by: profile?.id
+              ...notificationData
             });
+            
+          if (insertError) {
+            console.error('Error inserting notification for user:', p.id, insertError);
+            throw insertError;
+          }
+          
+          console.log('Notification created successfully for user:', p.id);
         }
       } else {
         // Notifica singolo dipendente
-        await supabase
+        console.log('useNotificationForm: Sending to single employee:', recipientId);
+        
+        const { error: insertError } = await supabase
           .from("notifications")
           .insert({
             user_id: recipientId,
-            title: subject,
-            message: shortText,
-            type: topic || "system",
-            body,
-            attachment_url,
-            created_by: profile?.id
+            ...notificationData
           });
+          
+        if (insertError) {
+          console.error('Error inserting notification:', insertError);
+          throw insertError;
+        }
+        
+        console.log('Notification created successfully for user:', recipientId);
       }
 
       // Salva nella cronologia delle notifiche inviate
