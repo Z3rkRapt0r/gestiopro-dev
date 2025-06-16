@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -179,7 +180,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
             subject,
             shortText,
             userId: profile?.id,
-            topic, // Pass topic to determine template type
+            topic: topic || "notification", // Always pass a topic, default to "notification"
           }
         }
       );

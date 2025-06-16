@@ -64,12 +64,22 @@ serve(async (req) => {
 
     console.log("[Notification Email] Found Brevo API key for admin");
 
-    // Determine template type based on topic or subject
+    // Determine template type based on topic first, then fallback to subject analysis
     let templateType = 'notifiche'; // default
-    if (topic === 'documents' || subject.toLowerCase().includes('documento')) {
+    if (topic === 'document' || topic === 'documents') {
       templateType = 'documenti';
-    } else if (topic === 'approvals' || subject.toLowerCase().includes('approv')) {
+    } else if (topic === 'approvals' || topic === 'approval') {
       templateType = 'approvazioni';
+    } else if (topic === 'notifications' || topic === 'notification') {
+      templateType = 'notifiche';
+    } else {
+      // Fallback to subject analysis if topic is not clear
+      const lowerSubject = subject.toLowerCase();
+      if (lowerSubject.includes('documento') || lowerSubject.includes('document')) {
+        templateType = 'documenti';
+      } else if (lowerSubject.includes('approv')) {
+        templateType = 'approvazioni';
+      }
     }
 
     // Get email template for the specific template type
