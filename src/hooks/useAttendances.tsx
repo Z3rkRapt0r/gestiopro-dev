@@ -239,7 +239,8 @@ export const useAttendances = () => {
 
   const deleteAttendance = useMutation({
     mutationFn: async (attendanceId: string) => {
-      console.log('Tentativo di eliminazione presenza:', attendanceId);
+      console.log('Tentativo di eliminazione presenza con ID:', attendanceId);
+      console.log('Utente corrente:', { id: user?.id, role: profile?.role });
       
       const { error } = await supabase
         .from('attendances')
@@ -257,7 +258,7 @@ export const useAttendances = () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
       toast({
-        title: "Presenza annullata",
+        title: "Presenza eliminata",
         description: "La presenza è stata eliminata con successo",
       });
     },
@@ -265,7 +266,7 @@ export const useAttendances = () => {
       console.error('Delete attendance error:', error);
       toast({
         title: "Errore",
-        description: "Errore nell'eliminazione della presenza",
+        description: error.message || "Errore nell'eliminazione della presenza",
         variant: "destructive",
       });
     },
