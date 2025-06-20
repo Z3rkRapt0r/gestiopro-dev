@@ -3,33 +3,20 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, MapPin, Play, Square, Plane, AlertTriangle } from 'lucide-react';
+import { Clock, MapPin, Play, Square, AlertTriangle } from 'lucide-react';
 import { useAttendances } from '@/hooks/useAttendances';
-import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useGPSValidation } from '@/hooks/useGPSValidation';
 
 export default function AttendanceCheckInOut() {
   const { checkIn, checkOut, isCheckingIn, isCheckingOut, getTodayAttendance } = useAttendances();
-  const { businessTrips } = useBusinessTrips();
   const { validateLocation, settings: adminSettings } = useGPSValidation();
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [selectedBusinessTrip, setSelectedBusinessTrip] = useState<string | null>(null);
 
   const todayAttendance = getTodayAttendance();
-  const today = new Date().toISOString().split('T')[0];
-
-  // Ottieni le trasferte approvate che includono la data di oggi
-  const approvedTripsToday = businessTrips?.filter(trip => 
-    trip.status === 'approved' && 
-    trip.start_date <= today && 
-    trip.end_date >= today
-  ) || [];
 
   useEffect(() => {
     console.log('Richiesta geolocalizzazione...');
-    // Richiedi la geolocalizzazione
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -59,15 +46,12 @@ export default function AttendanceCheckInOut() {
 
     console.log('Tentativo check-in con:', {
       location,
-      selectedBusinessTrip,
       adminSettings
     });
 
-    const isBusinessTrip = !!selectedBusinessTrip;
     checkIn({
       ...location,
-      isBusinessTrip,
-      businessTripId: selectedBusinessTrip || undefined,
+      isBusinessTrip: false,
     });
   };
 
@@ -86,11 +70,10 @@ export default function AttendanceCheckInOut() {
     });
   };
 
-  // Calcola se siamo nel raggio consentito
   const getLocationStatus = () => {
     if (!location) return { inRange: true, distance: null };
     
-    const validation = validateLocation(location.latitude, location.longitude, !!selectedBusinessTrip);
+    const validation = validateLocation(location.latitude, location.longitude, false);
     return {
       inRange: validation.isValid,
       distance: validation.distance,
@@ -142,29 +125,6 @@ export default function AttendanceCheckInOut() {
           </div>
         )}
 
-        {/* Selezione trasferta se ce ne sono di approvate */}
-        {approvedTripsToday.length > 0 && !todayAttendance?.check_in_time && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Sei in trasferta oggi?</label>
-            <Select value={selectedBusinessTrip || 'none'} onValueChange={(value) => setSelectedBusinessTrip(value === 'none' ? null : value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No, presenza normale</SelectItem>
-                {approvedTripsToday.map((trip) => (
-                  <SelectItem key={trip.id} value={trip.id}>
-                    <div className="flex items-center gap-2">
-                      <Plane className="w-3 h-3" />
-                      {trip.destination}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
         {todayAttendance && (
           <div className="space-y-2">
             {todayAttendance.check_in_time && (
@@ -184,13 +144,6 @@ export default function AttendanceCheckInOut() {
                 </Badge>
               </div>
             )}
-
-            {todayAttendance.is_business_trip && (
-              <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded">
-                <Plane className="w-4 h-4 text-yellow-600" />
-                <span className="text-sm text-yellow-800">Presenza in trasferta</span>
-              </div>
-            )}
           </div>
         )}
 
@@ -198,7 +151,7 @@ export default function AttendanceCheckInOut() {
           {!todayAttendance?.check_in_time ? (
             <Button
               onClick={handleCheckIn}
-              disabled={!location || isCheckingIn || (!locationStatus.inRange && !selectedBusinessTrip)}
+              disabled={!location || isCheckingIn || !locationStatus.inRange}
               className="flex-1"
             >
               <Play className="w-4 h-4 mr-2" />
@@ -224,7 +177,7 @@ export default function AttendanceCheckInOut() {
           )}
         </div>
 
-        {!locationStatus.inRange && !selectedBusinessTrip && location && adminSettings?.company_latitude && (
+        {!locationStatus.inRange && location && adminSettings?.company_latitude && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
             <AlertTriangle className="w-4 h-4 inline mr-1" />
             {locationStatus.message}

@@ -764,6 +764,54 @@ export type Database = {
         }
         Relationships: []
       }
+      work_schedules: {
+        Row: {
+          created_at: string | null
+          end_time: string
+          friday: boolean
+          id: string
+          monday: boolean
+          saturday: boolean
+          start_time: string
+          sunday: boolean
+          thursday: boolean
+          tolerance_minutes: number
+          tuesday: boolean
+          updated_at: string | null
+          wednesday: boolean
+        }
+        Insert: {
+          created_at?: string | null
+          end_time?: string
+          friday?: boolean
+          id?: string
+          monday?: boolean
+          saturday?: boolean
+          start_time?: string
+          sunday?: boolean
+          thursday?: boolean
+          tolerance_minutes?: number
+          tuesday?: boolean
+          updated_at?: string | null
+          wednesday?: boolean
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string
+          friday?: boolean
+          id?: string
+          monday?: boolean
+          saturday?: boolean
+          start_time?: string
+          sunday?: boolean
+          thursday?: boolean
+          tolerance_minutes?: number
+          tuesday?: boolean
+          updated_at?: string | null
+          wednesday?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

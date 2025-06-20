@@ -9,12 +9,12 @@ import LoginCustomizationSection from "./LoginCustomizationSection";
 import EmployeeLogosSection from "./EmployeeLogosSection";
 import EmailTemplateManager from "./EmailTemplateManager";
 import AttendanceSettings from "@/components/attendance/AttendanceSettings";
+import WorkScheduleSettings from "./WorkScheduleSettings";
 
 const AdminSettingsSection = () => {
   const { apiKey, loading, saveApiKey } = useAdminSettings();
   const [value, setValue] = useState(apiKey || "");
 
-  // Aggiorna value quando apiKey cambia
   useEffect(() => {
     if (apiKey !== null && apiKey !== undefined) {
       setValue(apiKey);
@@ -43,6 +43,12 @@ const AdminSettingsSection = () => {
             className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
             Presenze
+          </TabsTrigger>
+          <TabsTrigger 
+            value="work-schedules" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
+          >
+            Orari di Lavoro
           </TabsTrigger>
           <TabsTrigger 
             value="dashboard" 
@@ -88,6 +94,9 @@ const AdminSettingsSection = () => {
         </TabsContent>
         <TabsContent value="attendances">
           <AttendanceSettings />
+        </TabsContent>
+        <TabsContent value="work-schedules">
+          <WorkScheduleSettings />
         </TabsContent>
         <TabsContent value="dashboard">
           <DashboardCustomizationSection />
