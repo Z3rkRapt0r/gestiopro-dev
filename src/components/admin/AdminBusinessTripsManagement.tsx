@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 export default function AdminBusinessTripsManagement() {
-  const { businessTrips, updateTripStatus, isUpdating } = useBusinessTrips();
+  const { businessTrips, updateTripStatus, createTrip, isUpdating, isCreating } = useBusinessTrips();
   const { employees } = useActiveEmployees();
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
   const [startDate, setStartDate] = useState<Date>();
@@ -27,10 +27,31 @@ export default function AdminBusinessTripsManagement() {
 
   const handleApproveTrip = (tripId: string, notes?: string) => {
     updateTripStatus({ tripId, status: 'approved', adminNotes: notes });
+    setAdminNotes('');
   };
 
   const handleRejectTrip = (tripId: string, notes?: string) => {
     updateTripStatus({ tripId, status: 'rejected', adminNotes: notes });
+    setAdminNotes('');
+  };
+
+  const handleCreateTrip = () => {
+    if (!selectedEmployee || !startDate || !endDate || !destination) return;
+
+    createTrip({
+      user_id: selectedEmployee,
+      start_date: format(startDate, 'yyyy-MM-dd'),
+      end_date: format(endDate, 'yyyy-MM-dd'),
+      destination,
+      reason,
+    });
+
+    // Reset form
+    setSelectedEmployee('');
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setDestination('');
+    setReason('');
   };
 
   const getStatusColor = (status: string) => {
@@ -144,10 +165,11 @@ export default function AdminBusinessTripsManagement() {
             </div>
 
             <Button 
+              onClick={handleCreateTrip}
+              disabled={!selectedEmployee || !startDate || !endDate || !destination || isCreating}
               className="w-full"
-              disabled={!selectedEmployee || !startDate || !endDate || !destination}
             >
-              Crea Trasferta
+              {isCreating ? 'Creando...' : 'Crea Trasferta'}
             </Button>
           </CardContent>
         </Card>

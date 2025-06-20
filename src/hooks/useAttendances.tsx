@@ -26,20 +26,21 @@ export interface Attendance {
   } | null;
 }
 
-// Funzione per calcolare la distanza tra due coordinate in metri
+// Funzione per calcolare la distanza tra due coordinate in metri usando la formula di Haversine
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   const R = 6371e3; // Raggio della Terra in metri
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const φ1 = (lat1 * Math.PI) / 180; // φ, λ in radianti
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
   const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
           Math.cos(φ1) * Math.cos(φ2) *
           Math.sin(Δλ/2) * Math.sin(Δλ/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-  return R * c;
+  const distance = R * c; // in metri
+  return distance;
 };
 
 export const useAttendances = () => {
@@ -139,6 +140,13 @@ export const useAttendances = () => {
         );
 
         const maxDistance = adminSettings.attendance_radius_meters || 500;
+
+        console.log('Controllo distanza:', {
+          userLocation: { latitude, longitude },
+          companyLocation: { lat: adminSettings.company_latitude, lng: adminSettings.company_longitude },
+          distance: Math.round(distance),
+          maxDistance
+        });
 
         if (distance > maxDistance) {
           throw new Error(`Devi essere entro ${maxDistance} metri dall'azienda per registrare la presenza. Distanza attuale: ${Math.round(distance)} metri.`);

@@ -65,8 +65,15 @@ export const useManualAttendances = () => {
   });
 
   const createManualAttendance = useMutation({
-    mutationFn: async (attendanceData: Omit<ManualAttendance, 'id' | 'created_by' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
+    mutationFn: async (attendanceData: {
+      user_id: string;
+      date: string;
+      check_in_time: string | null;
+      check_out_time: string | null;
+      notes: string | null;
+    }) => {
+      // Inserisci nella tabella manual_attendances
+      const { data: manualData, error: manualError } = await supabase
         .from('manual_attendances')
         .insert({
           ...attendanceData,
@@ -75,8 +82,32 @@ export const useManualAttendances = () => {
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (manualError) throw manualError;
+
+      // Inserisci anche nella tabella attendances per uniformità
+      const { data: attendanceRecord, error: attendanceError } = await supabase
+        .from('attendances')
+        .upsert({
+          user_id: attendanceData.user_id,
+          date: attendanceData.date,
+          check_in_time: attendanceData.check_in_time,
+          check_out_time: attendanceData.check_out_time,
+          check_in_latitude: null,
+          check_in_longitude: null,
+          check_out_latitude: null,
+          check_out_longitude: null,
+          is_business_trip: false,
+        }, {
+          onConflict: 'user_id,date'
+        })
+        .select()
+        .single();
+
+      if (attendanceError) {
+        console.warn('Warning: Could not sync to attendances table:', attendanceError);
+      }
+
+      return manualData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });

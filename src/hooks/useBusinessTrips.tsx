@@ -76,12 +76,25 @@ export const useBusinessTrips = () => {
   });
 
   const createTrip = useMutation({
-    mutationFn: async (tripData: Omit<BusinessTrip, 'id' | 'user_id' | 'status' | 'created_at' | 'updated_at' | 'approved_by' | 'approved_at' | 'admin_notes'>) => {
+    mutationFn: async (tripData: {
+      user_id?: string;
+      start_date: string;
+      end_date: string;
+      destination: string;
+      reason: string;
+    }) => {
+      // Se è admin e user_id è specificato, usa quello, altrimenti usa l'ID dell'utente corrente
+      const targetUserId = (profile?.role === 'admin' && tripData.user_id) ? tripData.user_id : user?.id;
+
       const { data, error } = await supabase
         .from('business_trips')
         .insert({
-          user_id: user?.id,
-          ...tripData,
+          user_id: targetUserId,
+          start_date: tripData.start_date,
+          end_date: tripData.end_date,
+          destination: tripData.destination,
+          reason: tripData.reason,
+          status: profile?.role === 'admin' ? 'approved' : 'pending', // Auto-approva se creata dall'admin
         })
         .select()
         .single();
@@ -93,7 +106,9 @@ export const useBusinessTrips = () => {
       queryClient.invalidateQueries({ queryKey: ['business-trips'] });
       toast({
         title: "Trasferta creata",
-        description: "La richiesta di trasferta è stata inviata per approvazione",
+        description: profile?.role === 'admin' 
+          ? "La trasferta è stata creata e approvata automaticamente"
+          : "La richiesta di trasferta è stata inviata per approvazione",
       });
     },
     onError: (error: any) => {
