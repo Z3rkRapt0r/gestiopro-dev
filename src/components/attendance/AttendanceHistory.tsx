@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Calendar, Clock, MapPin, User } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, ExternalLink } from 'lucide-react';
 import { useAttendances, Attendance } from '@/hooks/useAttendances';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -65,6 +65,66 @@ export default function AttendanceHistory() {
       return <Badge variant="secondary">In servizio</Badge>;
     }
     return <Badge variant="default" className="bg-green-600">Completato</Badge>;
+  };
+
+  const getGoogleMapsLink = (latitude: number, longitude: number) => {
+    return `https://maps.google.com/?q=${latitude},${longitude}`;
+  };
+
+  const renderLocationCell = (attendance: Attendance) => {
+    if (profile?.role !== 'admin') {
+      // Per dipendenti normali, mostra solo l'icona GPS
+      if (attendance.check_in_latitude && attendance.check_in_longitude) {
+        return (
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <MapPin className="w-3 h-3" />
+            GPS
+          </div>
+        );
+      }
+      return <span className="text-sm text-muted-foreground">-</span>;
+    }
+
+    // Per admin, mostra i link alle mappe
+    const hasCheckInLocation = attendance.check_in_latitude && attendance.check_in_longitude;
+    const hasCheckOutLocation = attendance.check_out_latitude && attendance.check_out_longitude;
+
+    if (!hasCheckInLocation && !hasCheckOutLocation) {
+      return <span className="text-sm text-muted-foreground">-</span>;
+    }
+
+    return (
+      <div className="space-y-1">
+        {hasCheckInLocation && (
+          <div>
+            <a
+              href={getGoogleMapsLink(attendance.check_in_latitude!, attendance.check_in_longitude!)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800 hover:underline"
+            >
+              <MapPin className="w-3 h-3" />
+              Check-in
+              <ExternalLink className="w-2 h-2" />
+            </a>
+          </div>
+        )}
+        {hasCheckOutLocation && (
+          <div>
+            <a
+              href={getGoogleMapsLink(attendance.check_out_latitude!, attendance.check_out_longitude!)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 hover:underline"
+            >
+              <MapPin className="w-3 h-3" />
+              Check-out
+              <ExternalLink className="w-2 h-2" />
+            </a>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -146,14 +206,7 @@ export default function AttendanceHistory() {
                       {getStatusBadge(attendance)}
                     </TableCell>
                     <TableCell>
-                      {attendance.check_in_latitude && attendance.check_in_longitude ? (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="w-3 h-3" />
-                          GPS
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
+                      {renderLocationCell(attendance)}
                     </TableCell>
                   </TableRow>
                 ))}
