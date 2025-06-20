@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,18 +11,29 @@ import { useAdminAttendanceSettings } from '@/hooks/useAdminAttendanceSettings';
 export default function AttendanceSettings() {
   const { settings, updateSettings, isUpdating } = useAdminAttendanceSettings();
   const [formData, setFormData] = useState({
-    checkout_enabled: settings?.checkout_enabled ?? true,
-    company_latitude: settings?.company_latitude ?? '',
-    company_longitude: settings?.company_longitude ?? '',
-    attendance_radius_meters: settings?.attendance_radius_meters ?? 500,
+    checkout_enabled: true,
+    company_latitude: '',
+    company_longitude: '',
+    attendance_radius_meters: 500,
   });
+
+  useEffect(() => {
+    if (settings) {
+      setFormData({
+        checkout_enabled: settings.checkout_enabled ?? true,
+        company_latitude: settings.company_latitude?.toString() ?? '',
+        company_longitude: settings.company_longitude?.toString() ?? '',
+        attendance_radius_meters: settings.attendance_radius_meters ?? 500,
+      });
+    }
+  }, [settings]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettings({
       checkout_enabled: formData.checkout_enabled,
-      company_latitude: formData.company_latitude ? parseFloat(formData.company_latitude.toString()) : null,
-      company_longitude: formData.company_longitude ? parseFloat(formData.company_longitude.toString()) : null,
+      company_latitude: formData.company_latitude ? parseFloat(formData.company_latitude) : null,
+      company_longitude: formData.company_longitude ? parseFloat(formData.company_longitude) : null,
       attendance_radius_meters: formData.attendance_radius_meters,
     });
   };

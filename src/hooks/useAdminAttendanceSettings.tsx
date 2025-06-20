@@ -40,7 +40,7 @@ export const useAdminAttendanceSettings = () => {
       // Prima verifica se esiste già un record
       const { data: existingSettings, error: fetchError } = await supabase
         .from('admin_settings')
-        .select('brevo_api_key')
+        .select('id')
         .eq('admin_id', user?.id)
         .single();
 
@@ -60,9 +60,19 @@ export const useAdminAttendanceSettings = () => {
         if (error) throw error;
         return data;
       } else {
-        // Se non esiste, deve creare un nuovo record ma questo richiede brevo_api_key
-        // In questo caso, saltiamo la creazione e mostriamo un errore
-        throw new Error('Devi prima configurare la chiave API Brevo nelle impostazioni generali.');
+        // Se non esiste, crea un nuovo record con brevo_api_key vuoto
+        const { data, error } = await supabase
+          .from('admin_settings')
+          .insert({
+            admin_id: user?.id,
+            brevo_api_key: '', // Campo obbligatorio ma può essere vuoto inizialmente
+            ...newSettings,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
       }
     },
     onSuccess: () => {
