@@ -37,19 +37,33 @@ export const useAdminAttendanceSettings = () => {
 
   const updateSettings = useMutation({
     mutationFn: async (newSettings: Partial<AdminAttendanceSettings>) => {
-      const { data, error } = await supabase
+      // Prima verifica se esiste già un record
+      const { data: existingSettings, error: fetchError } = await supabase
         .from('admin_settings')
-        .upsert({
-          admin_id: user?.id,
-          ...newSettings,
-        }, {
-          onConflict: 'admin_id'
-        })
-        .select()
+        .select('brevo_api_key')
+        .eq('admin_id', user?.id)
         .single();
 
-      if (error) throw error;
-      return data;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      // Se esiste, fa un update
+      if (existingSettings) {
+        const { data, error } = await supabase
+          .from('admin_settings')
+          .update(newSettings)
+          .eq('admin_id', user?.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      } else {
+        // Se non esiste, deve creare un nuovo record ma questo richiede brevo_api_key
+        // In questo caso, saltiamo la creazione e mostriamo un errore
+        throw new Error('Devi prima configurare la chiave API Brevo nelle impostazioni generali.');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-attendance-settings'] });
@@ -62,7 +76,7 @@ export const useAdminAttendanceSettings = () => {
       console.error('Settings update error:', error);
       toast({
         title: "Errore",
-        description: "Errore nell'aggiornamento delle impostazioni",
+        description: error.message || "Errore nell'aggiornamento delle impostazioni",
         variant: "destructive",
       });
     },
