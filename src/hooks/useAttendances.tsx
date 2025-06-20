@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,6 +61,7 @@ export const useAttendances = () => {
         throw error;
       }
 
+      console.log('Admin settings loaded:', data);
       return data;
     },
   });
@@ -129,6 +131,9 @@ export const useAttendances = () => {
       isBusinessTrip?: boolean;
       businessTripId?: string;
     }) => {
+      console.log('Check-in tentativo con coordinate:', { latitude, longitude, isBusinessTrip });
+      console.log('Impostazioni admin:', adminSettings);
+
       // Controlla la distanza solo se non è in trasferta e ci sono coordinate aziendali
       if (!isBusinessTrip && adminSettings?.company_latitude && adminSettings?.company_longitude) {
         const distance = calculateDistance(
@@ -140,16 +145,22 @@ export const useAttendances = () => {
 
         const maxDistance = adminSettings.attendance_radius_meters || 500;
 
-        console.log('Controllo distanza:', {
+        console.log('Controllo distanza GPS:', {
           userLocation: { latitude, longitude },
           companyLocation: { lat: adminSettings.company_latitude, lng: adminSettings.company_longitude },
           distance: Math.round(distance),
-          maxDistance
+          maxDistance,
+          isWithinRange: distance <= maxDistance
         });
 
         if (distance > maxDistance) {
           throw new Error(`Devi essere entro ${maxDistance} metri dall'azienda per registrare la presenza. Distanza attuale: ${Math.round(distance)} metri.`);
         }
+      } else {
+        console.log('Controllo GPS saltato:', {
+          isBusinessTrip,
+          hasCompanyCoordinates: !!(adminSettings?.company_latitude && adminSettings?.company_longitude)
+        });
       }
 
       const today = new Date().toISOString().split('T')[0];
@@ -228,12 +239,19 @@ export const useAttendances = () => {
 
   const deleteAttendance = useMutation({
     mutationFn: async (attendanceId: string) => {
+      console.log('Tentativo di eliminazione presenza:', attendanceId);
+      
       const { error } = await supabase
         .from('attendances')
         .delete()
         .eq('id', attendanceId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Errore eliminazione presenza:', error);
+        throw error;
+      }
+      
+      console.log('Presenza eliminata con successo');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
