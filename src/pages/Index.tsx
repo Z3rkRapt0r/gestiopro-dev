@@ -1,21 +1,20 @@
 
-import { useAuth } from "@/hooks/useAuth";
-import { AuthProvider } from "@/hooks/useAuth";
+import { useAuth, AuthProvider } from "@/hooks/useAuth";
 import AuthPage from "@/components/auth/AuthPage";
 import { Suspense, lazy } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Importazioni lazy
+// Lazy imports
 const AdminDashboard = lazy(() => import("@/components/dashboard/AdminDashboard"));
 const EmployeeDashboard = lazy(() => import("@/components/dashboard/EmployeeDashboard"));
 
-// Skeleton placeholder per la dashboard
+// Loading skeleton
 const DashboardSkeleton = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div>
-      <Skeleton className="h-10 w-64 mb-6" />
-      <Skeleton className="h-6 w-96 mb-3" />
-      <Skeleton className="h-6 w-96 mb-3" />
+    <div className="space-y-4">
+      <Skeleton className="h-10 w-64" />
+      <Skeleton className="h-6 w-96" />
+      <Skeleton className="h-6 w-96" />
       <Skeleton className="h-64 w-[32rem]" />
     </div>
   </div>
@@ -27,11 +26,7 @@ const IndexContent = () => {
   console.log('IndexContent render:', { user: !!user, profile, loading });
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <DashboardSkeleton />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!user || !profile) {
@@ -42,22 +37,22 @@ const IndexContent = () => {
   console.log('User role:', profile.role);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Suspense fallback={<DashboardSkeleton />}>
-        {profile.role === 'admin' ? (
-          <AdminDashboard />
-        ) : (
-          <EmployeeDashboard />
-        )}
-      </Suspense>
-    </div>
+    <Suspense fallback={<DashboardSkeleton />}>
+      {profile.role === 'admin' ? (
+        <AdminDashboard />
+      ) : (
+        <EmployeeDashboard />
+      )}
+    </Suspense>
   );
 };
 
 const Index = () => {
   return (
     <AuthProvider>
-      <IndexContent />
+      <div className="min-h-screen bg-gray-50">
+        <IndexContent />
+      </div>
     </AuthProvider>
   );
 };

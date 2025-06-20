@@ -7,29 +7,34 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import EmployeeDocumentsPage from "@/components/dashboard/EmployeeDocumentsPage";
 import ResetPasswordPage from "@/components/auth/ResetPasswordPage";
-import { AuthProvider } from "@/hooks/useAuth";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
 
-const queryClient = new QueryClient();
+// Create QueryClient outside component to avoid recreation
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+    },
+  },
+});
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <Toaster />
-    <Sonner />
-    <AuthProvider>
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
-          {/* Route per la dashboard admin */}
           <Route path="/admin" element={<AdminDashboard />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="/admin/documents/:employeeId" element={<EmployeeDocumentsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <Toaster />
+        <Sonner />
       </BrowserRouter>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+    </QueryClientProvider>
+  );
+};
 
 export default App;
