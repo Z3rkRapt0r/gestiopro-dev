@@ -41,6 +41,19 @@ export default function AdminEmployeesSection() {
     setIsEditDialogOpen(true);
   };
 
+  const handleCreateEmployeeSuccess = () => {
+    setIsCreateDialogOpen(false);
+    // Forza un refresh dei dati
+    window.location.reload();
+  };
+
+  const handleEditEmployeeSuccess = () => {
+    setIsEditDialogOpen(false);
+    setSelectedEmployee(null);
+    // Forza un refresh dei dati
+    window.location.reload();
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto py-8 px-4">
@@ -70,7 +83,10 @@ export default function AdminEmployeesSection() {
             <DialogHeader>
               <DialogTitle>Aggiungi Nuovo Dipendente</DialogTitle>
             </DialogHeader>
-            <CreateEmployeeForm onSuccess={() => setIsCreateDialogOpen(false)} />
+            <CreateEmployeeForm 
+              onClose={() => setIsCreateDialogOpen(false)}
+              onEmployeeCreated={handleCreateEmployeeSuccess}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -159,10 +175,11 @@ export default function AdminEmployeesSection() {
           {selectedEmployee && (
             <EditEmployeeForm 
               employee={selectedEmployee}
-              onSuccess={() => {
+              onClose={() => {
                 setIsEditDialogOpen(false);
                 setSelectedEmployee(null);
               }}
+              onEmployeeUpdated={handleEditEmployeeSuccess}
             />
           )}
         </DialogContent>
