@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 
 interface Attendance {
   id: string;
@@ -27,6 +28,7 @@ interface Props {
 
 export default function EmployeeAttendanceCalendar({ employee, attendances }: Props) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const { workSchedule } = useWorkSchedules();
 
   // Filtra le presenze per questo dipendente
   const employeeAttendances = attendances.filter(att => att.date);
@@ -42,15 +44,28 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Pr
   oneMonthAgo.setMonth(today.getMonth() - 1);
   
   const absentDays: Date[] = [];
-  for (let d = new Date(oneMonthAgo); d <= today; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0];
-    const dayOfWeek = d.getDay(); // 0 = domenica, 6 = sabato
-    
-    // Considera solo i giorni feriali (lunedì-venerdì)
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-      const hasAttendance = employeeAttendances.some(att => att.date === dateStr && att.check_in_time);
-      if (!hasAttendance) {
-        absentDays.push(new Date(d));
+  
+  if (workSchedule) {
+    for (let d = new Date(oneMonthAgo); d <= today; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      const dayOfWeek = d.getDay(); // 0 = domenica, 6 = sabato
+      
+      // Verifica se è un giorno lavorativo secondo il work_schedule
+      const isWorkingDay = (
+        (dayOfWeek === 1 && workSchedule.monday) ||
+        (dayOfWeek === 2 && workSchedule.tuesday) ||
+        (dayOfWeek === 3 && workSchedule.wednesday) ||
+        (dayOfWeek === 4 && workSchedule.thursday) ||
+        (dayOfWeek === 5 && workSchedule.friday) ||
+        (dayOfWeek === 6 && workSchedule.saturday) ||
+        (dayOfWeek === 0 && workSchedule.sunday)
+      );
+      
+      if (isWorkingDay) {
+        const hasAttendance = employeeAttendances.some(att => att.date === dateStr && att.check_in_time);
+        if (!hasAttendance) {
+          absentDays.push(new Date(d));
+        }
       }
     }
   }
@@ -73,9 +88,9 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Pr
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card>
+      <Card className="h-fit">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <User className="w-5 h-5" />
             {employee.first_name} {employee.last_name}
           </CardTitle>
@@ -95,63 +110,68 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Pr
                 backgroundColor: '#dcfce7',
                 color: '#166534',
                 fontWeight: 'bold',
+                border: '2px solid #16a34a',
               },
               absent: {
                 backgroundColor: '#fecaca',
                 color: '#dc2626',
                 fontWeight: 'bold',
+                border: '2px solid #dc2626',
               },
             }}
-            className="rounded-md border"
+            className="rounded-md border shadow-sm"
           />
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-200 rounded"></div>
-              <span className="text-sm">Giorni di presenza</span>
+          <div className="mt-6 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 bg-green-200 border-2 border-green-500 rounded"></div>
+              <span className="text-sm font-medium">Giorni di presenza</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-200 rounded"></div>
-              <span className="text-sm">Giorni di assenza</span>
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 bg-red-200 border-2 border-red-500 rounded"></div>
+              <span className="text-sm font-medium">Giorni di assenza</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="h-fit">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Clock className="w-5 h-5" />
             Dettagli del {selectedDate ? format(selectedDate, 'dd MMMM yyyy', { locale: it }) : ''}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {selectedDateAttendance ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-600">Entrata</label>
-                  <div className="text-lg font-semibold text-green-600">
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-gray-600 block">Entrata</label>
+                  <div className="text-2xl font-bold text-green-600 p-3 bg-green-50 rounded-lg border border-green-200">
                     {formatTime(selectedDateAttendance.check_in_time)}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-600">Uscita</label>
-                  <div className="text-lg font-semibold text-blue-600">
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-gray-600 block">Uscita</label>
+                  <div className="text-2xl font-bold text-blue-600 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     {formatTime(selectedDateAttendance.check_out_time)}
                   </div>
                 </div>
               </div>
               
               {selectedDateAttendance.is_business_trip && (
-                <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
-                  Trasferta
-                </Badge>
+                <div className="mt-4">
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 px-3 py-1">
+                    Trasferta
+                  </Badge>
+                </div>
               )}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>Nessuna presenza registrata per questo giorno</p>
+            <div className="text-center py-12 text-gray-500">
+              <Clock className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium mb-2">Nessuna presenza registrata</p>
+              <p className="text-sm">per questo giorno</p>
             </div>
           )}
         </CardContent>

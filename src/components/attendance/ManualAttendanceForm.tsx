@@ -24,15 +24,16 @@ export default function ManualAttendanceForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Creiamo gli ISO string senza convertire il fuso orario
+    // Creiamo gli ISO string mantenendo l'orario locale senza conversioni di fuso orario
     const attendanceData = {
       user_id: formData.user_id,
       date: formData.date,
-      check_in_time: formData.check_in_time ? `${formData.date}T${formData.check_in_time}:00.000Z` : null,
-      check_out_time: formData.check_out_time ? `${formData.date}T${formData.check_out_time}:00.000Z` : null,
+      check_in_time: formData.check_in_time ? `${formData.date}T${formData.check_in_time}:00` : null,
+      check_out_time: formData.check_out_time ? `${formData.date}T${formData.check_out_time}:00` : null,
       notes: formData.notes,
     };
 
+    console.log('Dati presenza manuale:', attendanceData);
     createManualAttendance(attendanceData);
     setFormData({
       user_id: '',
