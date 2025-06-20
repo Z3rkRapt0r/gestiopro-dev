@@ -74,18 +74,20 @@ export const useManualAttendances = () => {
     }) => {
       console.log('Creazione presenza manuale con dati (timestamp locali):', attendanceData);
       
-      // Inserisci nella tabella manual_attendances con timestamp locali
+      // Usa upsert invece di insert per gestire duplicati - aggiorna se esiste già
       const { data: manualData, error: manualError } = await supabase
         .from('manual_attendances')
-        .insert({
+        .upsert({
           ...attendanceData,
           created_by: user?.id,
+        }, {
+          onConflict: 'user_id,date'
         })
         .select()
         .single();
 
       if (manualError) {
-        console.error('Errore inserimento manual_attendances:', manualError);
+        console.error('Errore inserimento/aggiornamento manual_attendances:', manualError);
         throw manualError;
       }
 
@@ -120,7 +122,7 @@ export const useManualAttendances = () => {
       queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
-        title: "Presenza aggiunta",
+        title: "Presenza salvata",
         description: "La presenza manuale è stata registrata con successo",
       });
     },
