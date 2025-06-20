@@ -51,17 +51,17 @@ export default function OperatorAttendanceSection() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <User className="w-5 h-5" />
             Calendario Presenze per Operatore
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           <div className="mb-6">
             <label className="block text-sm font-medium mb-2">Seleziona Operatore</label>
             <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full max-w-md">
                 <SelectValue placeholder="Scegli un operatore..." />
               </SelectTrigger>
               <SelectContent>

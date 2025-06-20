@@ -88,7 +88,7 @@ export const useManualAttendances = () => {
         throw manualError;
       }
 
-      // Inserisci anche nella tabella attendances per uniformità
+      // Sincronizza anche nella tabella attendances per uniformità con i dati esistenti
       const { data: attendanceRecord, error: attendanceError } = await supabase
         .from('attendances')
         .upsert({
@@ -120,14 +120,14 @@ export const useManualAttendances = () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza aggiunta",
-        description: "La presenza manuale è stata registrata",
+        description: "La presenza manuale è stata registrata con successo",
       });
     },
     onError: (error: any) => {
       console.error('Create manual attendance error:', error);
       toast({
         title: "Errore",
-        description: "Errore nella registrazione della presenza",
+        description: error.message || "Errore nella registrazione della presenza",
         variant: "destructive",
       });
     },
@@ -194,10 +194,6 @@ export const useManualAttendances = () => {
     manualAttendances,
     isLoading,
     createManualAttendance: createManualAttendance.mutate,
-    updateManualAttendance: updateManualAttendance.mutate,
-    deleteManualAttendance: deleteManualAttendance.mutate,
     isCreating: createManualAttendance.isPending,
-    isUpdating: updateManualAttendance.isPending,
-    isDeleting: deleteManualAttendance.isPending,
   };
 };

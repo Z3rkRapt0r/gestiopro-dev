@@ -24,16 +24,16 @@ export default function ManualAttendanceForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Creiamo gli ISO string mantenendo l'orario locale senza conversioni di fuso orario
+    // Costruiamo gli orari mantenendo l'orario locale esatto senza conversioni di fuso orario
     const attendanceData = {
       user_id: formData.user_id,
       date: formData.date,
-      check_in_time: formData.check_in_time ? `${formData.date}T${formData.check_in_time}:00` : null,
-      check_out_time: formData.check_out_time ? `${formData.date}T${formData.check_out_time}:00` : null,
+      check_in_time: formData.check_in_time ? `${formData.date}T${formData.check_in_time}:00.000+00:00` : null,
+      check_out_time: formData.check_out_time ? `${formData.date}T${formData.check_out_time}:00.000+00:00` : null,
       notes: formData.notes,
     };
 
-    console.log('Dati presenza manuale:', attendanceData);
+    console.log('Dati presenza manuale (timestamp UTC):', attendanceData);
     createManualAttendance(attendanceData);
     setFormData({
       user_id: '',
@@ -45,78 +45,80 @@ export default function ManualAttendanceForm() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserPlus className="w-5 h-5" />
-          Aggiungi Presenza Manuale
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="employee">Dipendente</Label>
-            <Select value={formData.user_id} onValueChange={(value) => setFormData(prev => ({ ...prev, user_id: value }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona dipendente" />
-              </SelectTrigger>
-              <SelectContent>
-                {employees?.map((employee) => (
-                  <SelectItem key={employee.id} value={employee.id}>
-                    {employee.first_name} {employee.last_name} ({employee.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="date">Data</Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+    <div className="max-w-2xl mx-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="w-5 h-5" />
+            Aggiungi Presenza Manuale
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="check_in">Orario Entrata</Label>
+              <Label htmlFor="employee">Dipendente</Label>
+              <Select value={formData.user_id} onValueChange={(value) => setFormData(prev => ({ ...prev, user_id: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona dipendente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees?.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.first_name} {employee.last_name} ({employee.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="date">Data</Label>
               <Input
-                id="check_in"
-                type="time"
-                value={formData.check_in_time}
-                onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                required
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="check_in">Orario Entrata</Label>
+                <Input
+                  id="check_in"
+                  type="time"
+                  value={formData.check_in_time}
+                  onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="check_out">Orario Uscita</Label>
+                <Input
+                  id="check_out"
+                  type="time"
+                  value={formData.check_out_time}
+                  onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
+                />
+              </div>
+            </div>
+
             <div>
-              <Label htmlFor="check_out">Orario Uscita</Label>
-              <Input
-                id="check_out"
-                type="time"
-                value={formData.check_out_time}
-                onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
+              <Label htmlFor="notes">Note</Label>
+              <Textarea
+                id="notes"
+                placeholder="Note aggiuntive..."
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
               />
             </div>
-          </div>
 
-          <div>
-            <Label htmlFor="notes">Note</Label>
-            <Textarea
-              id="notes"
-              placeholder="Note aggiuntive..."
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-            />
-          </div>
-
-          <Button type="submit" disabled={isCreating || !formData.user_id || !formData.date} className="w-full">
-            {isCreating ? 'Salvando...' : 'Salva Presenza'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            <Button type="submit" disabled={isCreating || !formData.user_id || !formData.date} className="w-full">
+              {isCreating ? 'Salvando...' : 'Salva Presenza'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
