@@ -1,9 +1,10 @@
 
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useAttendanceOperations } from './useAttendanceOperations';
+import { useAttendanceSettings } from './useAttendanceSettings';
 
 export interface Attendance {
   id: string;
@@ -26,45 +27,12 @@ export interface Attendance {
   } | null;
 }
 
-// Funzione per calcolare la distanza tra due coordinate in metri usando la formula di Haversine
-const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  const R = 6371e3; // Raggio della Terra in metri
-  const φ1 = (lat1 * Math.PI) / 180; // φ, λ in radianti
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-          Math.cos(φ1) * Math.cos(φ2) *
-          Math.sin(Δλ/2) * Math.sin(Δλ/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-  const distance = R * c; // in metri
-  return distance;
-};
-
 export const useAttendances = () => {
   const { toast } = useToast();
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
-
-  // Ottieni le impostazioni dell'admin per il controllo della posizione
-  const { data: adminSettings } = useQuery({
-    queryKey: ['admin-attendance-settings'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('admin_settings')
-        .select('checkout_enabled, company_latitude, company_longitude, attendance_radius_meters')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      console.log('Admin settings loaded:', data);
-      return data;
-    },
-  });
+  const attendanceOperations = useAttendanceOperations();
+  const { settings: adminSettings } = useAttendanceSettings();
 
   const { data: attendances, isLoading } = useQuery({
     queryKey: ['attendances'],
@@ -124,119 +92,6 @@ export const useAttendances = () => {
     enabled: !!user && !!profile,
   });
 
-  const checkInMutation = useMutation({
-    mutationFn: async ({ latitude, longitude, isBusinessTrip = false, businessTripId }: { 
-      latitude: number; 
-      longitude: number; 
-      isBusinessTrip?: boolean;
-      businessTripId?: string;
-    }) => {
-      console.log('Check-in tentativo con coordinate:', { latitude, longitude, isBusinessTrip });
-      console.log('Impostazioni admin:', adminSettings);
-
-      // Controlla la distanza solo se non è in trasferta e ci sono coordinate aziendali
-      if (!isBusinessTrip && adminSettings?.company_latitude && adminSettings?.company_longitude) {
-        const distance = calculateDistance(
-          latitude, 
-          longitude, 
-          adminSettings.company_latitude, 
-          adminSettings.company_longitude
-        );
-
-        const maxDistance = adminSettings.attendance_radius_meters || 500;
-
-        console.log('Controllo distanza GPS:', {
-          userLocation: { latitude, longitude },
-          companyLocation: { lat: adminSettings.company_latitude, lng: adminSettings.company_longitude },
-          distance: Math.round(distance),
-          maxDistance,
-          isWithinRange: distance <= maxDistance
-        });
-
-        if (distance > maxDistance) {
-          throw new Error(`Devi essere entro ${maxDistance} metri dall'azienda per registrare la presenza. Distanza attuale: ${Math.round(distance)} metri.`);
-        }
-      } else {
-        console.log('Controllo GPS saltato:', {
-          isBusinessTrip,
-          hasCompanyCoordinates: !!(adminSettings?.company_latitude && adminSettings?.company_longitude)
-        });
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-      
-      const { data, error } = await supabase
-        .from('attendances')
-        .upsert({
-          user_id: user?.id,
-          date: today,
-          check_in_time: new Date().toISOString(),
-          check_in_latitude: latitude,
-          check_in_longitude: longitude,
-          is_business_trip: isBusinessTrip,
-          business_trip_id: businessTripId,
-        }, {
-          onConflict: 'user_id,date'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendances'] });
-      toast({
-        title: "Check-in effettuato",
-        description: "Il tuo check-in è stato registrato con successo",
-      });
-    },
-    onError: (error: any) => {
-      console.error('Check-in error:', error);
-      toast({
-        title: "Errore",
-        description: error.message || "Errore durante il check-in",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const checkOutMutation = useMutation({
-    mutationFn: async ({ latitude, longitude }: { latitude: number; longitude: number }) => {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const { data, error } = await supabase
-        .from('attendances')
-        .update({
-          check_out_time: new Date().toISOString(),
-          check_out_latitude: latitude,
-          check_out_longitude: longitude,
-        })
-        .eq('user_id', user?.id)
-        .eq('date', today)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendances'] });
-      toast({
-        title: "Check-out effettuato",
-        description: "Il tuo check-out è stato registrato con successo",
-      });
-    },
-    onError: (error: any) => {
-      console.error('Check-out error:', error);
-      toast({
-        title: "Errore",
-        description: "Errore durante il check-out",
-        variant: "destructive",
-      });
-    },
-  });
-
   const deleteAttendance = useMutation({
     mutationFn: async (attendanceId: string) => {
       console.log('Tentativo di eliminazione presenza con ID:', attendanceId);
@@ -280,11 +135,11 @@ export const useAttendances = () => {
   return {
     attendances,
     isLoading,
-    checkIn: checkInMutation.mutate,
-    checkOut: checkOutMutation.mutate,
+    checkIn: attendanceOperations.checkIn,
+    checkOut: attendanceOperations.checkOut,
     deleteAttendance: deleteAttendance.mutate,
-    isCheckingIn: checkInMutation.isPending,
-    isCheckingOut: checkOutMutation.isPending,
+    isCheckingIn: attendanceOperations.isCheckingIn,
+    isCheckingOut: attendanceOperations.isCheckingOut,
     isDeleting: deleteAttendance.isPending,
     getTodayAttendance,
     adminSettings,

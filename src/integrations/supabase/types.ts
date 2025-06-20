@@ -53,6 +53,36 @@ export type Database = {
           },
         ]
       }
+      attendance_settings: {
+        Row: {
+          attendance_radius_meters: number
+          checkout_enabled: boolean
+          company_latitude: number | null
+          company_longitude: number | null
+          created_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          attendance_radius_meters?: number
+          checkout_enabled?: boolean
+          company_latitude?: number | null
+          company_longitude?: number | null
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          attendance_radius_meters?: number
+          checkout_enabled?: boolean
+          company_latitude?: number | null
+          company_longitude?: number | null
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       attendances: {
         Row: {
           business_trip_id: string | null

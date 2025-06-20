@@ -2,10 +2,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { useAdminAttendanceSettings } from '@/hooks/useAdminAttendanceSettings';
+import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 
 export default function GPSStatusIndicator() {
-  const { settings, isLoading } = useAdminAttendanceSettings();
+  const { settings, isLoading } = useAttendanceSettings();
 
   if (isLoading) {
     return (

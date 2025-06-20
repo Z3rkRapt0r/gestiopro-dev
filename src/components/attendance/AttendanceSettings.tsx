@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Settings, MapPin, Clock } from 'lucide-react';
-import { useAdminAttendanceSettings } from '@/hooks/useAdminAttendanceSettings';
+import { Settings, MapPin } from 'lucide-react';
+import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import GPSStatusIndicator from './GPSStatusIndicator';
 
 export default function AttendanceSettings() {
-  const { settings, updateSettings, isUpdating } = useAdminAttendanceSettings();
+  const { settings, updateSettings, isUpdating } = useAttendanceSettings();
   const [formData, setFormData] = useState({
     checkout_enabled: true,
     company_latitude: '',
