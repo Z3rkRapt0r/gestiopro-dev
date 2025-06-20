@@ -17,6 +17,8 @@ export interface Attendance {
   date: string;
   created_at: string;
   updated_at: string;
+  is_business_trip: boolean | null;
+  business_trip_id: string | null;
   profiles?: {
     first_name: string | null;
     last_name: string | null;
@@ -24,10 +26,43 @@ export interface Attendance {
   } | null;
 }
 
+// Funzione per calcolare la distanza tra due coordinate in metri
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371e3; // Raggio della Terra in metri
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c;
+};
+
 export const useAttendances = () => {
   const { toast } = useToast();
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
+
+  // Ottieni le impostazioni dell'admin per il controllo della posizione
+  const { data: adminSettings } = useQuery({
+    queryKey: ['admin-attendance-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('checkout_enabled, company_latitude, company_longitude, attendance_radius_meters')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      return data;
+    },
+  });
 
   const { data: attendances, isLoading } = useQuery({
     queryKey: ['attendances'],
@@ -88,7 +123,28 @@ export const useAttendances = () => {
   });
 
   const checkInMutation = useMutation({
-    mutationFn: async ({ latitude, longitude }: { latitude: number; longitude: number }) => {
+    mutationFn: async ({ latitude, longitude, isBusinessTrip = false, businessTripId }: { 
+      latitude: number; 
+      longitude: number; 
+      isBusinessTrip?: boolean;
+      businessTripId?: string;
+    }) => {
+      // Controlla la distanza solo se non è in trasferta e ci sono coordinate aziendali
+      if (!isBusinessTrip && adminSettings?.company_latitude && adminSettings?.company_longitude) {
+        const distance = calculateDistance(
+          latitude, 
+          longitude, 
+          adminSettings.company_latitude, 
+          adminSettings.company_longitude
+        );
+
+        const maxDistance = adminSettings.attendance_radius_meters || 500;
+
+        if (distance > maxDistance) {
+          throw new Error(`Devi essere entro ${maxDistance} metri dall'azienda per registrare la presenza. Distanza attuale: ${Math.round(distance)} metri.`);
+        }
+      }
+
       const today = new Date().toISOString().split('T')[0];
       
       const { data, error } = await supabase
@@ -99,6 +155,8 @@ export const useAttendances = () => {
           check_in_time: new Date().toISOString(),
           check_in_latitude: latitude,
           check_in_longitude: longitude,
+          is_business_trip: isBusinessTrip,
+          business_trip_id: businessTripId,
         }, {
           onConflict: 'user_id,date'
         })
@@ -119,7 +177,7 @@ export const useAttendances = () => {
       console.error('Check-in error:', error);
       toast({
         title: "Errore",
-        description: "Errore durante il check-in",
+        description: error.message || "Errore durante il check-in",
         variant: "destructive",
       });
     },
@@ -174,5 +232,6 @@ export const useAttendances = () => {
     isCheckingIn: checkInMutation.isPending,
     isCheckingOut: checkOutMutation.isPending,
     getTodayAttendance,
+    adminSettings,
   };
 };

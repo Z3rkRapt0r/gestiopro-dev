@@ -12,21 +12,33 @@ export type Database = {
       admin_settings: {
         Row: {
           admin_id: string
+          attendance_radius_meters: number | null
           brevo_api_key: string
+          checkout_enabled: boolean | null
+          company_latitude: number | null
+          company_longitude: number | null
           created_at: string | null
           id: string
           updated_at: string | null
         }
         Insert: {
           admin_id: string
+          attendance_radius_meters?: number | null
           brevo_api_key: string
+          checkout_enabled?: boolean | null
+          company_latitude?: number | null
+          company_longitude?: number | null
           created_at?: string | null
           id?: string
           updated_at?: string | null
         }
         Update: {
           admin_id?: string
+          attendance_radius_meters?: number | null
           brevo_api_key?: string
+          checkout_enabled?: boolean | null
+          company_latitude?: number | null
+          company_longitude?: number | null
           created_at?: string | null
           id?: string
           updated_at?: string | null
@@ -43,6 +55,7 @@ export type Database = {
       }
       attendances: {
         Row: {
+          business_trip_id: string | null
           check_in_latitude: number | null
           check_in_longitude: number | null
           check_in_time: string | null
@@ -52,10 +65,12 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          is_business_trip: boolean | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          business_trip_id?: string | null
           check_in_latitude?: number | null
           check_in_longitude?: number | null
           check_in_time?: string | null
@@ -65,10 +80,12 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          is_business_trip?: boolean | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          business_trip_id?: string | null
           check_in_latitude?: number | null
           check_in_longitude?: number | null
           check_in_time?: string | null
@@ -78,6 +95,60 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          is_business_trip?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendances_business_trip_id_fkey"
+            columns: ["business_trip_id"]
+            isOneToOne: false
+            referencedRelation: "business_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_trips: {
+        Row: {
+          admin_notes: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          destination: string
+          end_date: string
+          id: string
+          reason: string | null
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          destination: string
+          end_date: string
+          id?: string
+          reason?: string | null
+          start_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          destination?: string
+          end_date?: string
+          id?: string
+          reason?: string | null
+          start_date?: string
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -456,6 +527,42 @@ export type Database = {
           primary_color?: string
           secondary_color?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      manual_attendances: {
+        Row: {
+          check_in_time: string | null
+          check_out_time: string | null
+          created_at: string
+          created_by: string
+          date: string
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          created_by: string
+          date: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          created_by?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

@@ -8,6 +8,7 @@ import DashboardCustomizationSection from "./DashboardCustomizationSection";
 import LoginCustomizationSection from "./LoginCustomizationSection";
 import EmployeeLogosSection from "./EmployeeLogosSection";
 import EmailTemplateManager from "./EmailTemplateManager";
+import AttendanceSettings from "@/components/attendance/AttendanceSettings";
 
 const AdminSettingsSection = () => {
   const { apiKey, loading, saveApiKey } = useAdminSettings();
@@ -36,6 +37,12 @@ const AdminSettingsSection = () => {
             className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
             Modelli Email
+          </TabsTrigger>
+          <TabsTrigger 
+            value="attendances" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
+          >
+            Presenze
           </TabsTrigger>
           <TabsTrigger 
             value="dashboard" 
@@ -78,6 +85,9 @@ const AdminSettingsSection = () => {
         </TabsContent>
         <TabsContent value="emailtemplates">
           <EmailTemplateManager />
+        </TabsContent>
+        <TabsContent value="attendances">
+          <AttendanceSettings />
         </TabsContent>
         <TabsContent value="dashboard">
           <DashboardCustomizationSection />

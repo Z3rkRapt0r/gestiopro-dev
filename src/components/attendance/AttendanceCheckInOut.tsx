@@ -3,15 +3,27 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Play, Square } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Clock, MapPin, Play, Square, Plane } from 'lucide-react';
 import { useAttendances } from '@/hooks/useAttendances';
+import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 
 export default function AttendanceCheckInOut() {
-  const { checkIn, checkOut, isCheckingIn, isCheckingOut, getTodayAttendance } = useAttendances();
+  const { checkIn, checkOut, isCheckingIn, isCheckingOut, getTodayAttendance, adminSettings } = useAttendances();
+  const { businessTrips } = useBusinessTrips();
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [selectedBusinessTrip, setSelectedBusinessTrip] = useState<string | null>(null);
 
   const todayAttendance = getTodayAttendance();
+  const today = new Date().toISOString().split('T')[0];
+
+  // Ottieni le trasferte approvate che includono la data di oggi
+  const approvedTripsToday = businessTrips?.filter(trip => 
+    trip.status === 'approved' && 
+    trip.start_date <= today && 
+    trip.end_date >= today
+  ) || [];
 
   useEffect(() => {
     // Richiedi la geolocalizzazione
@@ -39,7 +51,13 @@ export default function AttendanceCheckInOut() {
       setLocationError('Posizione non disponibile. Ricarica la pagina e consenti l\'accesso alla posizione.');
       return;
     }
-    checkIn(location);
+
+    const isBusinessTrip = !!selectedBusinessTrip;
+    checkIn({
+      ...location,
+      isBusinessTrip,
+      businessTripId: selectedBusinessTrip || undefined,
+    });
   };
 
   const handleCheckOut = () => {
@@ -79,6 +97,29 @@ export default function AttendanceCheckInOut() {
           </div>
         )}
 
+        {/* Selezione trasferta se ce ne sono di approvate */}
+        {approvedTripsToday.length > 0 && !todayAttendance?.check_in_time && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Sei in trasferta oggi?</label>
+            <Select value={selectedBusinessTrip || 'none'} onValueChange={(value) => setSelectedBusinessTrip(value === 'none' ? null : value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No, presenza normale</SelectItem>
+                {approvedTripsToday.map((trip) => (
+                  <SelectItem key={trip.id} value={trip.id}>
+                    <div className="flex items-center gap-2">
+                      <Plane className="w-3 h-3" />
+                      {trip.destination}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {todayAttendance && (
           <div className="space-y-2">
             {todayAttendance.check_in_time && (
@@ -98,6 +139,13 @@ export default function AttendanceCheckInOut() {
                 </Badge>
               </div>
             )}
+
+            {todayAttendance.is_business_trip && (
+              <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded">
+                <Plane className="w-4 h-4 text-yellow-600" />
+                <span className="text-sm text-yellow-800">Presenza in trasferta</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -111,7 +159,7 @@ export default function AttendanceCheckInOut() {
               <Play className="w-4 h-4 mr-2" />
               {isCheckingIn ? 'Registrando...' : 'Inizio Turno'}
             </Button>
-          ) : !todayAttendance.check_out_time ? (
+          ) : !todayAttendance.check_out_time && adminSettings?.checkout_enabled ? (
             <Button
               onClick={handleCheckOut}
               disabled={!location || isCheckingOut}
@@ -123,7 +171,10 @@ export default function AttendanceCheckInOut() {
             </Button>
           ) : (
             <div className="flex-1 p-2 bg-gray-50 rounded text-center text-sm text-muted-foreground">
-              Turno completato per oggi
+              {!adminSettings?.checkout_enabled && todayAttendance.check_in_time && !todayAttendance.check_out_time
+                ? 'Check-out disabilitato'
+                : 'Turno completato per oggi'
+              }
             </div>
           )}
         </div>
