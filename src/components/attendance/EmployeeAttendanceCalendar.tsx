@@ -17,7 +17,7 @@ interface EmployeeAttendanceCalendarProps {
 
 export default function EmployeeAttendanceCalendar({ employee, attendances }: EmployeeAttendanceCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const { workSchedules } = useWorkSchedules();
+  const { workSchedule } = useWorkSchedules();
 
   // Ottieni le presenze per la data selezionata
   const selectedDateStr = selectedDate?.toISOString().split('T')[0];
@@ -30,18 +30,17 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
 
   // Ottieni le date lavorative (basate sui work_schedules)
   const getWorkingDays = () => {
-    if (!workSchedules || workSchedules.length === 0) return [];
+    if (!workSchedule) return [];
     
-    const schedule = workSchedules[0];
     const workingDays: number[] = [];
     
-    if (schedule.monday) workingDays.push(1);
-    if (schedule.tuesday) workingDays.push(2);
-    if (schedule.wednesday) workingDays.push(3);
-    if (schedule.thursday) workingDays.push(4);
-    if (schedule.friday) workingDays.push(5);
-    if (schedule.saturday) workingDays.push(6);
-    if (schedule.sunday) workingDays.push(0);
+    if (workSchedule.monday) workingDays.push(1);
+    if (workSchedule.tuesday) workingDays.push(2);
+    if (workSchedule.wednesday) workingDays.push(3);
+    if (workSchedule.thursday) workingDays.push(4);
+    if (workSchedule.friday) workingDays.push(5);
+    if (workSchedule.saturday) workingDays.push(6);
+    if (workSchedule.sunday) workingDays.push(0);
     
     return workingDays;
   };
@@ -74,16 +73,16 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Calendario dell'operatore */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <CalendarIcon className="w-5 h-5" />
+      <Card className="lg:col-span-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarIcon className="w-4 h-4" />
             {employee.first_name} {employee.last_name}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-3">
           <div className="flex justify-center">
             <Calendar
               mode="single"
@@ -108,12 +107,12 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               className="rounded-md border w-fit"
             />
           </div>
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center gap-2 text-sm">
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs">
               <div className="w-3 h-3 bg-green-200 rounded"></div>
               <span>Giorni di presenza</span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-xs">
               <div className="w-3 h-3 bg-gray-200 rounded"></div>
               <span>Giorni lavorativi</span>
             </div>
@@ -123,26 +122,26 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
 
       {/* Dettagli della data selezionata */}
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Clock className="w-5 h-5" />
-            Dettagli {selectedDate ? format(selectedDate, 'dd MMMM yyyy', { locale: it }) : ''}
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Clock className="w-4 h-4" />
+            Dettagli {selectedDate ? format(selectedDate, 'dd/MM', { locale: it }) : ''}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-3">
           {selectedDateAttendance ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="font-semibold text-green-700">Presente</span>
+            <div className="space-y-3">
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="font-semibold text-green-700 text-sm">Presente</span>
                   {selectedDateAttendance.is_business_trip && (
-                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs">
                       Trasferta
                     </Badge>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="space-y-2 text-xs">
                   <div>
                     <span className="text-gray-600">Entrata:</span>
                     <div className="font-medium">
@@ -159,17 +158,17 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               </div>
             </div>
           ) : (
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                <span className="font-semibold text-gray-700">
-                  {workingDays.includes(selectedDate?.getDay() || 0) ? 'Assente' : 'Giorno non lavorativo'}
+                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                <span className="font-semibold text-gray-700 text-sm">
+                  {workingDays.includes(selectedDate?.getDay() || 0) ? 'Assente' : 'Non lavorativo'}
                 </span>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-600">
                 {workingDays.includes(selectedDate?.getDay() || 0) 
-                  ? 'Nessuna presenza registrata per questo giorno'
-                  : 'Questo giorno non è configurato come lavorativo'
+                  ? 'Nessuna presenza registrata'
+                  : 'Giorno non lavorativo'
                 }
               </p>
             </div>
