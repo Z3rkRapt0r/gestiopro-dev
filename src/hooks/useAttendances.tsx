@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -227,6 +226,33 @@ export const useAttendances = () => {
     },
   });
 
+  const deleteAttendance = useMutation({
+    mutationFn: async (attendanceId: string) => {
+      const { error } = await supabase
+        .from('attendances')
+        .delete()
+        .eq('id', attendanceId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
+      toast({
+        title: "Presenza annullata",
+        description: "La presenza è stata eliminata con successo",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Delete attendance error:', error);
+      toast({
+        title: "Errore",
+        description: "Errore nell'eliminazione della presenza",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getTodayAttendance = () => {
     const today = new Date().toISOString().split('T')[0];
     return attendances?.find(att => att.date === today && att.user_id === user?.id);
@@ -237,8 +263,10 @@ export const useAttendances = () => {
     isLoading,
     checkIn: checkInMutation.mutate,
     checkOut: checkOutMutation.mutate,
+    deleteAttendance: deleteAttendance.mutate,
     isCheckingIn: checkInMutation.isPending,
     isCheckingOut: checkOutMutation.isPending,
+    isDeleting: deleteAttendance.isPending,
     getTodayAttendance,
     adminSettings,
   };

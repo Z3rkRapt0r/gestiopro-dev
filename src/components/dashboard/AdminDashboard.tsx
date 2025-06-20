@@ -7,6 +7,7 @@ import AdminApprovalsSection from '@/components/leave/AdminApprovalsSection';
 import AdminDocumentsSection from './AdminDocumentsSection';
 import AdminNotificationsSection from './AdminNotificationsSection';
 import AdminSettingsSection from '@/components/admin/AdminSettingsSection';
+import AdminEmployeesSection from './AdminEmployeesSection';
 import DashboardHeader from './DashboardHeader';
 import AdminAttendanceSection from './AdminAttendanceSection';
 
@@ -27,7 +28,7 @@ export default function AdminDashboard() {
       case 'overview':
         return <EmployeeDashboardSection />;
       case 'employees':
-        return <EmployeeDashboardSection />;
+        return <AdminEmployeesSection />;
       case 'leaves':
         return <AdminApprovalsSection />;
       case 'attendances':

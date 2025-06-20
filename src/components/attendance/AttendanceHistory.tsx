@@ -1,6 +1,6 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -9,12 +9,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Calendar, Clock, MapPin, User, ExternalLink } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Calendar, Clock, MapPin, User, ExternalLink, Trash2 } from 'lucide-react';
 import { useAttendances, Attendance } from '@/hooks/useAttendances';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function AttendanceHistory() {
-  const { attendances, isLoading } = useAttendances();
+  const { attendances, isLoading, deleteAttendance, isDeleting } = useAttendances();
   const { profile } = useAuth();
 
   const formatTime = (timeString: string | null) => {
@@ -127,6 +138,10 @@ export default function AttendanceHistory() {
     );
   };
 
+  const handleDeleteAttendance = (attendanceId: string) => {
+    deleteAttendance(attendanceId);
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -171,6 +186,7 @@ export default function AttendanceHistory() {
                   <TableHead>Ore Lavorate</TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead>Posizione</TableHead>
+                  {profile?.role === 'admin' && <TableHead>Azioni</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -208,6 +224,34 @@ export default function AttendanceHistory() {
                     <TableCell>
                       {renderLocationCell(attendance)}
                     </TableCell>
+                    {profile?.role === 'admin' && (
+                      <TableCell>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" disabled={isDeleting}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Annulla Presenza</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Sei sicuro di voler annullare questa presenza? Questa azione non può essere annullata.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annulla</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteAttendance(attendance.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Elimina
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
