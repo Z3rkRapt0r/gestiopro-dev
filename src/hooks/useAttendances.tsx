@@ -32,16 +32,11 @@ export const useAttendances = () => {
   const { data: attendances, isLoading } = useQuery({
     queryKey: ['attendances'],
     queryFn: async () => {
+      console.log('Fetching attendances...');
+      
       let query = supabase
         .from('attendances')
-        .select(`
-          *,
-          profiles:user_id (
-            first_name,
-            last_name,
-            email
-          )
-        `)
+        .select('*')
         .order('date', { ascending: false });
 
       // Se non è admin, mostra solo le proprie presenze
@@ -49,27 +44,47 @@ export const useAttendances = () => {
         query = query.eq('user_id', user?.id);
       }
 
-      const { data, error } = await query;
+      const { data: attendanceData, error: attendanceError } = await query;
 
-      if (error) {
-        console.error('Error fetching attendances:', error);
+      if (attendanceError) {
+        console.error('Error fetching attendances:', attendanceError);
         toast({
           title: "Errore",
           description: "Errore nel caricamento delle presenze",
           variant: "destructive",
         });
-        throw error;
+        throw attendanceError;
       }
 
-      // Trasforma i dati per adattarli al tipo Attendance
-      const transformedData = data?.map(item => ({
-        ...item,
-        profiles: Array.isArray(item.profiles) ? item.profiles[0] || null : item.profiles
-      })) || [];
+      console.log('Attendances data:', attendanceData);
 
-      return transformedData as Attendance[];
+      // Se è admin, ottieni anche i profili degli utenti
+      if (profile?.role === 'admin' && attendanceData && attendanceData.length > 0) {
+        const userIds = [...new Set(attendanceData.map(att => att.user_id))];
+        
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          // Non bloccare se non riusciamo a prendere i profili
+        }
+
+        // Combina i dati
+        const attendancesWithProfiles = attendanceData.map(attendance => ({
+          ...attendance,
+          profiles: profilesData?.find(profile => profile.id === attendance.user_id) || null
+        }));
+
+        console.log('Attendances with profiles:', attendancesWithProfiles);
+        return attendancesWithProfiles as Attendance[];
+      }
+
+      return attendanceData as Attendance[];
     },
-    enabled: !!user,
+    enabled: !!user && !!profile,
   });
 
   const checkInMutation = useMutation({

@@ -35,10 +35,15 @@ export default function AttendanceHistory() {
   };
 
   const getEmployeeName = (attendance: Attendance) => {
-    if (attendance.profiles?.first_name && attendance.profiles?.last_name) {
+    if (!attendance.profiles) {
+      return 'Dipendente';
+    }
+    
+    if (attendance.profiles.first_name && attendance.profiles.last_name) {
       return `${attendance.profiles.first_name} ${attendance.profiles.last_name}`;
     }
-    return attendance.profiles?.email || 'Dipendente sconosciuto';
+    
+    return attendance.profiles.email || 'Dipendente sconosciuto';
   };
 
   const calculateHours = (checkIn: string | null, checkOut: string | null) => {
