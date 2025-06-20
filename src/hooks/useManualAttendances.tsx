@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -71,9 +72,9 @@ export const useManualAttendances = () => {
       check_out_time: string | null;
       notes: string | null;
     }) => {
-      console.log('Creazione presenza manuale con dati:', attendanceData);
+      console.log('Creazione presenza manuale con dati (timestamp locali):', attendanceData);
       
-      // Inserisci nella tabella manual_attendances
+      // Inserisci nella tabella manual_attendances con timestamp locali
       const { data: manualData, error: manualError } = await supabase
         .from('manual_attendances')
         .insert({
@@ -88,7 +89,7 @@ export const useManualAttendances = () => {
         throw manualError;
       }
 
-      // Sincronizza anche nella tabella attendances per uniformità con i dati esistenti
+      // Sincronizza anche nella tabella attendances mantenendo gli stessi timestamp
       const { data: attendanceRecord, error: attendanceError } = await supabase
         .from('attendances')
         .upsert({
@@ -110,7 +111,7 @@ export const useManualAttendances = () => {
       if (attendanceError) {
         console.warn('Warning: Could not sync to attendances table:', attendanceError);
       } else {
-        console.log('Presenza sincronizzata nella tabella attendances:', attendanceRecord);
+        console.log('Presenza sincronizzata nella tabella attendances con timestamp locali:', attendanceRecord);
       }
 
       return manualData;
