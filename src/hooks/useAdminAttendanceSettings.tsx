@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,16 +19,35 @@ export const useAdminAttendanceSettings = () => {
   const { data: settings, isLoading } = useQuery({
     queryKey: ['admin-attendance-settings'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      console.log('Caricamento impostazioni admin GPS...');
+      
+      // Prima prova a prendere le impostazioni dell'admin corrente
+      let { data, error } = await supabase
         .from('admin_settings')
         .select('checkout_enabled, company_latitude, company_longitude, attendance_radius_meters')
         .eq('admin_id', user?.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      // Se non trova nulla per l'admin corrente, prende le prime impostazioni disponibili
+      if (error && error.code === 'PGRST116') {
+        console.log('Nessuna impostazione trovata per admin corrente, cerco impostazioni generali...');
+        
+        const { data: generalData, error: generalError } = await supabase
+          .from('admin_settings')
+          .select('checkout_enabled, company_latitude, company_longitude, attendance_radius_meters')
+          .limit(1)
+          .single();
+
+        if (generalError && generalError.code !== 'PGRST116') {
+          throw generalError;
+        }
+        
+        data = generalData;
+      } else if (error) {
         throw error;
       }
 
+      console.log('Impostazioni GPS caricate:', data);
       return data;
     },
     enabled: !!user,
