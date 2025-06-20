@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import EmployeeDashboardContent from './EmployeeDashboardContent';
@@ -19,7 +20,7 @@ export default function EmployeeDashboard() {
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return <EmployeeDashboardContent />;
+        return <EmployeeDashboardContent activeSection="dashboard" />;
       case 'leaves':
         return <EmployeeLeavePage />;
       case 'attendances':
@@ -29,7 +30,7 @@ export default function EmployeeDashboard() {
       case 'messages':
         return <EmployeeMessagesSection />;
       default:
-        return <EmployeeDashboardContent />;
+        return <EmployeeDashboardContent activeSection="dashboard" />;
     }
   };
 

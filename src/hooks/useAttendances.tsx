@@ -21,7 +21,7 @@ export interface Attendance {
     first_name: string | null;
     last_name: string | null;
     email: string | null;
-  };
+  } | null;
 }
 
 export const useAttendances = () => {
@@ -61,7 +61,13 @@ export const useAttendances = () => {
         throw error;
       }
 
-      return data as Attendance[];
+      // Trasforma i dati per adattarli al tipo Attendance
+      const transformedData = data?.map(item => ({
+        ...item,
+        profiles: Array.isArray(item.profiles) ? item.profiles[0] || null : item.profiles
+      })) || [];
+
+      return transformedData as Attendance[];
     },
     enabled: !!user,
   });

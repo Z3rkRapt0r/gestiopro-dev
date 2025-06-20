@@ -1,12 +1,12 @@
+
 import { useState } from 'react';
 import { BarChart3, Calendar, Clock, FileText, Settings, Users, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import AdminOverview from './AdminOverview';
 import EmployeeDashboardSection from './EmployeeDashboardSection';
 import AdminApprovalsSection from '@/components/leave/AdminApprovalsSection';
 import AdminDocumentsSection from './AdminDocumentsSection';
 import AdminNotificationsSection from './AdminNotificationsSection';
-import AdminSettingsSection from './AdminSettingsSection';
+import AdminSettingsSection from '@/components/admin/AdminSettingsSection';
 import DashboardHeader from './DashboardHeader';
 import AdminAttendanceSection from './AdminAttendanceSection';
 
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return <AdminOverview />;
+        return <EmployeeDashboardSection />;
       case 'employees':
         return <EmployeeDashboardSection />;
       case 'leaves':
@@ -39,13 +39,13 @@ export default function AdminDashboard() {
       case 'settings':
         return <AdminSettingsSection />;
       default:
-        return <AdminOverview />;
+        return <EmployeeDashboardSection />;
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
+      <DashboardHeader title="Dashboard Amministratore" subtitle="Gestisci dipendenti e operazioni" />
       
       <div className="flex">
         {/* Sidebar */}
