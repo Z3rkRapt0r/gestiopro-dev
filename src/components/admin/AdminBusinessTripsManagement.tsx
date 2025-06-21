@@ -11,29 +11,18 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
-import { Plane, Calendar as CalendarIcon, Users, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Plane, Calendar as CalendarIcon, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 export default function AdminBusinessTripsManagement() {
-  const { businessTrips, updateTripStatus, createTrip, isUpdating, isCreating } = useBusinessTrips();
+  const { businessTrips, createTrip, isCreating } = useBusinessTrips();
   const { employees } = useActiveEmployees();
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [destination, setDestination] = useState('');
   const [reason, setReason] = useState('');
-  const [adminNotes, setAdminNotes] = useState('');
-
-  const handleApproveTrip = (tripId: string, notes?: string) => {
-    updateTripStatus({ tripId, status: 'approved', adminNotes: notes });
-    setAdminNotes('');
-  };
-
-  const handleRejectTrip = (tripId: string, notes?: string) => {
-    updateTripStatus({ tripId, status: 'rejected', adminNotes: notes });
-    setAdminNotes('');
-  };
 
   const handleCreateTrip = () => {
     if (!selectedEmployee || !startDate || !endDate || !destination) return;
@@ -52,28 +41,6 @@ export default function AdminBusinessTripsManagement() {
     setEndDate(undefined);
     setDestination('');
     setReason('');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'bg-green-100 text-green-700';
-      case 'rejected':
-        return 'bg-red-100 text-red-700';
-      default:
-        return 'bg-yellow-100 text-yellow-700';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'Approvata';
-      case 'rejected':
-        return 'Rifiutata';
-      default:
-        return 'In attesa';
-    }
   };
 
   return (
@@ -174,72 +141,32 @@ export default function AdminBusinessTripsManagement() {
           </CardContent>
         </Card>
 
-        {/* Lista trasferte in attesa */}
+        {/* Statistiche trasferte */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Trasferte in Attesa di Approvazione
+              <Users className="w-5 h-5" />
+              Statistiche Trasferte
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {businessTrips?.filter(trip => trip.status === 'pending').map((trip) => (
-                <div key={trip.id} className="border rounded-lg p-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">
-                      {trip.profiles?.first_name} {trip.profiles?.last_name}
-                    </div>
-                    <Badge className={getStatusColor(trip.status)}>
-                      {getStatusText(trip.status)}
-                    </Badge>
-                  </div>
-
-                  <div className="text-sm space-y-1">
-                    <div><strong>Destinazione:</strong> {trip.destination}</div>
-                    <div><strong>Date:</strong> {format(new Date(trip.start_date), 'dd/MM/yyyy', { locale: it })} - {format(new Date(trip.end_date), 'dd/MM/yyyy', { locale: it })}</div>
-                    {trip.reason && <div><strong>Motivo:</strong> {trip.reason}</div>}
-                  </div>
-
-                  <div>
-                    <Label htmlFor={`notes-${trip.id}`}>Note admin (opzionale)</Label>
-                    <Textarea
-                      id={`notes-${trip.id}`}
-                      placeholder="Aggiungi note..."
-                      value={adminNotes}
-                      onChange={(e) => setAdminNotes(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => handleApproveTrip(trip.id, adminNotes)}
-                      disabled={isUpdating}
-                      className="flex-1"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Approva
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleRejectTrip(trip.id, adminNotes)}
-                      disabled={isUpdating}
-                      className="flex-1"
-                    >
-                      <XCircle className="w-4 h-4 mr-1" />
-                      Rifiuta
-                    </Button>
-                  </div>
+            <div className="space-y-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="text-2xl font-bold text-blue-700">{businessTrips?.length || 0}</div>
+                <div className="text-sm text-blue-600">Trasferte Totali</div>
+              </div>
+              
+              <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-2xl font-bold text-green-700">
+                  {businessTrips?.filter(trip => {
+                    const startDate = new Date(trip.start_date);
+                    const endDate = new Date(trip.end_date);
+                    const today = new Date();
+                    return startDate <= today && endDate >= today;
+                  }).length || 0}
                 </div>
-              )) || (
-                <div className="text-center py-4 text-gray-500">
-                  Nessuna trasferta in attesa
-                </div>
-              )}
+                <div className="text-sm text-green-600">Trasferte Attive</div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -261,8 +188,8 @@ export default function AdminBusinessTripsManagement() {
                   <div className="font-medium">
                     {trip.profiles?.first_name} {trip.profiles?.last_name}
                   </div>
-                  <Badge className={getStatusColor(trip.status)}>
-                    {getStatusText(trip.status)}
+                  <Badge className="bg-green-100 text-green-700">
+                    Approvata
                   </Badge>
                 </div>
 
@@ -272,7 +199,7 @@ export default function AdminBusinessTripsManagement() {
                   {trip.reason && <div><strong>Motivo:</strong> {trip.reason}</div>}
                   {trip.admin_notes && (
                     <div className="p-2 bg-blue-50 rounded border-l-2 border-blue-200">
-                      <strong>Note admin:</strong> {trip.admin_notes}
+                      <strong>Note:</strong> {trip.admin_notes}
                     </div>
                   )}
                 </div>

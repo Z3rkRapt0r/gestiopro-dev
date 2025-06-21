@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { format, eachDayOfInterval } from 'date-fns';
 
 export interface BusinessTrip {
   id: string;
@@ -11,7 +12,7 @@ export interface BusinessTrip {
   end_date: string;
   destination: string;
   reason: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'approved';
   admin_notes: string | null;
   created_at: string;
   updated_at: string;
@@ -86,7 +87,8 @@ export const useBusinessTrips = () => {
       // Se è admin e user_id è specificato, usa quello, altrimenti usa l'ID dell'utente corrente
       const targetUserId = (profile?.role === 'admin' && tripData.user_id) ? tripData.user_id : user?.id;
 
-      const { data, error } = await supabase
+      // Crea la trasferta (sempre approvata)
+      const { data: trip, error } = await supabase
         .from('business_trips')
         .insert({
           user_id: targetUserId,
@@ -94,21 +96,59 @@ export const useBusinessTrips = () => {
           end_date: tripData.end_date,
           destination: tripData.destination,
           reason: tripData.reason,
-          status: profile?.role === 'admin' ? 'approved' : 'pending', // Auto-approva se creata dall'admin
+          status: 'approved',
+          approved_by: user?.id,
+          approved_at: new Date().toISOString(),
         })
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+
+      // Genera tutti i giorni della trasferta (solo giorni lavorativi)
+      const startDate = new Date(tripData.start_date);
+      const endDate = new Date(tripData.end_date);
+      const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+      
+      // Filtra solo i giorni lavorativi (lunedì-venerdì)
+      const workingDays = allDays.filter(day => {
+        const dayOfWeek = day.getDay();
+        return dayOfWeek >= 1 && dayOfWeek <= 5;
+      });
+
+      // Crea le presenze per tutti i giorni lavorativi della trasferta
+      const attendancesToCreate = workingDays.map(day => ({
+        user_id: targetUserId,
+        date: format(day, 'yyyy-MM-dd'),
+        check_in_time: '08:00',
+        check_out_time: '17:00',
+        is_manual: true,
+        is_business_trip: true,
+        notes: `Trasferta: ${tripData.destination}`,
+        created_by: user?.id,
+      }));
+
+      if (attendancesToCreate.length > 0) {
+        const { error: attendanceError } = await supabase
+          .from('unified_attendances')
+          .upsert(attendancesToCreate, {
+            onConflict: 'user_id,date'
+          });
+
+        if (attendanceError) {
+          console.error('Error creating trip attendances:', attendanceError);
+          // Non blocchiamo la creazione della trasferta se c'è un errore nelle presenze
+        }
+      }
+
+      return trip;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-trips'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
         title: "Trasferta creata",
-        description: profile?.role === 'admin' 
-          ? "La trasferta è stata creata e approvata automaticamente"
-          : "La richiesta di trasferta è stata inviata per approvazione",
+        description: "La trasferta è stata creata e le presenze sono state registrate automaticamente",
       });
     },
     onError: (error: any) => {
@@ -121,46 +161,10 @@ export const useBusinessTrips = () => {
     },
   });
 
-  const updateTripStatus = useMutation({
-    mutationFn: async ({ tripId, status, adminNotes }: { tripId: string; status: 'approved' | 'rejected'; adminNotes?: string }) => {
-      const { data, error } = await supabase
-        .from('business_trips')
-        .update({
-          status,
-          admin_notes: adminNotes,
-          approved_by: user?.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('id', tripId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['business-trips'] });
-      toast({
-        title: "Trasferta aggiornata",
-        description: "Lo stato della trasferta è stato aggiornato",
-      });
-    },
-    onError: (error: any) => {
-      console.error('Update trip status error:', error);
-      toast({
-        title: "Errore",
-        description: "Errore nell'aggiornamento della trasferta",
-        variant: "destructive",
-      });
-    },
-  });
-
   return {
     businessTrips,
     isLoading,
     createTrip: createTrip.mutate,
-    updateTripStatus: updateTripStatus.mutate,
     isCreating: createTrip.isPending,
-    isUpdating: updateTripStatus.isPending,
   };
 };

@@ -83,7 +83,7 @@ export default function BusinessTripForm() {
           </div>
 
           <Button type="submit" disabled={isCreating} className="w-full">
-            {isCreating ? 'Inviando...' : 'Invia Richiesta'}
+            {isCreating ? 'Creando...' : 'Crea Trasferta'}
           </Button>
         </form>
       </CardContent>
