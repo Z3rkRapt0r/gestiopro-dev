@@ -13,6 +13,9 @@ import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { generateAttendancePDF } from '@/utils/pdfGenerator';
+import { generateAttendanceExcel } from '@/utils/excelGenerator';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AttendanceExportSection() {
   const [exportType, setExportType] = useState<'general' | 'operator'>('general');
@@ -20,50 +23,96 @@ export default function AttendanceExportSection() {
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
   const [format_type, setFormatType] = useState<'excel' | 'pdf'>('excel');
+  const [isExporting, setIsExporting] = useState(false);
   
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { profile } = useAuth();
+  const { toast } = useToast();
 
   const handleExport = async () => {
     if (!dateFrom || !dateTo) {
-      alert('Seleziona un periodo valido');
+      toast({
+        title: "Errore",
+        description: "Seleziona un periodo valido",
+        variant: "destructive"
+      });
       return;
     }
 
     if (exportType === 'operator' && !selectedEmployee) {
-      alert('Seleziona un operatore');
+      toast({
+        title: "Errore", 
+        description: "Seleziona un operatore",
+        variant: "destructive"
+      });
       return;
     }
 
-    // Qui implementeremo la logica di esportazione
-    console.log('Esportazione:', {
-      type: exportType,
-      employee: selectedEmployee,
-      dateFrom: format(dateFrom, 'yyyy-MM-dd'),
-      dateTo: format(dateTo, 'yyyy-MM-dd'),
-      format: format_type
-    });
+    setIsExporting(true);
 
-    // Filtra i dati in base ai parametri
-    let filteredData = attendances?.filter(att => {
-      const attDate = new Date(att.date);
-      const isInRange = attDate >= dateFrom && attDate <= dateTo;
-      
-      if (exportType === 'operator') {
-        return isInRange && att.user_id === selectedEmployee;
+    try {
+      // Filtra i dati in base ai parametri
+      let filteredData = attendances?.filter(att => {
+        const attDate = new Date(att.date);
+        const isInRange = attDate >= dateFrom && attDate <= dateTo;
+        
+        if (exportType === 'operator') {
+          return isInRange && att.user_id === selectedEmployee;
+        }
+        
+        return isInRange;
+      }) || [];
+
+      // Aggiungi informazioni dipendente ai dati
+      const enrichedData = filteredData.map(att => {
+        const employee = employees?.find(emp => emp.id === att.user_id);
+        return {
+          ...att,
+          employee_name: employee ? `${employee.first_name} ${employee.last_name}` : 'N/A',
+          employee_email: employee?.email || 'N/A'
+        };
+      });
+
+      if (format_type === 'pdf') {
+        const selectedEmployeeData = selectedEmployee ? 
+          employees?.find(emp => emp.id === selectedEmployee) : null;
+        
+        await generateAttendancePDF({
+          data: enrichedData,
+          dateFrom,
+          dateTo,
+          exportType,
+          selectedEmployee: selectedEmployeeData
+        });
+        
+        toast({
+          title: "Successo",
+          description: `PDF generato con successo per ${enrichedData.length} record`
+        });
+      } else {
+        await generateAttendanceExcel({
+          data: enrichedData,
+          dateFrom,
+          dateTo,
+          exportType,
+          selectedEmployee: selectedEmployee ? employees?.find(emp => emp.id === selectedEmployee) : null
+        });
+        
+        toast({
+          title: "Successo",
+          description: `Excel generato con successo per ${enrichedData.length} record`
+        });
       }
-      
-      return isInRange;
-    }) || [];
-
-    // Simula l'esportazione
-    if (format_type === 'excel') {
-      // Qui si implementerebbe l'esportazione Excel
-      alert(`Esportazione Excel avviata per ${filteredData.length} record`);
-    } else {
-      // Qui si implementerebbe l'esportazione PDF
-      alert(`Esportazione PDF avviata per ${filteredData.length} record`);
+    } catch (error) {
+      console.error('Errore durante l\'esportazione:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'esportazione",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -222,10 +271,10 @@ export default function AttendanceExportSection() {
           <Button 
             onClick={handleExport} 
             className="w-full"
-            disabled={!dateFrom || !dateTo || (exportType === 'operator' && !selectedEmployee)}
+            disabled={!dateFrom || !dateTo || (exportType === 'operator' && !selectedEmployee) || isExporting}
           >
             <Download className="w-4 h-4 mr-2" />
-            Esporta {format_type.toUpperCase()}
+            {isExporting ? 'Esportazione in corso...' : `Esporta ${format_type.toUpperCase()}`}
           </Button>
 
           {/* Anteprima dati */}
