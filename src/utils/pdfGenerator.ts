@@ -33,20 +33,7 @@ interface ExportParams {
   selectedEmployee?: EmployeeData | null;
 }
 
-// Funzione per formattare in modo sicuro le date/orari
-const safeFormatDateTime = (dateTimeStr: string | null, formatStr: string) => {
-  if (!dateTimeStr) return '--:--';
-  
-  try {
-    const date = typeof dateTimeStr === 'string' ? parseISO(dateTimeStr) : new Date(dateTimeStr);
-    if (!isValid(date)) return '--:--';
-    return format(date, formatStr, { locale: it });
-  } catch (error) {
-    console.error('Errore formattazione data:', error, dateTimeStr);
-    return '--:--';
-  }
-};
-
+// Funzione per formattare in modo sicuro le date
 const safeFormatDate = (dateStr: string | null) => {
   if (!dateStr) return 'Data non valida';
   
@@ -58,6 +45,14 @@ const safeFormatDate = (dateStr: string | null) => {
     console.error('Errore formattazione data:', error, dateStr);
     return 'Data non valida';
   }
+};
+
+// Funzione per determinare lo stato di presenza
+const getAttendanceStatus = (att: AttendanceData) => {
+  if (att.is_sick_leave) return 'Malattia';
+  if (att.is_business_trip) return 'Trasferta';
+  if (att.check_in_time || att.check_out_time) return 'Presente';
+  return 'Assente';
 };
 
 export const generateAttendancePDF = async ({
@@ -94,25 +89,17 @@ export const generateAttendancePDF = async ({
   // Preparazione dati per la tabella
   const tableData = data.map(att => [
     safeFormatDate(att.date),
-    exportType === 'general' ? att.employee_name : '',
-    safeFormatDateTime(att.check_in_time, 'HH:mm'),
-    safeFormatDateTime(att.check_out_time, 'HH:mm'),
-    att.is_manual ? 'Manuale' : att.is_business_trip ? 'Trasferta' : att.is_sick_leave ? 'Malattia' : 'Normale',
+    att.employee_name,
+    getAttendanceStatus(att),
     att.notes || ''
   ]);
   
-  const tableHeaders = exportType === 'general' 
-    ? ['Data', 'Dipendente', 'Entrata', 'Uscita', 'Tipo', 'Note']
-    : ['Data', 'Entrata', 'Uscita', 'Tipo', 'Note'];
-  
-  const tableColumns = exportType === 'general' 
-    ? tableData
-    : tableData.map(row => [row[0], row[2], row[3], row[4], row[5]]);
+  const tableHeaders = ['Data', 'Nome Dipendente', 'Stato Presenza', 'Note'];
   
   // Generazione tabella
   (doc as any).autoTable({
     head: [tableHeaders],
-    body: tableColumns,
+    body: tableData,
     startY: 55,
     styles: {
       fontSize: 9,
@@ -127,12 +114,10 @@ export const generateAttendancePDF = async ({
       fillColor: [245, 245, 245],
     },
     columnStyles: {
-      0: { cellWidth: exportType === 'general' ? 25 : 30 },
-      1: { cellWidth: exportType === 'general' ? 40 : 25 },
-      2: { cellWidth: exportType === 'general' ? 25 : 25 },
-      3: { cellWidth: exportType === 'general' ? 25 : 30 },
-      4: { cellWidth: exportType === 'general' ? 30 : 50 },
-      5: { cellWidth: exportType === 'general' ? 50 : undefined },
+      0: { cellWidth: 30 }, // Data
+      1: { cellWidth: 50 }, // Nome Dipendente
+      2: { cellWidth: 40 }, // Stato Presenza
+      3: { cellWidth: 70 }, // Note
     },
     margin: { top: 55, left: 20, right: 20 },
   });

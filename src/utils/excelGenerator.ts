@@ -31,20 +31,7 @@ interface ExportParams {
   selectedEmployee?: EmployeeData | null;
 }
 
-// Funzione per formattare in modo sicuro le date/orari
-const safeFormatDateTime = (dateTimeStr: string | null, formatStr: string) => {
-  if (!dateTimeStr) return '--:--';
-  
-  try {
-    const date = typeof dateTimeStr === 'string' ? parseISO(dateTimeStr) : new Date(dateTimeStr);
-    if (!isValid(date)) return '--:--';
-    return format(date, formatStr, { locale: it });
-  } catch (error) {
-    console.error('Errore formattazione data:', error, dateTimeStr);
-    return '--:--';
-  }
-};
-
+// Funzione per formattare in modo sicuro le date
 const safeFormatDate = (dateStr: string | null) => {
   if (!dateStr) return 'Data non valida';
   
@@ -58,6 +45,14 @@ const safeFormatDate = (dateStr: string | null) => {
   }
 };
 
+// Funzione per determinare lo stato di presenza
+const getAttendanceStatus = (att: AttendanceData) => {
+  if (att.is_sick_leave) return 'Malattia';
+  if (att.is_business_trip) return 'Trasferta';
+  if (att.check_in_time || att.check_out_time) return 'Presente';
+  return 'Assente';
+};
+
 export const generateAttendanceExcel = async ({
   data,
   dateFrom,
@@ -65,23 +60,14 @@ export const generateAttendanceExcel = async ({
   exportType,
   selectedEmployee
 }: ExportParams) => {
-  const headers = exportType === 'general' 
-    ? ['Data', 'Dipendente', 'Email', 'Entrata', 'Uscita', 'Tipo', 'Note']
-    : ['Data', 'Entrata', 'Uscita', 'Tipo', 'Note'];
+  const headers = ['Data', 'Nome Dipendente', 'Stato Presenza', 'Note'];
   
-  const csvData = data.map(att => {
-    const row = [
-      safeFormatDate(att.date),
-      exportType === 'general' ? att.employee_name : '',
-      exportType === 'general' ? att.employee_email : '',
-      safeFormatDateTime(att.check_in_time, 'HH:mm'),
-      safeFormatDateTime(att.check_out_time, 'HH:mm'),
-      att.is_manual ? 'Manuale' : att.is_business_trip ? 'Trasferta' : att.is_sick_leave ? 'Malattia' : 'Normale',
-      att.notes || ''
-    ];
-    
-    return exportType === 'general' ? row : [row[0], row[3], row[4], row[5], row[6]];
-  });
+  const csvData = data.map(att => [
+    safeFormatDate(att.date),
+    att.employee_name,
+    getAttendanceStatus(att),
+    att.notes || ''
+  ]);
   
   // Aggiungi intestazione informativa
   const infoRows = [
