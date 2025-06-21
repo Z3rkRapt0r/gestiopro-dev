@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
@@ -70,6 +71,45 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
 
   const yearlyStats = calculateYearlyStats();
 
+  // CORREZIONE: Ottieni le date con presenze formattate correttamente
+  const attendanceDates = attendances
+    .filter(att => att.check_in_time || att.is_sick_leave)
+    .map(att => {
+      // Convertiamo la stringa data in oggetto Date senza problemi di timezone
+      const [year, month, day] = att.date.split('-').map(Number);
+      return new Date(year, month - 1, day); // month - 1 perché JavaScript usa mesi 0-based
+    });
+
+  const sickLeaveDates = attendances
+    .filter(att => att.is_sick_leave)
+    .map(att => {
+      const [year, month, day] = att.date.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    });
+
+  // Calcola i giorni di assenza per questo operatore
+  const currentDate = new Date();
+  const oneMonthAgo = new Date(currentDate);
+  oneMonthAgo.setMonth(currentDate.getMonth() - 1);
+  
+  const absentDates = [];
+  const tempDate = new Date(oneMonthAgo);
+  
+  while (tempDate <= currentDate) {
+    const dateStr = format(tempDate, 'yyyy-MM-dd');
+    const hasAttendance = attendances.some(att => att.date === dateStr);
+    
+    // Se è un giorno lavorativo (lunedì-venerdì) e non ha presenza
+    const dayOfWeek = tempDate.getDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 5 && !hasAttendance && tempDate < currentDate) {
+      absentDates.push(new Date(tempDate));
+    }
+    
+    tempDate.setDate(tempDate.getDate() + 1);
+  }
+
+  console.log('Date con presenze per calendario operatore:', attendanceDates);
+
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
@@ -136,68 +176,90 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
         </CardContent>
       </Card>
 
-      {/* Dettagli della data selezionata */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Clock className="w-4 h-4" />
-            Dettagli {selectedDate ? format(selectedDate, 'dd/MM', { locale: it }) : ''}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-3">
-          {selectedDateAttendance ? (
-            <div className="space-y-3">
-              {selectedDateAttendance.is_sick_leave ? (
-                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <span className="font-semibold text-orange-700 text-sm">Malattia</span>
-                    {selectedDateAttendance.is_manual && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-                        Manuale
-                      </Badge>
-                    )}
-                  </div>
-                  {selectedDateAttendance.notes && (
-                    <div className="text-xs">
-                      <span className="text-gray-600">Note:</span>
-                      <div className="font-medium text-gray-800">
-                        {selectedDateAttendance.notes}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="font-semibold text-green-700 text-sm">Presente</span>
-                    {selectedDateAttendance.is_manual && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-                        Manuale
-                      </Badge>
-                    )}
-                    {selectedDateAttendance.is_business_trip && (
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs">
-                        Trasferta
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <span className="text-gray-600">Entrata:</span>
-                      <div className="font-medium">
-                        {formatTime(selectedDateAttendance.check_in_time)}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Uscita:</span>
-                      <div className="font-medium">
-                        {formatTime(selectedDateAttendance.check_out_time)}
-                      </div>
+      {/* Calendario dell'operatore */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarIcon className="w-4 h-4" />
+              {employee.first_name} {employee.last_name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
+            <div className="flex justify-center">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                locale={it}
+                modifiers={{
+                  present: attendanceDates.filter(date => !sickLeaveDates.some(sickDate => 
+                    sickDate.getTime() === date.getTime()
+                  )),
+                  sickLeave: sickLeaveDates,
+                  absent: absentDates
+                }}
+                modifiersStyles={{
+                  present: {
+                    backgroundColor: '#dcfce7',
+                    color: '#166534',
+                    fontWeight: 'bold'
+                  },
+                  sickLeave: {
+                    backgroundColor: '#fed7aa',
+                    color: '#9a3412',
+                    fontWeight: 'bold'
+                  },
+                  absent: {
+                    backgroundColor: '#fecaca',
+                    color: '#991b1b',
+                    fontWeight: 'bold'
+                  }
+                }}
+                className="rounded-md border w-fit"
+              />
+            </div>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-green-200 rounded"></div>
+                <span>Giorni di presenza</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-orange-200 rounded"></div>
+                <span>Giorni di malattia</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-red-200 rounded"></div>
+                <span>Giorni di assenza</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Dettagli della data selezionata */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Clock className="w-4 h-4" />
+              Dettagli {selectedDate ? format(selectedDate, 'dd/MM', { locale: it }) : ''}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
+            {selectedDateAttendance ? (
+              <div className="space-y-3">
+                {selectedDateAttendance.is_sick_leave ? (
+                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <span className="font-semibold text-orange-700 text-sm">Malattia</span>
+                      {selectedDateAttendance.is_manual && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                          Manuale
+                        </Badge>
+                      )}
                     </div>
                     {selectedDateAttendance.notes && (
-                      <div>
+                      <div className="text-xs">
                         <span className="text-gray-600">Note:</span>
                         <div className="font-medium text-gray-800">
                           {selectedDateAttendance.notes}
@@ -205,22 +267,61 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                       </div>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <span className="font-semibold text-red-700 text-sm">Assente</span>
+                ) : (
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="font-semibold text-green-700 text-sm">Presente</span>
+                      {selectedDateAttendance.is_manual && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                          Manuale
+                        </Badge>
+                      )}
+                      {selectedDateAttendance.is_business_trip && (
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs">
+                          Trasferta
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div>
+                        <span className="text-gray-600">Entrata:</span>
+                        <div className="font-medium">
+                          {formatTime(selectedDateAttendance.check_in_time)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Uscita:</span>
+                        <div className="font-medium">
+                          {formatTime(selectedDateAttendance.check_out_time)}
+                        </div>
+                      </div>
+                      {selectedDateAttendance.notes && (
+                        <div>
+                          <span className="text-gray-600">Note:</span>
+                          <div className="font-medium text-gray-800">
+                            {selectedDateAttendance.notes}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-red-600">
-                Nessuna presenza registrata
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span className="font-semibold text-red-700 text-sm">Assente</span>
+                </div>
+                <p className="text-xs text-red-600">
+                  Nessuna presenza registrata
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
