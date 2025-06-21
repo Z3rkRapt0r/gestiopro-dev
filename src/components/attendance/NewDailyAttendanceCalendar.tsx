@@ -55,28 +55,26 @@ export default function NewDailyAttendanceCalendar() {
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
+    // Gestione semplice per il nuovo formato HH:MM
+    if (timeString.match(/^\d{2}:\d{2}$/)) {
+      return timeString;
+    }
+    
+    // Fallback per altri formati
     try {
-      // Se è nel formato ISO locale (YYYY-MM-DDTHH:mm:ss o YYYY-MM-DDTHH:mm:ss.SSS)
-      if (timeString.includes('T') && !timeString.includes('Z') && !timeString.includes('+')) {
+      if (timeString.includes('T')) {
         const [, timePart] = timeString.split('T');
         const [hours, minutes] = timePart.split(':');
         return `${hours}:${minutes}`;
       }
       
-      // Se è nel formato "YYYY-MM-DD HH:mm:ss"
       if (timeString.includes(' ')) {
         const [, timePart] = timeString.split(' ');
         const [hours, minutes] = timePart.split(':');
         return `${hours}:${minutes}`;
       }
       
-      // Fallback per altri formati - ma manteniamo il locale
-      const date = new Date(timeString);
-      return date.toLocaleTimeString('it-IT', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Europe/Rome'
-      });
+      return timeString;
     } catch (error) {
       console.error('Errore nel parsing del timestamp:', timeString, error);
       return '--:--';

@@ -10,7 +10,7 @@ export interface UnifiedAttendance {
   date: string;
   check_in_time: string | null;
   check_out_time: string | null;
-  is_business_trip: boolean | null;
+  is_business_trip: boolean;
   is_manual: boolean;
   notes?: string | null;
   created_at: string;
@@ -29,75 +29,26 @@ export const useUnifiedAttendances = () => {
   const { data: attendances, isLoading } = useQuery({
     queryKey: ['unified-attendances'],
     queryFn: async () => {
-      console.log('Caricamento presenze unificate...');
+      console.log('Caricamento presenze unificate dalla nuova tabella...');
       
-      // Prima ottieni le presenze automatiche
-      let attendanceQuery = supabase
-        .from('attendances')
-        .select('*')
-        .order('date', { ascending: false });
-
-      // Poi ottieni le presenze manuali
-      let manualQuery = supabase
-        .from('manual_attendances')
+      let query = supabase
+        .from('unified_attendances')
         .select('*')
         .order('date', { ascending: false });
 
       // Se non è admin, filtra per utente corrente
       if (profile?.role !== 'admin') {
-        attendanceQuery = attendanceQuery.eq('user_id', user?.id);
-        manualQuery = manualQuery.eq('user_id', user?.id);
+        query = query.eq('user_id', user?.id);
       }
 
-      const [attendanceResult, manualResult] = await Promise.all([
-        attendanceQuery,
-        manualQuery
-      ]);
+      const { data: attendanceData, error } = await query;
 
-      if (attendanceResult.error) {
-        console.error('Errore caricamento attendances:', attendanceResult.error);
-        throw attendanceResult.error;
+      if (error) {
+        console.error('Errore caricamento unified_attendances:', error);
+        throw error;
       }
 
-      if (manualResult.error) {
-        console.error('Errore caricamento manual_attendances:', manualResult.error);
-        throw manualResult.error;
-      }
-
-      // Crea un Map per tracciare le presenze per data e utente
-      const attendanceMap = new Map<string, UnifiedAttendance>();
-
-      // Prima aggiungi tutte le presenze automatiche
-      attendanceResult.data?.forEach(att => {
-        const key = `${att.user_id}-${att.date}`;
-        attendanceMap.set(key, {
-          ...att,
-          is_manual: false,
-          notes: null,
-        });
-      });
-
-      // Poi aggiungi/sovrascrivi con le presenze manuali
-      manualResult.data?.forEach(manual => {
-        const key = `${manual.user_id}-${manual.date}`;
-        const existingAtt = attendanceMap.get(key);
-        
-        attendanceMap.set(key, {
-          id: manual.id,
-          user_id: manual.user_id,
-          date: manual.date,
-          check_in_time: manual.check_in_time,
-          check_out_time: manual.check_out_time,
-          is_business_trip: existingAtt?.is_business_trip || false,
-          is_manual: true,
-          notes: manual.notes,
-          created_at: manual.created_at,
-        });
-      });
-
-      // Converti in array e ordina per data
-      const allAttendances = Array.from(attendanceMap.values())
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const allAttendances = attendanceData || [];
 
       // Se è admin, ottieni i profili degli utenti
       if (profile?.role === 'admin' && allAttendances.length > 0) {
@@ -119,7 +70,7 @@ export const useUnifiedAttendances = () => {
       }
 
       console.log('Presenze unificate caricate:', allAttendances);
-      return allAttendances;
+      return allAttendances as UnifiedAttendance[];
     },
     enabled: !!user && !!profile,
   });
@@ -132,13 +83,18 @@ export const useUnifiedAttendances = () => {
       check_out_time: string | null;
       notes: string | null;
     }) => {
-      console.log('Creazione presenza manuale con timestamp locali:', attendanceData);
+      console.log('Creazione presenza manuale nella tabella unified_attendances:', attendanceData);
       
-      // Inserisci/aggiorna nella tabella manual_attendances mantenendo i timestamp come forniti
-      const { data: manualData, error: manualError } = await supabase
-        .from('manual_attendances')
+      const { data, error } = await supabase
+        .from('unified_attendances')
         .upsert({
-          ...attendanceData,
+          user_id: attendanceData.user_id,
+          date: attendanceData.date,
+          check_in_time: attendanceData.check_in_time,
+          check_out_time: attendanceData.check_out_time,
+          notes: attendanceData.notes,
+          is_manual: true,
+          is_business_trip: false,
           created_by: user?.id,
         }, {
           onConflict: 'user_id,date'
@@ -146,13 +102,13 @@ export const useUnifiedAttendances = () => {
         .select()
         .single();
 
-      if (manualError) {
-        console.error('Errore salvataggio presenza manuale:', manualError);
-        throw manualError;
+      if (error) {
+        console.error('Errore salvataggio presenza manuale:', error);
+        throw error;
       }
 
-      console.log('Presenza manuale salvata con timestamp corretti:', manualData);
-      return manualData;
+      console.log('Presenza manuale salvata correttamente:', data);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
@@ -173,23 +129,12 @@ export const useUnifiedAttendances = () => {
 
   const deleteAttendance = useMutation({
     mutationFn: async (attendance: UnifiedAttendance) => {
-      if (attendance.is_manual) {
-        // Elimina dalla tabella manual_attendances
-        const { error } = await supabase
-          .from('manual_attendances')
-          .delete()
-          .eq('id', attendance.id);
+      const { error } = await supabase
+        .from('unified_attendances')
+        .delete()
+        .eq('id', attendance.id);
 
-        if (error) throw error;
-      } else {
-        // Elimina dalla tabella attendances
-        const { error } = await supabase
-          .from('attendances')
-          .delete()
-          .eq('id', attendance.id);
-
-        if (error) throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });

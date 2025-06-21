@@ -764,6 +764,48 @@ export type Database = {
         }
         Relationships: []
       }
+      unified_attendances: {
+        Row: {
+          check_in_time: string | null
+          check_out_time: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          is_business_trip: boolean
+          is_manual: boolean
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          created_by?: string | null
+          date: string
+          id?: string
+          is_business_trip?: boolean
+          is_manual?: boolean
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          is_business_trip?: boolean
+          is_manual?: boolean
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       work_schedules: {
         Row: {
           created_at: string | null
