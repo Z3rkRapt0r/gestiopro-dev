@@ -19,6 +19,23 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { workSchedule } = useWorkSchedules();
 
+  // Funzione per verificare se un giorno è lavorativo
+  const isWorkingDay = (date: Date) => {
+    if (!workSchedule) return false;
+    
+    const dayOfWeek = date.getDay();
+    switch (dayOfWeek) {
+      case 0: return workSchedule.sunday;
+      case 1: return workSchedule.monday;
+      case 2: return workSchedule.tuesday;
+      case 3: return workSchedule.wednesday;
+      case 4: return workSchedule.thursday;
+      case 5: return workSchedule.friday;
+      case 6: return workSchedule.saturday;
+      default: return false;
+    }
+  };
+
   // CORREZIONE: Formattiamo la data selezionata in modo consistente
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   console.log('Data selezionata calendario operatore:', selectedDateStr);
@@ -31,7 +48,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
 
   console.log('Presenza operatore per data selezionata:', selectedDateAttendance);
 
-  // NUOVO: Calcola il resoconto annuale
+  // NUOVO: Calcola il resoconto annuale basato sui giorni lavorativi configurati
   const calculateYearlyStats = () => {
     const currentYear = new Date().getFullYear();
     const startOfYear = new Date(currentYear, 0, 1);
@@ -43,14 +60,12 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       return attDate >= startOfYear && attDate <= today;
     });
     
-    // Conta i giorni lavorativi dall'inizio dell'anno ad oggi
+    // Conta i giorni lavorativi dall'inizio dell'anno ad oggi usando la configurazione
     let workingDaysCount = 0;
     const tempDate = new Date(startOfYear);
     
     while (tempDate <= today) {
-      const dayOfWeek = tempDate.getDay();
-      // Solo giorni lavorativi (lunedì-venerdì)
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      if (isWorkingDay(tempDate)) {
         workingDaysCount++;
       }
       tempDate.setDate(tempDate.getDate() + 1);
@@ -87,7 +102,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       return new Date(year, month - 1, day);
     });
 
-  // Calcola i giorni di assenza per questo operatore
+  // Calcola i giorni di assenza per questo operatore basato sui giorni lavorativi configurati
   const currentDate = new Date();
   const oneMonthAgo = new Date(currentDate);
   oneMonthAgo.setMonth(currentDate.getMonth() - 1);
@@ -99,9 +114,8 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     const dateStr = format(tempDate, 'yyyy-MM-dd');
     const hasAttendance = attendances.some(att => att.date === dateStr);
     
-    // Se è un giorno lavorativo (lunedì-venerdì) e non ha presenza
-    const dayOfWeek = tempDate.getDay();
-    if (dayOfWeek >= 1 && dayOfWeek <= 5 && !hasAttendance && tempDate < currentDate) {
+    // Se è un giorno lavorativo (basato sulla configurazione) e non ha presenza
+    if (isWorkingDay(tempDate) && !hasAttendance && tempDate < currentDate) {
       absentDates.push(new Date(tempDate));
     }
     
@@ -173,6 +187,25 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               Percentuale Presenza: <span className="text-blue-700">{yearlyStats.attendancePercentage}%</span>
             </div>
           </div>
+          
+          {/* Info configurazione orari di lavoro */}
+          {workSchedule && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-sm font-medium text-blue-700 mb-2">Configurazione Orari:</div>
+              <div className="text-xs text-blue-600 space-y-1">
+                <div>Orari: {workSchedule.start_time} - {workSchedule.end_time}</div>
+                <div className="flex flex-wrap gap-1">
+                  {workSchedule.monday && <span className="bg-blue-100 px-1 rounded">Lun</span>}
+                  {workSchedule.tuesday && <span className="bg-blue-100 px-1 rounded">Mar</span>}
+                  {workSchedule.wednesday && <span className="bg-blue-100 px-1 rounded">Mer</span>}
+                  {workSchedule.thursday && <span className="bg-blue-100 px-1 rounded">Gio</span>}
+                  {workSchedule.friday && <span className="bg-blue-100 px-1 rounded">Ven</span>}
+                  {workSchedule.saturday && <span className="bg-blue-100 px-1 rounded">Sab</span>}
+                  {workSchedule.sunday && <span className="bg-blue-100 px-1 rounded">Dom</span>}
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -242,10 +275,25 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             <CardTitle className="flex items-center gap-2 text-base">
               <Clock className="w-4 h-4" />
               Dettagli {selectedDate ? format(selectedDate, 'dd/MM', { locale: it }) : ''}
+              {selectedDate && !isWorkingDay(selectedDate) && (
+                <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs">
+                  Non lavorativo
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3">
-            {selectedDateAttendance ? (
+            {selectedDate && !isWorkingDay(selectedDate) ? (
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <span className="font-semibold text-gray-700 text-sm">Non lavorativo</span>
+                </div>
+                <p className="text-xs text-gray-600">
+                  Questo giorno non è configurato come giorno lavorativo
+                </p>
+              </div>
+            ) : selectedDateAttendance ? (
               <div className="space-y-3">
                 {selectedDateAttendance.is_sick_leave ? (
                   <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
@@ -315,7 +363,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                   <span className="font-semibold text-red-700 text-sm">Assente</span>
                 </div>
                 <p className="text-xs text-red-600">
-                  Nessuna presenza registrata
+                  Nessuna presenza registrata per questo giorno lavorativo
                 </p>
               </div>
             )}

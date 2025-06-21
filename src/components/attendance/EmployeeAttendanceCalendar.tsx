@@ -19,6 +19,23 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { workSchedule } = useWorkSchedules();
 
+  // Funzione per verificare se un giorno è lavorativo
+  const isWorkingDay = (date: Date) => {
+    if (!workSchedule) return false;
+    
+    const dayOfWeek = date.getDay();
+    switch (dayOfWeek) {
+      case 0: return workSchedule.sunday;
+      case 1: return workSchedule.monday;
+      case 2: return workSchedule.tuesday;
+      case 3: return workSchedule.wednesday;
+      case 4: return workSchedule.thursday;
+      case 5: return workSchedule.friday;
+      case 6: return workSchedule.saturday;
+      default: return false;
+    }
+  };
+
   // Ottieni le presenze per la data selezionata
   const selectedDateStr = selectedDate?.toISOString().split('T')[0];
   const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
@@ -28,26 +45,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     .filter(att => att.check_in_time)
     .map(att => new Date(att.date));
 
-  // Ottieni le date lavorative (basate sui work_schedules)
-  const getWorkingDays = () => {
-    if (!workSchedule) return [];
-    
-    const workingDays: number[] = [];
-    
-    if (workSchedule.monday) workingDays.push(1);
-    if (workSchedule.tuesday) workingDays.push(2);
-    if (workSchedule.wednesday) workingDays.push(3);
-    if (workSchedule.thursday) workingDays.push(4);
-    if (workSchedule.friday) workingDays.push(5);
-    if (workSchedule.saturday) workingDays.push(6);
-    if (workSchedule.sunday) workingDays.push(0);
-    
-    return workingDays;
-  };
-
-  const workingDays = getWorkingDays();
-
-  // Genera le date lavorative per colorare il calendario
+  // Genera le date lavorative (basate sui work_schedules)
   const getWorkingDates = () => {
     const dates = [];
     const today = new Date();
@@ -55,7 +53,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0);
     
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      if (workingDays.includes(d.getDay())) {
+      if (isWorkingDay(d)) {
         dates.push(new Date(d));
       }
     }
@@ -117,6 +115,22 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               <span>Giorni lavorativi</span>
             </div>
           </div>
+          
+          {/* Info configurazione orari di lavoro */}
+          {workSchedule && (
+            <div className="mt-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-xs font-medium text-blue-700 mb-1">Orari: {workSchedule.start_time} - {workSchedule.end_time}</div>
+              <div className="flex flex-wrap gap-1">
+                {workSchedule.monday && <span className="bg-blue-100 px-1 rounded text-xs">Lun</span>}
+                {workSchedule.tuesday && <span className="bg-blue-100 px-1 rounded text-xs">Mar</span>}
+                {workSchedule.wednesday && <span className="bg-blue-100 px-1 rounded text-xs">Mer</span>}
+                {workSchedule.thursday && <span className="bg-blue-100 px-1 rounded text-xs">Gio</span>}
+                {workSchedule.friday && <span className="bg-blue-100 px-1 rounded text-xs">Ven</span>}
+                {workSchedule.saturday && <span className="bg-blue-100 px-1 rounded text-xs">Sab</span>}
+                {workSchedule.sunday && <span className="bg-blue-100 px-1 rounded text-xs">Dom</span>}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -126,10 +140,25 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
           <CardTitle className="flex items-center gap-2 text-base">
             <Clock className="w-4 h-4" />
             Dettagli {selectedDate ? format(selectedDate, 'dd/MM', { locale: it }) : ''}
+            {selectedDate && !isWorkingDay(selectedDate) && (
+              <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs">
+                Non lavorativo
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-3">
-          {selectedDateAttendance ? (
+          {selectedDate && !isWorkingDay(selectedDate) ? (
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                <span className="font-semibold text-gray-700 text-sm">Non lavorativo</span>
+              </div>
+              <p className="text-xs text-gray-600">
+                Giorno non configurato come lavorativo
+              </p>
+            </div>
+          ) : selectedDateAttendance ? (
             <div className="space-y-3">
               <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-2 mb-2">
@@ -158,18 +187,13 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                <span className="font-semibold text-gray-700 text-sm">
-                  {workingDays.includes(selectedDate?.getDay() || 0) ? 'Assente' : 'Non lavorativo'}
-                </span>
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="font-semibold text-red-700 text-sm">Assente</span>
               </div>
-              <p className="text-xs text-gray-600">
-                {workingDays.includes(selectedDate?.getDay() || 0) 
-                  ? 'Nessuna presenza registrata'
-                  : 'Giorno non lavorativo'
-                }
+              <p className="text-xs text-red-600">
+                Nessuna presenza registrata per questo giorno lavorativo
               </p>
             </div>
           )}
