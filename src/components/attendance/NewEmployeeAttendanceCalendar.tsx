@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
@@ -71,45 +70,6 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
 
   const yearlyStats = calculateYearlyStats();
 
-  // CORREZIONE: Ottieni le date con presenze formattate correttamente
-  const attendanceDates = attendances
-    .filter(att => att.check_in_time || att.is_sick_leave)
-    .map(att => {
-      // Convertiamo la stringa data in oggetto Date senza problemi di timezone
-      const [year, month, day] = att.date.split('-').map(Number);
-      return new Date(year, month - 1, day); // month - 1 perché JavaScript usa mesi 0-based
-    });
-
-  const sickLeaveDates = attendances
-    .filter(att => att.is_sick_leave)
-    .map(att => {
-      const [year, month, day] = att.date.split('-').map(Number);
-      return new Date(year, month - 1, day);
-    });
-
-  // Calcola i giorni di assenza per questo operatore
-  const currentDate = new Date();
-  const oneMonthAgo = new Date(currentDate);
-  oneMonthAgo.setMonth(currentDate.getMonth() - 1);
-  
-  const absentDates = [];
-  const tempDate = new Date(oneMonthAgo);
-  
-  while (tempDate <= currentDate) {
-    const dateStr = format(tempDate, 'yyyy-MM-dd');
-    const hasAttendance = attendances.some(att => att.date === dateStr);
-    
-    // Se è un giorno lavorativo (lunedì-venerdì) e non ha presenza
-    const dayOfWeek = tempDate.getDay();
-    if (dayOfWeek >= 1 && dayOfWeek <= 5 && !hasAttendance && tempDate < currentDate) {
-      absentDates.push(new Date(tempDate));
-    }
-    
-    tempDate.setDate(tempDate.getDate() + 1);
-  }
-
-  console.log('Date con presenze per calendario operatore:', attendanceDates);
-
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
@@ -145,7 +105,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Calendar className="w-4 h-4" />
+            <CalendarIcon className="w-4 h-4" />
             Resoconto Annuale {new Date().getFullYear()}
           </CardTitle>
         </CardHeader>
