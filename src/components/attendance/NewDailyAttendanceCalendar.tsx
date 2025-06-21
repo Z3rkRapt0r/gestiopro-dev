@@ -68,32 +68,71 @@ export default function NewDailyAttendanceCalendar() {
     !selectedDateAttendances.some(att => att.user_id === emp.id)
   ) || [];
 
-  // CORREZIONE: Formattiamo anche le date delle presenze in modo consistente
-  const datesWithAttendance = attendances?.filter(att => att.check_in_time || att.is_sick_leave).map(att => {
-    // Convertiamo la stringa data in oggetto Date senza problemi di timezone
-    const [year, month, day] = att.date.split('-').map(Number);
-    return new Date(year, month - 1, day); // month - 1 perché JavaScript usa mesi 0-based
-  }) || [];
-
-  const datesWithSickLeave = attendances?.filter(att => att.is_sick_leave).map(att => {
-    const [year, month, day] = att.date.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  }) || [];
-
-  // Aggiungiamo le date di assenza (giorni lavorativi senza presenze)
-  const allDatesWithData = attendances?.map(att => {
-    const [year, month, day] = att.date.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  }) || [];
-
-  // Calcola i giorni di assenza basandosi sui dipendenti attivi
-  const absentDates = allDatesWithData.filter(date => {
-    const dateStr = format(date, 'yyyy-MM-dd');
+  // NUOVO: Calcola lo stato di ogni giorno per colorare i quadratini del calendario
+  const getDayStatus = (dateStr: string) => {
     const dayAttendances = attendances?.filter(att => att.date === dateStr) || [];
-    const employeesPresent = dayAttendances.length;
     const totalEmployees = employees?.length || 0;
-    return employeesPresent < totalEmployees && employeesPresent > 0;
-  });
+    
+    if (totalEmployees === 0) return null;
+    
+    const presentCount = dayAttendances.filter(att => att.check_in_time && !att.is_sick_leave).length;
+    const sickCount = dayAttendances.filter(att => att.is_sick_leave).length;
+    const absentCount = totalEmployees - dayAttendances.length;
+    
+    // Se tutti sono presenti = verde
+    if (presentCount === totalEmployees) return 'all-present';
+    // Se ci sono malattie = arancione
+    if (sickCount > 0) return 'has-sick';
+    // Se ci sono assenze = rosso
+    if (absentCount > 0 || presentCount < totalEmployees) return 'has-absent';
+    
+    return null;
+  };
+
+  // Genera tutte le date per il calendario con i loro stati
+  const generateCalendarDates = () => {
+    const today = new Date();
+    const oneMonthAgo = new Date(today);
+    oneMonthAgo.setMonth(today.getMonth() - 1);
+    const oneMonthForward = new Date(today);
+    oneMonthForward.setMonth(today.getMonth() + 1);
+    
+    const dates = {
+      allPresent: [],
+      hasSick: [],
+      hasAbsent: []
+    };
+    
+    const tempDate = new Date(oneMonthAgo);
+    while (tempDate <= oneMonthForward) {
+      const dateStr = format(tempDate, 'yyyy-MM-dd');
+      const dayOfWeek = tempDate.getDay();
+      
+      // Solo per giorni lavorativi (lunedì-venerdì)
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        const status = getDayStatus(dateStr);
+        const dateObj = new Date(tempDate);
+        
+        switch (status) {
+          case 'all-present':
+            dates.allPresent.push(dateObj);
+            break;
+          case 'has-sick':
+            dates.hasSick.push(dateObj);
+            break;
+          case 'has-absent':
+            dates.hasAbsent.push(dateObj);
+            break;
+        }
+      }
+      
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
+    
+    return dates;
+  };
+
+  const calendarDates = generateCalendarDates();
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
@@ -151,24 +190,24 @@ export default function NewDailyAttendanceCalendar() {
               }}
               locale={it}
               modifiers={{
-                hasAttendance: datesWithAttendance,
-                sickLeave: datesWithSickLeave,
-                absent: absentDates
+                allPresent: calendarDates.allPresent,
+                hasSick: calendarDates.hasSick,
+                hasAbsent: calendarDates.hasAbsent
               }}
               modifiersStyles={{
-                hasAttendance: {
-                  backgroundColor: '#dcfce7',
-                  color: '#166534',
+                allPresent: {
+                  backgroundColor: '#22c55e',
+                  color: '#ffffff',
                   fontWeight: 'bold'
                 },
-                sickLeave: {
-                  backgroundColor: '#fed7aa',
-                  color: '#ea580c',
+                hasSick: {
+                  backgroundColor: '#f97316',
+                  color: '#ffffff',
                   fontWeight: 'bold'
                 },
-                absent: {
-                  backgroundColor: '#fecaca',
-                  color: '#dc2626',
+                hasAbsent: {
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
                   fontWeight: 'bold'
                 }
               }}
@@ -177,15 +216,15 @@ export default function NewDailyAttendanceCalendar() {
           </div>
           <div className="mt-4 space-y-2">
             <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 bg-green-200 rounded"></div>
-              <span>Giorni con presenze</span>
+              <div className="w-3 h-3 bg-green-500 rounded"></div>
+              <span>Tutti presenti</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 bg-orange-200 rounded"></div>
-              <span>Giorni di malattia</span>
+              <div className="w-3 h-3 bg-orange-500 rounded"></div>
+              <span>Giorni con malattie</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 bg-red-200 rounded"></div>
+              <div className="w-3 h-3 bg-red-500 rounded"></div>
               <span>Giorni con assenze</span>
             </div>
           </div>
