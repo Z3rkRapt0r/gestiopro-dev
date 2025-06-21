@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useLeaveRequestNotifications } from "@/hooks/useLeaveRequestNotifications";
 import { useLeaveRequestValidation } from "./LeaveRequestFormValidation";
+import { useWorkSchedules } from "@/hooks/useWorkSchedules";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, Mail } from "lucide-react";
 
@@ -29,7 +31,8 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
   const [notifyAdmin, setNotifyAdmin] = useState(true);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  const { insertMutation } = useLeaveRequests();
+  const { insertMutation, isWorkingDay } = useLeaveRequests();
+  const { workSchedule } = useWorkSchedules();
   const { notifyAdmin: sendAdminNotification } = useLeaveRequestNotifications();
   const { validateTimeRange, validateDateRange, validatePermessoDay } = useLeaveRequestValidation();
   const { toast } = useToast();
@@ -44,9 +47,17 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
         errors.push(dayValidation.error!);
       }
 
-      const timeValidation = validateTimeRange(timeFrom, timeTo);
-      if (!timeValidation.isValid) {
-        errors.push(timeValidation.error!);
+      // Se è un permesso orario, valida gli orari
+      if (timeFrom && timeTo) {
+        const timeValidation = validateTimeRange(timeFrom, timeTo);
+        if (!timeValidation.isValid) {
+          errors.push(timeValidation.error!);
+        }
+      }
+
+      // Verifica che il giorno sia lavorativo (solo per permessi)
+      if (day && !isWorkingDay(day)) {
+        errors.push("Il giorno selezionato non è configurato come giorno lavorativo");
       }
     }
 
@@ -63,7 +74,11 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
 
   const getRequestDetails = () => {
     if (type === "permesso") {
-      return `Giorno: ${day?.toLocaleDateString('it-IT')}\nOrario: ${timeFrom} - ${timeTo}${note ? `\nNote: ${note}` : ''}`;
+      if (timeFrom && timeTo) {
+        return `Giorno: ${day?.toLocaleDateString('it-IT')}\nOrario: ${timeFrom} - ${timeTo}${note ? `\nNote: ${note}` : ''}`;
+      } else {
+        return `Giorno: ${day?.toLocaleDateString('it-IT')}\nPermesso giornaliero${note ? `\nNote: ${note}` : ''}`;
+      }
     } else {
       return `Dal: ${dateFrom?.toLocaleDateString('it-IT')}\nAl: ${dateTo?.toLocaleDateString('it-IT')}${note ? `\nNote: ${note}` : ''}`;
     }
@@ -88,15 +103,18 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
       const payload: any = {
         type,
         note,
-        status: "pending",
+        status: "approved", // Auto-approvazione
         user_id: profile.id,
-        notify_employee: true, // Il dipendente vuole sempre essere notificato
+        notify_employee: true,
       };
 
       if (type === "permesso") {
         payload.day = day?.toISOString().slice(0, 10);
-        payload.time_from = timeFrom;
-        payload.time_to = timeTo;
+        // Solo se sono specificati entrambi gli orari
+        if (timeFrom && timeTo) {
+          payload.time_from = timeFrom;
+          payload.time_to = timeTo;
+        }
       }
 
       if (type === "ferie") {
@@ -118,8 +136,8 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
       }
 
       toast({ 
-        title: "Richiesta inviata", 
-        description: notifyAdmin ? "L'amministratore è stato notificato via email" : "Richiesta salvata"
+        title: "Richiesta creata", 
+        description: "La richiesta è stata creata e le presenze sono state registrate automaticamente per i giorni lavorativi"
       });
       
       onSuccess();
@@ -145,6 +163,31 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
             </Alert>
           )}
 
+          {/* Info configurazione orari di lavoro */}
+          {workSchedule && (
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-sm font-medium text-blue-700 mb-2">Configurazione Orari di Lavoro:</div>
+              <div className="text-xs text-blue-600 space-y-1">
+                <div>Orari: {workSchedule.start_time} - {workSchedule.end_time}</div>
+                <div className="flex flex-wrap gap-1">
+                  {workSchedule.monday && <span className="bg-blue-100 px-1 rounded">Lun</span>}
+                  {workSchedule.tuesday && <span className="bg-blue-100 px-1 rounded">Mar</span>}
+                  {workSchedule.wednesday && <span className="bg-blue-100 px-1 rounded">Mer</span>}
+                  {workSchedule.thursday && <span className="bg-blue-100 px-1 rounded">Gio</span>}
+                  {workSchedule.friday && <span className="bg-blue-100 px-1 rounded">Ven</span>}
+                  {workSchedule.saturday && <span className="bg-blue-100 px-1 rounded">Sab</span>}
+                  {workSchedule.sunday && <span className="bg-blue-100 px-1 rounded">Dom</span>}
+                </div>
+                <div className="text-xs text-blue-500 mt-1">
+                  {type === "permesso" 
+                    ? "Solo i giorni lavorativi possono essere selezionati per i permessi" 
+                    : "Le presenze automatiche saranno create solo per i giorni lavorativi"
+                  }
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
             {type === "permesso" && (
               <>
@@ -159,28 +202,38 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
                       disabled={(date) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
-                        return date < today;
+                        // Disabilita giorni passati e giorni non lavorativi
+                        return date < today || !isWorkingDay(date);
+                      }}
+                      modifiers={{
+                        workingDay: (date) => isWorkingDay(date)
+                      }}
+                      modifiersStyles={{
+                        workingDay: {
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151'
+                        }
                       }}
                     />
                   </div>
                 </div>
                 <div className="flex flex-row gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Da (orario)</label>
+                    <label className="block text-sm font-medium mb-1">Da (orario) - Opzionale</label>
                     <Input 
                       type="time" 
                       value={timeFrom} 
                       onChange={e => setTimeFrom(e.target.value)} 
-                      required 
+                      placeholder="Lascia vuoto per permesso giornaliero"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">A (orario)</label>
+                    <label className="block text-sm font-medium mb-1">A (orario) - Opzionale</label>
                     <Input 
                       type="time" 
                       value={timeTo} 
                       onChange={e => setTimeTo(e.target.value)} 
-                      required 
+                      placeholder="Lascia vuoto per permesso giornaliero"
                     />
                   </div>
                 </div>
@@ -201,6 +254,15 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
                         today.setHours(0, 0, 0, 0);
                         return date < today;
                       }}
+                      modifiers={{
+                        workingDay: (date) => isWorkingDay(date)
+                      }}
+                      modifiersStyles={{
+                        workingDay: {
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151'
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -216,6 +278,15 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         return date < today || (dateFrom && date < dateFrom);
+                      }}
+                      modifiers={{
+                        workingDay: (date) => isWorkingDay(date)
+                      }}
+                      modifiersStyles={{
+                        workingDay: {
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151'
+                        }
                       }}
                     />
                   </div>
@@ -246,7 +317,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
 
           <div className="flex justify-end">
             <Button type="submit" disabled={loading}>
-              {loading ? "Invio..." : "Invia richiesta"}
+              {loading ? "Creazione..." : `Crea ${type}`}
             </Button>
           </div>
         </form>

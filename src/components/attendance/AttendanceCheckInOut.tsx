@@ -3,187 +3,167 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Play, Square, AlertTriangle } from 'lucide-react';
-import { useAttendances } from '@/hooks/useAttendances';
-import { useGPSValidation } from '@/hooks/useGPSValidation';
+import { Clock, MapPin, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { useAttendanceOperations } from '@/hooks/useAttendanceOperations';
+import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import GPSStatusIndicator from './GPSStatusIndicator';
 
 export default function AttendanceCheckInOut() {
-  const { checkIn, checkOut, isCheckingIn, isCheckingOut, getTodayAttendance } = useAttendances();
-  const { validateLocation, settings: adminSettings } = useGPSValidation();
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
-
-  const todayAttendance = getTodayAttendance();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const { 
+    todayAttendance, 
+    checkIn, 
+    checkOut, 
+    isCheckingIn, 
+    isCheckingOut,
+    hasActiveSession 
+  } = useAttendanceOperations();
+  const { workSchedule } = useWorkSchedules();
 
   useEffect(() => {
-    console.log('Richiesta geolocalizzazione...');
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newLocation = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
-          console.log('Posizione rilevata:', newLocation);
-          setLocation(newLocation);
-          setLocationError(null);
-        },
-        (error) => {
-          console.error('Errore geolocalizzazione:', error);
-          setLocationError('Geolocalizzazione non disponibile. Abilita la posizione nel browser.');
-        }
-      );
-    } else {
-      setLocationError('Geolocalizzazione non supportata dal browser.');
-    }
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
-  const handleCheckIn = () => {
-    if (!location) {
-      setLocationError('Posizione non disponibile. Ricarica la pagina e consenti l\'accesso alla posizione.');
-      return;
-    }
-
-    console.log('Tentativo check-in con:', {
-      location,
-      adminSettings
-    });
-
-    checkIn({
-      ...location,
-      isBusinessTrip: false,
-    });
-  };
-
-  const handleCheckOut = () => {
-    if (!location) {
-      setLocationError('Posizione non disponibile. Ricarica la pagina e consenti l\'accesso alla posizione.');
-      return;
-    }
-    checkOut(location);
-  };
-
-  const formatTime = (timeString: string) => {
-    return new Date(timeString).toLocaleTimeString('it-IT', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getLocationStatus = () => {
-    if (!location) return { inRange: true, distance: null };
+  // Verifica se oggi è un giorno lavorativo
+  const isWorkingDay = () => {
+    if (!workSchedule) return false;
     
-    const validation = validateLocation(location.latitude, location.longitude, false);
-    return {
-      inRange: validation.isValid,
-      distance: validation.distance,
-      message: validation.message
-    };
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    
+    switch (dayOfWeek) {
+      case 0: return workSchedule.sunday;
+      case 1: return workSchedule.monday;
+      case 2: return workSchedule.tuesday;
+      case 3: return workSchedule.wednesday;
+      case 4: return workSchedule.thursday;
+      case 5: return workSchedule.friday;
+      case 6: return workSchedule.saturday;
+      default: return false;
+    }
   };
 
-  const locationStatus = getLocationStatus();
+  const currentTimeString = format(currentTime, 'HH:mm:ss', { locale: it });
+  const currentDateString = format(currentTime, 'EEEE, dd MMMM yyyy', { locale: it });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="w-5 h-5" />
-          Presenza di Oggi
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {locationError && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            {locationError}
-          </div>
-        )}
-
-        {location && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="w-4 h-4" />
-              Posizione rilevata: {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+    <div className="max-w-md mx-auto space-y-6">
+      {/* Info configurazione orari di lavoro */}
+      {workSchedule && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Orari di Lavoro
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Orario:</span>
+              <span className="font-medium">{workSchedule.start_time} - {workSchedule.end_time}</span>
             </div>
-            
-            {adminSettings?.company_latitude && adminSettings?.company_longitude && (
-              <div className="flex items-center gap-2 text-sm">
-                {locationStatus.inRange ? (
-                  <Badge variant="default" className="bg-green-600">
-                    <MapPin className="w-3 h-3 mr-1" />
-                    Posizione valida
-                    {locationStatus.distance && ` (${locationStatus.distance}m)`}
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    Fuori dal raggio consentito
-                    {locationStatus.distance && ` (${locationStatus.distance}m)`}
-                  </Badge>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Oggi:</span>
+              <Badge variant={isWorkingDay() ? "default" : "secondary"}>
+                {isWorkingDay() ? "Giorno lavorativo" : "Non lavorativo"}
+              </Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Tolleranza:</span>
+              <span className="font-medium">{workSchedule.tolerance_minutes} minuti</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        {todayAttendance && (
-          <div className="space-y-2">
-            {todayAttendance.check_in_time && (
-              <div className="flex items-center justify-between p-2 bg-green-50 rounded">
-                <span className="text-sm">Check-in:</span>
-                <Badge variant="outline" className="bg-green-100 text-green-700">
-                  {formatTime(todayAttendance.check_in_time)}
-                </Badge>
-              </div>
-            )}
-            
-            {todayAttendance.check_out_time && (
-              <div className="flex items-center justify-between p-2 bg-blue-50 rounded">
-                <span className="text-sm">Check-out:</span>
-                <Badge variant="outline" className="bg-blue-100 text-blue-700">
-                  {formatTime(todayAttendance.check_out_time)}
-                </Badge>
-              </div>
-            )}
-          </div>
-        )}
+      {/* Avviso per giorni non lavorativi */}
+      {!isWorkingDay() && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-orange-700">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                Oggi non è configurato come giorno lavorativo
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        <div className="flex gap-2">
-          {!todayAttendance?.check_in_time ? (
-            <Button
-              onClick={handleCheckIn}
-              disabled={!location || isCheckingIn || !locationStatus.inRange}
-              className="flex-1"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              {isCheckingIn ? 'Registrando...' : 'Inizio Turno'}
-            </Button>
-          ) : !todayAttendance.check_out_time && adminSettings?.checkout_enabled ? (
-            <Button
-              onClick={handleCheckOut}
-              disabled={!location || isCheckingOut}
-              variant="destructive"
-              className="flex-1"
-            >
-              <Square className="w-4 h-4 mr-2" />
-              {isCheckingOut ? 'Registrando...' : 'Fine Turno'}
-            </Button>
+      {/* Orologio */}
+      <Card>
+        <CardContent className="text-center py-8">
+          <div className="text-4xl font-mono font-bold text-primary mb-2">
+            {currentTimeString}
+          </div>
+          <div className="text-lg text-muted-foreground capitalize">
+            {currentDateString}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Status GPS */}
+      <GPSStatusIndicator />
+
+      {/* Controlli presenze */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Presenze</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {todayAttendance ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-700">Entrata</span>
+                </div>
+                <span className="text-green-700 font-bold">
+                  {todayAttendance.check_in_time ? 
+                    format(new Date(todayAttendance.check_in_time), 'HH:mm') : 
+                    '--:--'
+                  }
+                </span>
+              </div>
+
+              {todayAttendance.check_out_time ? (
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-700">Uscita</span>
+                  </div>
+                  <span className="text-blue-700 font-bold">
+                    {format(new Date(todayAttendance.check_out_time), 'HH:mm')}
+                  </span>
+                </div>
+              ) : (
+                <Button 
+                  onClick={checkOut} 
+                  disabled={isCheckingOut} 
+                  className="w-full"
+                  variant="outline"
+                >
+                  {isCheckingOut ? 'Registrando uscita...' : 'Registra Uscita'}
+                </Button>
+              )}
+            </div>
           ) : (
-            <div className="flex-1 p-2 bg-gray-50 rounded text-center text-sm text-muted-foreground">
-              {!adminSettings?.checkout_enabled && todayAttendance.check_in_time && !todayAttendance.check_out_time
-                ? 'Check-out disabilitato'
-                : 'Turno completato per oggi'
-              }
-            </div>
+            <Button 
+              onClick={checkIn} 
+              disabled={isCheckingIn} 
+              className="w-full"
+            >
+              {isCheckingIn ? 'Registrando entrata...' : 'Registra Entrata'}
+            </Button>
           )}
-        </div>
-
-        {!locationStatus.inRange && location && adminSettings?.company_latitude && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            <AlertTriangle className="w-4 h-4 inline mr-1" />
-            {locationStatus.message}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -1,6 +1,9 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkSchedules } from "@/hooks/useWorkSchedules";
+import { format, eachDayOfInterval } from 'date-fns';
 
 export type LeaveRequest = {
   id: string;
@@ -27,8 +30,26 @@ export type LeaveRequest = {
 
 export function useLeaveRequests() {
   const { profile } = useAuth();
+  const { workSchedule } = useWorkSchedules();
   const isAdmin = profile?.role === "admin";
   const queryClient = useQueryClient();
+
+  // Funzione per verificare se un giorno è lavorativo
+  const isWorkingDay = (date: Date) => {
+    if (!workSchedule) return false;
+    
+    const dayOfWeek = date.getDay();
+    switch (dayOfWeek) {
+      case 0: return workSchedule.sunday;
+      case 1: return workSchedule.monday;
+      case 2: return workSchedule.tuesday;
+      case 3: return workSchedule.wednesday;
+      case 4: return workSchedule.thursday;
+      case 5: return workSchedule.friday;
+      case 6: return workSchedule.saturday;
+      default: return false;
+    }
+  };
 
   // For admin: get all, for employee/user: get own
   const { data, isLoading, error } = useQuery({
@@ -83,17 +104,86 @@ export function useLeaveRequests() {
         date_from: date_from ?? null,
         date_to: date_to ?? null,
         note: note ?? null,
-        status: status ?? "pending",
+        status: status ?? "approved", // Auto-approvazione per ferie/permessi
       };
+      
       const { error, data } = await supabase
         .from("leave_requests")
         .insert(cleanPayload)
         .select()
         .maybeSingle();
       if (error) throw error;
+
+      // Se la richiesta è per ferie, creiamo presenze per i giorni lavorativi
+      if (type === "ferie" && date_from && date_to && data) {
+        const startDate = new Date(date_from);
+        const endDate = new Date(date_to);
+        const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+        
+        // Filtra solo i giorni lavorativi basandosi sulla configurazione
+        const workingDays = allDays.filter(day => isWorkingDay(day));
+
+        console.log('Giorni lavorativi per ferie:', workingDays.length, 'su', allDays.length, 'giorni totali');
+
+        // Crea le presenze per tutti i giorni lavorativi delle ferie
+        if (workingDays.length > 0) {
+          const attendancesToCreate = workingDays.map(day => ({
+            user_id: user_id!,
+            date: format(day, 'yyyy-MM-dd'),
+            check_in_time: workSchedule?.start_time || '08:00',
+            check_out_time: workSchedule?.end_time || '17:00',
+            is_manual: true,
+            is_business_trip: false,
+            notes: `Ferie`,
+          }));
+
+          const { error: attendanceError } = await supabase
+            .from('unified_attendances')
+            .upsert(attendancesToCreate, {
+              onConflict: 'user_id,date'
+            });
+
+          if (attendanceError) {
+            console.error('Error creating vacation attendances:', attendanceError);
+          }
+        }
+      }
+
+      // Se la richiesta è per permesso giornaliero, creiamo presenza solo se è un giorno lavorativo
+      if (type === "permesso" && day && !time_from && !time_to && data) {
+        const permissionDate = new Date(day);
+        
+        if (isWorkingDay(permissionDate)) {
+          console.log('Creando presenza per permesso giornaliero:', day);
+
+          const attendanceToCreate = {
+            user_id: user_id!,
+            date: day,
+            check_in_time: workSchedule?.start_time || '08:00',
+            check_out_time: workSchedule?.end_time || '17:00',
+            is_manual: true,
+            is_business_trip: false,
+            notes: `Permesso`,
+          };
+
+          const { error: attendanceError } = await supabase
+            .from('unified_attendances')
+            .upsert([attendanceToCreate], {
+              onConflict: 'user_id,date'
+            });
+
+          if (attendanceError) {
+            console.error('Error creating permission attendance:', attendanceError);
+          }
+        }
+      }
+
       return data as LeaveRequest;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave_requests"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+    },
   });
 
   // Approve/reject request (admin)
@@ -172,5 +262,6 @@ export function useLeaveRequests() {
     updateStatusMutation,
     updateRequestMutation,
     deleteRequestMutation,
+    isWorkingDay, // Esportiamo la funzione per uso nei componenti
   };
 }

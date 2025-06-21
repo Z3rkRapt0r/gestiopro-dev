@@ -32,7 +32,7 @@ export const useBusinessTrips = () => {
   const queryClient = useQueryClient();
   const { workSchedule } = useWorkSchedules();
 
-  // Funzione per verificare se un giorno è lavorativo
+  // Funzione per verificare se un giorno è lavorativo basata sulla configurazione
   const isWorkingDay = (date: Date) => {
     if (!workSchedule) return false;
     
@@ -92,7 +92,7 @@ export const useBusinessTrips = () => {
 
       return tripData as BusinessTrip[];
     },
-    enabled: !!user && !!profile,
+    enabled: !!user && !!profile && !!workSchedule,
   });
 
   const createTrip = useMutation({
@@ -103,6 +103,11 @@ export const useBusinessTrips = () => {
       destination: string;
       reason: string;
     }) => {
+      // Verifica che la configurazione degli orari sia disponibile
+      if (!workSchedule) {
+        throw new Error('Configurazione orari di lavoro non disponibile');
+      }
+
       // Se è admin e user_id è specificato, usa quello, altrimenti usa l'ID dell'utente corrente
       const targetUserId = (profile?.role === 'admin' && tripData.user_id) ? tripData.user_id : user?.id;
 
@@ -129,17 +134,30 @@ export const useBusinessTrips = () => {
       const endDate = new Date(tripData.end_date);
       const allDays = eachDayOfInterval({ start: startDate, end: endDate });
       
-      // Filtra solo i giorni lavorativi basandosi sulla configurazione
+      // Filtra solo i giorni lavorativi basandosi sulla configurazione degli orari
       const workingDays = allDays.filter(day => isWorkingDay(day));
 
       console.log('Giorni lavorativi per trasferta:', workingDays.length, 'su', allDays.length, 'giorni totali');
+      console.log('Configurazione orari utilizzata:', {
+        start_time: workSchedule.start_time,
+        end_time: workSchedule.end_time,
+        days: {
+          monday: workSchedule.monday,
+          tuesday: workSchedule.tuesday,
+          wednesday: workSchedule.wednesday,
+          thursday: workSchedule.thursday,
+          friday: workSchedule.friday,
+          saturday: workSchedule.saturday,
+          sunday: workSchedule.sunday,
+        }
+      });
 
       // Crea le presenze per tutti i giorni lavorativi della trasferta
       const attendancesToCreate = workingDays.map(day => ({
         user_id: targetUserId,
         date: format(day, 'yyyy-MM-dd'),
-        check_in_time: workSchedule?.start_time || '08:00',
-        check_out_time: workSchedule?.end_time || '17:00',
+        check_in_time: workSchedule.start_time,
+        check_out_time: workSchedule.end_time,
         is_manual: true,
         is_business_trip: true,
         notes: `Trasferta: ${tripData.destination}`,
@@ -156,6 +174,8 @@ export const useBusinessTrips = () => {
         if (attendanceError) {
           console.error('Error creating trip attendances:', attendanceError);
           // Non blocchiamo la creazione della trasferta se c'è un errore nelle presenze
+        } else {
+          console.log('Presenze trasferta create con successo:', attendancesToCreate.length);
         }
       }
 
@@ -166,14 +186,14 @@ export const useBusinessTrips = () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
         title: "Trasferta creata",
-        description: "La trasferta è stata creata e le presenze sono state registrate automaticamente per i giorni lavorativi",
+        description: "La trasferta è stata creata e le presenze sono state registrate automaticamente per i giorni lavorativi configurati",
       });
     },
     onError: (error: any) => {
       console.error('Create trip error:', error);
       toast({
         title: "Errore",
-        description: "Errore nella creazione della trasferta",
+        description: error.message || "Errore nella creazione della trasferta",
         variant: "destructive",
       });
     },
@@ -184,5 +204,6 @@ export const useBusinessTrips = () => {
     isLoading,
     createTrip: createTrip.mutate,
     isCreating: createTrip.isPending,
+    isWorkingDay, // Esportiamo la funzione per uso nei componenti
   };
 };
