@@ -24,16 +24,16 @@ export default function NewManualAttendanceForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Costruiamo gli orari come timestamp locali senza fuso orario
+    // Costruisci i timestamp come stringhe locali nel formato ISO senza timezone
     const attendanceData = {
       user_id: formData.user_id,
       date: formData.date,
-      check_in_time: formData.check_in_time ? `${formData.date} ${formData.check_in_time}:00` : null,
-      check_out_time: formData.check_out_time ? `${formData.date} ${formData.check_out_time}:00` : null,
-      notes: formData.notes,
+      check_in_time: formData.check_in_time ? `${formData.date}T${formData.check_in_time}:00` : null,
+      check_out_time: formData.check_out_time ? `${formData.date}T${formData.check_out_time}:00` : null,
+      notes: formData.notes || null,
     };
 
-    console.log('Invio presenza manuale:', attendanceData);
+    console.log('Invio presenza manuale con timestamp locali:', attendanceData);
     createManualAttendance(attendanceData);
     
     // Reset form

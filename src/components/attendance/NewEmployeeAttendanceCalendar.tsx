@@ -67,19 +67,30 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
-    // Se è un timestamp locale (senza Z o timezone), trattalo come locale
-    if (!timeString.includes('Z') && !timeString.includes('+') && !timeString.includes('T')) {
-      // Formato: "YYYY-MM-DD HH:mm:ss"
-      const [datePart, timePart] = timeString.split(' ');
+    // Se il timestamp è nel formato ISO locale (YYYY-MM-DDTHH:mm:ss)
+    if (timeString.includes('T') && !timeString.includes('Z') && !timeString.includes('+')) {
+      const [, timePart] = timeString.split('T');
       const [hours, minutes] = timePart.split(':');
       return `${hours}:${minutes}`;
     }
     
-    // Altrimenti usa il parsing normale
-    return new Date(timeString).toLocaleTimeString('it-IT', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Se è nel formato "YYYY-MM-DD HH:mm:ss"
+    if (timeString.includes(' ')) {
+      const [, timePart] = timeString.split(' ');
+      const [hours, minutes] = timePart.split(':');
+      return `${hours}:${minutes}`;
+    }
+    
+    // Fallback per altri formati
+    try {
+      return new Date(timeString).toLocaleTimeString('it-IT', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Errore nel parsing del timestamp:', timeString, error);
+      return '--:--';
+    }
   };
 
   return (
@@ -142,7 +153,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
           {selectedDateAttendance ? (
             <div className="space-y-3">
               <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span className="font-semibold text-green-700 text-sm">Presente</span>
                   {selectedDateAttendance.is_manual && (

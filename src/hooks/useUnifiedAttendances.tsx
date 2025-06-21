@@ -31,43 +31,42 @@ export const useUnifiedAttendances = () => {
     queryFn: async () => {
       console.log('Caricamento presenze unificate...');
       
-      // Ottieni presenze automatiche
-      let attendanceQuery = supabase
-        .from('attendances')
-        .select('*')
-        .order('date', { ascending: false });
-
-      // Ottieni presenze manuali
+      // Prima ottieni le presenze manuali
       let manualQuery = supabase
         .from('manual_attendances')
         .select('*')
         .order('date', { ascending: false });
 
+      // Poi ottieni le presenze automatiche
+      let attendanceQuery = supabase
+        .from('attendances')
+        .select('*')
+        .order('date', { ascending: false });
+
       // Se non è admin, filtra per utente corrente
       if (profile?.role !== 'admin') {
-        attendanceQuery = attendanceQuery.eq('user_id', user?.id);
         manualQuery = manualQuery.eq('user_id', user?.id);
+        attendanceQuery = attendanceQuery.eq('user_id', user?.id);
       }
 
-      const [attendanceResult, manualResult] = await Promise.all([
-        attendanceQuery,
-        manualQuery
+      const [manualResult, attendanceResult] = await Promise.all([
+        manualQuery,
+        attendanceQuery
       ]);
-
-      if (attendanceResult.error) {
-        console.error('Errore caricamento attendances:', attendanceResult.error);
-        throw attendanceResult.error;
-      }
 
       if (manualResult.error) {
         console.error('Errore caricamento manual_attendances:', manualResult.error);
         throw manualResult.error;
       }
 
-      // Unifica i dati
+      if (attendanceResult.error) {
+        console.error('Errore caricamento attendances:', attendanceResult.error);
+        throw attendanceResult.error;
+      }
+
       const allAttendances: UnifiedAttendance[] = [];
 
-      // Aggiungi presenze automatiche
+      // Prima aggiungi tutte le presenze automatiche
       attendanceResult.data?.forEach(att => {
         allAttendances.push({
           ...att,
@@ -76,18 +75,19 @@ export const useUnifiedAttendances = () => {
         });
       });
 
-      // Aggiungi presenze manuali, sovrascrivendo quelle automatiche se esistono per la stessa data/utente
+      // Poi sovrascrivi con le presenze manuali (hanno precedenza)
       manualResult.data?.forEach(manual => {
         const existingIndex = allAttendances.findIndex(
           att => att.user_id === manual.user_id && att.date === manual.date
         );
         
         if (existingIndex >= 0) {
-          // Sostituisci la presenza automatica con quella manuale
+          // Sovrascrivi la presenza automatica con quella manuale
+          const existingAttendance = allAttendances[existingIndex];
           allAttendances[existingIndex] = {
             ...manual,
             is_manual: true,
-            is_business_trip: allAttendances[existingIndex].is_business_trip,
+            is_business_trip: existingAttendance.is_business_trip || false,
           };
         } else {
           // Aggiungi nuova presenza manuale
@@ -137,7 +137,7 @@ export const useUnifiedAttendances = () => {
     }) => {
       console.log('Creazione presenza manuale:', attendanceData);
       
-      // Inserisci/aggiorna presenza manuale
+      // Inserisci nella tabella manual_attendances usando upsert
       const { data: manualData, error: manualError } = await supabase
         .from('manual_attendances')
         .upsert({
@@ -154,6 +154,7 @@ export const useUnifiedAttendances = () => {
         throw manualError;
       }
 
+      console.log('Presenza manuale salvata:', manualData);
       return manualData;
     },
     onSuccess: () => {
@@ -175,14 +176,24 @@ export const useUnifiedAttendances = () => {
 
   const deleteAttendance = useMutation({
     mutationFn: async (attendanceId: string) => {
-      // Prova prima a eliminare dalle presenze manuali
-      const { error: manualError } = await supabase
+      // Prima prova a eliminare dalle presenze manuali
+      const { data: manualCheck } = await supabase
         .from('manual_attendances')
-        .delete()
-        .eq('id', attendanceId);
+        .select('id')
+        .eq('id', attendanceId)
+        .single();
 
-      if (manualError) {
-        // Se non è nelle presenze manuali, prova in quelle automatiche
+      if (manualCheck) {
+        const { error: manualError } = await supabase
+          .from('manual_attendances')
+          .delete()
+          .eq('id', attendanceId);
+
+        if (manualError) {
+          throw manualError;
+        }
+      } else {
+        // Se non è nelle presenze manuali, elimina da quelle automatiche
         const { error: attendanceError } = await supabase
           .from('attendances')
           .delete()

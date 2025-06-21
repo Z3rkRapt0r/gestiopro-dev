@@ -55,19 +55,30 @@ export default function NewDailyAttendanceCalendar() {
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
-    // Se è un timestamp locale (senza Z o timezone), trattalo come locale
-    if (!timeString.includes('Z') && !timeString.includes('+') && !timeString.includes('T')) {
-      // Formato: "YYYY-MM-DD HH:mm:ss"
-      const [datePart, timePart] = timeString.split(' ');
+    // Se il timestamp è nel formato ISO locale (YYYY-MM-DDTHH:mm:ss)
+    if (timeString.includes('T') && !timeString.includes('Z') && !timeString.includes('+')) {
+      const [, timePart] = timeString.split('T');
       const [hours, minutes] = timePart.split(':');
       return `${hours}:${minutes}`;
     }
     
-    // Altrimenti usa il parsing normale
-    return new Date(timeString).toLocaleTimeString('it-IT', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Se è nel formato "YYYY-MM-DD HH:mm:ss"
+    if (timeString.includes(' ')) {
+      const [, timePart] = timeString.split(' ');
+      const [hours, minutes] = timePart.split(':');
+      return `${hours}:${minutes}`;
+    }
+    
+    // Fallback per altri formati
+    try {
+      return new Date(timeString).toLocaleTimeString('it-IT', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Errore nel parsing del timestamp:', timeString, error);
+      return '--:--';
+    }
   };
 
   const handleDeleteAttendance = (attendanceId: string) => {
@@ -137,7 +148,7 @@ export default function NewDailyAttendanceCalendar() {
                     <div key={employee.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-sm">
                               {employee.first_name} {employee.last_name}
                             </span>
