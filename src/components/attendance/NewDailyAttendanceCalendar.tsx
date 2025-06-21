@@ -55,35 +55,34 @@ export default function NewDailyAttendanceCalendar() {
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
-    // Se il timestamp è nel formato ISO locale (YYYY-MM-DDTHH:mm:ss)
-    if (timeString.includes('T') && !timeString.includes('Z') && !timeString.includes('+')) {
-      const [, timePart] = timeString.split('T');
-      const [hours, minutes] = timePart.split(':');
-      return `${hours}:${minutes}`;
-    }
-    
-    // Se è nel formato "YYYY-MM-DD HH:mm:ss"
-    if (timeString.includes(' ')) {
-      const [, timePart] = timeString.split(' ');
-      const [hours, minutes] = timePart.split(':');
-      return `${hours}:${minutes}`;
-    }
-    
-    // Fallback per altri formati
     try {
-      return new Date(timeString).toLocaleTimeString('it-IT', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      // Se il timestamp è nel formato ISO con fuso orario
+      if (timeString.includes('T')) {
+        const date = new Date(timeString);
+        return date.toLocaleTimeString('it-IT', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Rome'
+        });
+      }
+      
+      // Se è nel formato "YYYY-MM-DD HH:mm:ss"
+      if (timeString.includes(' ')) {
+        const [, timePart] = timeString.split(' ');
+        const [hours, minutes] = timePart.split(':');
+        return `${hours}:${minutes}`;
+      }
+      
+      return '--:--';
     } catch (error) {
       console.error('Errore nel parsing del timestamp:', timeString, error);
       return '--:--';
     }
   };
 
-  const handleDeleteAttendance = (attendanceId: string) => {
+  const handleDeleteAttendance = (attendance: any) => {
     if (confirm('Sei sicuro di voler eliminare questa presenza?')) {
-      deleteAttendance(attendanceId);
+      deleteAttendance(attendance);
     }
   };
 
@@ -148,7 +147,7 @@ export default function NewDailyAttendanceCalendar() {
                     <div key={employee.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="font-medium text-sm">
                               {employee.first_name} {employee.last_name}
                             </span>
@@ -166,22 +165,20 @@ export default function NewDailyAttendanceCalendar() {
                           {employee.attendance.notes && (
                             <p className="text-xs text-gray-600 mt-1">{employee.attendance.notes}</p>
                           )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-xs text-gray-600 text-right">
+                          <div className="text-xs text-gray-600 mt-1">
                             <div>Entrata: {formatTime(employee.attendance.check_in_time)}</div>
                             <div>Uscita: {formatTime(employee.attendance.check_out_time)}</div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteAttendance(employee.attendance.id)}
-                            disabled={isDeleting}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteAttendance(employee.attendance)}
+                          disabled={isDeleting}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
                       </div>
                     </div>
                   ))

@@ -24,7 +24,6 @@ export default function NewManualAttendanceForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Costruisci i timestamp come stringhe locali nel formato ISO senza timezone
     const attendanceData = {
       user_id: formData.user_id,
       date: formData.date,
@@ -33,7 +32,7 @@ export default function NewManualAttendanceForm() {
       notes: formData.notes || null,
     };
 
-    console.log('Invio presenza manuale con timestamp locali:', attendanceData);
+    console.log('Invio presenza manuale:', attendanceData);
     createManualAttendance(attendanceData);
     
     // Reset form

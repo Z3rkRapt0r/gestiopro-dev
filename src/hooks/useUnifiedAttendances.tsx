@@ -31,76 +31,73 @@ export const useUnifiedAttendances = () => {
     queryFn: async () => {
       console.log('Caricamento presenze unificate...');
       
-      // Prima ottieni le presenze manuali
-      let manualQuery = supabase
-        .from('manual_attendances')
-        .select('*')
-        .order('date', { ascending: false });
-
-      // Poi ottieni le presenze automatiche
+      // Prima ottieni le presenze automatiche
       let attendanceQuery = supabase
         .from('attendances')
         .select('*')
         .order('date', { ascending: false });
 
+      // Poi ottieni le presenze manuali
+      let manualQuery = supabase
+        .from('manual_attendances')
+        .select('*')
+        .order('date', { ascending: false });
+
       // Se non è admin, filtra per utente corrente
       if (profile?.role !== 'admin') {
-        manualQuery = manualQuery.eq('user_id', user?.id);
         attendanceQuery = attendanceQuery.eq('user_id', user?.id);
+        manualQuery = manualQuery.eq('user_id', user?.id);
       }
 
-      const [manualResult, attendanceResult] = await Promise.all([
-        manualQuery,
-        attendanceQuery
+      const [attendanceResult, manualResult] = await Promise.all([
+        attendanceQuery,
+        manualQuery
       ]);
-
-      if (manualResult.error) {
-        console.error('Errore caricamento manual_attendances:', manualResult.error);
-        throw manualResult.error;
-      }
 
       if (attendanceResult.error) {
         console.error('Errore caricamento attendances:', attendanceResult.error);
         throw attendanceResult.error;
       }
 
-      const allAttendances: UnifiedAttendance[] = [];
+      if (manualResult.error) {
+        console.error('Errore caricamento manual_attendances:', manualResult.error);
+        throw manualResult.error;
+      }
+
+      // Crea un Map per tracciare le presenze per data e utente
+      const attendanceMap = new Map<string, UnifiedAttendance>();
 
       // Prima aggiungi tutte le presenze automatiche
       attendanceResult.data?.forEach(att => {
-        allAttendances.push({
+        const key = `${att.user_id}-${att.date}`;
+        attendanceMap.set(key, {
           ...att,
           is_manual: false,
           notes: null,
         });
       });
 
-      // Poi sovrascrivi con le presenze manuali (hanno precedenza)
+      // Poi aggiungi/sovrascrivi con le presenze manuali
       manualResult.data?.forEach(manual => {
-        const existingIndex = allAttendances.findIndex(
-          att => att.user_id === manual.user_id && att.date === manual.date
-        );
+        const key = `${manual.user_id}-${manual.date}`;
+        const existingAtt = attendanceMap.get(key);
         
-        if (existingIndex >= 0) {
-          // Sovrascrivi la presenza automatica con quella manuale
-          const existingAttendance = allAttendances[existingIndex];
-          allAttendances[existingIndex] = {
-            ...manual,
-            is_manual: true,
-            is_business_trip: existingAttendance.is_business_trip || false,
-          };
-        } else {
-          // Aggiungi nuova presenza manuale
-          allAttendances.push({
-            ...manual,
-            is_manual: true,
-            is_business_trip: false,
-          });
-        }
+        attendanceMap.set(key, {
+          id: manual.id,
+          user_id: manual.user_id,
+          date: manual.date,
+          check_in_time: manual.check_in_time,
+          check_out_time: manual.check_out_time,
+          is_business_trip: existingAtt?.is_business_trip || false,
+          is_manual: true,
+          notes: manual.notes,
+          created_at: manual.created_at,
+        });
       });
 
-      // Ordina per data decrescente
-      allAttendances.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Converti in array e ordina per data
+      const allAttendances = Array.from(attendanceMap.values())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       // Se è admin, ottieni i profili degli utenti
       if (profile?.role === 'admin' && allAttendances.length > 0) {
@@ -137,7 +134,7 @@ export const useUnifiedAttendances = () => {
     }) => {
       console.log('Creazione presenza manuale:', attendanceData);
       
-      // Inserisci nella tabella manual_attendances usando upsert
+      // Inserisci/aggiorna nella tabella manual_attendances
       const { data: manualData, error: manualError } = await supabase
         .from('manual_attendances')
         .upsert({
@@ -175,33 +172,23 @@ export const useUnifiedAttendances = () => {
   });
 
   const deleteAttendance = useMutation({
-    mutationFn: async (attendanceId: string) => {
-      // Prima prova a eliminare dalle presenze manuali
-      const { data: manualCheck } = await supabase
-        .from('manual_attendances')
-        .select('id')
-        .eq('id', attendanceId)
-        .single();
-
-      if (manualCheck) {
-        const { error: manualError } = await supabase
+    mutationFn: async (attendance: UnifiedAttendance) => {
+      if (attendance.is_manual) {
+        // Elimina dalla tabella manual_attendances
+        const { error } = await supabase
           .from('manual_attendances')
           .delete()
-          .eq('id', attendanceId);
+          .eq('id', attendance.id);
 
-        if (manualError) {
-          throw manualError;
-        }
+        if (error) throw error;
       } else {
-        // Se non è nelle presenze manuali, elimina da quelle automatiche
-        const { error: attendanceError } = await supabase
+        // Elimina dalla tabella attendances
+        const { error } = await supabase
           .from('attendances')
           .delete()
-          .eq('id', attendanceId);
+          .eq('id', attendance.id);
 
-        if (attendanceError) {
-          throw attendanceError;
-        }
+        if (error) throw error;
       }
     },
     onSuccess: () => {
