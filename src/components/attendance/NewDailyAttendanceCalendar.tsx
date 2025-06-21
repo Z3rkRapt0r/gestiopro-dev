@@ -29,9 +29,17 @@ export default function NewDailyAttendanceCalendar() {
     );
   }
 
-  // Ottieni le presenze per la data selezionata
-  const selectedDateStr = selectedDate?.toISOString().split('T')[0];
-  const selectedDateAttendances = attendances?.filter(att => att.date === selectedDateStr) || [];
+  // CORREZIONE: Formattiamo la data selezionata in modo consistente senza conversioni timezone
+  const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+  console.log('Data selezionata nel calendario:', selectedDateStr);
+  console.log('Presenze disponibili:', attendances?.map(att => ({ date: att.date, user: att.profiles?.first_name })));
+  
+  const selectedDateAttendances = attendances?.filter(att => {
+    console.log(`Confronto: ${att.date} === ${selectedDateStr} ?`, att.date === selectedDateStr);
+    return att.date === selectedDateStr;
+  }) || [];
+
+  console.log('Presenze per la data selezionata:', selectedDateAttendances);
 
   // Ottieni i dipendenti presenti e assenti per la data selezionata
   const presentEmployees = selectedDateAttendances
@@ -49,8 +57,12 @@ export default function NewDailyAttendanceCalendar() {
     !selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time)
   ) || [];
 
-  // Ottieni le date con presenze per evidenziarle nel calendario
-  const datesWithAttendance = attendances?.filter(att => att.check_in_time).map(att => new Date(att.date)) || [];
+  // CORREZIONE: Formattiamo anche le date delle presenze in modo consistente
+  const datesWithAttendance = attendances?.filter(att => att.check_in_time).map(att => {
+    // Convertiamo la stringa data in oggetto Date senza problemi di timezone
+    const [year, month, day] = att.date.split('-').map(Number);
+    return new Date(year, month - 1, day); // month - 1 perché JavaScript usa mesi 0-based
+  }) || [];
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
@@ -102,7 +114,10 @@ export default function NewDailyAttendanceCalendar() {
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={(date) => {
+                console.log('Nuova data selezionata:', date);
+                setSelectedDate(date);
+              }}
               locale={it}
               modifiers={{
                 hasAttendance: datesWithAttendance
