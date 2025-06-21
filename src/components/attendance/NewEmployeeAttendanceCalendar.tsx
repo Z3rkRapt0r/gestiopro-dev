@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -140,7 +141,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
 
   return (
     <div className="space-y-6">
-      {/* NUOVO: Resoconto Annuale */}
+      {/* Resoconto Annuale */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
