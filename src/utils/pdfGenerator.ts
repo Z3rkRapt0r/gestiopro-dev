@@ -1,15 +1,8 @@
 
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format, isValid, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
-
-// Estendi il tipo jsPDF per includere autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 interface AttendanceData {
   id: string;
@@ -72,17 +65,7 @@ export const generateAttendancePDF = async ({
   try {
     console.log('Inizializzazione PDF con dati:', data.length, 'record');
     
-    // Verifica che jsPDF sia correttamente caricato
-    if (!jsPDF) {
-      throw new Error('jsPDF non è disponibile');
-    }
-    
     const doc = new jsPDF();
-    
-    // Verifica che autoTable sia disponibile
-    if (typeof doc.autoTable !== 'function') {
-      throw new Error('autoTable plugin non è disponibile');
-    }
     
     // Configurazione del documento
     doc.setFont('helvetica');
@@ -114,13 +97,13 @@ export const generateAttendancePDF = async ({
       att.notes || ''
     ]);
     
-    const tableHeaders = ['Data', 'Nome Dipendente', 'Stato Presenza', 'Note'];
+    const tableHeaders = [['Data', 'Nome Dipendente', 'Stato Presenza', 'Note']];
     
     console.log('Creazione tabella con', tableData.length, 'righe');
     
     // Generazione tabella usando autoTable
-    doc.autoTable({
-      head: [tableHeaders],
+    autoTable(doc, {
+      head: tableHeaders,
       body: tableData,
       startY: 55,
       styles: {
@@ -162,27 +145,8 @@ export const generateAttendancePDF = async ({
     
     console.log('Tentativo di salvataggio PDF:', fileName);
     
-    // Metodo di download alternativo per maggiore compatibilità
-    const pdfBlob = doc.output('blob');
-    
-    // Crea un URL per il blob
-    const url = window.URL.createObjectURL(pdfBlob);
-    
-    // Crea un elemento anchor temporaneo per il download
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.style.display = 'none';
-    
-    // Aggiungi al DOM, clicca e rimuovi
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Pulisci l'URL del blob dopo un breve ritardo
-    setTimeout(() => {
-      window.URL.revokeObjectURL(url);
-    }, 100);
+    // Metodo di download usando il metodo save di jsPDF
+    doc.save(fileName);
     
     console.log('PDF scaricato con successo:', fileName);
     
