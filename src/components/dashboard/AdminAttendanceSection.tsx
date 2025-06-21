@@ -1,9 +1,9 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AttendanceHistory from '@/components/attendance/AttendanceHistory';
 import NewManualAttendanceForm from '@/components/attendance/NewManualAttendanceForm';
 import NewAttendanceCalendar from '@/components/attendance/NewAttendanceCalendar';
 import AdminBusinessTripsManagement from '@/components/admin/AdminBusinessTripsManagement';
+import AttendanceExportSection from '@/components/attendance/AttendanceExportSection';
 
 export default function AdminAttendanceSection() {
   return (
@@ -20,7 +20,7 @@ export default function AdminAttendanceSection() {
           <TabsTrigger value="calendar">Calendario</TabsTrigger>
           <TabsTrigger value="manual">Inserimento Manuale</TabsTrigger>
           <TabsTrigger value="business-trips">Trasferte</TabsTrigger>
-          <TabsTrigger value="history">Storico</TabsTrigger>
+          <TabsTrigger value="export">Esportazioni</TabsTrigger>
         </TabsList>
 
         <TabsContent value="calendar" className="space-y-6">
@@ -35,8 +35,8 @@ export default function AdminAttendanceSection() {
           <AdminBusinessTripsManagement />
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-6">
-          <AttendanceHistory />
+        <TabsContent value="export" className="space-y-6">
+          <AttendanceExportSection />
         </TabsContent>
       </Tabs>
     </div>

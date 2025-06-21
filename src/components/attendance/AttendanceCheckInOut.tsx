@@ -6,21 +6,29 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useAttendanceOperations } from '@/hooks/useAttendanceOperations';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { useAuth } from '@/hooks/useAuth';
+import { useAttendanceOperations } from '@/hooks/useAttendanceOperations';
 import GPSStatusIndicator from './GPSStatusIndicator';
 
 export default function AttendanceCheckInOut() {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { user } = useAuth();
   const { 
-    todayAttendance, 
     checkIn, 
     checkOut, 
     isCheckingIn, 
-    isCheckingOut,
-    hasActiveSession 
+    isCheckingOut 
   } = useAttendanceOperations();
+  const { attendances } = useUnifiedAttendances();
   const { workSchedule } = useWorkSchedules();
+
+  // Trova la presenza di oggi
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const todayAttendance = attendances?.find(att => 
+    att.user_id === user?.id && att.date === today
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -46,6 +54,60 @@ export default function AttendanceCheckInOut() {
       case 5: return workSchedule.friday;
       case 6: return workSchedule.saturday;
       default: return false;
+    }
+  };
+
+  const handleCheckIn = async () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          checkIn({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Fallback senza coordinate GPS
+          checkIn({
+            latitude: 0,
+            longitude: 0,
+          });
+        }
+      );
+    } else {
+      // Fallback se la geolocalizzazione non è supportata
+      checkIn({
+        latitude: 0,
+        longitude: 0,
+      });
+    }
+  };
+
+  const handleCheckOut = async () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          checkOut({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Fallback senza coordinate GPS
+          checkOut({
+            latitude: 0,
+            longitude: 0,
+          });
+        }
+      );
+    } else {
+      // Fallback se la geolocalizzazione non è supportata
+      checkOut({
+        latitude: 0,
+        longitude: 0,
+      });
     }
   };
 
@@ -125,10 +187,7 @@ export default function AttendanceCheckInOut() {
                   <span className="text-sm font-medium text-green-700">Entrata</span>
                 </div>
                 <span className="text-green-700 font-bold">
-                  {todayAttendance.check_in_time ? 
-                    format(new Date(todayAttendance.check_in_time), 'HH:mm') : 
-                    '--:--'
-                  }
+                  {todayAttendance.check_in_time || '--:--'}
                 </span>
               </div>
 
@@ -139,12 +198,12 @@ export default function AttendanceCheckInOut() {
                     <span className="text-sm font-medium text-blue-700">Uscita</span>
                   </div>
                   <span className="text-blue-700 font-bold">
-                    {format(new Date(todayAttendance.check_out_time), 'HH:mm')}
+                    {todayAttendance.check_out_time}
                   </span>
                 </div>
               ) : (
                 <Button 
-                  onClick={checkOut} 
+                  onClick={handleCheckOut} 
                   disabled={isCheckingOut} 
                   className="w-full"
                   variant="outline"
@@ -155,7 +214,7 @@ export default function AttendanceCheckInOut() {
             </div>
           ) : (
             <Button 
-              onClick={checkIn} 
+              onClick={handleCheckIn} 
               disabled={isCheckingIn} 
               className="w-full"
             >
