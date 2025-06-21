@@ -84,15 +84,16 @@ export const useUnifiedAttendances = () => {
       check_out_time: string | null;
       notes: string | null;
     }) => {
-      console.log('Creazione presenza manuale nella tabella unified_attendances:', attendanceData);
+      console.log('Inserimento presenza senza conversioni di fuso orario:', attendanceData);
       
+      // Inseriamo i dati esattamente come ricevuti - nessuna conversione
       const { data, error } = await supabase
         .from('unified_attendances')
         .upsert({
           user_id: attendanceData.user_id,
-          date: attendanceData.date,
-          check_in_time: attendanceData.check_in_time,
-          check_out_time: attendanceData.check_out_time,
+          date: attendanceData.date, // Data esatta
+          check_in_time: attendanceData.check_in_time, // Orario esatto HH:MM
+          check_out_time: attendanceData.check_out_time, // Orario esatto HH:MM
           notes: attendanceData.notes,
           is_manual: true,
           is_business_trip: false,
@@ -104,11 +105,11 @@ export const useUnifiedAttendances = () => {
         .single();
 
       if (error) {
-        console.error('Errore salvataggio presenza manuale:', error);
+        console.error('Errore salvataggio presenza:', error);
         throw error;
       }
 
-      console.log('Presenza manuale salvata correttamente:', data);
+      console.log('Presenza salvata correttamente senza spostamenti di data:', data);
       return data;
     },
     onSuccess: () => {
