@@ -24,17 +24,18 @@ export default function NewManualAttendanceForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Salviamo la data e gli orari esattamente come inseriti dall'utente
-    // NESSUNA conversione di fuso orario
+    // Costruiamo i dati mantenendo la data ESATTA come inserita dall'utente
+    // Forziamo la data in formato YYYY-MM-DD senza conversioni timezone
     const attendanceData = {
       user_id: formData.user_id,
-      date: formData.date, // Data esatta senza conversioni
-      check_in_time: formData.check_in_time || null, // Orario nel formato HH:MM
-      check_out_time: formData.check_out_time || null, // Orario nel formato HH:MM
+      date: formData.date, // Manteniamo esattamente la stringa inserita dall'utente
+      check_in_time: formData.check_in_time || null,
+      check_out_time: formData.check_out_time || null,
       notes: formData.notes || null,
     };
 
-    console.log('Inserimento presenza - data e orari invariati:', attendanceData);
+    console.log('Dati presenza da salvare (data e orari INVARIATI):', attendanceData);
+    console.log('Data selezionata:', formData.date);
     createManualAttendance(attendanceData);
     
     // Reset form
@@ -80,7 +81,10 @@ export default function NewManualAttendanceForm() {
                 id="date"
                 type="date"
                 value={formData.date}
-                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                onChange={(e) => {
+                  console.log('Data selezionata dal picker:', e.target.value);
+                  setFormData(prev => ({ ...prev, date: e.target.value }));
+                }}
                 required
               />
             </div>

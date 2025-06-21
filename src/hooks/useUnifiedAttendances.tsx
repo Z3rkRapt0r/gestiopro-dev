@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +14,7 @@ export interface UnifiedAttendance {
   notes?: string | null;
   created_at: string;
   profiles?: {
+    id: string;
     first_name: string | null;
     last_name: string | null;
     email: string | null;
@@ -84,36 +84,43 @@ export const useUnifiedAttendances = () => {
       check_out_time: string | null;
       notes: string | null;
     }) => {
-      console.log('Inserimento presenza senza conversioni di fuso orario:', attendanceData);
+      console.log('SALVATAGGIO PRESENZA - Dati ricevuti:', attendanceData);
+      console.log('Data da salvare (DEVE rimanere invariata):', attendanceData.date);
       
-      // Inseriamo i dati esattamente come ricevuti - nessuna conversione
+      // Inseriamo i dati ESATTAMENTE come ricevuti - ZERO conversioni
+      const dataToInsert = {
+        user_id: attendanceData.user_id,
+        date: attendanceData.date, // STRINGA ESATTA: YYYY-MM-DD
+        check_in_time: attendanceData.check_in_time, // STRINGA ESATTA: HH:MM
+        check_out_time: attendanceData.check_out_time, // STRINGA ESATTA: HH:MM
+        notes: attendanceData.notes,
+        is_manual: true,
+        is_business_trip: false,
+        created_by: user?.id,
+      };
+
+      console.log('Dati che verranno inseriti nel database:', dataToInsert);
+
       const { data, error } = await supabase
         .from('unified_attendances')
-        .upsert({
-          user_id: attendanceData.user_id,
-          date: attendanceData.date, // Data esatta
-          check_in_time: attendanceData.check_in_time, // Orario esatto HH:MM
-          check_out_time: attendanceData.check_out_time, // Orario esatto HH:MM
-          notes: attendanceData.notes,
-          is_manual: true,
-          is_business_trip: false,
-          created_by: user?.id,
-        }, {
+        .upsert(dataToInsert, {
           onConflict: 'user_id,date'
         })
         .select()
         .single();
 
       if (error) {
-        console.error('Errore salvataggio presenza:', error);
+        console.error('ERRORE SUPABASE durante il salvataggio:', error);
         throw error;
       }
 
-      console.log('Presenza salvata correttamente senza spostamenti di data:', data);
+      console.log('SUCCESSO - Presenza salvata nel database:', data);
+      console.log('Data salvata nel database:', data.date);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      console.log('SUCCESS CALLBACK - Presenza salvata con data:', data.date);
       toast({
         title: "Presenza salvata",
         description: "La presenza manuale è stata registrata con successo",
