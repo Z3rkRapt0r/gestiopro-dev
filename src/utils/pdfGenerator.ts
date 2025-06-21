@@ -72,7 +72,17 @@ export const generateAttendancePDF = async ({
   try {
     console.log('Inizializzazione PDF con dati:', data.length, 'record');
     
+    // Verifica che jsPDF sia correttamente caricato
+    if (!jsPDF) {
+      throw new Error('jsPDF non è disponibile');
+    }
+    
     const doc = new jsPDF();
+    
+    // Verifica che autoTable sia disponibile
+    if (typeof doc.autoTable !== 'function') {
+      throw new Error('autoTable plugin non è disponibile');
+    }
     
     // Configurazione del documento
     doc.setFont('helvetica');
@@ -145,16 +155,39 @@ export const generateAttendancePDF = async ({
       doc.text(`Dipendenti coinvolti: ${uniqueEmployees}`, 20, finalY + 25);
     }
     
-    // Download del file
+    // Creazione del nome file
     const fileName = exportType === 'general' 
       ? `presenze_generale_${format(dateFrom, 'yyyy-MM-dd')}_${format(dateTo, 'yyyy-MM-dd')}.pdf`
       : `presenze_${selectedEmployee?.first_name}_${selectedEmployee?.last_name}_${format(dateFrom, 'yyyy-MM-dd')}_${format(dateTo, 'yyyy-MM-dd')}.pdf`;
     
-    console.log('Salvataggio PDF:', fileName);
-    doc.save(fileName);
+    console.log('Tentativo di salvataggio PDF:', fileName);
+    
+    // Metodo di download alternativo per maggiore compatibilità
+    const pdfBlob = doc.output('blob');
+    
+    // Crea un URL per il blob
+    const url = window.URL.createObjectURL(pdfBlob);
+    
+    // Crea un elemento anchor temporaneo per il download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.style.display = 'none';
+    
+    // Aggiungi al DOM, clicca e rimuovi
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Pulisci l'URL del blob dopo un breve ritardo
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log('PDF scaricato con successo:', fileName);
     
   } catch (error) {
-    console.error('Errore nella generazione PDF:', error);
-    throw new Error('Errore nella generazione del PDF. Verifica che tutti i dati siano validi.');
+    console.error('Errore dettagliato nella generazione PDF:', error);
+    throw new Error(`Errore nella generazione del PDF: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
   }
 };
