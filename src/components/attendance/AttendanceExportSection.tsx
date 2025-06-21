@@ -7,7 +7,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Download, FileText, Calendar as CalendarIcon, Users } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
@@ -19,13 +19,29 @@ import { useToast } from '@/hooks/use-toast';
 
 type PeriodType = 'custom' | 'month' | 'year';
 
+// Mesi per il select
+const MONTHS = [
+  { value: '0', label: 'Gennaio' },
+  { value: '1', label: 'Febbraio' },
+  { value: '2', label: 'Marzo' },
+  { value: '3', label: 'Aprile' },
+  { value: '4', label: 'Maggio' },
+  { value: '5', label: 'Giugno' },
+  { value: '6', label: 'Luglio' },
+  { value: '7', label: 'Agosto' },
+  { value: '8', label: 'Settembre' },
+  { value: '9', label: 'Ottobre' },
+  { value: '10', label: 'Novembre' },
+  { value: '11', label: 'Dicembre' }
+];
+
 export default function AttendanceExportSection() {
   const [exportType, setExportType] = useState<'general' | 'operator'>('general');
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
   const [periodType, setPeriodType] = useState<PeriodType>('custom');
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [format_type, setFormatType] = useState<'excel' | 'pdf'>('excel');
   const [isExporting, setIsExporting] = useState(false);
@@ -35,12 +51,40 @@ export default function AttendanceExportSection() {
   const { profile } = useAuth();
   const { toast } = useToast();
 
+  // Funzione per validare e formattare le date/orari
+  const safeFormatDateTime = (dateTimeStr: string | null, formatStr: string) => {
+    if (!dateTimeStr) return '--:--';
+    
+    try {
+      const date = typeof dateTimeStr === 'string' ? parseISO(dateTimeStr) : new Date(dateTimeStr);
+      if (!isValid(date)) return '--:--';
+      return format(date, formatStr, { locale: it });
+    } catch (error) {
+      console.error('Errore formattazione data:', error, dateTimeStr);
+      return '--:--';
+    }
+  };
+
+  const safeFormatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'Data non valida';
+    
+    try {
+      const date = typeof dateStr === 'string' ? parseISO(dateStr) : new Date(dateStr);
+      if (!isValid(date)) return 'Data non valida';
+      return format(date, 'dd/MM/yyyy', { locale: it });
+    } catch (error) {
+      console.error('Errore formattazione data:', error, dateStr);
+      return 'Data non valida';
+    }
+  };
+
   const getDateRange = () => {
     switch (periodType) {
       case 'month':
+        const monthDate = new Date(selectedYear, parseInt(selectedMonth), 1);
         return {
-          from: startOfMonth(selectedMonth),
-          to: endOfMonth(selectedMonth)
+          from: startOfMonth(monthDate),
+          to: endOfMonth(monthDate)
         };
       case 'year':
         return {
@@ -82,24 +126,38 @@ export default function AttendanceExportSection() {
     try {
       // Filtra i dati in base ai parametri
       let filteredData = attendances?.filter(att => {
-        const attDate = new Date(att.date);
-        const isInRange = attDate >= from && attDate <= to;
-        
-        if (exportType === 'operator') {
-          return isInRange && att.user_id === selectedEmployee;
+        try {
+          const attDate = parseISO(att.date);
+          if (!isValid(attDate)) {
+            console.warn('Data non valida trovata:', att.date);
+            return false;
+          }
+          
+          const isInRange = attDate >= from && attDate <= to;
+          
+          if (exportType === 'operator') {
+            return isInRange && att.user_id === selectedEmployee;
+          }
+          
+          return isInRange;
+        } catch (error) {
+          console.error('Errore durante il filtraggio:', error, att);
+          return false;
         }
-        
-        return isInRange;
       }) || [];
 
-      // Aggiungi informazioni dipendente ai dati e assicurati che notes sia sempre definito
+      // Aggiungi informazioni dipendente ai dati e valida tutti i campi
       const enrichedData = filteredData.map(att => {
         const employee = employees?.find(emp => emp.id === att.user_id);
         return {
           ...att,
-          employee_name: employee ? `${employee.first_name} ${employee.last_name}` : 'N/A',
+          employee_name: employee ? `${employee.first_name || ''} ${employee.last_name || ''}`.trim() : 'N/A',
           employee_email: employee?.email || 'N/A',
-          notes: att.notes || '' // Assicura che notes non sia undefined
+          notes: att.notes || '',
+          // Aggiungi funzioni helper per la formattazione sicura
+          safeFormatDate: () => safeFormatDate(att.date),
+          safeFormatCheckIn: () => safeFormatDateTime(att.check_in_time, 'HH:mm'),
+          safeFormatCheckOut: () => safeFormatDateTime(att.check_out_time, 'HH:mm')
         };
       });
 
@@ -146,7 +204,7 @@ export default function AttendanceExportSection() {
       console.error('Errore durante l\'esportazione:', error);
       toast({
         title: "Errore",
-        description: "Si è verificato un errore durante l'esportazione. Verifica che tutti i dati siano validi.",
+        description: "Si è verificato un errore durante l'esportazione. Controlla i dati e riprova.",
         variant: "destructive"
       });
     } finally {
@@ -299,28 +357,41 @@ export default function AttendanceExportSection() {
           )}
 
           {periodType === 'month' && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Seleziona Mese</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(selectedMonth, "MMMM yyyy", { locale: it })}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedMonth}
-                    onSelect={(date) => date && setSelectedMonth(date)}
-                    locale={it}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Seleziona Mese</label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Seleziona Anno</label>
+                <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 10 }, (_, i) => {
+                      const year = new Date().getFullYear() - i;
+                      return (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
 
@@ -398,7 +469,8 @@ export default function AttendanceExportSection() {
                   <div>Formato: {format_type.toUpperCase()}</div>
                   <div>Filtro Periodo: {
                     periodType === 'custom' ? 'Personalizzato' :
-                    periodType === 'month' ? 'Mese Intero' : 'Anno Intero'
+                    periodType === 'month' ? `${MONTHS[parseInt(selectedMonth)].label} ${selectedYear}` : 
+                    `Anno ${selectedYear}`
                   }</div>
                 </div>
               </div>

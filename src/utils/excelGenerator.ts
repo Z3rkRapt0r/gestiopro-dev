@@ -1,5 +1,5 @@
 
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 interface AttendanceData {
@@ -31,6 +31,33 @@ interface ExportParams {
   selectedEmployee?: EmployeeData | null;
 }
 
+// Funzione per formattare in modo sicuro le date/orari
+const safeFormatDateTime = (dateTimeStr: string | null, formatStr: string) => {
+  if (!dateTimeStr) return '--:--';
+  
+  try {
+    const date = typeof dateTimeStr === 'string' ? parseISO(dateTimeStr) : new Date(dateTimeStr);
+    if (!isValid(date)) return '--:--';
+    return format(date, formatStr, { locale: it });
+  } catch (error) {
+    console.error('Errore formattazione data:', error, dateTimeStr);
+    return '--:--';
+  }
+};
+
+const safeFormatDate = (dateStr: string | null) => {
+  if (!dateStr) return 'Data non valida';
+  
+  try {
+    const date = typeof dateStr === 'string' ? parseISO(dateStr) : new Date(dateStr);
+    if (!isValid(date)) return 'Data non valida';
+    return format(date, 'dd/MM/yyyy', { locale: it });
+  } catch (error) {
+    console.error('Errore formattazione data:', error, dateStr);
+    return 'Data non valida';
+  }
+};
+
 export const generateAttendanceExcel = async ({
   data,
   dateFrom,
@@ -38,20 +65,17 @@ export const generateAttendanceExcel = async ({
   exportType,
   selectedEmployee
 }: ExportParams) => {
-  // Per ora, generiamo un file CSV che può essere aperto con Excel
-  // In futuro si può integrare una libreria come xlsx per generare veri file Excel
-  
   const headers = exportType === 'general' 
     ? ['Data', 'Dipendente', 'Email', 'Entrata', 'Uscita', 'Tipo', 'Note']
     : ['Data', 'Entrata', 'Uscita', 'Tipo', 'Note'];
   
   const csvData = data.map(att => {
     const row = [
-      format(new Date(att.date), 'dd/MM/yyyy', { locale: it }),
+      safeFormatDate(att.date),
       exportType === 'general' ? att.employee_name : '',
       exportType === 'general' ? att.employee_email : '',
-      att.check_in_time ? format(new Date(att.check_in_time), 'HH:mm') : '--:--',
-      att.check_out_time ? format(new Date(att.check_out_time), 'HH:mm') : '--:--',
+      safeFormatDateTime(att.check_in_time, 'HH:mm'),
+      safeFormatDateTime(att.check_out_time, 'HH:mm'),
       att.is_manual ? 'Manuale' : att.is_business_trip ? 'Trasferta' : att.is_sick_leave ? 'Malattia' : 'Normale',
       att.notes || ''
     ];
