@@ -56,14 +56,11 @@ export default function NewDailyAttendanceCalendar() {
     if (!timeString) return '--:--';
     
     try {
-      // Se il timestamp è nel formato ISO con fuso orario
-      if (timeString.includes('T')) {
-        const date = new Date(timeString);
-        return date.toLocaleTimeString('it-IT', {
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'Europe/Rome'
-        });
+      // Se è nel formato ISO locale (YYYY-MM-DDTHH:mm:ss o YYYY-MM-DDTHH:mm:ss.SSS)
+      if (timeString.includes('T') && !timeString.includes('Z') && !timeString.includes('+')) {
+        const [, timePart] = timeString.split('T');
+        const [hours, minutes] = timePart.split(':');
+        return `${hours}:${minutes}`;
       }
       
       // Se è nel formato "YYYY-MM-DD HH:mm:ss"
@@ -73,7 +70,13 @@ export default function NewDailyAttendanceCalendar() {
         return `${hours}:${minutes}`;
       }
       
-      return '--:--';
+      // Fallback per altri formati - ma manteniamo il locale
+      const date = new Date(timeString);
+      return date.toLocaleTimeString('it-IT', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Rome'
+      });
     } catch (error) {
       console.error('Errore nel parsing del timestamp:', timeString, error);
       return '--:--';

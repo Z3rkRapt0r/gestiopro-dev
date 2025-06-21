@@ -132,9 +132,9 @@ export const useUnifiedAttendances = () => {
       check_out_time: string | null;
       notes: string | null;
     }) => {
-      console.log('Creazione presenza manuale:', attendanceData);
+      console.log('Creazione presenza manuale con timestamp locali:', attendanceData);
       
-      // Inserisci/aggiorna nella tabella manual_attendances
+      // Inserisci/aggiorna nella tabella manual_attendances mantenendo i timestamp come forniti
       const { data: manualData, error: manualError } = await supabase
         .from('manual_attendances')
         .upsert({
@@ -151,7 +151,7 @@ export const useUnifiedAttendances = () => {
         throw manualError;
       }
 
-      console.log('Presenza manuale salvata:', manualData);
+      console.log('Presenza manuale salvata con timestamp corretti:', manualData);
       return manualData;
     },
     onSuccess: () => {
