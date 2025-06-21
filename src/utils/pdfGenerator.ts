@@ -4,6 +4,13 @@ import 'jspdf-autotable';
 import { format, isValid, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
+// Estendi il tipo jsPDF per includere autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
+
 interface AttendanceData {
   id: string;
   user_id: string;
@@ -62,81 +69,92 @@ export const generateAttendancePDF = async ({
   exportType,
   selectedEmployee
 }: ExportParams) => {
-  const doc = new jsPDF();
-  
-  // Configurazione del documento
-  doc.setFont('helvetica');
-  
-  // Titolo
-  doc.setFontSize(20);
-  doc.setTextColor(40, 40, 40);
-  const title = exportType === 'general' 
-    ? 'Calendario Presenze Generale'
-    : `Calendario Presenze - ${selectedEmployee?.first_name} ${selectedEmployee?.last_name}`;
-  
-  doc.text(title, 20, 25);
-  
-  // Periodo
-  doc.setFontSize(12);
-  doc.setTextColor(100, 100, 100);
-  const periodo = `Periodo: ${format(dateFrom, 'dd/MM/yyyy', { locale: it })} - ${format(dateTo, 'dd/MM/yyyy', { locale: it })}`;
-  doc.text(periodo, 20, 35);
-  
-  // Data di generazione
-  const dataGenerazione = `Generato il: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: it })}`;
-  doc.text(dataGenerazione, 20, 45);
-  
-  // Preparazione dati per la tabella
-  const tableData = data.map(att => [
-    safeFormatDate(att.date),
-    att.employee_name,
-    getAttendanceStatus(att),
-    att.notes || ''
-  ]);
-  
-  const tableHeaders = ['Data', 'Nome Dipendente', 'Stato Presenza', 'Note'];
-  
-  // Generazione tabella
-  (doc as any).autoTable({
-    head: [tableHeaders],
-    body: tableData,
-    startY: 55,
-    styles: {
-      fontSize: 9,
-      cellPadding: 3,
-    },
-    headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
-      fontStyle: 'bold',
-    },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245],
-    },
-    columnStyles: {
-      0: { cellWidth: 30 }, // Data
-      1: { cellWidth: 50 }, // Nome Dipendente
-      2: { cellWidth: 40 }, // Stato Presenza
-      3: { cellWidth: 70 }, // Note
-    },
-    margin: { top: 55, left: 20, right: 20 },
-  });
-  
-  // Statistiche finali
-  const finalY = (doc as any).lastAutoTable.finalY + 15;
-  doc.setFontSize(12);
-  doc.setTextColor(40, 40, 40);
-  doc.text(`Totale presenze: ${data.length}`, 20, finalY);
-  
-  if (exportType === 'general') {
-    const uniqueEmployees = new Set(data.map(att => att.user_id)).size;
-    doc.text(`Dipendenti coinvolti: ${uniqueEmployees}`, 20, finalY + 10);
+  try {
+    console.log('Inizializzazione PDF con dati:', data.length, 'record');
+    
+    const doc = new jsPDF();
+    
+    // Configurazione del documento
+    doc.setFont('helvetica');
+    
+    // Titolo
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    const title = exportType === 'general' 
+      ? 'Calendario Presenze Generale'
+      : `Calendario Presenze - ${selectedEmployee?.first_name} ${selectedEmployee?.last_name}`;
+    
+    doc.text(title, 20, 25);
+    
+    // Periodo
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    const periodo = `Periodo: ${format(dateFrom, 'dd/MM/yyyy', { locale: it })} - ${format(dateTo, 'dd/MM/yyyy', { locale: it })}`;
+    doc.text(periodo, 20, 35);
+    
+    // Data di generazione
+    const dataGenerazione = `Generato il: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: it })}`;
+    doc.text(dataGenerazione, 20, 45);
+    
+    // Preparazione dati per la tabella
+    const tableData = data.map(att => [
+      safeFormatDate(att.date),
+      att.employee_name || 'N/A',
+      getAttendanceStatus(att),
+      att.notes || ''
+    ]);
+    
+    const tableHeaders = ['Data', 'Nome Dipendente', 'Stato Presenza', 'Note'];
+    
+    console.log('Creazione tabella con', tableData.length, 'righe');
+    
+    // Generazione tabella usando autoTable
+    doc.autoTable({
+      head: [tableHeaders],
+      body: tableData,
+      startY: 55,
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+      columnStyles: {
+        0: { cellWidth: 30 }, // Data
+        1: { cellWidth: 50 }, // Nome Dipendente
+        2: { cellWidth: 40 }, // Stato Presenza
+        3: { cellWidth: 70 }, // Note
+      },
+      margin: { top: 55, left: 20, right: 20 },
+    });
+    
+    // Statistiche finali
+    const finalY = (doc as any).lastAutoTable?.finalY || 100;
+    doc.setFontSize(12);
+    doc.setTextColor(40, 40, 40);
+    doc.text(`Totale presenze: ${data.length}`, 20, finalY + 15);
+    
+    if (exportType === 'general') {
+      const uniqueEmployees = new Set(data.map(att => att.user_id)).size;
+      doc.text(`Dipendenti coinvolti: ${uniqueEmployees}`, 20, finalY + 25);
+    }
+    
+    // Download del file
+    const fileName = exportType === 'general' 
+      ? `presenze_generale_${format(dateFrom, 'yyyy-MM-dd')}_${format(dateTo, 'yyyy-MM-dd')}.pdf`
+      : `presenze_${selectedEmployee?.first_name}_${selectedEmployee?.last_name}_${format(dateFrom, 'yyyy-MM-dd')}_${format(dateTo, 'yyyy-MM-dd')}.pdf`;
+    
+    console.log('Salvataggio PDF:', fileName);
+    doc.save(fileName);
+    
+  } catch (error) {
+    console.error('Errore nella generazione PDF:', error);
+    throw new Error('Errore nella generazione del PDF. Verifica che tutti i dati siano validi.');
   }
-  
-  // Download del file
-  const fileName = exportType === 'general' 
-    ? `presenze_generale_${format(dateFrom, 'yyyy-MM-dd')}_${format(dateTo, 'yyyy-MM-dd')}.pdf`
-    : `presenze_${selectedEmployee?.first_name}_${selectedEmployee?.last_name}_${format(dateFrom, 'yyyy-MM-dd')}_${format(dateTo, 'yyyy-MM-dd')}.pdf`;
-  
-  doc.save(fileName);
 };
