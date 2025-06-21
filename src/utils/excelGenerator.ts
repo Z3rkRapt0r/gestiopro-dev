@@ -11,7 +11,7 @@ interface AttendanceData {
   is_manual: boolean;
   is_business_trip: boolean;
   is_sick_leave: boolean;
-  notes: string | null;
+  notes?: string | null;
   employee_name: string;
   employee_email: string;
 }

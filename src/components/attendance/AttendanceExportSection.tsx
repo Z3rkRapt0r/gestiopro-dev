@@ -64,13 +64,14 @@ export default function AttendanceExportSection() {
         return isInRange;
       }) || [];
 
-      // Aggiungi informazioni dipendente ai dati
+      // Aggiungi informazioni dipendente ai dati e assicurati che notes sia sempre definito
       const enrichedData = filteredData.map(att => {
         const employee = employees?.find(emp => emp.id === att.user_id);
         return {
           ...att,
           employee_name: employee ? `${employee.first_name} ${employee.last_name}` : 'N/A',
-          employee_email: employee?.email || 'N/A'
+          employee_email: employee?.email || 'N/A',
+          notes: att.notes || '' // Assicura che notes non sia undefined
         };
       });
 
