@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -79,6 +80,21 @@ export default function NewDailyAttendanceCalendar() {
     return new Date(year, month - 1, day);
   }) || [];
 
+  // Aggiungiamo le date di assenza (giorni lavorativi senza presenze)
+  const allDatesWithData = attendances?.map(att => {
+    const [year, month, day] = att.date.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }) || [];
+
+  // Calcola i giorni di assenza basandosi sui dipendenti attivi
+  const absentDates = allDatesWithData.filter(date => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const dayAttendances = attendances?.filter(att => att.date === dateStr) || [];
+    const employeesPresent = dayAttendances.length;
+    const totalEmployees = employees?.length || 0;
+    return employeesPresent < totalEmployees && employeesPresent > 0;
+  });
+
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
@@ -136,7 +152,8 @@ export default function NewDailyAttendanceCalendar() {
               locale={it}
               modifiers={{
                 hasAttendance: datesWithAttendance,
-                sickLeave: datesWithSickLeave
+                sickLeave: datesWithSickLeave,
+                absent: absentDates
               }}
               modifiersStyles={{
                 hasAttendance: {
@@ -147,6 +164,11 @@ export default function NewDailyAttendanceCalendar() {
                 sickLeave: {
                   backgroundColor: '#fed7aa',
                   color: '#ea580c',
+                  fontWeight: 'bold'
+                },
+                absent: {
+                  backgroundColor: '#fecaca',
+                  color: '#dc2626',
                   fontWeight: 'bold'
                 }
               }}
@@ -161,6 +183,10 @@ export default function NewDailyAttendanceCalendar() {
             <div className="flex items-center gap-2 text-sm">
               <div className="w-3 h-3 bg-orange-200 rounded"></div>
               <span>Giorni di malattia</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-3 h-3 bg-red-200 rounded"></div>
+              <span>Giorni con assenze</span>
             </div>
           </div>
         </CardContent>

@@ -17,32 +17,63 @@ export default function NewManualAttendanceForm() {
   const [formData, setFormData] = useState({
     user_id: '',
     date: '',
+    date_to: '',
     check_in_time: '',
     check_out_time: '',
     notes: '',
     is_sick_leave: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Costruiamo i dati mantenendo la data ESATTA come inserita dall'utente
-    const attendanceData = {
-      user_id: formData.user_id,
-      date: formData.date,
-      check_in_time: formData.is_sick_leave ? null : (formData.check_in_time || null),
-      check_out_time: formData.is_sick_leave ? null : (formData.check_out_time || null),
-      notes: formData.notes || null,
-      is_sick_leave: formData.is_sick_leave,
-    };
+    if (formData.is_sick_leave && formData.date && formData.date_to) {
+      // Gestione range di date per malattia
+      const startDate = new Date(formData.date);
+      const endDate = new Date(formData.date_to);
+      
+      const dates = [];
+      const currentDate = new Date(startDate);
+      
+      while (currentDate <= endDate) {
+        dates.push(new Date(currentDate).toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Crea una presenza per ogni giorno nel range
+      for (const date of dates) {
+        const attendanceData = {
+          user_id: formData.user_id,
+          date: date,
+          check_in_time: null,
+          check_out_time: null,
+          notes: formData.notes || null,
+          is_sick_leave: true,
+        };
+        
+        console.log('Salvando giorno di malattia per data:', date);
+        createManualAttendance(attendanceData);
+      }
+    } else {
+      // Gestione presenza singola
+      const attendanceData = {
+        user_id: formData.user_id,
+        date: formData.date,
+        check_in_time: formData.is_sick_leave ? null : (formData.check_in_time || null),
+        check_out_time: formData.is_sick_leave ? null : (formData.check_out_time || null),
+        notes: formData.notes || null,
+        is_sick_leave: formData.is_sick_leave,
+      };
 
-    console.log('Dati presenza da salvare:', attendanceData);
-    createManualAttendance(attendanceData);
+      console.log('Dati presenza da salvare:', attendanceData);
+      createManualAttendance(attendanceData);
+    }
     
     // Reset form
     setFormData({
       user_id: '',
       date: '',
+      date_to: '',
       check_in_time: '',
       check_out_time: '',
       notes: '',
@@ -77,20 +108,6 @@ export default function NewManualAttendanceForm() {
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="date">Data</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => {
-                  console.log('Data selezionata dal picker:', e.target.value);
-                  setFormData(prev => ({ ...prev, date: e.target.value }));
-                }}
-                required
-              />
-            </div>
-
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="sick_leave"
@@ -106,9 +123,55 @@ export default function NewManualAttendanceForm() {
                 }}
               />
               <Label htmlFor="sick_leave" className="text-orange-700 font-medium">
-                Giorno di malattia
+                Giorno/i di malattia
               </Label>
             </div>
+
+            {formData.is_sick_leave ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="date">Data Inizio</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => {
+                      console.log('Data inizio malattia selezionata:', e.target.value);
+                      setFormData(prev => ({ ...prev, date: e.target.value }));
+                    }}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="date_to">Data Fine</Label>
+                  <Input
+                    id="date_to"
+                    type="date"
+                    value={formData.date_to}
+                    min={formData.date}
+                    onChange={(e) => {
+                      console.log('Data fine malattia selezionata:', e.target.value);
+                      setFormData(prev => ({ ...prev, date_to: e.target.value }));
+                    }}
+                    required
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="date">Data</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => {
+                    console.log('Data selezionata dal picker:', e.target.value);
+                    setFormData(prev => ({ ...prev, date: e.target.value }));
+                  }}
+                  required
+                />
+              </div>
+            )}
 
             {!formData.is_sick_leave && (
               <div className="grid grid-cols-2 gap-4">
@@ -145,7 +208,7 @@ export default function NewManualAttendanceForm() {
 
             <Button 
               type="submit" 
-              disabled={isCreating || !formData.user_id || !formData.date} 
+              disabled={isCreating || !formData.user_id || !formData.date || (formData.is_sick_leave && !formData.date_to)} 
               className="w-full"
             >
               {isCreating ? 'Salvando...' : (formData.is_sick_leave ? 'Registra Malattia' : 'Salva Presenza')}

@@ -47,6 +47,27 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       return new Date(year, month - 1, day);
     });
 
+  // Calcola i giorni di assenza per questo operatore
+  const currentDate = new Date();
+  const oneMonthAgo = new Date(currentDate);
+  oneMonthAgo.setMonth(currentDate.getMonth() - 1);
+  
+  const absentDates = [];
+  const tempDate = new Date(oneMonthAgo);
+  
+  while (tempDate <= currentDate) {
+    const dateStr = format(tempDate, 'yyyy-MM-dd');
+    const hasAttendance = attendances.some(att => att.date === dateStr);
+    
+    // Se è un giorno lavorativo (lunedì-venerdì) e non ha presenza
+    const dayOfWeek = tempDate.getDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 5 && !hasAttendance && tempDate < currentDate) {
+      absentDates.push(new Date(tempDate));
+    }
+    
+    tempDate.setDate(tempDate.getDate() + 1);
+  }
+
   console.log('Date con presenze per calendario operatore:', attendanceDates);
 
   const formatTime = (timeString: string | null) => {
@@ -100,7 +121,8 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               locale={it}
               modifiers={{
                 present: attendanceDates,
-                sickLeave: sickLeaveDates
+                sickLeave: sickLeaveDates,
+                absent: absentDates
               }}
               modifiersStyles={{
                 present: {
@@ -111,6 +133,11 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                 sickLeave: {
                   backgroundColor: '#fed7aa',
                   color: '#ea580c',
+                  fontWeight: 'bold'
+                },
+                absent: {
+                  backgroundColor: '#fecaca',
+                  color: '#dc2626',
                   fontWeight: 'bold'
                 }
               }}
@@ -125,6 +152,10 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             <div className="flex items-center gap-2 text-xs">
               <div className="w-3 h-3 bg-orange-200 rounded"></div>
               <span>Giorni di malattia</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 bg-red-200 rounded"></div>
+              <span>Giorni di assenza</span>
             </div>
           </div>
         </CardContent>
@@ -203,12 +234,12 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               )}
             </div>
           ) : (
-            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                <span className="font-semibold text-gray-700 text-sm">Assente</span>
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="font-semibold text-red-700 text-sm">Assente</span>
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-red-600">
                 Nessuna presenza registrata
               </p>
             </div>
