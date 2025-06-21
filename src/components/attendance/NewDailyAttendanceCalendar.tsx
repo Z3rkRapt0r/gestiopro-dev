@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -336,25 +335,9 @@ export default function NewDailyAttendanceCalendar() {
                 {absentEmployees.length > 0 ? (
                   absentEmployees.map((employee) => (
                     <div key={employee.id} className="p-3 bg-red-50 rounded-lg border border-red-200">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <span className="font-medium text-sm">
-                            {employee.first_name} {employee.last_name}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            // Per i dipendenti assenti, non c'è una presenza da eliminare
-                            // ma possiamo fornire feedback all'utente
-                            alert('Non c\'è una presenza registrata da eliminare per questo dipendente.');
-                          }}
-                          className="text-gray-400 hover:text-gray-500 hover:bg-gray-50 ml-2"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      <span className="font-medium text-sm">
+                        {employee.first_name} {employee.last_name}
+                      </span>
                     </div>
                   ))
                 ) : (
