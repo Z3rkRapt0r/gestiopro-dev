@@ -19,74 +19,52 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { workSchedule } = useWorkSchedules();
 
-  // Ottieni le presenze per la data selezionata
-  const selectedDateStr = selectedDate?.toISOString().split('T')[0];
-  const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
+  // CORREZIONE: Formattiamo la data selezionata in modo consistente
+  const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+  console.log('Data selezionata calendario operatore:', selectedDateStr);
+  console.log('Presenze operatore disponibili:', attendances?.map(att => ({ date: att.date, check_in: att.check_in_time })));
+  
+  const selectedDateAttendance = attendances.find(att => {
+    console.log(`Confronto operatore: ${att.date} === ${selectedDateStr} ?`, att.date === selectedDateStr);
+    return att.date === selectedDateStr;
+  });
 
-  // Ottieni le date con presenze
+  console.log('Presenza operatore per data selezionata:', selectedDateAttendance);
+
+  // CORREZIONE: Ottieni le date con presenze formattate correttamente
   const attendanceDates = attendances
     .filter(att => att.check_in_time)
-    .map(att => new Date(att.date));
+    .map(att => {
+      // Convertiamo la stringa data in oggetto Date senza problemi di timezone
+      const [year, month, day] = att.date.split('-').map(Number);
+      return new Date(year, month - 1, day); // month - 1 perché JavaScript usa mesi 0-based
+    });
 
-  // Ottieni le date lavorative (basate sui work_schedules)
-  const getWorkingDays = () => {
-    if (!workSchedule) return [];
-    
-    const workingDays: number[] = [];
-    
-    if (workSchedule.monday) workingDays.push(1);
-    if (workSchedule.tuesday) workingDays.push(2);
-    if (workSchedule.wednesday) workingDays.push(3);
-    if (workSchedule.thursday) workingDays.push(4);
-    if (workSchedule.friday) workingDays.push(5);
-    if (workSchedule.saturday) workingDays.push(6);
-    if (workSchedule.sunday) workingDays.push(0);
-    
-    return workingDays;
-  };
-
-  const workingDays = getWorkingDays();
-
-  // Genera le date lavorative per colorare il calendario
-  const getWorkingDates = () => {
-    const dates = [];
-    const today = new Date();
-    const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      if (workingDays.includes(d.getDay())) {
-        dates.push(new Date(d));
-      }
-    }
-    return dates;
-  };
-
-  const workingDates = getWorkingDates();
+  console.log('Date con presenze per calendario operatore:', attendanceDates);
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
-    // Se il timestamp è nel formato ISO locale (YYYY-MM-DDTHH:mm:ss)
-    if (timeString.includes('T') && !timeString.includes('Z') && !timeString.includes('+')) {
-      const [, timePart] = timeString.split('T');
-      const [hours, minutes] = timePart.split(':');
-      return `${hours}:${minutes}`;
-    }
-    
-    // Se è nel formato "YYYY-MM-DD HH:mm:ss"
-    if (timeString.includes(' ')) {
-      const [, timePart] = timeString.split(' ');
-      const [hours, minutes] = timePart.split(':');
-      return `${hours}:${minutes}`;
+    // Gestione semplice per il nuovo formato HH:MM
+    if (timeString.match(/^\d{2}:\d{2}$/)) {
+      return timeString;
     }
     
     // Fallback per altri formati
     try {
-      return new Date(timeString).toLocaleTimeString('it-IT', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      if (timeString.includes('T')) {
+        const [, timePart] = timeString.split('T');
+        const [hours, minutes] = timePart.split(':');
+        return `${hours}:${minutes}`;
+      }
+      
+      if (timeString.includes(' ')) {
+        const [, timePart] = timeString.split(' ');
+        const [hours, minutes] = timePart.split(':');
+        return `${hours}:${minutes}`;
+      }
+      
+      return timeString;
     } catch (error) {
       console.error('Errore nel parsing del timestamp:', timeString, error);
       return '--:--';
@@ -108,21 +86,19 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={(date) => {
+                console.log('Nuova data selezionata calendario operatore:', date);
+                setSelectedDate(date);
+              }}
               locale={it}
               modifiers={{
-                present: attendanceDates,
-                workingDay: workingDates
+                present: attendanceDates
               }}
               modifiersStyles={{
                 present: {
                   backgroundColor: '#dcfce7',
                   color: '#166534',
                   fontWeight: 'bold'
-                },
-                workingDay: {
-                  backgroundColor: '#f3f4f6',
-                  color: '#374151'
                 }
               }}
               className="rounded-md border w-fit"
@@ -132,10 +108,6 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             <div className="flex items-center gap-2 text-xs">
               <div className="w-3 h-3 bg-green-200 rounded"></div>
               <span>Giorni di presenza</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <div className="w-3 h-3 bg-gray-200 rounded"></div>
-              <span>Giorni lavorativi</span>
             </div>
           </div>
         </CardContent>
@@ -195,15 +167,10 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                <span className="font-semibold text-gray-700 text-sm">
-                  {workingDays.includes(selectedDate?.getDay() || 0) ? 'Assente' : 'Non lavorativo'}
-                </span>
+                <span className="font-semibold text-gray-700 text-sm">Assente</span>
               </div>
               <p className="text-xs text-gray-600">
-                {workingDays.includes(selectedDate?.getDay() || 0) 
-                  ? 'Nessuna presenza registrata'
-                  : 'Giorno non lavorativo'
-                }
+                Nessuna presenza registrata
               </p>
             </div>
           )}
