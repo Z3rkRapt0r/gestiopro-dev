@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +29,46 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   });
 
   console.log('Presenza operatore per data selezionata:', selectedDateAttendance);
+
+  // NUOVO: Calcola il resoconto annuale
+  const calculateYearlyStats = () => {
+    const currentYear = new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1);
+    const today = new Date();
+    
+    // Filtra le presenze dell'anno corrente
+    const yearAttendances = attendances.filter(att => {
+      const attDate = new Date(att.date);
+      return attDate >= startOfYear && attDate <= today;
+    });
+    
+    // Conta i giorni lavorativi dall'inizio dell'anno ad oggi
+    let workingDaysCount = 0;
+    const tempDate = new Date(startOfYear);
+    
+    while (tempDate <= today) {
+      const dayOfWeek = tempDate.getDay();
+      // Solo giorni lavorativi (lunedì-venerdì)
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        workingDaysCount++;
+      }
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
+    
+    const presentDays = yearAttendances.filter(att => att.check_in_time && !att.is_sick_leave).length;
+    const sickDays = yearAttendances.filter(att => att.is_sick_leave).length;
+    const absentDays = workingDaysCount - yearAttendances.length;
+    
+    return {
+      totalWorkingDays: workingDaysCount,
+      presentDays,
+      sickDays,
+      absentDays,
+      attendancePercentage: workingDaysCount > 0 ? Math.round((presentDays / workingDaysCount) * 100) : 0
+    };
+  };
+
+  const yearlyStats = calculateYearlyStats();
 
   // CORREZIONE: Ottieni le date con presenze formattate correttamente
   const attendanceDates = attendances
@@ -100,129 +139,127 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      {/* Calendario dell'operatore */}
-      <Card className="lg:col-span-2">
+    <div className="space-y-6">
+      {/* NUOVO: Resoconto Annuale */}
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <CalendarIcon className="w-4 h-4" />
-            {employee.first_name} {employee.last_name}
+            <Calendar className="w-4 h-4" />
+            Resoconto Annuale {new Date().getFullYear()}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-3">
-          <div className="flex justify-center">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => {
-                console.log('Nuova data selezionata calendario operatore:', date);
-                setSelectedDate(date);
-              }}
-              locale={it}
-              modifiers={{
-                present: attendanceDates,
-                sickLeave: sickLeaveDates,
-                absent: absentDates
-              }}
-              modifiersStyles={{
-                present: {
-                  backgroundColor: '#dcfce7',
-                  color: '#166534',
-                  fontWeight: 'bold'
-                },
-                sickLeave: {
-                  backgroundColor: '#fed7aa',
-                  color: '#ea580c',
-                  fontWeight: 'bold'
-                },
-                absent: {
-                  backgroundColor: '#fecaca',
-                  color: '#dc2626',
-                  fontWeight: 'bold'
-                }
-              }}
-              className="rounded-md border w-fit"
-            />
+        <CardContent className="p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-2xl font-bold text-blue-700">{yearlyStats.totalWorkingDays}</div>
+              <div className="text-sm text-blue-600">Giorni Lavorativi</div>
+            </div>
+            <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="text-2xl font-bold text-green-700">{yearlyStats.presentDays}</div>
+              <div className="text-sm text-green-600">Giorni Presenti</div>
+            </div>
+            <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <div className="text-2xl font-bold text-orange-700">{yearlyStats.sickDays}</div>
+              <div className="text-sm text-orange-600">Giorni Malattia</div>
+            </div>
+            <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+              <div className="text-2xl font-bold text-red-700">{yearlyStats.absentDays}</div>
+              <div className="text-sm text-red-600">Giorni Assenti</div>
+            </div>
           </div>
-          <div className="mt-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs">
-              <div className="w-3 h-3 bg-green-200 rounded"></div>
-              <span>Giorni di presenza</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <div className="w-3 h-3 bg-orange-200 rounded"></div>
-              <span>Giorni di malattia</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <div className="w-3 h-3 bg-red-200 rounded"></div>
-              <span>Giorni di assenza</span>
+          <div className="mt-4 text-center">
+            <div className="text-lg font-semibold">
+              Percentuale Presenza: <span className="text-blue-700">{yearlyStats.attendancePercentage}%</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Dettagli della data selezionata */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Clock className="w-4 h-4" />
-            Dettagli {selectedDate ? format(selectedDate, 'dd/MM', { locale: it }) : ''}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-3">
-          {selectedDateAttendance ? (
-            <div className="space-y-3">
-              {selectedDateAttendance.is_sick_leave ? (
-                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <span className="font-semibold text-orange-700 text-sm">Malattia</span>
-                    {selectedDateAttendance.is_manual && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-                        Manuale
-                      </Badge>
-                    )}
-                  </div>
-                  {selectedDateAttendance.notes && (
-                    <div className="text-xs">
-                      <span className="text-gray-600">Note:</span>
-                      <div className="font-medium text-gray-800">
-                        {selectedDateAttendance.notes}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="font-semibold text-green-700 text-sm">Presente</span>
-                    {selectedDateAttendance.is_manual && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-                        Manuale
-                      </Badge>
-                    )}
-                    {selectedDateAttendance.is_business_trip && (
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs">
-                        Trasferta
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <span className="text-gray-600">Entrata:</span>
-                      <div className="font-medium">
-                        {formatTime(selectedDateAttendance.check_in_time)}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Uscita:</span>
-                      <div className="font-medium">
-                        {formatTime(selectedDateAttendance.check_out_time)}
-                      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Calendario dell'operatore */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarIcon className="w-4 h-4" />
+              {employee.first_name} {employee.last_name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
+            <div className="flex justify-center">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                  console.log('Nuova data selezionata calendario operatore:', date);
+                  setSelectedDate(date);
+                }}
+                locale={it}
+                modifiers={{
+                  present: attendanceDates,
+                  sickLeave: sickLeaveDates,
+                  absent: absentDates
+                }}
+                modifiersStyles={{
+                  present: {
+                    backgroundColor: '#dcfce7',
+                    color: '#166534',
+                    fontWeight: 'bold'
+                  },
+                  sickLeave: {
+                    backgroundColor: '#fed7aa',
+                    color: '#ea580c',
+                    fontWeight: 'bold'
+                  },
+                  absent: {
+                    backgroundColor: '#fecaca',
+                    color: '#dc2626',
+                    fontWeight: 'bold'
+                  }
+                }}
+                className="rounded-md border w-fit"
+              />
+            </div>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-green-200 rounded"></div>
+                <span>Giorni di presenza</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-orange-200 rounded"></div>
+                <span>Giorni di malattia</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-red-200 rounded"></div>
+                <span>Giorni di assenza</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Dettagli della data selezionata */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Clock className="w-4 h-4" />
+              Dettagli {selectedDate ? format(selectedDate, 'dd/MM', { locale: it }) : ''}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
+            {selectedDateAttendance ? (
+              <div className="space-y-3">
+                {selectedDateAttendance.is_sick_leave ? (
+                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <span className="font-semibold text-orange-700 text-sm">Malattia</span>
+                      {selectedDateAttendance.is_manual && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                          Manuale
+                        </Badge>
+                      )}
                     </div>
                     {selectedDateAttendance.notes && (
-                      <div>
+                      <div className="text-xs">
                         <span className="text-gray-600">Note:</span>
                         <div className="font-medium text-gray-800">
                           {selectedDateAttendance.notes}
@@ -230,22 +267,61 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                       </div>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <span className="font-semibold text-red-700 text-sm">Assente</span>
+                ) : (
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="font-semibold text-green-700 text-sm">Presente</span>
+                      {selectedDateAttendance.is_manual && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                          Manuale
+                        </Badge>
+                      )}
+                      {selectedDateAttendance.is_business_trip && (
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs">
+                          Trasferta
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div>
+                        <span className="text-gray-600">Entrata:</span>
+                        <div className="font-medium">
+                          {formatTime(selectedDateAttendance.check_in_time)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Uscita:</span>
+                        <div className="font-medium">
+                          {formatTime(selectedDateAttendance.check_out_time)}
+                        </div>
+                      </div>
+                      {selectedDateAttendance.notes && (
+                        <div>
+                          <span className="text-gray-600">Note:</span>
+                          <div className="font-medium text-gray-800">
+                            {selectedDateAttendance.notes}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-red-600">
-                Nessuna presenza registrata
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span className="font-semibold text-red-700 text-sm">Assente</span>
+                </div>
+                <p className="text-xs text-red-600">
+                  Nessuna presenza registrata
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

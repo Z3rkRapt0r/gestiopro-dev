@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +28,6 @@ export default function NewDailyAttendanceCalendar() {
     );
   }
 
-  // CORREZIONE: Formattiamo la data selezionata in modo consistente senza conversioni timezone
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   console.log('Data selezionata nel calendario:', selectedDateStr);
   console.log('Presenze disponibili:', attendances?.map(att => ({ date: att.date, user: att.profiles?.first_name })));
@@ -41,7 +39,6 @@ export default function NewDailyAttendanceCalendar() {
 
   console.log('Presenze per la data selezionata:', selectedDateAttendances);
 
-  // Ottieni i dipendenti presenti, assenti e in malattia per la data selezionata
   const presentEmployees = selectedDateAttendances
     .filter(att => att.check_in_time && !att.is_sick_leave)
     .map(att => {
@@ -68,7 +65,6 @@ export default function NewDailyAttendanceCalendar() {
     !selectedDateAttendances.some(att => att.user_id === emp.id)
   ) || [];
 
-  // NUOVO: Calcola lo stato di ogni giorno per colorare i quadratini del calendario
   const getDayStatus = (dateStr: string) => {
     const dayAttendances = attendances?.filter(att => att.date === dateStr) || [];
     const totalEmployees = employees?.length || 0;
@@ -79,17 +75,13 @@ export default function NewDailyAttendanceCalendar() {
     const sickCount = dayAttendances.filter(att => att.is_sick_leave).length;
     const absentCount = totalEmployees - dayAttendances.length;
     
-    // Se tutti sono presenti = verde
     if (presentCount === totalEmployees) return 'all-present';
-    // Se ci sono malattie = arancione
     if (sickCount > 0) return 'has-sick';
-    // Se ci sono assenze = rosso
     if (absentCount > 0 || presentCount < totalEmployees) return 'has-absent';
     
     return null;
   };
 
-  // Genera tutte le date per il calendario con i loro stati
   const generateCalendarDates = () => {
     const today = new Date();
     const oneMonthAgo = new Date(today);
@@ -108,7 +100,6 @@ export default function NewDailyAttendanceCalendar() {
       const dateStr = format(tempDate, 'yyyy-MM-dd');
       const dayOfWeek = tempDate.getDay();
       
-      // Solo per giorni lavorativi (lunedì-venerdì)
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
         const status = getDayStatus(dateStr);
         const dateObj = new Date(tempDate);
@@ -137,12 +128,10 @@ export default function NewDailyAttendanceCalendar() {
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
-    // Gestione semplice per il nuovo formato HH:MM
     if (timeString.match(/^\d{2}:\d{2}$/)) {
       return timeString;
     }
     
-    // Fallback per altri formati
     try {
       if (timeString.includes('T')) {
         const [, timePart] = timeString.split('T');
