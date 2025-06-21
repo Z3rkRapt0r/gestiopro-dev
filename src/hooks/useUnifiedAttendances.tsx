@@ -48,7 +48,7 @@ export const useUnifiedAttendances = () => {
         throw error;
       }
 
-      const allAttendances = attendanceData || [];
+      let allAttendances = attendanceData || [];
 
       // Se è admin, ottieni i profili degli utenti
       if (profile?.role === 'admin' && allAttendances.length > 0) {
@@ -63,10 +63,11 @@ export const useUnifiedAttendances = () => {
           console.error('Errore caricamento profili:', profilesError);
         }
 
-        // Aggiungi i profili
-        allAttendances.forEach(attendance => {
-          attendance.profiles = profilesData?.find(profile => profile.id === attendance.user_id) || null;
-        });
+        // Mappa i profili agli attendance records
+        allAttendances = allAttendances.map(attendance => ({
+          ...attendance,
+          profiles: profilesData?.find(profile => profile.id === attendance.user_id) || null
+        }));
       }
 
       console.log('Presenze unificate caricate:', allAttendances);
