@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,9 +40,20 @@ export default function NewDailyAttendanceCalendar() {
 
   console.log('Presenze per la data selezionata:', selectedDateAttendances);
 
-  // Ottieni i dipendenti presenti e assenti per la data selezionata
+  // Ottieni i dipendenti presenti, assenti e in malattia per la data selezionata
   const presentEmployees = selectedDateAttendances
-    .filter(att => att.check_in_time)
+    .filter(att => att.check_in_time && !att.is_sick_leave)
+    .map(att => {
+      const employee = employees?.find(emp => emp.id === att.user_id);
+      return {
+        ...employee,
+        attendance: att,
+      };
+    })
+    .filter(emp => emp.id);
+
+  const sickEmployees = selectedDateAttendances
+    .filter(att => att.is_sick_leave)
     .map(att => {
       const employee = employees?.find(emp => emp.id === att.user_id);
       return {
@@ -54,14 +64,19 @@ export default function NewDailyAttendanceCalendar() {
     .filter(emp => emp.id);
 
   const absentEmployees = employees?.filter(emp => 
-    !selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time)
+    !selectedDateAttendances.some(att => att.user_id === emp.id)
   ) || [];
 
   // CORREZIONE: Formattiamo anche le date delle presenze in modo consistente
-  const datesWithAttendance = attendances?.filter(att => att.check_in_time).map(att => {
+  const datesWithAttendance = attendances?.filter(att => att.check_in_time || att.is_sick_leave).map(att => {
     // Convertiamo la stringa data in oggetto Date senza problemi di timezone
     const [year, month, day] = att.date.split('-').map(Number);
     return new Date(year, month - 1, day); // month - 1 perché JavaScript usa mesi 0-based
+  }) || [];
+
+  const datesWithSickLeave = attendances?.filter(att => att.is_sick_leave).map(att => {
+    const [year, month, day] = att.date.split('-').map(Number);
+    return new Date(year, month - 1, day);
   }) || [];
 
   const formatTime = (timeString: string | null) => {
@@ -120,12 +135,18 @@ export default function NewDailyAttendanceCalendar() {
               }}
               locale={it}
               modifiers={{
-                hasAttendance: datesWithAttendance
+                hasAttendance: datesWithAttendance,
+                sickLeave: datesWithSickLeave
               }}
               modifiersStyles={{
                 hasAttendance: {
                   backgroundColor: '#dcfce7',
                   color: '#166534',
+                  fontWeight: 'bold'
+                },
+                sickLeave: {
+                  backgroundColor: '#fed7aa',
+                  color: '#ea580c',
                   fontWeight: 'bold'
                 }
               }}
@@ -136,6 +157,10 @@ export default function NewDailyAttendanceCalendar() {
             <div className="flex items-center gap-2 text-sm">
               <div className="w-3 h-3 bg-green-200 rounded"></div>
               <span>Giorni con presenze</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-3 h-3 bg-orange-200 rounded"></div>
+              <span>Giorni di malattia</span>
             </div>
           </div>
         </CardContent>
@@ -150,7 +175,7 @@ export default function NewDailyAttendanceCalendar() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Dipendenti Presenti */}
             <div>
               <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
@@ -200,6 +225,48 @@ export default function NewDailyAttendanceCalendar() {
                   ))
                 ) : (
                   <p className="text-gray-500 text-sm">Nessun dipendente presente</p>
+                )}
+              </div>
+            </div>
+
+            {/* Dipendenti in Malattia */}
+            <div>
+              <h3 className="font-semibold text-orange-700 mb-3 flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                In Malattia ({sickEmployees.length})
+              </h3>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {sickEmployees.length > 0 ? (
+                  sickEmployees.map((employee) => (
+                    <div key={employee.id} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-medium text-sm">
+                              {employee.first_name} {employee.last_name}
+                            </span>
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
+                              Malattia
+                            </Badge>
+                          </div>
+                          {employee.attendance.notes && (
+                            <p className="text-xs text-gray-600 mt-1">{employee.attendance.notes}</p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteAttendance(employee.attendance)}
+                          disabled={isDeleting}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">Nessun dipendente in malattia</p>
                 )}
               </div>
             </div>

@@ -33,11 +33,18 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
 
   // CORREZIONE: Ottieni le date con presenze formattate correttamente
   const attendanceDates = attendances
-    .filter(att => att.check_in_time)
+    .filter(att => att.check_in_time || att.is_sick_leave)
     .map(att => {
       // Convertiamo la stringa data in oggetto Date senza problemi di timezone
       const [year, month, day] = att.date.split('-').map(Number);
       return new Date(year, month - 1, day); // month - 1 perché JavaScript usa mesi 0-based
+    });
+
+  const sickLeaveDates = attendances
+    .filter(att => att.is_sick_leave)
+    .map(att => {
+      const [year, month, day] = att.date.split('-').map(Number);
+      return new Date(year, month - 1, day);
     });
 
   console.log('Date con presenze per calendario operatore:', attendanceDates);
@@ -92,12 +99,18 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               }}
               locale={it}
               modifiers={{
-                present: attendanceDates
+                present: attendanceDates,
+                sickLeave: sickLeaveDates
               }}
               modifiersStyles={{
                 present: {
                   backgroundColor: '#dcfce7',
                   color: '#166534',
+                  fontWeight: 'bold'
+                },
+                sickLeave: {
+                  backgroundColor: '#fed7aa',
+                  color: '#ea580c',
                   fontWeight: 'bold'
                 }
               }}
@@ -108,6 +121,10 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             <div className="flex items-center gap-2 text-xs">
               <div className="w-3 h-3 bg-green-200 rounded"></div>
               <span>Giorni di presenza</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 bg-orange-200 rounded"></div>
+              <span>Giorni di malattia</span>
             </div>
           </div>
         </CardContent>
@@ -124,36 +141,19 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
         <CardContent className="p-3">
           {selectedDateAttendance ? (
             <div className="space-y-3">
-              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="font-semibold text-green-700 text-sm">Presente</span>
-                  {selectedDateAttendance.is_manual && (
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-                      Manuale
-                    </Badge>
-                  )}
-                  {selectedDateAttendance.is_business_trip && (
-                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs">
-                      Trasferta
-                    </Badge>
-                  )}
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-gray-600">Entrata:</span>
-                    <div className="font-medium">
-                      {formatTime(selectedDateAttendance.check_in_time)}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Uscita:</span>
-                    <div className="font-medium">
-                      {formatTime(selectedDateAttendance.check_out_time)}
-                    </div>
+              {selectedDateAttendance.is_sick_leave ? (
+                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <span className="font-semibold text-orange-700 text-sm">Malattia</span>
+                    {selectedDateAttendance.is_manual && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                        Manuale
+                      </Badge>
+                    )}
                   </div>
                   {selectedDateAttendance.notes && (
-                    <div>
+                    <div className="text-xs">
                       <span className="text-gray-600">Note:</span>
                       <div className="font-medium text-gray-800">
                         {selectedDateAttendance.notes}
@@ -161,7 +161,46 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                     </div>
                   )}
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="font-semibold text-green-700 text-sm">Presente</span>
+                    {selectedDateAttendance.is_manual && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                        Manuale
+                      </Badge>
+                    )}
+                    {selectedDateAttendance.is_business_trip && (
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs">
+                        Trasferta
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <span className="text-gray-600">Entrata:</span>
+                      <div className="font-medium">
+                        {formatTime(selectedDateAttendance.check_in_time)}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Uscita:</span>
+                      <div className="font-medium">
+                        {formatTime(selectedDateAttendance.check_out_time)}
+                      </div>
+                    </div>
+                    {selectedDateAttendance.notes && (
+                      <div>
+                        <span className="text-gray-600">Note:</span>
+                        <div className="font-medium text-gray-800">
+                          {selectedDateAttendance.notes}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">

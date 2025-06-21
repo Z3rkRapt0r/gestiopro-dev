@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +12,7 @@ export interface UnifiedAttendance {
   check_out_time: string | null;
   is_business_trip: boolean;
   is_manual: boolean;
+  is_sick_leave: boolean;
   notes?: string | null;
   created_at: string;
   profiles?: {
@@ -83,6 +85,7 @@ export const useUnifiedAttendances = () => {
       check_in_time: string | null;
       check_out_time: string | null;
       notes: string | null;
+      is_sick_leave?: boolean;
     }) => {
       console.log('SALVATAGGIO PRESENZA - Dati ricevuti:', attendanceData);
       console.log('Data da salvare (DEVE rimanere invariata):', attendanceData.date);
@@ -96,6 +99,7 @@ export const useUnifiedAttendances = () => {
         notes: attendanceData.notes,
         is_manual: true,
         is_business_trip: false,
+        is_sick_leave: attendanceData.is_sick_leave || false,
         created_by: user?.id,
       };
 
@@ -123,7 +127,7 @@ export const useUnifiedAttendances = () => {
       console.log('SUCCESS CALLBACK - Presenza salvata con data:', data.date);
       toast({
         title: "Presenza salvata",
-        description: "La presenza manuale è stata registrata con successo",
+        description: data.is_sick_leave ? "La malattia è stata registrata con successo" : "La presenza manuale è stata registrata con successo",
       });
     },
     onError: (error: any) => {

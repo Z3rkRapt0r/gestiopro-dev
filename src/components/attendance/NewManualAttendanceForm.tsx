@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
@@ -19,23 +20,23 @@ export default function NewManualAttendanceForm() {
     check_in_time: '',
     check_out_time: '',
     notes: '',
+    is_sick_leave: false,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Costruiamo i dati mantenendo la data ESATTA come inserita dall'utente
-    // Forziamo la data in formato YYYY-MM-DD senza conversioni timezone
     const attendanceData = {
       user_id: formData.user_id,
-      date: formData.date, // Manteniamo esattamente la stringa inserita dall'utente
-      check_in_time: formData.check_in_time || null,
-      check_out_time: formData.check_out_time || null,
+      date: formData.date,
+      check_in_time: formData.is_sick_leave ? null : (formData.check_in_time || null),
+      check_out_time: formData.is_sick_leave ? null : (formData.check_out_time || null),
       notes: formData.notes || null,
+      is_sick_leave: formData.is_sick_leave,
     };
 
-    console.log('Dati presenza da salvare (data e orari INVARIATI):', attendanceData);
-    console.log('Data selezionata:', formData.date);
+    console.log('Dati presenza da salvare:', attendanceData);
     createManualAttendance(attendanceData);
     
     // Reset form
@@ -45,6 +46,7 @@ export default function NewManualAttendanceForm() {
       check_in_time: '',
       check_out_time: '',
       notes: '',
+      is_sick_leave: false,
     });
   };
 
@@ -89,26 +91,47 @@ export default function NewManualAttendanceForm() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="check_in">Orario Entrata</Label>
-                <Input
-                  id="check_in"
-                  type="time"
-                  value={formData.check_in_time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="check_out">Orario Uscita</Label>
-                <Input
-                  id="check_out"
-                  type="time"
-                  value={formData.check_out_time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
-                />
-              </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="sick_leave"
+                checked={formData.is_sick_leave}
+                onCheckedChange={(checked) => {
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    is_sick_leave: checked as boolean,
+                    // Se è malattia, svuota gli orari
+                    check_in_time: checked ? '' : prev.check_in_time,
+                    check_out_time: checked ? '' : prev.check_out_time
+                  }));
+                }}
+              />
+              <Label htmlFor="sick_leave" className="text-orange-700 font-medium">
+                Giorno di malattia
+              </Label>
             </div>
+
+            {!formData.is_sick_leave && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="check_in">Orario Entrata</Label>
+                  <Input
+                    id="check_in"
+                    type="time"
+                    value={formData.check_in_time}
+                    onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="check_out">Orario Uscita</Label>
+                  <Input
+                    id="check_out"
+                    type="time"
+                    value={formData.check_out_time}
+                    onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <Label htmlFor="notes">Note</Label>
@@ -120,8 +143,12 @@ export default function NewManualAttendanceForm() {
               />
             </div>
 
-            <Button type="submit" disabled={isCreating || !formData.user_id || !formData.date} className="w-full">
-              {isCreating ? 'Salvando...' : 'Salva Presenza'}
+            <Button 
+              type="submit" 
+              disabled={isCreating || !formData.user_id || !formData.date} 
+              className="w-full"
+            >
+              {isCreating ? 'Salvando...' : (formData.is_sick_leave ? 'Registra Malattia' : 'Salva Presenza')}
             </Button>
           </form>
         </CardContent>
