@@ -2,11 +2,11 @@
 import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import LeaveRequestForm from "./LeaveRequestForm";
 import AdminApprovalsSection from "./AdminApprovalsSection";
 import { EmployeeLeaveBalanceSection } from "./EmployeeLeaveBalanceSection";
-import { CalendarDays, FileText, UserCheck, Settings } from "lucide-react";
+import { EmployeeLeaveRequestSection } from "./EmployeeLeaveRequestSection";
 import { EmployeeLeaveArchiveSection } from "./EmployeeLeaveArchiveSection";
+import { CalendarDays, FileText, UserCheck, Settings } from "lucide-react";
 
 export default function EmployeeLeavePage() {
   const { profile } = useAuth();
