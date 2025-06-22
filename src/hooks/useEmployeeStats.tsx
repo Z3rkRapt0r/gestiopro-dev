@@ -10,6 +10,8 @@ interface EmployeeStats {
   pendingLeaveRequests: number;
   approvedLeaveRequests: number;
   rejectedLeaveRequests: number;
+  vacationDaysRemaining: number;
+  permissionHoursRemaining: number;
   recentDocuments: any[];
   recentNotifications: any[];
 }
@@ -22,6 +24,8 @@ export const useEmployeeStats = () => {
     pendingLeaveRequests: 0,
     approvedLeaveRequests: 0,
     rejectedLeaveRequests: 0,
+    vacationDaysRemaining: 0,
+    permissionHoursRemaining: 0,
     recentDocuments: [],
     recentNotifications: [],
   });
@@ -62,6 +66,23 @@ export const useEmployeeStats = () => {
       const approvedLeaveRequests = leaveRequests?.filter(req => req.status === 'approved').length || 0;
       const rejectedLeaveRequests = leaveRequests?.filter(req => req.status === 'rejected').length || 0;
 
+      // Bilancio ferie e permessi per l'anno corrente
+      const currentYear = new Date().getFullYear();
+      const { data: leaveBalance } = await supabase
+        .from('employee_leave_balance')
+        .select('vacation_days_total, vacation_days_used, permission_hours_total, permission_hours_used')
+        .eq('user_id', user.id)
+        .eq('year', currentYear)
+        .maybeSingle();
+
+      const vacationDaysRemaining = leaveBalance 
+        ? Math.max(0, leaveBalance.vacation_days_total - leaveBalance.vacation_days_used)
+        : 0;
+      
+      const permissionHoursRemaining = leaveBalance 
+        ? Math.max(0, leaveBalance.permission_hours_total - leaveBalance.permission_hours_used)
+        : 0;
+
       // Documenti recenti (ultimi 5)
       const { data: recentDocuments } = await supabase
         .from('documents')
@@ -85,6 +106,8 @@ export const useEmployeeStats = () => {
         pendingLeaveRequests,
         approvedLeaveRequests,
         rejectedLeaveRequests,
+        vacationDaysRemaining,
+        permissionHoursRemaining,
         recentDocuments: recentDocuments || [],
         recentNotifications: recentNotifications || [],
       });
@@ -142,10 +165,25 @@ export const useEmployeeStats = () => {
         )
         .subscribe();
 
+      const leaveBalanceChannel = supabase
+        .channel('employee-leave-balance-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'employee_leave_balance',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => fetchStats()
+        )
+        .subscribe();
+
       return () => {
         supabase.removeChannel(documentsChannel);
         supabase.removeChannel(notificationsChannel);
         supabase.removeChannel(leaveRequestsChannel);
+        supabase.removeChannel(leaveBalanceChannel);
       };
     }
   }, [user]);
