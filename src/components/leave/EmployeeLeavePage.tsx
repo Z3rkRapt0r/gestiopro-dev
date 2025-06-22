@@ -3,10 +3,10 @@ import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeaveRequestForm from "./LeaveRequestForm";
-import EmployeeLeaveArchive from "./EmployeeLeaveArchive";
 import AdminApprovalsSection from "./AdminApprovalsSection";
 import { EmployeeLeaveBalanceSection } from "./EmployeeLeaveBalanceSection";
 import { CalendarDays, FileText, UserCheck, Settings } from "lucide-react";
+import { EmployeeLeaveArchiveSection } from "./EmployeeLeaveArchiveSection";
 
 export default function EmployeeLeavePage() {
   const { profile } = useAuth();
@@ -49,11 +49,11 @@ export default function EmployeeLeavePage() {
         )}
 
         <TabsContent value="request">
-          <LeaveRequestForm />
+          <EmployeeLeaveRequestSection />
         </TabsContent>
 
         <TabsContent value="archive">
-          <EmployeeLeaveArchive />
+          <EmployeeLeaveArchiveSection />
         </TabsContent>
 
         {isAdmin && (
