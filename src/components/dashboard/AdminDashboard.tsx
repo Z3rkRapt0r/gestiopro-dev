@@ -10,6 +10,7 @@ import AdminSettingsSection from '@/components/admin/AdminSettingsSection';
 import AdminEmployeesSection from './AdminEmployeesSection';
 import DashboardHeader from './DashboardHeader';
 import AdminAttendanceSection from './AdminAttendanceSection';
+import AdminDashboardOverview from './AdminDashboardOverview';
 import {
   Sidebar,
   SidebarContent,

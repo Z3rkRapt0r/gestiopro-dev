@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -53,16 +54,16 @@ export const useEmployeeStats = () => {
         supabase.from('notifications').select('id, title, created_at, is_read, type').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5)
       ]);
 
-      const pendingLeaveRequests = leaveRequestsData?.filter(req => req.status === 'pending').length || 0;
-      const approvedLeaveRequests = leaveRequestsData?.filter(req => req.status === 'approved').length || 0;
-      const rejectedLeaveRequests = leaveRequestsData?.filter(req => req.status === 'rejected').length || 0;
+      const pendingLeaveRequests = leaveRequestsData.data?.filter(req => req.status === 'pending').length || 0;
+      const approvedLeaveRequests = leaveRequestsData.data?.filter(req => req.status === 'approved').length || 0;
+      const rejectedLeaveRequests = leaveRequestsData.data?.filter(req => req.status === 'rejected').length || 0;
 
-      const vacationDaysRemaining = leaveBalanceData 
-        ? Math.max(0, leaveBalanceData.vacation_days_total - leaveBalanceData.vacation_days_used)
+      const vacationDaysRemaining = leaveBalanceData.data 
+        ? Math.max(0, leaveBalanceData.data.vacation_days_total - leaveBalanceData.data.vacation_days_used)
         : 0;
       
-      const permissionHoursRemaining = leaveBalanceData 
-        ? Math.max(0, leaveBalanceData.permission_hours_total - leaveBalanceData.permission_hours_used)
+      const permissionHoursRemaining = leaveBalanceData.data 
+        ? Math.max(0, leaveBalanceData.data.permission_hours_total - leaveBalanceData.data.permission_hours_used)
         : 0;
 
       setStats({
@@ -74,8 +75,8 @@ export const useEmployeeStats = () => {
         rejectedLeaveRequests,
         vacationDaysRemaining,
         permissionHoursRemaining,
-        recentDocuments: recentDocuments || [],
-        recentNotifications: recentNotifications || [],
+        recentDocuments: recentDocuments.data || [],
+        recentNotifications: recentNotifications.data || [],
       });
     } catch (error) {
       console.error('Error fetching employee stats:', error);
