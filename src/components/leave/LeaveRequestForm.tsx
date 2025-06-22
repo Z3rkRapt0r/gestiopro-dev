@@ -119,7 +119,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
       const payload: any = {
         type,
         note,
-        status: "approved", // Auto-approvazione
+        status: "pending", // Cambiato da "approved" a "pending"
         user_id: profile.id,
         notify_employee: true,
       };
@@ -150,8 +150,8 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
       }
 
       toast({ 
-        title: "Richiesta creata", 
-        description: "La richiesta è stata creata e le presenze sono state registrate automaticamente per i giorni lavorativi"
+        title: "Richiesta inviata", 
+        description: "La richiesta è stata inviata all'amministratore per l'approvazione"
       });
       
       onSuccess();
@@ -209,7 +209,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
                 <div className="text-xs text-blue-500 mt-1">
                   {type === "permesso" 
                     ? "Solo i giorni lavorativi possono essere selezionati per i permessi" 
-                    : "Le presenze automatiche saranno create solo per i giorni lavorativi"
+                    : "Le richieste saranno inviate all'amministratore per l'approvazione"
                   }
                 </div>
               </div>
@@ -348,7 +348,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
               type="submit" 
               disabled={loading || !currentBalanceValidation.hasBalance || currentBalanceValidation.exceedsVacationLimit || currentBalanceValidation.exceedsPermissionLimit}
             >
-              {loading ? "Creazione..." : `Crea ${type}`}
+              {loading ? "Invio..." : `Invia richiesta ${type}`}
             </Button>
           </div>
         </form>

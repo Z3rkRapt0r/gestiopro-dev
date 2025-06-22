@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -104,7 +103,7 @@ export function useLeaveRequests() {
         date_from: date_from ?? null,
         date_to: date_to ?? null,
         note: note ?? null,
-        status: status ?? "approved", // Auto-approvazione per ferie/permessi
+        status: status ?? "pending", // Default to pending
       };
       
       const { error, data } = await supabase
@@ -114,66 +113,69 @@ export function useLeaveRequests() {
         .maybeSingle();
       if (error) throw error;
 
-      // Se la richiesta è per ferie, creiamo presenze per i giorni lavorativi
-      if (type === "ferie" && date_from && date_to && data) {
-        const startDate = new Date(date_from);
-        const endDate = new Date(date_to);
-        const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-        
-        // Filtra solo i giorni lavorativi basandosi sulla configurazione
-        const workingDays = allDays.filter(day => isWorkingDay(day));
+      // Solo se la richiesta è approvata, creiamo le presenze automatiche
+      if (status === "approved") {
+        // Se la richiesta è per ferie, creiamo presenze per i giorni lavorativi
+        if (type === "ferie" && date_from && date_to && data) {
+          const startDate = new Date(date_from);
+          const endDate = new Date(date_to);
+          const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+          
+          // Filtra solo i giorni lavorativi basandosi sulla configurazione
+          const workingDays = allDays.filter(day => isWorkingDay(day));
 
-        console.log('Giorni lavorativi per ferie:', workingDays.length, 'su', allDays.length, 'giorni totali');
+          console.log('Giorni lavorativi per ferie:', workingDays.length, 'su', allDays.length, 'giorni totali');
 
-        // Crea le presenze per tutti i giorni lavorativi delle ferie
-        if (workingDays.length > 0) {
-          const attendancesToCreate = workingDays.map(day => ({
-            user_id: user_id!,
-            date: format(day, 'yyyy-MM-dd'),
-            check_in_time: workSchedule?.start_time || '08:00',
-            check_out_time: workSchedule?.end_time || '17:00',
-            is_manual: true,
-            is_business_trip: false,
-            notes: `Ferie`,
-          }));
+          // Crea le presenze per tutti i giorni lavorativi delle ferie
+          if (workingDays.length > 0) {
+            const attendancesToCreate = workingDays.map(day => ({
+              user_id: user_id!,
+              date: format(day, 'yyyy-MM-dd'),
+              check_in_time: workSchedule?.start_time || '08:00',
+              check_out_time: workSchedule?.end_time || '17:00',
+              is_manual: true,
+              is_business_trip: false,
+              notes: `Ferie`,
+            }));
 
-          const { error: attendanceError } = await supabase
-            .from('unified_attendances')
-            .upsert(attendancesToCreate, {
-              onConflict: 'user_id,date'
-            });
+            const { error: attendanceError } = await supabase
+              .from('unified_attendances')
+              .upsert(attendancesToCreate, {
+                onConflict: 'user_id,date'
+              });
 
-          if (attendanceError) {
-            console.error('Error creating vacation attendances:', attendanceError);
+            if (attendanceError) {
+              console.error('Error creating vacation attendances:', attendanceError);
+            }
           }
         }
-      }
 
-      // Se la richiesta è per permesso giornaliero, creiamo presenza solo se è un giorno lavorativo
-      if (type === "permesso" && day && !time_from && !time_to && data) {
-        const permissionDate = new Date(day);
-        
-        if (isWorkingDay(permissionDate)) {
-          console.log('Creando presenza per permesso giornaliero:', day);
+        // Se la richiesta è per permesso giornaliero, creiamo presenza solo se è un giorno lavorativo
+        if (type === "permesso" && day && !time_from && !time_to && data) {
+          const permissionDate = new Date(day);
+          
+          if (isWorkingDay(permissionDate)) {
+            console.log('Creando presenza per permesso giornaliero:', day);
 
-          const attendanceToCreate = {
-            user_id: user_id!,
-            date: day,
-            check_in_time: workSchedule?.start_time || '08:00',
-            check_out_time: workSchedule?.end_time || '17:00',
-            is_manual: true,
-            is_business_trip: false,
-            notes: `Permesso`,
-          };
+            const attendanceToCreate = {
+              user_id: user_id!,
+              date: day,
+              check_in_time: workSchedule?.start_time || '08:00',
+              check_out_time: workSchedule?.end_time || '17:00',
+              is_manual: true,
+              is_business_trip: false,
+              notes: `Permesso`,
+            };
 
-          const { error: attendanceError } = await supabase
-            .from('unified_attendances')
-            .upsert([attendanceToCreate], {
-              onConflict: 'user_id,date'
-            });
+            const { error: attendanceError } = await supabase
+              .from('unified_attendances')
+              .upsert([attendanceToCreate], {
+                onConflict: 'user_id,date'
+              });
 
-          if (attendanceError) {
-            console.error('Error creating permission attendance:', attendanceError);
+            if (attendanceError) {
+              console.error('Error creating permission attendance:', attendanceError);
+            }
           }
         }
       }
@@ -205,6 +207,58 @@ export function useLeaveRequests() {
         .select()
         .maybeSingle();
       if (error) throw error;
+
+      // Se viene approvata, creiamo le presenze automatiche
+      if (status === "approved" && data) {
+        if (data.type === "ferie" && data.date_from && data.date_to) {
+          const startDate = new Date(data.date_from);
+          const endDate = new Date(data.date_to);
+          const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+          
+          const workingDays = allDays.filter(day => isWorkingDay(day));
+
+          if (workingDays.length > 0) {
+            const attendancesToCreate = workingDays.map(day => ({
+              user_id: data.user_id,
+              date: format(day, 'yyyy-MM-dd'),
+              check_in_time: workSchedule?.start_time || '08:00',
+              check_out_time: workSchedule?.end_time || '17:00',
+              is_manual: true,
+              is_business_trip: false,
+              notes: `Ferie`,
+            }));
+
+            await supabase
+              .from('unified_attendances')
+              .upsert(attendancesToCreate, {
+                onConflict: 'user_id,date'
+              });
+          }
+        }
+
+        if (data.type === "permesso" && data.day && !data.time_from && !data.time_to) {
+          const permissionDate = new Date(data.day);
+          
+          if (isWorkingDay(permissionDate)) {
+            const attendanceToCreate = {
+              user_id: data.user_id,
+              date: data.day,
+              check_in_time: workSchedule?.start_time || '08:00',
+              check_out_time: workSchedule?.end_time || '17:00',
+              is_manual: true,
+              is_business_trip: false,
+              notes: `Permesso`,
+            };
+
+            await supabase
+              .from('unified_attendances')
+              .upsert([attendanceToCreate], {
+                onConflict: 'user_id,date'
+              });
+          }
+        }
+      }
+
       return data as LeaveRequest;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave_requests"] }),
