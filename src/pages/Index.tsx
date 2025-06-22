@@ -36,6 +36,7 @@ const IndexContent = () => {
 
   console.log('User role:', profile.role);
 
+  // Controllo di accesso rigoroso basato sul ruolo
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       {profile.role === 'admin' ? (

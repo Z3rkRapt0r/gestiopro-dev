@@ -25,17 +25,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Interfaccia Employee come definita (o simile) in AdminDashboard
 interface Employee {
   id: string;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
-  role: 'admin' | 'employee'; // Usiamo il tipo più specifico
+  role: 'admin' | 'employee';
   department: string | null;
   employee_code: string | null;
   is_active: boolean;
-  // created_at and updated_at might also be part of the full Supabase profile
 }
 
 interface EditEmployeeFormProps {
@@ -45,12 +43,11 @@ interface EditEmployeeFormProps {
 }
 
 const employeeFormSchema = z.object({
-  first_name: z.string().min(1, 'Il nome è obbligatorio').nullable(),
-  last_name: z.string().min(1, 'Il cognome è obbligatorio').nullable(),
-  email: z.string().email('Email non valida').nullable(), // Email in profiles table
+  first_name: z.string().min(1, 'Il nome è obbligatorio'),
+  last_name: z.string().min(1, 'Il cognome è obbligatorio'),
   role: z.enum(['admin', 'employee']),
-  department: z.string().nullable(),
-  employee_code: z.string().nullable(),
+  department: z.string().optional(),
+  employee_code: z.string().optional(),
   is_active: z.boolean(),
 });
 
@@ -70,7 +67,6 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
     defaultValues: {
       first_name: employee.first_name || '',
       last_name: employee.last_name || '',
-      email: employee.email || '',
       role: employee.role || 'employee',
       department: employee.department || '',
       employee_code: employee.employee_code || '',
@@ -82,7 +78,6 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
     reset({
       first_name: employee.first_name || '',
       last_name: employee.last_name || '',
-      email: employee.email || '', // Assumiamo che l'email del profilo sia modificabile
       role: employee.role || 'employee',
       department: employee.department || '',
       employee_code: employee.employee_code || '',
@@ -93,28 +88,33 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
   const onSubmit = async (data: EmployeeFormData) => {
     setIsSubmitting(true);
     try {
+      console.log('Updating employee with data:', data);
+      
       const { error } = await supabase
         .from('profiles')
         .update({
           first_name: data.first_name,
           last_name: data.last_name,
-          email: data.email, // Aggiorna l'email nella tabella profiles
           role: data.role,
-          department: data.department,
-          employee_code: data.employee_code,
+          department: data.department || null,
+          employee_code: data.employee_code || null,
           is_active: data.is_active,
-          updated_at: new Date().toISOString(), // Manually set updated_at
+          updated_at: new Date().toISOString(),
         })
         .eq('id', employee.id);
 
       if (error) {
+        console.error('Error updating employee:', error);
         throw error;
       }
 
+      console.log('Employee updated successfully');
+      
       toast({
         title: 'Dipendente aggiornato',
-        description: `I dati di ${data.first_name} ${data.last_name} sono stati aggiornati.`,
+        description: `I dati di ${data.first_name} ${data.last_name} sono stati aggiornati con successo.`,
       });
+      
       onEmployeeUpdated();
       onClose();
     } catch (error: any) {
@@ -142,7 +142,7 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
               <Controller
                 name="first_name"
                 control={control}
-                render={({ field }) => <Input id="first_name" {...field} value={field.value ?? ''} />}
+                render={({ field }) => <Input id="first_name" {...field} />}
               />
               {errors.first_name && <p className="text-red-500 text-sm">{errors.first_name.message}</p>}
             </div>
@@ -151,27 +151,25 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
               <Controller
                 name="last_name"
                 control={control}
-                render={({ field }) => <Input id="last_name" {...field} value={field.value ?? ''} />}
+                render={({ field }) => <Input id="last_name" {...field} />}
               />
               {errors.last_name && <p className="text-red-500 text-sm">{errors.last_name.message}</p>}
             </div>
           </div>
+          
           <div>
-            <Label htmlFor="email">Email</Label>
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => <Input id="email" type="email" {...field} value={field.value ?? ''} />}
-            />
-            {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+            <Label>Email (Solo lettura)</Label>
+            <Input value={employee.email || 'Nessuna email'} disabled className="bg-gray-100" />
+            <p className="text-xs text-gray-500 mt-1">L'email non può essere modificata da qui</p>
           </div>
+          
           <div>
             <Label htmlFor="role">Ruolo</Label>
             <Controller
               name="role"
               control={control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleziona ruolo" />
                   </SelectTrigger>
@@ -184,24 +182,25 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
             />
             {errors.role && <p className="text-red-500 text-sm">{errors.role.message}</p>}
           </div>
+          
           <div>
             <Label htmlFor="department">Dipartimento</Label>
             <Controller
               name="department"
               control={control}
-              render={({ field }) => <Input id="department" {...field} value={field.value ?? ''} />}
+              render={({ field }) => <Input id="department" {...field} />}
             />
-            {errors.department && <p className="text-red-500 text-sm">{errors.department.message}</p>}
           </div>
+          
           <div>
             <Label htmlFor="employee_code">Codice Dipendente</Label>
             <Controller
               name="employee_code"
               control={control}
-              render={({ field }) => <Input id="employee_code" {...field} value={field.value ?? ''} />}
+              render={({ field }) => <Input id="employee_code" {...field} />}
             />
-            {errors.employee_code && <p className="text-red-500 text-sm">{errors.employee_code.message}</p>}
           </div>
+          
           <div className="flex items-center space-x-2">
             <Controller
               name="is_active"
@@ -234,4 +233,3 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
 };
 
 export default EditEmployeeForm;
-

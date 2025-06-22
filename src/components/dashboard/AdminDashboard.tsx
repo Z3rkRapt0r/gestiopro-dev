@@ -1,7 +1,7 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart3, Calendar, Clock, FileText, Settings, Users, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import EmployeeDashboardSection from './EmployeeDashboardSection';
 import AdminApprovalsSection from '@/components/leave/AdminApprovalsSection';
 import AdminDocumentsSection from './AdminDocumentsSection';
@@ -28,6 +28,15 @@ import {
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState<'overview' | 'employees' | 'leaves' | 'attendances' | 'documents' | 'notifications' | 'settings'>('overview');
   const { profile, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Controllo di accesso - solo admin possono accedere
+  useEffect(() => {
+    if (!loading && profile && profile.role !== 'admin') {
+      console.log('Non-admin user trying to access admin dashboard, redirecting...');
+      navigate('/');
+    }
+  }, [profile, loading, navigate]);
 
   if (loading) {
     return (
@@ -41,7 +50,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!profile) {
+  if (!profile || profile.role !== 'admin') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
         <div className="text-center">
@@ -49,7 +58,7 @@ export default function AdminDashboard() {
             <Users className="w-8 h-8 text-red-600" />
           </div>
           <h2 className="text-xl font-semibold text-red-800 mb-2">Accesso Negato</h2>
-          <p className="text-red-600">Utente non autorizzato</p>
+          <p className="text-red-600">Solo gli amministratori possono accedere a questa sezione</p>
         </div>
       </div>
     );
