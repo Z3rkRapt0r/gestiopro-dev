@@ -17,8 +17,8 @@ export function EmployeeLeaveRequestSection() {
   const pendingRequests = leaveRequests?.filter(request => request.status === "pending") || [];
 
   const handleSuccess = () => {
-    // Refresh the page or show success message
-    window.location.reload();
+    // Non ricaricare più la pagina, la query si aggiorna automaticamente
+    console.log('Richiesta inviata con successo');
   };
 
   const getRequestDisplayText = (request: any) => {
