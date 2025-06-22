@@ -36,7 +36,7 @@ export const useLeaveRequestNotifications = () => {
 
       const { data, error } = await supabase.functions.invoke('send-notification-email', {
         body: {
-          recipientId: null, // Questo farà sì che venga inviata a servizio@alminfissi.it
+          recipientId: null, // Invia a tutti gli admin
           subject,
           shortText: message,
           body,
@@ -54,10 +54,6 @@ export const useLeaveRequestNotifications = () => {
         });
       } else {
         console.log('Admin notification sent successfully:', data);
-        toast({
-          title: "Richiesta inviata",
-          description: "L'amministratore è stato notificato via email",
-        });
       }
     } catch (error: any) {
       console.error('Error in notifyAdmin:', error);

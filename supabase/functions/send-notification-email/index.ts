@@ -34,37 +34,11 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Determina quale admin usare per la configurazione Brevo
-    let adminIdForBrevo = userId;
-    
-    // Se la richiesta viene da un dipendente, cerca il primo admin attivo
-    const { data: userProfile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", userId)
-      .single();
-
-    if (userProfile?.role === "employee") {
-      console.log("[Notification Email] Request from employee, finding admin for Brevo config");
-      const { data: adminProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("role", "admin")
-        .eq("is_active", true)
-        .limit(1)
-        .single();
-        
-      if (adminProfile) {
-        adminIdForBrevo = adminProfile.id;
-        console.log("[Notification Email] Using admin", adminIdForBrevo, "for Brevo config");
-      }
-    }
-
     // Get Brevo API key for admin
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
       .select("brevo_api_key")
-      .eq("admin_id", adminIdForBrevo)
+      .eq("admin_id", userId)
       .single();
 
     if (settingsError) {
@@ -79,7 +53,7 @@ serve(async (req) => {
     }
 
     if (!adminSetting?.brevo_api_key) {
-      console.error("[Notification Email] No Brevo API key found for admin:", adminIdForBrevo);
+      console.error("[Notification Email] No Brevo API key found for admin:", userId);
       return new Response(
         JSON.stringify({ 
           error: "No Brevo API key configured for this admin" 
@@ -122,12 +96,12 @@ serve(async (req) => {
       }
     }
 
-    // Get email template for the specific template type - usa l'admin che ha la chiave Brevo
+    // Get email template for the specific template type
     console.log("[Notification Email] Looking for email template:", templateType);
     const { data: emailTemplate, error: templateError } = await supabase
       .from("email_templates")
       .select("*")
-      .eq("admin_id", adminIdForBrevo)
+      .eq("admin_id", userId)
       .eq("template_type", templateType)
       .maybeSingle();
 
@@ -172,7 +146,7 @@ serve(async (req) => {
     if (!logoUrl) {
       const { data: logoData } = await supabase.storage
         .from('company-assets')
-        .getPublicUrl(`${adminIdForBrevo}/email-logo.png?v=${Date.now()}`);
+        .getPublicUrl(`${userId}/email-logo.png?v=${Date.now()}`);
       logoUrl = logoData?.publicUrl;
     }
 
@@ -182,15 +156,19 @@ serve(async (req) => {
     // Get recipients list
     let recipients = [];
     if (!recipientId) {
-      // For leave requests to admin and document notifications, send to admin email
-      if (templateType === 'permessi-richiesta' || templateType === 'documenti') {
-        // Sempre invia all'email dell'amministratore
-        recipients = [{ 
-          id: adminIdForBrevo, 
-          email: 'servizio@alminfissi.it', 
-          first_name: 'Servizio', 
-          last_name: 'ALM Infissi' 
-        }];
+      // For leave requests to admin, send to all admins
+      if (templateType === 'permessi-richiesta') {
+        const { data: adminProfiles, error: adminProfilesError } = await supabase
+          .from("profiles")
+          .select("id, email, first_name, last_name")
+          .eq("role", "admin")
+          .eq("is_active", true);
+          
+        if (adminProfilesError) {
+          console.error("[Notification Email] Error fetching admin profiles:", adminProfilesError);
+          throw adminProfilesError;
+        }
+        recipients = adminProfiles || [];
       } else {
         // Send to all active employees for other notifications
         const { data: profiles, error: profilesError } = await supabase
@@ -221,17 +199,17 @@ serve(async (req) => {
 
     console.log("[Notification Email] Recipients found:", recipients.length);
 
-    // Get admin profile for sender info - usa l'admin che ha la chiave Brevo
+    // Get admin profile for sender info
     const { data: adminProfile, error: adminProfileError } = await supabase
       .from("profiles")
       .select("first_name, last_name")
-      .eq("id", adminIdForBrevo)
+      .eq("id", userId)
       .single();
 
     const senderName = adminProfile?.first_name && adminProfile?.last_name 
       ? `${adminProfile.first_name} ${adminProfile.last_name}` 
-      : "ALM Infissi";
-    const senderEmail = "servizio@alminfissi.it";
+      : "Sistema Notifiche";
+    const senderEmail = "zerkraptor@gmail.com";
 
     let successCount = 0;
     const errors = [];

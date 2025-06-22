@@ -19,23 +19,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Users, UserPlus, Edit, Eye, Search, Loader2, Trash2 } from 'lucide-react';
+import { Users, UserPlus, Edit, Eye, Search, Loader2 } from 'lucide-react';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
-import { useEmployeeOperations } from '@/hooks/useEmployeeOperations';
 import CreateEmployeeForm from './CreateEmployeeForm';
 import EditEmployeeForm from './EditEmployeeForm';
-import DeleteEmployeeDialog from './DeleteEmployeeDialog';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminEmployeesSection() {
-  const { employees, loading, refetchEmployees } = useActiveEmployees();
-  const { deleteEmployee, isDeleting } = useEmployeeOperations();
+  const { employees, loading } = useActiveEmployees();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
-  const [employeeToDelete, setEmployeeToDelete] = useState<any>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const filteredEmployees = employees?.filter(employee =>
@@ -48,14 +45,9 @@ export default function AdminEmployeesSection() {
     setIsEditDialogOpen(true);
   };
 
-  const handleDeleteEmployee = (employee: any) => {
-    setEmployeeToDelete(employee);
-    setIsDeleteDialogOpen(true);
-  };
-
   const handleCreateEmployeeSuccess = async () => {
     setIsCreateDialogOpen(false);
-    await refetchEmployees();
+    await queryClient.invalidateQueries({ queryKey: ['active-employees'] });
     toast({
       title: "Successo",
       description: "Dipendente aggiunto con successo",
@@ -66,23 +58,12 @@ export default function AdminEmployeesSection() {
   const handleEditEmployeeSuccess = async () => {
     setIsEditDialogOpen(false);
     setSelectedEmployee(null);
-    await refetchEmployees();
+    await queryClient.invalidateQueries({ queryKey: ['active-employees'] });
     toast({
       title: "Successo", 
       description: "Dipendente aggiornato con successo",
       className: "bg-blue-50 border-blue-200 text-blue-800",
     });
-  };
-
-  const handleConfirmDelete = async (employeeId: string, employeeName: string) => {
-    const success = await deleteEmployee(employeeId, employeeName);
-    if (success) {
-      console.log('Eliminazione completata, ricaricamento lista dipendenti...');
-      await refetchEmployees();
-      setIsDeleteDialogOpen(false);
-      setEmployeeToDelete(null);
-    }
-    return success;
   };
 
   if (loading) {
@@ -229,7 +210,6 @@ export default function AdminEmployeesSection() {
                   <TableRow className="border-b border-slate-200/60">
                     <TableHead className="font-semibold text-slate-700">Nome Completo</TableHead>
                     <TableHead className="font-semibold text-slate-700">Email</TableHead>
-                    <TableHead className="font-semibold text-slate-700">Ruolo</TableHead>
                     <TableHead className="font-semibold text-slate-700">Stato</TableHead>
                     <TableHead className="font-semibold text-slate-700 text-right">Azioni</TableHead>
                   </TableRow>
@@ -256,9 +236,7 @@ export default function AdminEmployeesSection() {
                                 : 'Nome non disponibile'
                               }
                             </p>
-                            <p className="text-sm text-slate-500">
-                              {employee.employee_code ? `Cod: ${employee.employee_code}` : 'Codice non assegnato'}
-                            </p>
+                            <p className="text-sm text-slate-500">Dipendente</p>
                           </div>
                         </div>
                       </TableCell>
@@ -266,23 +244,8 @@ export default function AdminEmployeesSection() {
                         {employee.email || 'Email non disponibile'}
                       </TableCell>
                       <TableCell>
-                        <Badge 
-                          className={
-                            employee.role === 'admin' 
-                              ? "bg-red-100 text-red-700 border-red-200 hover:bg-red-200" 
-                              : "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200"
-                          }
-                        >
-                          {employee.role === 'admin' ? 'Amministratore' : 'Dipendente'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={
-                          employee.is_active 
-                            ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-200" 
-                            : "bg-gray-100 text-gray-700 border-gray-200"
-                        }>
-                          {employee.is_active ? 'Attivo' : 'Inattivo'}
+                        <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200 transition-colors duration-200">
+                          Attivo
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -303,17 +266,6 @@ export default function AdminEmployeesSection() {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          {employee.role !== 'admin' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteEmployee(employee)}
-                              disabled={isDeleting}
-                              className="border-red-300 text-red-600 hover:text-red-900 hover:border-red-400 hover:bg-red-50 transition-all duration-200"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -345,18 +297,6 @@ export default function AdminEmployeesSection() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Delete Dialog */}
-      <DeleteEmployeeDialog
-        employee={employeeToDelete}
-        isOpen={isDeleteDialogOpen}
-        onClose={() => {
-          setIsDeleteDialogOpen(false);
-          setEmployeeToDelete(null);
-        }}
-        onConfirm={handleConfirmDelete}
-        isDeleting={isDeleting}
-      />
     </div>
   );
 }

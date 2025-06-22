@@ -21,7 +21,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
     lastName: '',
     email: '',
     password: '',
-    role: 'employee' as 'admin' | 'employee',
+    department: '',
     employeeCode: ''
   });
   const { toast } = useToast();
@@ -29,28 +29,9 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    console.log('Tentativo di creazione dipendente con dati:', {
-      email: formData.email,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      role: formData.role,
-      employeeCode: formData.employeeCode
-    });
 
     try {
-      // Controlla prima se l'utente esiste già nel database profiles
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', formData.email)
-        .single();
-
-      if (existingUser) {
-        throw new Error('Esiste già un dipendente con questa email');
-      }
-
-      // Crea l'utente in Supabase Auth
+      // Crea l'utente in Supabase Auth come se fosse lui stesso a registrarsi
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -58,27 +39,17 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
-            role: formData.role,
+            role: 'employee',
           }
         }
       });
 
-      console.log('Risultato signUp:', { signUpData, signUpError });
-
       if (signUpError) {
-        console.error('Errore signUp:', signUpError);
-        let description = "Errore durante la creazione dell'account";
-        
-        if (signUpError.message?.includes('User already registered')) {
+        // Gestione di errori comuni
+        let description = signUpError.message || "Errore durante la creazione dell'account";
+        if (signUpError.message === "User already registered") {
           description = "Esiste già un utente con questa email";
-        } else if (signUpError.message?.includes('Invalid email')) {
-          description = "Email non valida";
-        } else if (signUpError.message?.includes('Password')) {
-          description = "La password deve essere di almeno 6 caratteri";
-        } else if (signUpError.message) {
-          description = signUpError.message;
         }
-        
         throw new Error(description);
       }
 
@@ -87,32 +58,29 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
         throw new Error("Impossibile recuperare l'id del nuovo utente.");
       }
 
-      console.log('Utente creato con ID:', userId);
-
-      // Aggiorna il profilo nella tabella profiles
+      // Inserisci/aggiorna il profilo nella tabella profiles
+      // NB: la funzione handle_new_user normalmente inserisce il profilo.
+      // Aggiorniamo i campi aggiuntivi
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: formData.firstName,
           last_name: formData.lastName,
           email: formData.email,
-          role: formData.role,
+          role: 'employee',
+          department: formData.department || null,
           employee_code: formData.employeeCode || null,
           is_active: true
         })
         .eq('id', userId);
 
       if (profileError) {
-        console.error('Errore update profilo:', profileError);
-        throw new Error(`Errore nell'aggiornamento del profilo: ${profileError.message}`);
+        throw profileError;
       }
-
-      console.log('Profilo aggiornato con successo');
 
       toast({
         title: "Dipendente creato",
-        description: `${formData.firstName} ${formData.lastName} è stato aggiunto con successo come ${formData.role === 'admin' ? 'amministratore' : 'dipendente'}`,
-        className: "bg-green-50 border-green-200 text-green-800",
+        description: `${formData.firstName} ${formData.lastName} è stato aggiunto con successo`,
       });
 
       onEmployeeCreated();
@@ -183,20 +151,20 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
-                minLength={6}
-                placeholder="Minimo 6 caratteri"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Ruolo</Label>
-              <Select onValueChange={(value: 'admin' | 'employee') => setFormData({ ...formData, role: value })} defaultValue="employee">
+              <Label htmlFor="department">Dipartimento</Label>
+              <Select onValueChange={(value) => setFormData({ ...formData, department: value })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleziona ruolo" />
+                  <SelectValue placeholder="Seleziona dipartimento" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="employee">Dipendente</SelectItem>
-                  <SelectItem value="admin">Amministratore</SelectItem>
+                  <SelectItem value="produzione">Produzione</SelectItem>
+                  <SelectItem value="amministrazione">Amministrazione</SelectItem>
+                  <SelectItem value="vendite">Vendite</SelectItem>
+                  <SelectItem value="manutenzione">Manutenzione</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -227,3 +195,4 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
 };
 
 export default CreateEmployeeForm;
+

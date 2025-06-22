@@ -1,5 +1,5 @@
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, AuthProvider } from "@/hooks/useAuth";
 import AuthPage from "@/components/auth/AuthPage";
 import { Suspense, lazy } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,10 +20,10 @@ const DashboardSkeleton = () => (
   </div>
 );
 
-const Index = () => {
+const IndexContent = () => {
   const { user, profile, loading } = useAuth();
 
-  console.log('Index render:', { user: !!user, profile, loading });
+  console.log('IndexContent render:', { user: !!user, profile, loading });
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -36,17 +36,24 @@ const Index = () => {
 
   console.log('User role:', profile.role);
 
-  // Strict role-based access control
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Suspense fallback={<DashboardSkeleton />}>
-        {profile.role === 'admin' ? (
-          <AdminDashboard />
-        ) : (
-          <EmployeeDashboard />
-        )}
-      </Suspense>
-    </div>
+    <Suspense fallback={<DashboardSkeleton />}>
+      {profile.role === 'admin' ? (
+        <AdminDashboard />
+      ) : (
+        <EmployeeDashboard />
+      )}
+    </Suspense>
+  );
+};
+
+const Index = () => {
+  return (
+    <AuthProvider>
+      <div className="min-h-screen bg-gray-50">
+        <IndexContent />
+      </div>
+    </AuthProvider>
   );
 };
 
