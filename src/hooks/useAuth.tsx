@@ -33,8 +33,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-
   const mounted = useRef(true);
+  const initialized = useRef(false);
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -80,15 +80,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    mounted.current = true;
-    console.log('[useAuth] useEffect started. Mounted ref:', mounted.current);
+    let isMounted = true;
+    console.log('[useAuth] useEffect started');
 
-    // Setup auth state change listener
+    const initializeAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('[useAuth] Error getting initial session:', error);
+        }
+        
+        if (!isMounted) return;
+        
+        console.log('[useAuth] Initial session:', initialSession?.user?.id || 'No session');
+        
+        // Set initial state
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        
+        if (initialSession?.user) {
+          await fetchUserProfile(initialSession.user.id);
+        } else {
+          setProfile(null);
+        }
+        
+        initialized.current = true;
+        setLoading(false);
+      } catch (error) {
+        console.error('[useAuth] Error initializing auth:', error);
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          initialized.current = true;
+        }
+      }
+    };
+
+    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log('[useAuth] onAuthStateChange fired. Event:', event, 'Session User ID:', newSession?.user?.id);
-        if (!mounted.current) return;
-
+        console.log('[useAuth] Auth state change:', event, newSession?.user?.id || 'No session');
+        
+        if (!isMounted || !initialized.current) return;
+        
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -97,53 +135,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setProfile(null);
         }
-        
-        setLoading(false);
       }
     );
 
-    console.log('[useAuth] Subscribed to onAuthStateChange.');
-
-    // Initial session check
-    const initializeAuth = async () => {
-      console.log('[useAuth] initializeAuth started.');
-      try {
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('[useAuth] Error getting session:', error);
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-          return;
-        }
-        
-        console.log('[useAuth] Initial session check:', currentSession?.user?.id);
-        if (!mounted.current) return;
-        
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        
-        if (currentSession?.user) {
-          await fetchUserProfile(currentSession.user.id);
-        } else {
-          setProfile(null);
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('[useAuth] Error initializing auth:', error);
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-      }
-      console.log('[useAuth] initializeAuth completed.');
-    };
-
+    // Initialize auth
     initializeAuth();
 
     return () => {
+      isMounted = false;
       mounted.current = false;
       subscription.unsubscribe();
     };
@@ -169,7 +168,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           title: "Accesso effettuato",
           description: "Benvenuto nel sistema!",
         });
-        // Non settare loading a false qui, verrà gestito dall'auth state change
       }
       
       return { error };
@@ -198,8 +196,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (error) {
         console.warn('[useAuth] Warning during sign out:', error.message);
-        // Even if there's an error, we still want to show success message
-        // since we've cleared the local state
       }
       
       console.log('[useAuth] Sign out completed successfully');
