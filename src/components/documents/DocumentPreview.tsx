@@ -1,9 +1,8 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, X, FileText, Image as ImageIcon } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface DocumentPreviewProps {
   document: any;
@@ -14,21 +13,14 @@ interface DocumentPreviewProps {
 
 const DocumentPreview = ({ document, isOpen, onClose, onDownload }: DocumentPreviewProps) => {
   const [imageError, setImageError] = useState(false);
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
   
   const isImage = document?.file_type?.startsWith('image/');
   const isPdf = document?.file_type === 'application/pdf';
   
-  React.useEffect(() => {
-    if (document?.file_path && isOpen) {
-      // Ottieni l'URL pubblico del file da Supabase Storage
-      const { data } = supabase.storage
-        .from('documents')
-        .getPublicUrl(document.file_path);
-      
-      setFileUrl(data.publicUrl);
-    }
-  }, [document?.file_path, isOpen]);
+  const getFileUrl = () => {
+    // In una implementazione reale, qui useresti supabase.storage.from('documents').getPublicUrl()
+    return document?.file_path || '';
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -56,34 +48,23 @@ const DocumentPreview = ({ document, isOpen, onClose, onDownload }: DocumentPrev
         </DialogHeader>
         
         <div className="flex-1 overflow-auto">
-          {isImage && !imageError && fileUrl ? (
+          {isImage && !imageError ? (
             <div className="flex justify-center items-center min-h-[400px] bg-gray-50 rounded-lg">
               <img
-                src={fileUrl}
+                src={getFileUrl()}
                 alt={document?.title}
                 className="max-w-full max-h-[600px] object-contain"
                 onError={() => setImageError(true)}
               />
             </div>
-          ) : isPdf && fileUrl ? (
-            <div className="flex justify-center items-center min-h-[400px] bg-gray-50 rounded-lg">
-              <iframe
-                src={fileUrl}
-                className="w-full h-[600px] border-0"
-                title={document?.title}
-              />
-            </div>
-          ) : fileUrl ? (
+          ) : isPdf ? (
             <div className="flex justify-center items-center min-h-[400px] bg-gray-50 rounded-lg">
               <div className="text-center">
                 <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-2">Anteprima non disponibile per questo tipo di file</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Tipo file: {document?.file_type || 'Sconosciuto'}
-                </p>
+                <p className="text-gray-600 mb-4">Anteprima PDF non disponibile</p>
                 <Button onClick={() => onDownload(document)}>
                   <Download className="h-4 w-4 mr-2" />
-                  Scarica file
+                  Scarica per visualizzare
                 </Button>
               </div>
             </div>
@@ -91,7 +72,14 @@ const DocumentPreview = ({ document, isOpen, onClose, onDownload }: DocumentPrev
             <div className="flex justify-center items-center min-h-[400px] bg-gray-50 rounded-lg">
               <div className="text-center">
                 <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">Caricamento anteprima...</p>
+                <p className="text-gray-600 mb-2">Anteprima non disponibile</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Tipo file: {document?.file_type || 'Sconosciuto'}
+                </p>
+                <Button onClick={() => onDownload(document)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Scarica file
+                </Button>
               </div>
             </div>
           )}

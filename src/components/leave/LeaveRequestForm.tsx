@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LeaveCalendar } from "./LeaveCalendar";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -220,18 +221,26 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
               <>
                 <div>
                   <label className="block text-sm font-medium mb-1">Giorno permesso</label>
-                  <div className="rounded-md border bg-white shadow-sm">
-                    <LeaveCalendar
-                      variant="permission"
+                  <div className="rounded-md border bg-white">
+                    <Calendar
                       mode="single"
                       selected={day as any}
                       onSelect={setDay}
-                      isWorkingDay={isWorkingDay}
+                      className="pointer-events-auto"
                       disabled={(date) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         // Disabilita giorni passati e giorni non lavorativi
                         return date < today || !isWorkingDay(date);
+                      }}
+                      modifiers={{
+                        workingDay: (date) => isWorkingDay(date)
+                      }}
+                      modifiersStyles={{
+                        workingDay: {
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151'
+                        }
                       }}
                     />
                   </div>
@@ -262,34 +271,50 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
               <>
                 <div>
                   <label className="block text-sm font-medium mb-1">Dal</label>
-                  <div className="rounded-md border bg-white shadow-sm">
-                    <LeaveCalendar
-                      variant="vacation"
+                  <div className="rounded-md border bg-white">
+                    <Calendar
                       mode="single"
                       selected={dateFrom as any}
                       onSelect={setDateFrom}
-                      isWorkingDay={isWorkingDay}
+                      className="pointer-events-auto"
                       disabled={(date) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         return date < today;
+                      }}
+                      modifiers={{
+                        workingDay: (date) => isWorkingDay(date)
+                      }}
+                      modifiersStyles={{
+                        workingDay: {
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151'
+                        }
                       }}
                     />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Al</label>
-                  <div className="rounded-md border bg-white shadow-sm">
-                    <LeaveCalendar
-                      variant="vacation"
+                  <div className="rounded-md border bg-white">
+                    <Calendar
                       mode="single"
                       selected={dateTo as any}
                       onSelect={setDateTo}
-                      isWorkingDay={isWorkingDay}
+                      className="pointer-events-auto"
                       disabled={(date) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         return date < today || (dateFrom && date < dateFrom);
+                      }}
+                      modifiers={{
+                        workingDay: (date) => isWorkingDay(date)
+                      }}
+                      modifiersStyles={{
+                        workingDay: {
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151'
+                        }
                       }}
                     />
                   </div>
