@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Ref per sapere se il componente è montato
   const mounted = useRef(true);
+  const initialSessionChecked = useRef(false);
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -86,15 +86,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Setup auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
-        console.log('[useAuth] onAuthStateChange fired. Event:', _event, 'Session User ID:', newSession?.user?.id);
+      (event, newSession) => {
+        console.log('[useAuth] onAuthStateChange fired. Event:', event, 'Session User ID:', newSession?.user?.id);
         if (!mounted.current) return;
+
+        // Solo processa i cambiamenti se non è la sessione iniziale già verificata
+        if (event === 'SIGNED_IN' && initialSessionChecked.current && newSession?.user?.id === user?.id) {
+          console.log('[useAuth] Ignoring duplicate SIGNED_IN event for same user');
+          return;
+        }
 
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
-        setLoading(true);
         if (newSession?.user) {
+          setLoading(true);
           // Defer fetchUserProfile to avoid possible state update issues inside callback
           setTimeout(async () => {
             if (!mounted.current) return;
@@ -123,8 +129,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         console.log('[useAuth] Initial session check:', currentSession?.user?.id);
         if (!mounted.current) return;
+        
+        initialSessionChecked.current = true;
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        
         if (currentSession?.user) {
           setLoading(true);
           await fetchUserProfile(currentSession.user.id);
