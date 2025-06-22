@@ -78,11 +78,12 @@ const AdminRoleDebug: React.FC = () => {
         });
       } else {
         // Cerca l'utente nell'auth per ottenere l'ID
-        const { data: { users }, error: userError } = await supabase.auth.admin.listUsers();
+        const { data: authData, error: userError } = await supabase.auth.admin.listUsers();
         
         if (userError) throw userError;
 
-        const adminUser = users.find(user => user.email === 'admin@serramenticorp.com');
+        // Tipizza correttamente l'array di utenti
+        const adminUser = authData.users?.find((user: any) => user.email === 'admin@serramenticorp.com');
         
         if (adminUser) {
           // Crea un nuovo profilo
