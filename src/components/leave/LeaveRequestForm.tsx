@@ -220,7 +220,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
               <>
                 <div>
                   <label className="block text-sm font-medium mb-1">Giorno permesso</label>
-                  <div className="rounded-md border bg-white">
+                  <div className="rounded-md border bg-white shadow-sm">
                     <Calendar
                       mode="single"
                       selected={day as any}
@@ -237,8 +237,8 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
                       }}
                       modifiersStyles={{
                         workingDay: {
-                          backgroundColor: '#f3f4f6',
-                          color: '#374151'
+                          backgroundColor: '#dbeafe',
+                          color: '#1d4ed8'
                         }
                       }}
                     />
@@ -270,7 +270,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
               <>
                 <div>
                   <label className="block text-sm font-medium mb-1">Dal</label>
-                  <div className="rounded-md border bg-white">
+                  <div className="rounded-md border bg-white shadow-sm">
                     <Calendar
                       mode="single"
                       selected={dateFrom as any}
@@ -286,8 +286,8 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
                       }}
                       modifiersStyles={{
                         workingDay: {
-                          backgroundColor: '#f3f4f6',
-                          color: '#374151'
+                          backgroundColor: '#dbeafe',
+                          color: '#1d4ed8'
                         }
                       }}
                     />
@@ -295,7 +295,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Al</label>
-                  <div className="rounded-md border bg-white">
+                  <div className="rounded-md border bg-white shadow-sm">
                     <Calendar
                       mode="single"
                       selected={dateTo as any}
@@ -311,8 +311,8 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
                       }}
                       modifiersStyles={{
                         workingDay: {
-                          backgroundColor: '#f3f4f6',
-                          color: '#374151'
+                          backgroundColor: '#dbeafe',
+                          color: '#1d4ed8'
                         }
                       }}
                     />
