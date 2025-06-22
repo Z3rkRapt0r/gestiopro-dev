@@ -35,7 +35,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   const mounted = useRef(true);
-  const initialSessionChecked = useRef(false);
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -82,35 +81,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     mounted.current = true;
-    console.log('[useAuth] useEffect started. Mounted ref:', mounted.current);
+    console.log('[useAuth] useEffect started.');
 
     // Setup auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      async (event, newSession) => {
         console.log('[useAuth] onAuthStateChange fired. Event:', event, 'Session User ID:', newSession?.user?.id);
         if (!mounted.current) return;
-
-        // Solo processa i cambiamenti se non è la sessione iniziale già verificata
-        if (event === 'SIGNED_IN' && initialSessionChecked.current && newSession?.user?.id === user?.id) {
-          console.log('[useAuth] Ignoring duplicate SIGNED_IN event for same user');
-          return;
-        }
 
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          setLoading(true);
-          // Defer fetchUserProfile to avoid possible state update issues inside callback
-          setTimeout(async () => {
-            if (!mounted.current) return;
-            await fetchUserProfile(newSession.user!.id);
-            if (mounted.current) setLoading(false);
-          }, 0);
+          await fetchUserProfile(newSession.user.id);
         } else {
           setProfile(null);
-          setLoading(false);
         }
+        
+        setLoading(false);
       }
     );
 
@@ -127,42 +115,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setLoading(false);
           return;
         }
+        
         console.log('[useAuth] Initial session check:', currentSession?.user?.id);
         if (!mounted.current) return;
         
-        initialSessionChecked.current = true;
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
-          setLoading(true);
           await fetchUserProfile(currentSession.user.id);
         } else {
           setProfile(null);
         }
+        
+        setLoading(false);
       } catch (error) {
         console.error('[useAuth] Error initializing auth:', error);
         setSession(null);
         setUser(null);
         setProfile(null);
-      } finally {
-        if (mounted.current) {
-          setLoading(false);
-        }
-        console.log('[useAuth] initializeAuth finally: setting loading to false.');
+        setLoading(false);
       }
-      console.log('[useAuth] initializeAuth promise resolved.');
+      console.log('[useAuth] initializeAuth completed.');
     };
 
     initializeAuth();
-
-    console.log('[useAuth] Subscribed to onAuthStateChange.');
 
     return () => {
       mounted.current = false;
       subscription.unsubscribe();
     };
-
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -179,13 +161,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: error.message,
           variant: "destructive",
         });
+        setLoading(false);
       } else {
         toast({
           title: "Accesso effettuato",
           description: "Benvenuto nel sistema!",
         });
+        // Non settare loading a false qui, verrà gestito dall'auth state change
       }
-      if (error) setLoading(false);
+      
       return { error };
     } catch (error: any) {
       console.error('Sign in error:', error);
@@ -200,47 +184,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    setLoading(true);
     try {
-      // Clear local state first to prevent UI flickering
-      setUser(null);
-      setProfile(null);
-      setSession(null);
-
-      // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();
       
-      // Even if there's an error (like session missing), we still consider it a successful logout
-      // since the local state has been cleared
       if (error) {
-        console.warn('[useAuth] Warning during sign out (but continuing):', error.message);
-        // Only show error if it's not about missing session
-        if (!error.message.includes('session') && !error.message.includes('Session')) {
-          toast({
-            title: "Avviso",
-            description: "Disconnessione completata localmente",
-            variant: "default",
-          });
-        }
-      } else {
-        toast({
-          title: "Disconnesso",
-          description: "Alla prossima!",
-        });
+        console.warn('[useAuth] Warning during sign out:', error.message);
       }
+      
+      // Lo stato verrà pulito automaticamente dall'auth state change listener
+      toast({
+        title: "Disconnesso",
+        description: "Alla prossima!",
+      });
     } catch (e: any) {
       console.error('[useAuth] Exception during sign out process:', e);
-      // Clear state anyway since we want to log out regardless
-      setUser(null);
-      setProfile(null);
-      setSession(null);
-      
       toast({
         title: "Disconnesso",
         description: "Disconnessione completata",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
