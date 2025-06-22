@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
+import { LeaveCalendar } from "./LeaveCalendar";
 import { Textarea } from "@/components/ui/textarea";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useToast } from "@/hooks/use-toast";
@@ -199,24 +199,33 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Data Inizio</Label>
-                <div className="border rounded-md p-3">
-                  <Calendar
+                <div className="rounded-md border bg-white shadow-sm">
+                  <LeaveCalendar
+                    variant="vacation"
                     mode="single"
                     selected={dateFrom as any}
                     onSelect={setDateFrom}
-                    className="w-full"
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Data Fine</Label>
-                <div className="border rounded-md p-3">
-                  <Calendar
+                <div className="rounded-md border bg-white shadow-sm">
+                  <LeaveCalendar
+                    variant="vacation"
                     mode="single"
                     selected={dateTo as any}
                     onSelect={setDateTo}
-                    className="w-full"
-                    disabled={(date) => dateFrom ? date < dateFrom : false}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today || (dateFrom && date < dateFrom);
+                    }}
                   />
                 </div>
               </div>
@@ -227,12 +236,17 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Giorno</Label>
-                <div className="border rounded-md p-3">
-                  <Calendar
+                <div className="rounded-md border bg-white shadow-sm">
+                  <LeaveCalendar
+                    variant="permission"
                     mode="single"
                     selected={day as any}
                     onSelect={setDay}
-                    className="w-full"
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                   />
                 </div>
               </div>
