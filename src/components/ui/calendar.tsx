@@ -35,7 +35,7 @@ function Calendar({
         head_cell:
           "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
         row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-blue-100 [&:has([aria-selected])]:bg-blue-100 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 pointer-events-auto",
+        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected])]:bg-blue-600 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 pointer-events-auto",
         day: cn(
           buttonVariants({ variant: "ghost" }),
           "h-9 w-9 p-0 font-normal aria-selected:opacity-100 pointer-events-auto hover:bg-blue-50 hover:text-blue-700 transition-colors"
@@ -48,7 +48,7 @@ function Calendar({
           "day-outside text-muted-foreground opacity-50 aria-selected:bg-blue-600 aria-selected:text-white aria-selected:opacity-100",
         day_disabled: "text-muted-foreground opacity-30 pointer-events-none",
         day_range_middle:
-          "aria-selected:bg-blue-100 aria-selected:text-blue-700",
+          "aria-selected:bg-blue-600 aria-selected:text-white",
         day_hidden: "invisible",
         ...classNames,
       }}
