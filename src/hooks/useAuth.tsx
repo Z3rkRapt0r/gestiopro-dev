@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     mounted.current = true;
-    console.log('[useAuth] useEffect started.');
+    console.log('[useAuth] useEffect started. Mounted ref:', mounted.current);
 
     // Setup auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -101,6 +101,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     );
+
+    console.log('[useAuth] Subscribed to onAuthStateChange.');
 
     // Initial session check
     const initializeAuth = async () => {
@@ -185,19 +187,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     try {
+      console.log('[useAuth] Starting sign out process');
+      
+      // Clear local state immediately
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.warn('[useAuth] Warning during sign out:', error.message);
+        // Even if there's an error, we still want to show success message
+        // since we've cleared the local state
       }
       
-      // Lo stato verrà pulito automaticamente dall'auth state change listener
+      console.log('[useAuth] Sign out completed successfully');
+      
       toast({
         title: "Disconnesso",
         description: "Alla prossima!",
       });
     } catch (e: any) {
       console.error('[useAuth] Exception during sign out process:', e);
+      // Clear state even on error
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      
       toast({
         title: "Disconnesso",
         description: "Disconnessione completata",
