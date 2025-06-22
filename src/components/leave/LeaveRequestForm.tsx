@@ -162,18 +162,6 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
     setLoading(false);
   };
 
-  const getRequestDetails = () => {
-    if (type === "permesso") {
-      if (timeFrom && timeTo) {
-        return `Giorno: ${day?.toLocaleDateString('it-IT')}\nOrario: ${timeFrom} - ${timeTo}${note ? `\nNote: ${note}` : ''}`;
-      } else {
-        return `Giorno: ${day?.toLocaleDateString('it-IT')}\nPermesso giornaliero${note ? `\nNote: ${note}` : ''}`;
-      }
-    } else {
-      return `Dal: ${dateFrom?.toLocaleDateString('it-IT')}\nAl: ${dateTo?.toLocaleDateString('it-IT')}${note ? `\nNote: ${note}` : ''}`;
-    }
-  };
-
   return (
     <Card className="bg-muted/40">
       <CardContent>
