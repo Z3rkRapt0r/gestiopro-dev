@@ -102,7 +102,7 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return <EmployeeDashboardSection />;
+        return <AdminDashboardOverview />;
       case 'employees':
         return <AdminEmployeesSection />;
       case 'leaves':
@@ -116,7 +116,7 @@ export default function AdminDashboard() {
       case 'settings':
         return <AdminSettingsSection />;
       default:
-        return <EmployeeDashboardSection />;
+        return <AdminDashboardOverview />;
     }
   };
 

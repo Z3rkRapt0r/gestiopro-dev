@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -37,72 +36,39 @@ export const useEmployeeStats = () => {
 
     setLoading(true);
     try {
-      // Conteggio documenti
-      const { count: documentsCount } = await supabase
-        .from('documents')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+      // Ottimizzazione: esegui le query più leggere prima
+      const basicQueries = await Promise.all([
+        supabase.from('documents').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_read', false),
+        supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+      ]);
 
-      // Conteggio notifiche non lette
-      const { count: unreadNotificationsCount } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
+      const [documentsResult, notificationsResult, leaveRequestsResult] = basicQueries;
 
-      // Conteggio richieste ferie
-      const { count: leaveRequestsCount } = await supabase
-        .from('leave_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+      // Query più complesse
+      const [leaveRequestsData, leaveBalanceData, recentDocuments, recentNotifications] = await Promise.all([
+        supabase.from('leave_requests').select('status').eq('user_id', user.id),
+        supabase.from('employee_leave_balance').select('vacation_days_total, vacation_days_used, permission_hours_total, permission_hours_used').eq('user_id', user.id).eq('year', new Date().getFullYear()).maybeSingle(),
+        supabase.from('documents').select('id, title, created_at, document_type').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+        supabase.from('notifications').select('id, title, created_at, is_read, type').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5)
+      ]);
 
-      // Richieste ferie per stato
-      const { data: leaveRequests } = await supabase
-        .from('leave_requests')
-        .select('status')
-        .eq('user_id', user.id);
+      const pendingLeaveRequests = leaveRequestsData?.filter(req => req.status === 'pending').length || 0;
+      const approvedLeaveRequests = leaveRequestsData?.filter(req => req.status === 'approved').length || 0;
+      const rejectedLeaveRequests = leaveRequestsData?.filter(req => req.status === 'rejected').length || 0;
 
-      const pendingLeaveRequests = leaveRequests?.filter(req => req.status === 'pending').length || 0;
-      const approvedLeaveRequests = leaveRequests?.filter(req => req.status === 'approved').length || 0;
-      const rejectedLeaveRequests = leaveRequests?.filter(req => req.status === 'rejected').length || 0;
-
-      // Bilancio ferie e permessi per l'anno corrente
-      const currentYear = new Date().getFullYear();
-      const { data: leaveBalance } = await supabase
-        .from('employee_leave_balance')
-        .select('vacation_days_total, vacation_days_used, permission_hours_total, permission_hours_used')
-        .eq('user_id', user.id)
-        .eq('year', currentYear)
-        .maybeSingle();
-
-      const vacationDaysRemaining = leaveBalance 
-        ? Math.max(0, leaveBalance.vacation_days_total - leaveBalance.vacation_days_used)
+      const vacationDaysRemaining = leaveBalanceData 
+        ? Math.max(0, leaveBalanceData.vacation_days_total - leaveBalanceData.vacation_days_used)
         : 0;
       
-      const permissionHoursRemaining = leaveBalance 
-        ? Math.max(0, leaveBalance.permission_hours_total - leaveBalance.permission_hours_used)
+      const permissionHoursRemaining = leaveBalanceData 
+        ? Math.max(0, leaveBalanceData.permission_hours_total - leaveBalanceData.permission_hours_used)
         : 0;
 
-      // Documenti recenti (ultimi 5)
-      const { data: recentDocuments } = await supabase
-        .from('documents')
-        .select('id, title, created_at, document_type')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      // Notifiche recenti (ultime 5)
-      const { data: recentNotifications } = await supabase
-        .from('notifications')
-        .select('id, title, created_at, is_read, type')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
       setStats({
-        documentsCount: documentsCount || 0,
-        unreadNotificationsCount: unreadNotificationsCount || 0,
-        leaveRequestsCount: leaveRequestsCount || 0,
+        documentsCount: documentsResult.count || 0,
+        unreadNotificationsCount: notificationsResult.count || 0,
+        leaveRequestsCount: leaveRequestsResult.count || 0,
         pendingLeaveRequests,
         approvedLeaveRequests,
         rejectedLeaveRequests,
