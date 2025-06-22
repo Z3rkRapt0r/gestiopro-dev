@@ -164,22 +164,21 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="user">Dipendente</Label>
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <Select value={selectedUser} onValueChange={setSelectedUser} disabled={loadingUsers}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleziona dipendente..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {loadingUsers ? (
-                    <SelectItem value="" disabled>Caricamento...</SelectItem>
-                  ) : (
-                    users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.first_name} {user.last_name}
-                      </SelectItem>
-                    ))
-                  )}
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {loadingUsers && (
+                <div className="text-sm text-muted-foreground">Caricamento dipendenti...</div>
+              )}
             </div>
 
             <div className="space-y-2">
