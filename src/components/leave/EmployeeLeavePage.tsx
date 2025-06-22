@@ -2,13 +2,13 @@
 import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LeaveRequestForm } from "./LeaveRequestForm";
-import { EmployeeLeaveArchive } from "./EmployeeLeaveArchive";
-import { AdminApprovalsSection } from "./AdminApprovalsSection";
+import LeaveRequestForm from "./LeaveRequestForm";
+import EmployeeLeaveArchive from "./EmployeeLeaveArchive";
+import AdminApprovalsSection from "./AdminApprovalsSection";
 import { EmployeeLeaveBalanceSection } from "./EmployeeLeaveBalanceSection";
 import { CalendarDays, FileText, UserCheck, Settings } from "lucide-react";
 
-export function EmployeeLeavePage() {
+export default function EmployeeLeavePage() {
   const { profile } = useAuth();
   const isAdmin = profile?.role === "admin";
 
