@@ -39,30 +39,45 @@ export function useEmployeeOperations() {
         throw new Error('Non è possibile eliminare un amministratore');
       }
 
+      console.log('Inizio eliminazione dati associati...');
+
       // Elimina i dati associati in ordine (per evitare vincoli di foreign key)
       
       // 1. Elimina documenti
-      await supabase.from('documents').delete().eq('user_id', employeeId);
+      const { error: docsError } = await supabase.from('documents').delete().eq('user_id', employeeId);
+      if (docsError) console.warn('Errore eliminazione documenti:', docsError);
       
       // 2. Elimina notifiche
-      await supabase.from('notifications').delete().eq('user_id', employeeId);
+      const { error: notifsError } = await supabase.from('notifications').delete().eq('user_id', employeeId);
+      if (notifsError) console.warn('Errore eliminazione notifiche:', notifsError);
       
       // 3. Elimina presenze
-      await supabase.from('attendances').delete().eq('user_id', employeeId);
-      await supabase.from('manual_attendances').delete().eq('user_id', employeeId);
-      await supabase.from('unified_attendances').delete().eq('user_id', employeeId);
+      const { error: attendancesError } = await supabase.from('attendances').delete().eq('user_id', employeeId);
+      if (attendancesError) console.warn('Errore eliminazione presenze:', attendancesError);
+      
+      const { error: manualAttendancesError } = await supabase.from('manual_attendances').delete().eq('user_id', employeeId);
+      if (manualAttendancesError) console.warn('Errore eliminazione presenze manuali:', manualAttendancesError);
+      
+      const { error: unifiedAttendancesError } = await supabase.from('unified_attendances').delete().eq('user_id', employeeId);
+      if (unifiedAttendancesError) console.warn('Errore eliminazione presenze unificate:', unifiedAttendancesError);
       
       // 4. Elimina richieste di permesso
-      await supabase.from('leave_requests').delete().eq('user_id', employeeId);
+      const { error: leaveRequestsError } = await supabase.from('leave_requests').delete().eq('user_id', employeeId);
+      if (leaveRequestsError) console.warn('Errore eliminazione richieste permessi:', leaveRequestsError);
       
       // 5. Elimina bilancio ferie
-      await supabase.from('employee_leave_balance').delete().eq('user_id', employeeId);
+      const { error: leaveBalanceError } = await supabase.from('employee_leave_balance').delete().eq('user_id', employeeId);
+      if (leaveBalanceError) console.warn('Errore eliminazione bilancio ferie:', leaveBalanceError);
       
       // 6. Elimina viaggi di lavoro
-      await supabase.from('business_trips').delete().eq('user_id', employeeId);
+      const { error: businessTripsError } = await supabase.from('business_trips').delete().eq('user_id', employeeId);
+      if (businessTripsError) console.warn('Errore eliminazione viaggi lavoro:', businessTripsError);
       
       // 7. Elimina messaggi
-      await supabase.from('messages').delete().or(`recipient_id.eq.${employeeId},sender_id.eq.${employeeId}`);
+      const { error: messagesError } = await supabase.from('messages').delete().or(`recipient_id.eq.${employeeId},sender_id.eq.${employeeId}`);
+      if (messagesError) console.warn('Errore eliminazione messaggi:', messagesError);
+      
+      console.log('Eliminazione dati associati completata, procedo con il profilo...');
       
       // 8. Infine elimina il profilo
       const { error: deleteError } = await supabase
@@ -72,12 +87,20 @@ export function useEmployeeOperations() {
 
       if (deleteError) {
         console.error('Errore eliminazione profilo:', deleteError);
-        throw deleteError;
+        throw new Error(`Errore nell'eliminazione del profilo: ${deleteError.message}`);
       }
+
+      console.log('Profilo eliminato con successo, controllo eliminazione utente auth...');
 
       // Elimina anche l'utente dall'autenticazione (solo se l'admin ha i permessi)
       try {
-        await supabase.auth.admin.deleteUser(employeeId);
+        const { error: authError } = await supabase.auth.admin.deleteUser(employeeId);
+        if (authError) {
+          console.warn('Errore eliminazione utente auth:', authError);
+          // Non bloccare l'operazione se l'eliminazione auth fallisce
+        } else {
+          console.log('Utente eliminato anche dall\'autenticazione');
+        }
       } catch (authError) {
         console.warn('Non è stato possibile eliminare l\'utente dall\'autenticazione:', authError);
         // Non bloccare l'operazione se l'eliminazione auth fallisce

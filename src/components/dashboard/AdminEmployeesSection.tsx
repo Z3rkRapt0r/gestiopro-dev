@@ -25,11 +25,10 @@ import { useEmployeeOperations } from '@/hooks/useEmployeeOperations';
 import CreateEmployeeForm from './CreateEmployeeForm';
 import EditEmployeeForm from './EditEmployeeForm';
 import DeleteEmployeeDialog from './DeleteEmployeeDialog';
-import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminEmployeesSection() {
-  const { employees, loading } = useActiveEmployees();
+  const { employees, loading, refetchEmployees } = useActiveEmployees();
   const { deleteEmployee, isDeleting } = useEmployeeOperations();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
@@ -37,7 +36,6 @@ export default function AdminEmployeesSection() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const filteredEmployees = employees?.filter(employee =>
@@ -57,7 +55,7 @@ export default function AdminEmployeesSection() {
 
   const handleCreateEmployeeSuccess = async () => {
     setIsCreateDialogOpen(false);
-    await queryClient.invalidateQueries({ queryKey: ['active-employees'] });
+    await refetchEmployees();
     toast({
       title: "Successo",
       description: "Dipendente aggiunto con successo",
@@ -68,7 +66,7 @@ export default function AdminEmployeesSection() {
   const handleEditEmployeeSuccess = async () => {
     setIsEditDialogOpen(false);
     setSelectedEmployee(null);
-    await queryClient.invalidateQueries({ queryKey: ['active-employees'] });
+    await refetchEmployees();
     toast({
       title: "Successo", 
       description: "Dipendente aggiornato con successo",
@@ -79,7 +77,10 @@ export default function AdminEmployeesSection() {
   const handleConfirmDelete = async (employeeId: string, employeeName: string) => {
     const success = await deleteEmployee(employeeId, employeeName);
     if (success) {
-      await queryClient.invalidateQueries({ queryKey: ['active-employees'] });
+      console.log('Eliminazione completata, ricaricamento lista dipendenti...');
+      await refetchEmployees();
+      setIsDeleteDialogOpen(false);
+      setEmployeeToDelete(null);
     }
     return success;
   };
