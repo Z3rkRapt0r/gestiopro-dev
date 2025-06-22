@@ -5,9 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { UserPlus, X } from 'lucide-react';
+import { useEmployeeOperations } from '@/hooks/useEmployeeOperations';
 
 interface CreateEmployeeFormProps {
   onClose: () => void;
@@ -15,85 +14,25 @@ interface CreateEmployeeFormProps {
 }
 
 const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormProps) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const { createEmployee, isLoading } = useEmployeeOperations();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
-    department: '',
+    role: 'employee' as 'admin' | 'employee',
     employeeCode: ''
   });
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
     try {
-      // Crea l'utente in Supabase Auth come se fosse lui stesso a registrarsi
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            role: 'employee',
-          }
-        }
-      });
-
-      if (signUpError) {
-        // Gestione di errori comuni
-        let description = signUpError.message || "Errore durante la creazione dell'account";
-        if (signUpError.message === "User already registered") {
-          description = "Esiste già un utente con questa email";
-        }
-        throw new Error(description);
-      }
-
-      const userId = signUpData?.user?.id;
-      if (!userId) {
-        throw new Error("Impossibile recuperare l'id del nuovo utente.");
-      }
-
-      // Inserisci/aggiorna il profilo nella tabella profiles
-      // NB: la funzione handle_new_user normalmente inserisce il profilo.
-      // Aggiorniamo i campi aggiuntivi
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email,
-          role: 'employee',
-          department: formData.department || null,
-          employee_code: formData.employeeCode || null,
-          is_active: true
-        })
-        .eq('id', userId);
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      toast({
-        title: "Dipendente creato",
-        description: `${formData.firstName} ${formData.lastName} è stato aggiunto con successo`,
-      });
-
+      await createEmployee(formData);
       onEmployeeCreated();
       onClose();
-    } catch (error: any) {
-      console.error('Error creating employee:', error);
-      toast({
-        title: "Errore",
-        description: error.message || "Errore durante la creazione del dipendente",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      // L'errore è già gestito nel hook
     }
   };
 
@@ -151,20 +90,22 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
+                minLength={6}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="department">Dipartimento</Label>
-              <Select onValueChange={(value) => setFormData({ ...formData, department: value })}>
+              <Label htmlFor="role">Ruolo</Label>
+              <Select 
+                value={formData.role} 
+                onValueChange={(value: 'admin' | 'employee') => setFormData({ ...formData, role: value })}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleziona dipartimento" />
+                  <SelectValue placeholder="Seleziona ruolo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="produzione">Produzione</SelectItem>
-                  <SelectItem value="amministrazione">Amministrazione</SelectItem>
-                  <SelectItem value="vendite">Vendite</SelectItem>
-                  <SelectItem value="manutenzione">Manutenzione</SelectItem>
+                  <SelectItem value="employee">Dipendente</SelectItem>
+                  <SelectItem value="admin">Amministratore</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -195,4 +136,3 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
 };
 
 export default CreateEmployeeForm;
-

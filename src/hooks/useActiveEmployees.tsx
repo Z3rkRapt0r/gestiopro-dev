@@ -7,6 +7,9 @@ export interface EmployeeProfile {
   first_name: string | null;
   last_name: string | null;
   email: string | null;
+  role: 'admin' | 'employee';
+  employee_code: string | null;
+  is_active: boolean;
 }
 
 export function useActiveEmployees() {
@@ -16,13 +19,23 @@ export function useActiveEmployees() {
   useEffect(() => {
     const fetchEmployees = async () => {
       setLoading(true);
-      const { data } = await supabase
+      console.log('Fetching employees...');
+      
+      const { data, error } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, email")
+        .select("id, first_name, last_name, email, role, employee_code, is_active")
         .eq("is_active", true);
-      setEmployees((data || []) as EmployeeProfile[]);
+        
+      if (error) {
+        console.error('Error fetching employees:', error);
+      } else {
+        console.log('Dipendenti caricati:', data?.length || 0);
+        setEmployees((data || []) as EmployeeProfile[]);
+      }
+      
       setLoading(false);
     };
+    
     fetchEmployees();
   }, []);
 
