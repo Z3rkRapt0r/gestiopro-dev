@@ -21,7 +21,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
     lastName: '',
     email: '',
     password: '',
-    department: '',
+    role: 'employee' as 'admin' | 'employee',
     employeeCode: ''
   });
   const { toast } = useToast();
@@ -39,7 +39,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
-            role: 'employee',
+            role: formData.role,
           }
         }
       });
@@ -67,8 +67,8 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
           first_name: formData.firstName,
           last_name: formData.lastName,
           email: formData.email,
-          role: 'employee',
-          department: formData.department || null,
+          role: formData.role,
+          department: null, // Rimuoviamo il dipartimento
           employee_code: formData.employeeCode || null,
           is_active: true
         })
@@ -80,7 +80,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
 
       toast({
         title: "Dipendente creato",
-        description: `${formData.firstName} ${formData.lastName} è stato aggiunto con successo`,
+        description: `${formData.firstName} ${formData.lastName} è stato aggiunto con successo come ${formData.role === 'admin' ? 'amministratore' : 'dipendente'}`,
       });
 
       onEmployeeCreated();
@@ -155,16 +155,14 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="department">Dipartimento</Label>
-              <Select onValueChange={(value) => setFormData({ ...formData, department: value })}>
+              <Label htmlFor="role">Ruolo</Label>
+              <Select onValueChange={(value: 'admin' | 'employee') => setFormData({ ...formData, role: value })} defaultValue="employee">
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleziona dipartimento" />
+                  <SelectValue placeholder="Seleziona ruolo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="produzione">Produzione</SelectItem>
-                  <SelectItem value="amministrazione">Amministrazione</SelectItem>
-                  <SelectItem value="vendite">Vendite</SelectItem>
-                  <SelectItem value="manutenzione">Manutenzione</SelectItem>
+                  <SelectItem value="employee">Dipendente</SelectItem>
+                  <SelectItem value="admin">Amministratore</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -195,4 +193,3 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
 };
 
 export default CreateEmployeeForm;
-
