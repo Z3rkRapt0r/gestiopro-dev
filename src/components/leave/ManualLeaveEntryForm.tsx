@@ -2,16 +2,17 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LeaveCalendar } from "./LeaveCalendar";
 import { Textarea } from "@/components/ui/textarea";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar as CalendarIcon, Clock, Plus } from "lucide-react";
+import { Calendar as CalendarIcon, Plus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UserSelector } from "./UserSelector";
+import { VacationDateSelector } from "./VacationDateSelector";
+import { PermissionDaySelector } from "./PermissionDaySelector";
 
 interface ManualLeaveEntryFormProps {
   onSuccess?: () => void;
@@ -162,24 +163,12 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="user">Dipendente</Label>
-              <Select value={selectedUser} onValueChange={setSelectedUser} disabled={loadingUsers}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona dipendente..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.first_name} {user.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {loadingUsers && (
-                <div className="text-sm text-muted-foreground">Caricamento dipendenti...</div>
-              )}
-            </div>
+            <UserSelector
+              selectedUser={selectedUser}
+              onUserChange={setSelectedUser}
+              users={users}
+              loading={loadingUsers}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="type">Tipo</Label>
@@ -196,83 +185,23 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           </div>
 
           {type === "ferie" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Data Inizio</Label>
-                <div className="rounded-md border bg-white shadow-sm">
-                  <LeaveCalendar
-                    variant="vacation"
-                    mode="single"
-                    selected={dateFrom as any}
-                    onSelect={setDateFrom}
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return date < today;
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Data Fine</Label>
-                <div className="rounded-md border bg-white shadow-sm">
-                  <LeaveCalendar
-                    variant="vacation"
-                    mode="single"
-                    selected={dateTo as any}
-                    onSelect={setDateTo}
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return date < today || (dateFrom && date < dateFrom);
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+            <VacationDateSelector
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={setDateFrom}
+              onDateToChange={setDateTo}
+            />
           )}
 
           {type === "permesso" && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Giorno</Label>
-                <div className="rounded-md border bg-white shadow-sm">
-                  <LeaveCalendar
-                    variant="permission"
-                    mode="single"
-                    selected={day as any}
-                    onSelect={setDay}
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return date < today;
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="time-from">Ora Inizio (opzionale)</Label>
-                  <Input
-                    id="time-from"
-                    type="time"
-                    value={timeFrom}
-                    onChange={(e) => setTimeFrom(e.target.value)}
-                    placeholder="Lascia vuoto per permesso giornaliero"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="time-to">Ora Fine (opzionale)</Label>
-                  <Input
-                    id="time-to"
-                    type="time"
-                    value={timeTo}
-                    onChange={(e) => setTimeTo(e.target.value)}
-                    placeholder="Lascia vuoto per permesso giornaliero"
-                  />
-                </div>
-              </div>
-            </div>
+            <PermissionDaySelector
+              day={day}
+              timeFrom={timeFrom}
+              timeTo={timeTo}
+              onDayChange={setDay}
+              onTimeFromChange={setTimeFrom}
+              onTimeToChange={setTimeTo}
+            />
           )}
 
           <div className="space-y-2">
