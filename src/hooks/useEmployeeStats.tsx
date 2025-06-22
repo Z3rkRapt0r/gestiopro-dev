@@ -32,12 +32,15 @@ export const useEmployeeStats = () => {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const subscriptionsRef = useRef<any[]>([]);
-  const fetchTimeoutRef = useRef<NodeJS.Timeout>();
+  const fetchInProgressRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const fetchStats = async () => {
-    if (!user || loading) return;
+    if (!user || fetchInProgressRef.current || !mountedRef.current) return;
 
+    fetchInProgressRef.current = true;
     setLoading(true);
+    
     try {
       const currentYear = new Date().getFullYear();
       
@@ -70,39 +73,50 @@ export const useEmployeeStats = () => {
         ? Math.max(0, leaveBalanceData.data.permission_hours_total - leaveBalanceData.data.permission_hours_used)
         : 0;
 
-      setStats({
-        documentsCount: documentsResult.count || 0,
-        unreadNotificationsCount: notificationsResult.count || 0,
-        leaveRequestsCount: leaveRequestsResult.count || 0,
-        pendingLeaveRequests,
-        approvedLeaveRequests,
-        rejectedLeaveRequests,
-        vacationDaysRemaining,
-        permissionHoursRemaining,
-        recentDocuments: recentDocuments.data || [],
-        recentNotifications: recentNotifications.data || [],
-      });
+      if (mountedRef.current) {
+        setStats({
+          documentsCount: documentsResult.count || 0,
+          unreadNotificationsCount: notificationsResult.count || 0,
+          leaveRequestsCount: leaveRequestsResult.count || 0,
+          pendingLeaveRequests,
+          approvedLeaveRequests,
+          rejectedLeaveRequests,
+          vacationDaysRemaining,
+          permissionHoursRemaining,
+          recentDocuments: recentDocuments.data || [],
+          recentNotifications: recentNotifications.data || [],
+        });
+      }
     } catch (error) {
       console.error('Error fetching employee stats:', error);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+      fetchInProgressRef.current = false;
     }
   };
 
-  // Gestisce la visibilità della pagina
+  // Gestisce la visibilità della pagina con debounce migliorato
   useEffect(() => {
+    let visibilityTimeout: NodeJS.Timeout;
+    
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && user) {
-        console.log('[useEmployeeStats] Page became visible, refreshing stats...');
-        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-        fetchTimeoutRef.current = setTimeout(fetchStats, 500);
+      if (document.visibilityState === 'visible' && user && mountedRef.current) {
+        console.log('[useEmployeeStats] Page became visible, scheduling refresh...');
+        clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(() => {
+          if (mountedRef.current) {
+            fetchStats();
+          }
+        }, 1000);
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+      clearTimeout(visibilityTimeout);
     };
   }, [user]);
 
@@ -122,9 +136,10 @@ export const useEmployeeStats = () => {
             filter: `user_id=eq.${user.id}`
           },
           () => {
-            console.log('[useEmployeeStats] Documents changed, refreshing...');
-            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-            fetchTimeoutRef.current = setTimeout(fetchStats, 200);
+            console.log('[useEmployeeStats] Documents changed, scheduling refresh...');
+            if (mountedRef.current && !fetchInProgressRef.current) {
+              setTimeout(fetchStats, 500);
+            }
           }
         )
         .subscribe();
@@ -140,9 +155,10 @@ export const useEmployeeStats = () => {
             filter: `user_id=eq.${user.id}`
           },
           () => {
-            console.log('[useEmployeeStats] Notifications changed, refreshing...');
-            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-            fetchTimeoutRef.current = setTimeout(fetchStats, 200);
+            console.log('[useEmployeeStats] Notifications changed, scheduling refresh...');
+            if (mountedRef.current && !fetchInProgressRef.current) {
+              setTimeout(fetchStats, 500);
+            }
           }
         )
         .subscribe();
@@ -158,9 +174,10 @@ export const useEmployeeStats = () => {
             filter: `user_id=eq.${user.id}`
           },
           () => {
-            console.log('[useEmployeeStats] Leave requests changed, refreshing...');
-            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-            fetchTimeoutRef.current = setTimeout(fetchStats, 200);
+            console.log('[useEmployeeStats] Leave requests changed, scheduling refresh...');
+            if (mountedRef.current && !fetchInProgressRef.current) {
+              setTimeout(fetchStats, 500);
+            }
           }
         )
         .subscribe();
@@ -176,9 +193,10 @@ export const useEmployeeStats = () => {
             filter: `user_id=eq.${user.id}`
           },
           () => {
-            console.log('[useEmployeeStats] Leave balance changed, refreshing...');
-            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-            fetchTimeoutRef.current = setTimeout(fetchStats, 200);
+            console.log('[useEmployeeStats] Leave balance changed, scheduling refresh...');
+            if (mountedRef.current && !fetchInProgressRef.current) {
+              setTimeout(fetchStats, 500);
+            }
           }
         )
         .subscribe();
@@ -191,9 +209,13 @@ export const useEmployeeStats = () => {
           supabase.removeChannel(channel);
         });
         subscriptionsRef.current = [];
-        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+        mountedRef.current = false;
       };
     }
+    
+    return () => {
+      mountedRef.current = false;
+    };
   }, [user]);
 
   return { stats, loading, refreshStats: fetchStats };

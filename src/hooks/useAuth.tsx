@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,9 +34,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const initializationComplete = useRef(false);
   const profileFetchCache = useRef<{ [key: string]: Profile }>({});
+  const profileFetchInProgress = useRef<{ [key: string]: boolean }>({});
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      // Evita richieste multiple per lo stesso utente
+      if (profileFetchInProgress.current[userId]) {
+        console.log('[useAuth] Profile fetch already in progress for user:', userId);
+        return;
+      }
+
       // Usa la cache per evitare richieste duplicate
       if (profileFetchCache.current[userId]) {
         console.log('[useAuth] Using cached profile for user:', userId);
@@ -45,7 +51,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      profileFetchInProgress.current[userId] = true;
       console.log('[useAuth] Fetching profile for user:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -86,26 +94,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: "Si è verificato un errore durante il caricamento del profilo",
         variant: "destructive",
       });
+    } finally {
+      profileFetchInProgress.current[userId] = false;
     }
   };
 
   // Gestisce la visibilità della pagina per ottimizzare le performance
   useEffect(() => {
+    let visibilityTimeout: NodeJS.Timeout;
+    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && user && !loading) {
-        // Quando la pagina torna visibile, verifica la sessione
-        console.log('[useAuth] Page became visible, checking session...');
-        supabase.auth.getSession().then(({ data: { session: currentSession }, error }) => {
-          if (!error && currentSession?.user && !profile) {
-            console.log('[useAuth] Refreshing profile on page visibility change');
-            fetchUserProfile(currentSession.user.id);
-          }
-        });
+        console.log('[useAuth] Page became visible, scheduling session check...');
+        clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(() => {
+          supabase.auth.getSession().then(({ data: { session: currentSession }, error }) => {
+            if (!error && currentSession?.user && !profile) {
+              console.log('[useAuth] Refreshing profile on page visibility change');
+              fetchUserProfile(currentSession.user.id);
+            }
+          });
+        }, 500);
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(visibilityTimeout);
+    };
   }, [user, loading, profile]);
 
   useEffect(() => {
@@ -149,7 +166,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    // Set up auth state change listener con debouncing
+    // Set up auth state change listener con debouncing migliorato
     let authTimeout: NodeJS.Timeout;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
@@ -163,8 +180,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (!isSubscribed) return;
 
-        // Debounce per evitare aggiornamenti multipli rapidi
-        if (authTimeout) clearTimeout(authTimeout);
+        // Debounce più lungo per evitare aggiornamenti multipli rapidi
+        clearTimeout(authTimeout);
         
         authTimeout = setTimeout(async () => {
           setSession(newSession);
@@ -176,12 +193,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setProfile(null);
             // Pulisci la cache quando l'utente si disconnette
             profileFetchCache.current = {};
+            profileFetchInProgress.current = {};
           }
           
           if (loading) {
             setLoading(false);
           }
-        }, 100);
+        }, 300);
       }
     );
 
@@ -190,7 +208,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       isSubscribed = false;
-      if (authTimeout) clearTimeout(authTimeout);
+      clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -239,6 +257,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfile(null);
       setSession(null);
       profileFetchCache.current = {};
+      profileFetchInProgress.current = {};
       
       const { error } = await supabase.auth.signOut();
       
@@ -259,6 +278,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfile(null);
       setSession(null);
       profileFetchCache.current = {};
+      profileFetchInProgress.current = {};
       
       toast({
         title: "Disconnesso",

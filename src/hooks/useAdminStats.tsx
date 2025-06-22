@@ -21,13 +21,16 @@ export const useAdminStats = () => {
     unreadNotifications: 0,
   });
   const [loading, setLoading] = useState(false);
-  const fetchTimeoutRef = useRef<NodeJS.Timeout>();
+  const fetchInProgressRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const fetchStats = async () => {
     // Evita fetch multipli simultanei
-    if (loading) return;
+    if (fetchInProgressRef.current || !mountedRef.current) return;
     
+    fetchInProgressRef.current = true;
     setLoading(true);
+    
     try {
       const today = new Date().toISOString().split('T')[0];
       
@@ -48,41 +51,56 @@ export const useAdminStats = () => {
         supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false)
       ]);
 
-      setStats({
-        totalEmployees: totalEmployees || 0,
-        activeEmployees: activeEmployees || 0,
-        totalDocuments: totalDocuments || 0,
-        pendingLeaveRequests: pendingLeaveRequests || 0,
-        totalAttendancesToday: totalAttendancesToday || 0,
-        unreadNotifications: unreadNotifications || 0,
-      });
+      if (mountedRef.current) {
+        setStats({
+          totalEmployees: totalEmployees || 0,
+          activeEmployees: activeEmployees || 0,
+          totalDocuments: totalDocuments || 0,
+          pendingLeaveRequests: pendingLeaveRequests || 0,
+          totalAttendancesToday: totalAttendancesToday || 0,
+          unreadNotifications: unreadNotifications || 0,
+        });
+      }
     } catch (error) {
       console.error('Error fetching admin stats:', error);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+      fetchInProgressRef.current = false;
     }
   };
 
-  // Gestisce la visibilità della pagina
+  // Gestisce la visibilità della pagina con debounce migliorato
   useEffect(() => {
+    let visibilityTimeout: NodeJS.Timeout;
+    
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[useAdminStats] Page became visible, refreshing stats...');
-        // Ritarda leggermente per evitare richieste eccessive
-        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-        fetchTimeoutRef.current = setTimeout(fetchStats, 500);
+      if (document.visibilityState === 'visible' && mountedRef.current) {
+        console.log('[useAdminStats] Page became visible, scheduling refresh...');
+        // Debounce più lungo per evitare chiamate eccessive
+        clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(() => {
+          if (mountedRef.current) {
+            fetchStats();
+          }
+        }, 1000);
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+      clearTimeout(visibilityTimeout);
     };
   }, []);
 
   useEffect(() => {
     fetchStats();
+    
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   return { stats, loading, refreshStats: fetchStats };
