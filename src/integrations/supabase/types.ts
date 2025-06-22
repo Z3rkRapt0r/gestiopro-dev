@@ -425,6 +425,60 @@ export type Database = {
           },
         ]
       }
+      employee_leave_balance: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          permission_hours_total: number
+          permission_hours_used: number
+          updated_at: string | null
+          user_id: string
+          vacation_days_total: number
+          vacation_days_used: number
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          permission_hours_total?: number
+          permission_hours_used?: number
+          updated_at?: string | null
+          user_id: string
+          vacation_days_total?: number
+          vacation_days_used?: number
+          year?: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          permission_hours_total?: number
+          permission_hours_used?: number
+          updated_at?: string | null
+          user_id?: string
+          vacation_days_total?: number
+          vacation_days_used?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_leave_balance_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_leave_balance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_logo_settings: {
         Row: {
           admin_id: string
