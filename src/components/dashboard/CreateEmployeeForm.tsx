@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,9 +29,28 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    console.log('Tentativo di creazione dipendente con dati:', {
+      email: formData.email,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      role: formData.role,
+      employeeCode: formData.employeeCode
+    });
 
     try {
-      // Crea l'utente in Supabase Auth come se fosse lui stesso a registrarsi
+      // Controlla prima se l'utente esiste già nel database profiles
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', formData.email)
+        .single();
+
+      if (existingUser) {
+        throw new Error('Esiste già un dipendente con questa email');
+      }
+
+      // Crea l'utente in Supabase Auth
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -43,12 +63,22 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
         }
       });
 
+      console.log('Risultato signUp:', { signUpData, signUpError });
+
       if (signUpError) {
-        // Gestione di errori comuni
-        let description = signUpError.message || "Errore durante la creazione dell'account";
-        if (signUpError.message === "User already registered") {
+        console.error('Errore signUp:', signUpError);
+        let description = "Errore durante la creazione dell'account";
+        
+        if (signUpError.message?.includes('User already registered')) {
           description = "Esiste già un utente con questa email";
+        } else if (signUpError.message?.includes('Invalid email')) {
+          description = "Email non valida";
+        } else if (signUpError.message?.includes('Password')) {
+          description = "La password deve essere di almeno 6 caratteri";
+        } else if (signUpError.message) {
+          description = signUpError.message;
         }
+        
         throw new Error(description);
       }
 
@@ -57,9 +87,9 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
         throw new Error("Impossibile recuperare l'id del nuovo utente.");
       }
 
-      // Inserisci/aggiorna il profilo nella tabella profiles
-      // NB: la funzione handle_new_user normalmente inserisce il profilo.
-      // Aggiorniamo i campi aggiuntivi
+      console.log('Utente creato con ID:', userId);
+
+      // Aggiorna il profilo nella tabella profiles
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -67,19 +97,22 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
           last_name: formData.lastName,
           email: formData.email,
           role: formData.role,
-          department: null, // Rimuoviamo il dipartimento
           employee_code: formData.employeeCode || null,
           is_active: true
         })
         .eq('id', userId);
 
       if (profileError) {
-        throw profileError;
+        console.error('Errore update profilo:', profileError);
+        throw new Error(`Errore nell'aggiornamento del profilo: ${profileError.message}`);
       }
+
+      console.log('Profilo aggiornato con successo');
 
       toast({
         title: "Dipendente creato",
         description: `${formData.firstName} ${formData.lastName} è stato aggiunto con successo come ${formData.role === 'admin' ? 'amministratore' : 'dipendente'}`,
+        className: "bg-green-50 border-green-200 text-green-800",
       });
 
       onEmployeeCreated();
@@ -150,6 +183,8 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
+                minLength={6}
+                placeholder="Minimo 6 caratteri"
               />
             </div>
 
