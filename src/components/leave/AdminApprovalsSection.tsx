@@ -4,11 +4,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LeaveRequestsCardsGrid from "./LeaveRequestsCardsGrid";
 import EmployeeLeaveArchive from "./EmployeeLeaveArchive";
 import { EmployeeLeaveBalanceSection } from "./EmployeeLeaveBalanceSection";
+import { ManualLeaveEntryForm } from "./ManualLeaveEntryForm";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
-import { Settings } from "lucide-react";
+import { Settings, Plus } from "lucide-react";
 
 export default function AdminApprovalsSection() {
-  const [tab, setTab] = useState<"pending" | "archive-permessi" | "archive-ferie" | "balance">("pending");
+  const [tab, setTab] = useState<"pending" | "manual-entry" | "archive-permessi" | "archive-ferie" | "balance">("pending");
   const { leaveRequests, isLoading } = useLeaveRequests();
 
   // Archivio diviso per tipo
@@ -58,6 +59,10 @@ export default function AdminApprovalsSection() {
       <Tabs value={tab} onValueChange={val => setTab(val as any)} className="w-full">
         <TabsList className="mb-4 w-full flex">
           <TabsTrigger value="pending" className="flex-1">Pendenti</TabsTrigger>
+          <TabsTrigger value="manual-entry" className="flex-1 flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Caricamento Manuale
+          </TabsTrigger>
           <TabsTrigger value="archive-permessi" className="flex-1">Archivio Permessi</TabsTrigger>
           <TabsTrigger value="archive-ferie" className="flex-1">Archivio Ferie</TabsTrigger>
           <TabsTrigger value="balance" className="flex-1 flex items-center gap-2">
@@ -71,6 +76,14 @@ export default function AdminApprovalsSection() {
             leaveRequests={pendingRequests}
             showEdit
             showDelete
+          />
+        </TabsContent>
+        <TabsContent value="manual-entry">
+          <ManualLeaveEntryForm 
+            onSuccess={() => {
+              // Torna alla tab pending dopo il successo
+              setTab("pending");
+            }}
           />
         </TabsContent>
         <TabsContent value="archive-permessi">

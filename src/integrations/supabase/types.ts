@@ -514,6 +514,7 @@ export type Database = {
           date_to: string | null
           day: string | null
           id: string
+          leave_balance_id: string | null
           note: string | null
           notify_employee: boolean | null
           reviewed_at: string | null
@@ -532,6 +533,7 @@ export type Database = {
           date_to?: string | null
           day?: string | null
           id?: string
+          leave_balance_id?: string | null
           note?: string | null
           notify_employee?: boolean | null
           reviewed_at?: string | null
@@ -550,6 +552,7 @@ export type Database = {
           date_to?: string | null
           day?: string | null
           id?: string
+          leave_balance_id?: string | null
           note?: string | null
           notify_employee?: boolean | null
           reviewed_at?: string | null
@@ -562,6 +565,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "leave_requests_leave_balance_id_fkey"
+            columns: ["leave_balance_id"]
+            isOneToOne: false
+            referencedRelation: "employee_leave_balance"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leave_requests_reviewed_by_fkey"
             columns: ["reviewed_by"]

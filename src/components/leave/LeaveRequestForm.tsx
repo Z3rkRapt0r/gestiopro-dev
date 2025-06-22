@@ -11,9 +11,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useLeaveRequestNotifications } from "@/hooks/useLeaveRequestNotifications";
 import { useLeaveRequestValidation } from "./LeaveRequestFormValidation";
+import { useLeaveBalanceValidation } from "@/hooks/useLeaveBalanceValidation";
 import { useWorkSchedules } from "@/hooks/useWorkSchedules";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Mail } from "lucide-react";
+import { AlertTriangle, Mail, Info } from "lucide-react";
 
 interface LeaveRequestFormProps {
   type: "permesso" | "ferie";
@@ -35,19 +36,23 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
   const { workSchedule } = useWorkSchedules();
   const { notifyAdmin: sendAdminNotification } = useLeaveRequestNotifications();
   const { validateTimeRange, validateDateRange, validatePermessoDay } = useLeaveRequestValidation();
+  const { balanceValidation, validateLeaveRequest } = useLeaveBalanceValidation();
   const { toast } = useToast();
   const { profile } = useAuth();
+
+  // Validazione in tempo reale del bilancio
+  const currentBalanceValidation = validateLeaveRequest(type, dateFrom, dateTo, day, timeFrom, timeTo);
 
   const validateForm = () => {
     const errors: string[] = [];
 
+    // Controlli esistenti
     if (type === "permesso") {
       const dayValidation = validatePermessoDay(day);
       if (!dayValidation.isValid) {
         errors.push(dayValidation.error!);
       }
 
-      // Se è un permesso orario, valida gli orari
       if (timeFrom && timeTo) {
         const timeValidation = validateTimeRange(timeFrom, timeTo);
         if (!timeValidation.isValid) {
@@ -55,7 +60,6 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
         }
       }
 
-      // Verifica che il giorno sia lavorativo (solo per permessi)
       if (day && !isWorkingDay(day)) {
         errors.push("Il giorno selezionato non è configurato come giorno lavorativo");
       }
@@ -65,6 +69,18 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
       const dateValidation = validateDateRange(dateFrom, dateTo);
       if (!dateValidation.isValid) {
         errors.push(dateValidation.error!);
+      }
+    }
+
+    // Nuovi controlli del bilancio
+    if (!currentBalanceValidation.hasBalance) {
+      errors.push(currentBalanceValidation.errorMessage || "Bilancio non configurato");
+    } else {
+      if (currentBalanceValidation.exceedsVacationLimit) {
+        errors.push(currentBalanceValidation.errorMessage || "Limite giorni ferie superato");
+      }
+      if (currentBalanceValidation.exceedsPermissionLimit) {
+        errors.push(currentBalanceValidation.errorMessage || "Limite ore permessi superato");
       }
     }
 
@@ -110,7 +126,6 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
 
       if (type === "permesso") {
         payload.day = day?.toISOString().slice(0, 10);
-        // Solo se sono specificati entrambi gli orari
         if (timeFrom && timeTo) {
           payload.time_from = timeFrom;
           payload.time_to = timeTo;
@@ -124,7 +139,6 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
 
       const result = await insertMutation.mutateAsync(payload);
       
-      // Invia notifica all'amministratore se richiesto
       if (notifyAdmin && result) {
         const employeeName = `${profile.first_name} ${profile.last_name}`;
         await sendAdminNotification({
@@ -148,6 +162,18 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
     setLoading(false);
   };
 
+  const getRequestDetails = () => {
+    if (type === "permesso") {
+      if (timeFrom && timeTo) {
+        return `Giorno: ${day?.toLocaleDateString('it-IT')}\nOrario: ${timeFrom} - ${timeTo}${note ? `\nNote: ${note}` : ''}`;
+      } else {
+        return `Giorno: ${day?.toLocaleDateString('it-IT')}\nPermesso giornaliero${note ? `\nNote: ${note}` : ''}`;
+      }
+    } else {
+      return `Dal: ${dateFrom?.toLocaleDateString('it-IT')}\nAl: ${dateTo?.toLocaleDateString('it-IT')}${note ? `\nNote: ${note}` : ''}`;
+    }
+  };
+
   return (
     <Card className="bg-muted/40">
       <CardContent>
@@ -159,6 +185,20 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
                 {validationErrors.map((error, index) => (
                   <div key={index}>{error}</div>
                 ))}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Info bilancio attuale */}
+          {balanceValidation?.hasBalance && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1">
+                  <div>Bilancio attuale:</div>
+                  <div>• Ferie rimanenti: {balanceValidation.remainingVacationDays} giorni</div>
+                  <div>• Permessi rimanenti: {balanceValidation.remainingPermissionHours} ore</div>
+                </div>
               </AlertDescription>
             </Alert>
           )}
@@ -316,7 +356,10 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
           </div>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading || !currentBalanceValidation.hasBalance || currentBalanceValidation.exceedsVacationLimit || currentBalanceValidation.exceedsPermissionLimit}
+            >
               {loading ? "Creazione..." : `Crea ${type}`}
             </Button>
           </div>
