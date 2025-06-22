@@ -7,6 +7,10 @@ export interface EmployeeProfile {
   first_name: string | null;
   last_name: string | null;
   email: string | null;
+  role: 'admin' | 'employee';
+  department: string | null;
+  employee_code: string | null;
+  is_active: boolean;
 }
 
 export function useActiveEmployees() {
@@ -18,8 +22,9 @@ export function useActiveEmployees() {
       setLoading(true);
       const { data } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, email")
-        .eq("is_active", true);
+        .select("id, first_name, last_name, email, role, department, employee_code, is_active")
+        .eq("is_active", true)
+        .order('first_name', { ascending: true });
       setEmployees((data || []) as EmployeeProfile[]);
       setLoading(false);
     };
