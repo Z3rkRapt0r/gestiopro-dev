@@ -156,19 +156,15 @@ serve(async (req) => {
     // Get recipients list
     let recipients = [];
     if (!recipientId) {
-      // For leave requests to admin, send to all admins
-      if (templateType === 'permessi-richiesta') {
-        const { data: adminProfiles, error: adminProfilesError } = await supabase
-          .from("profiles")
-          .select("id, email, first_name, last_name")
-          .eq("role", "admin")
-          .eq("is_active", true);
-          
-        if (adminProfilesError) {
-          console.error("[Notification Email] Error fetching admin profiles:", adminProfilesError);
-          throw adminProfilesError;
-        }
-        recipients = adminProfiles || [];
+      // For leave requests to admin and document notifications, send to admin email
+      if (templateType === 'permessi-richiesta' || templateType === 'documenti') {
+        // Sempre invia all'email dell'amministratore
+        recipients = [{ 
+          id: userId, 
+          email: 'servizio@alminfissi.it', 
+          first_name: 'Servizio', 
+          last_name: 'ALM Infissi' 
+        }];
       } else {
         // Send to all active employees for other notifications
         const { data: profiles, error: profilesError } = await supabase
@@ -208,8 +204,8 @@ serve(async (req) => {
 
     const senderName = adminProfile?.first_name && adminProfile?.last_name 
       ? `${adminProfile.first_name} ${adminProfile.last_name}` 
-      : "Sistema Notifiche";
-    const senderEmail = "zerkraptor@gmail.com";
+      : "ALM Infissi";
+    const senderEmail = "servizio@alminfissi.it";
 
     let successCount = 0;
     const errors = [];
