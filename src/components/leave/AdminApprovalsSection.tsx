@@ -3,10 +3,12 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LeaveRequestsCardsGrid from "./LeaveRequestsCardsGrid";
 import EmployeeLeaveArchive from "./EmployeeLeaveArchive";
+import { EmployeeLeaveBalanceSection } from "./EmployeeLeaveBalanceSection";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
+import { Settings } from "lucide-react";
 
 export default function AdminApprovalsSection() {
-  const [tab, setTab] = useState<"pending" | "archive-permessi" | "archive-ferie">("pending");
+  const [tab, setTab] = useState<"pending" | "archive-permessi" | "archive-ferie" | "balance">("pending");
   const { leaveRequests, isLoading } = useLeaveRequests();
 
   // Archivio diviso per tipo
@@ -58,6 +60,10 @@ export default function AdminApprovalsSection() {
           <TabsTrigger value="pending" className="flex-1">Pendenti</TabsTrigger>
           <TabsTrigger value="archive-permessi" className="flex-1">Archivio Permessi</TabsTrigger>
           <TabsTrigger value="archive-ferie" className="flex-1">Archivio Ferie</TabsTrigger>
+          <TabsTrigger value="balance" className="flex-1 flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Bilanci
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="pending">
           <LeaveRequestsCardsGrid
@@ -102,6 +108,9 @@ export default function AdminApprovalsSection() {
               </div>
             )}
           </div>
+        </TabsContent>
+        <TabsContent value="balance">
+          <EmployeeLeaveBalanceSection />
         </TabsContent>
       </Tabs>
     </div>

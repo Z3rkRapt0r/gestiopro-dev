@@ -3,10 +3,9 @@ import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminApprovalsSection from "./AdminApprovalsSection";
-import { EmployeeLeaveBalanceSection } from "./EmployeeLeaveBalanceSection";
 import { EmployeeLeaveRequestSection } from "./EmployeeLeaveRequestSection";
 import { EmployeeLeaveArchiveSection } from "./EmployeeLeaveArchiveSection";
-import { CalendarDays, FileText, UserCheck, Settings } from "lucide-react";
+import { CalendarDays, FileText, UserCheck } from "lucide-react";
 
 export default function EmployeeLeavePage() {
   const { profile } = useAuth();
@@ -19,7 +18,7 @@ export default function EmployeeLeavePage() {
       </div>
 
       <Tabs defaultValue={isAdmin ? "approvals" : "request"} className="w-full">
-        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-2'}`}>
+        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
           {isAdmin && (
             <TabsTrigger value="approvals" className="flex items-center gap-2">
               <UserCheck className="h-4 w-4" />
@@ -34,12 +33,6 @@ export default function EmployeeLeavePage() {
             <FileText className="h-4 w-4" />
             Storico
           </TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="balance" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Bilanci
-            </TabsTrigger>
-          )}
         </TabsList>
 
         {isAdmin && (
@@ -55,12 +48,6 @@ export default function EmployeeLeavePage() {
         <TabsContent value="archive">
           <EmployeeLeaveArchiveSection />
         </TabsContent>
-
-        {isAdmin && (
-          <TabsContent value="balance">
-            <EmployeeLeaveBalanceSection />
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );
