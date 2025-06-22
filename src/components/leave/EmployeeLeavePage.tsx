@@ -19,7 +19,7 @@ export default function EmployeeLeavePage() {
       </div>
 
       <Tabs defaultValue={isAdmin ? "approvals" : "request"} className="w-full">
-        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-2'}`}>
+        <TabsList className="grid w-full grid-cols-4">
           {isAdmin && (
             <TabsTrigger value="approvals" className="flex items-center gap-2">
               <UserCheck className="h-4 w-4" />
