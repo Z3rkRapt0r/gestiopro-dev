@@ -34,9 +34,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const initializationComplete = useRef(false);
+  const profileFetchCache = useRef<{ [key: string]: Profile }>({});
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      // Usa la cache per evitare richieste duplicate
+      if (profileFetchCache.current[userId]) {
+        console.log('[useAuth] Using cached profile for user:', userId);
+        setProfile(profileFetchCache.current[userId]);
+        return;
+      }
+
       console.log('[useAuth] Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
@@ -65,6 +73,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ...data,
         role: data.role as 'admin' | 'employee'
       };
+      
+      // Salva in cache e imposta il profilo
+      profileFetchCache.current[userId] = typedProfile;
       setProfile(typedProfile);
       console.log('[useAuth] Profile set successfully:', typedProfile);
     } catch (error) {
@@ -77,6 +88,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     }
   };
+
+  // Gestisce la visibilità della pagina per ottimizzare le performance
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user && !loading) {
+        // Quando la pagina torna visibile, verifica la sessione
+        console.log('[useAuth] Page became visible, checking session...');
+        supabase.auth.getSession().then(({ data: { session: currentSession }, error }) => {
+          if (!error && currentSession?.user && !profile) {
+            console.log('[useAuth] Refreshing profile on page visibility change');
+            fetchUserProfile(currentSession.user.id);
+          }
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user, loading, profile]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -119,40 +149,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    // Set up auth state change listener
+    // Set up auth state change listener con debouncing
+    let authTimeout: NodeJS.Timeout;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('[useAuth] Auth state change:', event, newSession?.user?.id || 'No session');
         
-        // Ignore events during initialization to prevent conflicts
+        // Ignora eventi durante l'inizializzazione
         if (!initializationComplete.current) {
           console.log('[useAuth] Ignoring auth event during initialization');
           return;
         }
         
         if (!isSubscribed) return;
-        
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
 
-        if (newSession?.user) {
-          await fetchUserProfile(newSession.user.id);
-        } else {
-          setProfile(null);
-        }
+        // Debounce per evitare aggiornamenti multipli rapidi
+        if (authTimeout) clearTimeout(authTimeout);
         
-        // Only set loading to false if we're not already initialized
-        if (loading) {
-          setLoading(false);
-        }
+        authTimeout = setTimeout(async () => {
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+
+          if (newSession?.user) {
+            await fetchUserProfile(newSession.user.id);
+          } else {
+            setProfile(null);
+            // Pulisci la cache quando l'utente si disconnette
+            profileFetchCache.current = {};
+          }
+          
+          if (loading) {
+            setLoading(false);
+          }
+        }, 100);
       }
     );
 
-    // Start initialization
+    // Avvia l'inizializzazione
     initializeAuth();
 
     return () => {
       isSubscribed = false;
+      if (authTimeout) clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -200,6 +238,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setProfile(null);
       setSession(null);
+      profileFetchCache.current = {};
       
       const { error } = await supabase.auth.signOut();
       
@@ -219,6 +258,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setProfile(null);
       setSession(null);
+      profileFetchCache.current = {};
       
       toast({
         title: "Disconnesso",

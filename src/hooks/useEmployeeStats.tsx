@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -31,12 +31,16 @@ export const useEmployeeStats = () => {
   });
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const subscriptionsRef = useRef<any[]>([]);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout>();
 
   const fetchStats = async () => {
-    if (!user) return;
+    if (!user || loading) return;
 
     setLoading(true);
     try {
+      const currentYear = new Date().getFullYear();
+      
       // Ottimizzazione: esegui le query più leggere prima
       const basicQueries = await Promise.all([
         supabase.from('documents').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
@@ -49,7 +53,7 @@ export const useEmployeeStats = () => {
       // Query più complesse
       const [leaveRequestsData, leaveBalanceData, recentDocuments, recentNotifications] = await Promise.all([
         supabase.from('leave_requests').select('status').eq('user_id', user.id),
-        supabase.from('employee_leave_balance').select('vacation_days_total, vacation_days_used, permission_hours_total, permission_hours_used').eq('user_id', user.id).eq('year', new Date().getFullYear()).maybeSingle(),
+        supabase.from('employee_leave_balance').select('vacation_days_total, vacation_days_used, permission_hours_total, permission_hours_used').eq('user_id', user.id).eq('year', currentYear).maybeSingle(),
         supabase.from('documents').select('id, title, created_at, document_type').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
         supabase.from('notifications').select('id, title, created_at, is_read, type').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5)
       ]);
@@ -85,11 +89,28 @@ export const useEmployeeStats = () => {
     }
   };
 
+  // Gestisce la visibilità della pagina
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        console.log('[useEmployeeStats] Page became visible, refreshing stats...');
+        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = setTimeout(fetchStats, 500);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    };
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       fetchStats();
 
-      // Setup real-time subscriptions
+      // Setup real-time subscriptions con cleanup migliorato
       const documentsChannel = supabase
         .channel('employee-documents-changes')
         .on(
@@ -100,7 +121,11 @@ export const useEmployeeStats = () => {
             table: 'documents',
             filter: `user_id=eq.${user.id}`
           },
-          () => fetchStats()
+          () => {
+            console.log('[useEmployeeStats] Documents changed, refreshing...');
+            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+            fetchTimeoutRef.current = setTimeout(fetchStats, 200);
+          }
         )
         .subscribe();
 
@@ -114,7 +139,11 @@ export const useEmployeeStats = () => {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`
           },
-          () => fetchStats()
+          () => {
+            console.log('[useEmployeeStats] Notifications changed, refreshing...');
+            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+            fetchTimeoutRef.current = setTimeout(fetchStats, 200);
+          }
         )
         .subscribe();
 
@@ -128,7 +157,11 @@ export const useEmployeeStats = () => {
             table: 'leave_requests',
             filter: `user_id=eq.${user.id}`
           },
-          () => fetchStats()
+          () => {
+            console.log('[useEmployeeStats] Leave requests changed, refreshing...');
+            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+            fetchTimeoutRef.current = setTimeout(fetchStats, 200);
+          }
         )
         .subscribe();
 
@@ -142,15 +175,23 @@ export const useEmployeeStats = () => {
             table: 'employee_leave_balance',
             filter: `user_id=eq.${user.id}`
           },
-          () => fetchStats()
+          () => {
+            console.log('[useEmployeeStats] Leave balance changed, refreshing...');
+            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+            fetchTimeoutRef.current = setTimeout(fetchStats, 200);
+          }
         )
         .subscribe();
 
+      // Salva i canali per cleanup
+      subscriptionsRef.current = [documentsChannel, notificationsChannel, leaveRequestsChannel, leaveBalanceChannel];
+
       return () => {
-        supabase.removeChannel(documentsChannel);
-        supabase.removeChannel(notificationsChannel);
-        supabase.removeChannel(leaveRequestsChannel);
-        supabase.removeChannel(leaveBalanceChannel);
+        subscriptionsRef.current.forEach(channel => {
+          supabase.removeChannel(channel);
+        });
+        subscriptionsRef.current = [];
+        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
       };
     }
   }, [user]);

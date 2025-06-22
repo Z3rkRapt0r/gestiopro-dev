@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AdminStats {
@@ -21,10 +21,16 @@ export const useAdminStats = () => {
     unreadNotifications: 0,
   });
   const [loading, setLoading] = useState(false);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout>();
 
   const fetchStats = async () => {
+    // Evita fetch multipli simultanei
+    if (loading) return;
+    
     setLoading(true);
     try {
+      const today = new Date().toISOString().split('T')[0];
+      
       // Esegui tutte le query in parallelo per velocizzare il caricamento
       const [
         { count: totalEmployees },
@@ -38,7 +44,7 @@ export const useAdminStats = () => {
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('documents').select('*', { count: 'exact', head: true }),
         supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('attendances').select('*', { count: 'exact', head: true }).eq('date', new Date().toISOString().split('T')[0]),
+        supabase.from('attendances').select('*', { count: 'exact', head: true }).eq('date', today),
         supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false)
       ]);
 
@@ -56,6 +62,24 @@ export const useAdminStats = () => {
       setLoading(false);
     }
   };
+
+  // Gestisce la visibilità della pagina
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[useAdminStats] Page became visible, refreshing stats...');
+        // Ritarda leggermente per evitare richieste eccessive
+        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = setTimeout(fetchStats, 500);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     fetchStats();
