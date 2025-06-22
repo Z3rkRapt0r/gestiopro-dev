@@ -11,6 +11,7 @@ import AdminEmployeesSection from './AdminEmployeesSection';
 import DashboardHeader from './DashboardHeader';
 import AdminAttendanceSection from './AdminAttendanceSection';
 import AdminDashboardOverview from './AdminDashboardOverview';
+import AdminRoleDebug from '../debug/AdminRoleDebug';
 import {
   Sidebar,
   SidebarContent,
@@ -112,7 +113,12 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return <AdminDashboardOverview />;
+        return (
+          <div className="space-y-6">
+            <AdminDashboardOverview />
+            <AdminRoleDebug />
+          </div>
+        );
       case 'employees':
         return <AdminEmployeesSection />;
       case 'leaves':
@@ -126,7 +132,12 @@ export default function AdminDashboard() {
       case 'settings':
         return <AdminSettingsSection />;
       default:
-        return <AdminDashboardOverview />;
+        return (
+          <div className="space-y-6">
+            <AdminDashboardOverview />
+            <AdminRoleDebug />
+          </div>
+        );
     }
   };
 

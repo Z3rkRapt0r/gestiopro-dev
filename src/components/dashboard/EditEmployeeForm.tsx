@@ -88,27 +88,52 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
   const onSubmit = async (data: EmployeeFormData) => {
     setIsSubmitting(true);
     try {
-      console.log('Updating employee with data:', data);
+      console.log('Tentativo di aggiornamento dipendente:', {
+        employeeId: employee.id,
+        currentData: employee,
+        newData: data
+      });
       
-      const { error } = await supabase
+      // Prima verifichiamo se il record esiste
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          role: data.role,
-          department: data.department || null,
-          employee_code: data.employee_code || null,
-          is_active: data.is_active,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', employee.id);
+        .select('*')
+        .eq('id', employee.id)
+        .single();
+
+      if (fetchError) {
+        console.error('Errore nel recuperare il profilo esistente:', fetchError);
+        throw new Error('Impossibile trovare il profilo da aggiornare');
+      }
+
+      console.log('Profilo esistente trovato:', existingProfile);
+
+      // Ora aggiorniamo i dati
+      const updateData = {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        role: data.role,
+        department: data.department || null,
+        employee_code: data.employee_code || null,
+        is_active: data.is_active,
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('Dati da aggiornare:', updateData);
+
+      const { data: updatedData, error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', employee.id)
+        .select()
+        .single();
 
       if (error) {
-        console.error('Error updating employee:', error);
+        console.error('Errore nell\'aggiornamento del dipendente:', error);
         throw error;
       }
 
-      console.log('Employee updated successfully');
+      console.log('Dipendente aggiornato con successo:', updatedData);
       
       toast({
         title: 'Dipendente aggiornato',
@@ -118,10 +143,10 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
       onEmployeeUpdated();
       onClose();
     } catch (error: any) {
-      console.error('Error updating employee:', error);
+      console.error('Errore completo nell\'aggiornamento:', error);
       toast({
         title: 'Errore',
-        description: error.message || 'Impossibile aggiornare il dipendente.',
+        description: error.message || 'Impossibile aggiornare il dipendente. Verificare i permessi.',
         variant: 'destructive',
       });
     } finally {
@@ -133,7 +158,12 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
     <Dialog open={true} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Modifica Dipendente</DialogTitle>
+          <DialogTitle>
+            Modifica {employee.role === 'admin' ? 'Amministratore' : 'Dipendente'}
+          </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            ID: {employee.id}
+          </p>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -175,7 +205,7 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="employee">Dipendente</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="admin">Amministratore</SelectItem>
                   </SelectContent>
                 </Select>
               )}
