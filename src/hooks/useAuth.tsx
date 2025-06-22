@@ -33,8 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const mounted = useRef(true);
-  const initialized = useRef(false);
+  const initializationComplete = useRef(false);
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -80,23 +79,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    console.log('[useAuth] useEffect started');
+    let isSubscribed = true;
+    console.log('[useAuth] Starting auth initialization');
 
     const initializeAuth = async () => {
       try {
-        // Get initial session
+        console.log('[useAuth] Getting initial session...');
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('[useAuth] Error getting initial session:', error);
         }
         
-        if (!isMounted) return;
+        if (!isSubscribed) return;
         
-        console.log('[useAuth] Initial session:', initialSession?.user?.id || 'No session');
+        console.log('[useAuth] Initial session found:', initialSession?.user?.id || 'No session');
         
-        // Set initial state
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
         
@@ -106,16 +104,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfile(null);
         }
         
-        initialized.current = true;
+        initializationComplete.current = true;
         setLoading(false);
+        console.log('[useAuth] Initialization complete');
       } catch (error) {
-        console.error('[useAuth] Error initializing auth:', error);
-        if (isMounted) {
+        console.error('[useAuth] Error during initialization:', error);
+        if (isSubscribed) {
           setSession(null);
           setUser(null);
           setProfile(null);
+          initializationComplete.current = true;
           setLoading(false);
-          initialized.current = true;
         }
       }
     };
@@ -125,7 +124,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       async (event, newSession) => {
         console.log('[useAuth] Auth state change:', event, newSession?.user?.id || 'No session');
         
-        if (!isMounted || !initialized.current) return;
+        // Ignore events during initialization to prevent conflicts
+        if (!initializationComplete.current) {
+          console.log('[useAuth] Ignoring auth event during initialization');
+          return;
+        }
+        
+        if (!isSubscribed) return;
         
         setSession(newSession);
         setUser(newSession?.user ?? null);
@@ -135,15 +140,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setProfile(null);
         }
+        
+        // Only set loading to false if we're not already initialized
+        if (loading) {
+          setLoading(false);
+        }
       }
     );
 
-    // Initialize auth
+    // Start initialization
     initializeAuth();
 
     return () => {
-      isMounted = false;
-      mounted.current = false;
+      isSubscribed = false;
       subscription.unsubscribe();
     };
   }, []);
