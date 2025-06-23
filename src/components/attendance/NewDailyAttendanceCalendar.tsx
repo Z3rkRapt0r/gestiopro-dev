@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,7 @@ import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
+import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 
 export default function NewDailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -17,6 +19,7 @@ export default function NewDailyAttendanceCalendar() {
   const { employees } = useActiveEmployees();
   const { workSchedule } = useWorkSchedules();
   const { leaveRequests } = useLeaveRequests();
+  const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
 
   if (isLoading) {
     return (
@@ -117,11 +120,38 @@ export default function NewDailyAttendanceCalendar() {
     })
     .filter(emp => emp.id);
 
-  // Dipendenti assenti (escludendo quelli in malattia, in ferie o con presenza registrata)
-  const absentEmployees = employees?.filter(emp => 
-    !selectedDateAttendances.some(att => att.user_id === emp.id) &&
-    !selectedDateLeaves.some(leave => leave.user_id === emp.id)
-  ) || [];
+  // CORREZIONE: Filtra correttamente gli assenti usando la logica del working_days_tracking
+  const getAbsentEmployees = async () => {
+    if (!selectedDate || !employees) return [];
+    
+    const absentEmployees = [];
+    
+    for (const emp of employees) {
+      // Verifica se ha già una presenza registrata
+      const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id);
+      if (hasAttendance) continue;
+      
+      // Verifica se è in ferie
+      const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id);
+      if (isOnLeave) continue;
+      
+      // Verifica se dovrebbe essere tracciato per questa data usando la logica centralizzata
+      const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
+      if (shouldTrack && isWorkingDay(selectedDate)) {
+        absentEmployees.push(emp);
+      }
+    }
+    
+    return absentEmployees;
+  };
+
+  const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (selectedDateStr && employees) {
+      getAbsentEmployees().then(setAbsentEmployees);
+    }
+  }, [selectedDateStr, employees, selectedDateAttendances, selectedDateLeaves]);
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
@@ -240,6 +270,16 @@ export default function NewDailyAttendanceCalendar() {
                               <span className="font-medium text-sm">
                                 {employee.first_name} {employee.last_name}
                               </span>
+                              {employee.tracking_start_type === 'from_year_start' && (
+                                <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
+                                  Esistente
+                                </Badge>
+                              )}
+                              {employee.tracking_start_type === 'from_hire_date' && (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
+                                  Nuovo
+                                </Badge>
+                              )}
                               {employee.attendance.is_manual && (
                                 <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
                                   Manuale
@@ -370,13 +410,27 @@ export default function NewDailyAttendanceCalendar() {
                   {absentEmployees.length > 0 ? (
                     absentEmployees.map((employee) => (
                       <div key={employee.id} className="p-3 bg-red-50 rounded-lg border border-red-200">
-                        <span className="font-medium text-sm">
-                          {employee.first_name} {employee.last_name}
-                        </span>
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-sm">
+                            {employee.first_name} {employee.last_name}
+                          </span>
+                          <div className="flex gap-1">
+                            {employee.tracking_start_type === 'from_year_start' && (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
+                                Da caricare manualmente
+                              </Badge>
+                            )}
+                            {employee.tracking_start_type === 'from_hire_date' && (
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
+                                Nuovo dipendente
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-gray-500 text-sm">Tutti i dipendenti sono giustificati</p>
+                    <p className="text-gray-500 text-sm">Tutti i dipendenti rilevanti sono giustificati</p>
                   )}
                 </div>
               </div>

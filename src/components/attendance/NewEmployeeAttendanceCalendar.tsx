@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -117,7 +118,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       return new Date(year, month - 1, day);
     });
 
-  // Calcola i giorni di assenza basandosi sulla logica centralizzata
+  // CORREZIONE: Calcola i giorni di assenza usando la logica centralizzata
   const getAbsentDates = async () => {
     const currentDate = new Date();
     const oneMonthAgo = new Date(currentDate);
@@ -179,10 +180,10 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     }
   };
 
-  // Verifica se una data dovrebbe essere tracciata per questo dipendente
-  const shouldShowDate = async (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return await shouldTrackEmployeeOnDate(employee.id, dateStr);
+  // Verifica se il dipendente era già stato assunto alla data selezionata
+  const isEmployeeHiredOnDate = (date: Date) => {
+    if (!employee.hire_date) return true;
+    return date >= new Date(employee.hire_date);
   };
 
   return (
@@ -249,7 +250,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             </div>
             <div className="text-xs text-yellow-600">
               {employee.tracking_start_type === 'from_hire_date' 
-                ? `Tracciamento dal ${employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'} (data di creazione)` 
+                ? `Tracciamento dal ${employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'} (data di assunzione)` 
                 : 'Tracciamento dall\'inizio dell\'anno - le assenze devono essere caricate manualmente'
               }
             </div>
@@ -341,6 +342,16 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                   Questo giorno non è configurato come giorno lavorativo
                 </p>
               </div>
+            ) : selectedDate && !isEmployeeHiredOnDate(selectedDate) ? (
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <span className="font-semibold text-gray-700 text-sm">Non ancora assunto</span>
+                </div>
+                <p className="text-xs text-gray-600">
+                  Il dipendente è stato assunto il {employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'}
+                </p>
+              </div>
             ) : selectedDateAttendance ? (
               <div className="space-y-3">
                 {selectedDateAttendance.is_sick_leave ? (
@@ -408,16 +419,11 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               <div className="p-3 bg-red-50 rounded-lg border border-red-200">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span className="font-semibold text-red-700 text-sm">
-                    {selectedDate && employee.tracking_start_type === 'from_hire_date' && employee.hire_date && selectedDate < new Date(employee.hire_date) 
-                      ? 'Non ancora assunto' 
-                      : 'Assente'
-                    }
-                  </span>
+                  <span className="font-semibold text-red-700 text-sm">Assente</span>
                 </div>
                 <p className="text-xs text-red-600">
-                  {selectedDate && employee.tracking_start_type === 'from_hire_date' && employee.hire_date && selectedDate < new Date(employee.hire_date)
-                    ? `Il dipendente è stato assunto il ${format(new Date(employee.hire_date), 'dd/MM/yyyy')}`
+                  {employee.tracking_start_type === 'from_year_start' 
+                    ? 'Dipendente esistente - presenza da caricare manualmente'
                     : 'Nessuna presenza registrata per questo giorno lavorativo'
                   }
                 </p>
