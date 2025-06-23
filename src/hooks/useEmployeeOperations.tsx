@@ -62,36 +62,66 @@ export const useEmployeeOperations = () => {
     }
   };
 
-  const createEmployee = async (employeeData: Partial<Employee>) => {
+  const createEmployee = async (employeeData: Partial<Employee> & { password?: string }) => {
     try {
       setLoading(true);
+      console.log('Creating employee with data:', employeeData);
       
-      // Prepare data for insertion - use type assertion to bypass id requirement
-      const insertData = {
-        first_name: employeeData.first_name || null,
-        last_name: employeeData.last_name || null,
-        email: employeeData.email || null,
-        role: 'employee' as const, // Force employee role
-        department: employeeData.department || null,
-        hire_date: employeeData.hire_date || null,
-        employee_code: employeeData.employee_code || null,
-        is_active: true
-      } as any; // Type assertion to bypass the id requirement
+      if (!employeeData.email || !employeeData.password) {
+        throw new Error('Email e password sono obbligatori');
+      }
 
-      const { data, error } = await supabase
+      // 1. Prima crea l'utente nell'auth di Supabase
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: employeeData.email,
+        password: employeeData.password,
+        email_confirm: true, // Conferma automaticamente l'email
+        user_metadata: {
+          first_name: employeeData.first_name || '',
+          last_name: employeeData.last_name || '',
+          role: 'employee'
+        }
+      });
+
+      if (authError) {
+        console.error('Auth error:', authError);
+        throw authError;
+      }
+
+      if (!authData.user) {
+        throw new Error('Errore nella creazione dell\'utente');
+      }
+
+      // 2. Poi crea il profilo nella tabella profiles
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .insert(insertData)
+        .insert({
+          id: authData.user.id,
+          first_name: employeeData.first_name || null,
+          last_name: employeeData.last_name || null,
+          email: employeeData.email,
+          role: 'employee',
+          department: employeeData.department || null,
+          hire_date: employeeData.hire_date || null,
+          employee_code: employeeData.employee_code || null,
+          is_active: true
+        })
         .select()
         .single();
 
-      if (error) throw error;
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        // Se fallisce la creazione del profilo, elimina l'utente auth
+        await supabase.auth.admin.deleteUser(authData.user.id);
+        throw profileError;
+      }
 
       toast({
         title: "Dipendente creato",
         description: "Il dipendente è stato aggiunto con successo",
       });
 
-      return { data, error: null };
+      return { data: profileData, error: null };
     } catch (error: any) {
       console.error('Error creating employee:', error);
       toast({
@@ -148,19 +178,31 @@ export const useEmployeeOperations = () => {
     try {
       setLoading(true);
       
-      // Elimina solo se è un dipendente (non admin)
-      const { error } = await supabase
+      // Prima disattiva il profilo
+      const { error: profileError } = await supabase
         .from('profiles')
-        .delete()
+        .update({ is_active: false })
         .eq('id', id)
-        .eq('role', 'employee'); // Elimina solo dipendenti
+        .eq('role', 'employee');
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      toast({
-        title: "Dipendente eliminato",
-        description: "Il dipendente è stato rimosso dal sistema",
-      });
+      // Poi elimina l'utente dall'auth (questo eliminerà anche il profilo tramite cascade)
+      const { error: authError } = await supabase.auth.admin.deleteUser(id);
+
+      if (authError) {
+        console.error('Auth deletion error:', authError);
+        // Se fallisce l'eliminazione auth, prova solo a disattivare
+        toast({
+          title: "Dipendente disattivato",
+          description: "Il dipendente è stato disattivato dal sistema",
+        });
+      } else {
+        toast({
+          title: "Dipendente eliminato",
+          description: "Il dipendente è stato rimosso dal sistema",
+        });
+      }
 
       return { error: null };
     } catch (error: any) {

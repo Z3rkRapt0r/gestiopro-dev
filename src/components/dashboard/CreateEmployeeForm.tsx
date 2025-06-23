@@ -21,23 +21,35 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
     email: '',
     password: '',
     role: 'employee' as 'admin' | 'employee',
-    employeeCode: ''
+    employeeCode: '',
+    department: '',
+    hireDate: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!formData.email || !formData.password) {
+      return;
+    }
+
     try {
-      await createEmployee({
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+      const result = await createEmployee({
+        first_name: formData.firstName || null,
+        last_name: formData.lastName || null,
         email: formData.email,
-        employee_code: formData.employeeCode
+        password: formData.password,
+        employee_code: formData.employeeCode || null,
+        department: formData.department || null,
+        hire_date: formData.hireDate || null
       });
-      onEmployeeCreated();
-      onClose();
+
+      if (!result.error) {
+        onEmployeeCreated();
+        onClose();
+      }
     } catch (error) {
-      // L'errore è già gestito nel hook
+      console.error('Error in form submission:', error);
     }
   };
 
@@ -100,19 +112,13 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Ruolo</Label>
-              <Select 
-                value={formData.role} 
-                onValueChange={(value: 'admin' | 'employee') => setFormData({ ...formData, role: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona ruolo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="employee">Dipendente</SelectItem>
-                  <SelectItem value="admin">Amministratore</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="department">Dipartimento</Label>
+              <Input
+                id="department"
+                value={formData.department}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                placeholder="Es: Amministrazione"
+              />
             </div>
 
             <div className="space-y-2">
@@ -122,6 +128,16 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
                 value={formData.employeeCode}
                 onChange={(e) => setFormData({ ...formData, employeeCode: e.target.value })}
                 placeholder="Es: EMP001"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="hireDate">Data Assunzione</Label>
+              <Input
+                id="hireDate"
+                type="date"
+                value={formData.hireDate}
+                onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
               />
             </div>
 

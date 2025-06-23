@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -135,6 +136,53 @@ export const useDocuments = () => {
     }
   };
 
+  const deleteDocument = async (document: Document) => {
+    if (!user) return { error: 'User not authenticated' };
+
+    try {
+      setLoading(true);
+
+      // Prima elimina il file dallo storage
+      const { error: storageError } = await supabase.storage
+        .from('documents')
+        .remove([document.file_path]);
+
+      if (storageError) {
+        console.error('Storage delete error:', storageError);
+        // Continua comunque con l'eliminazione dal database
+      }
+
+      // Poi elimina il record dal database
+      const { error: dbError } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', document.id);
+
+      if (dbError) {
+        throw dbError;
+      }
+
+      toast({
+        title: "Successo",
+        description: "Documento eliminato correttamente",
+      });
+
+      // Aggiorna la lista dei documenti
+      await fetchDocuments();
+      return { error: null };
+    } catch (error: any) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'eliminazione del documento",
+        variant: "destructive",
+      });
+      return { error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const downloadDocument = async (document: Document) => {
     try {
       const { data, error } = await supabase.storage
@@ -174,6 +222,7 @@ export const useDocuments = () => {
     loading,
     uploadDocument,
     downloadDocument,
+    deleteDocument, // Nuova funzione per eliminare documenti
     refreshDocuments: fetchDocuments,
   };
 };
