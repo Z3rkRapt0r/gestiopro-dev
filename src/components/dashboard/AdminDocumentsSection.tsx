@@ -1,12 +1,14 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, Upload, Search, FileText } from "lucide-react";
+import { Users, Upload, Search, FileText, Trash2 } from "lucide-react";
 import DocumentUploadDialogController from "@/components/documents/DocumentUploadDialogController";
 import { useDocuments } from "@/hooks/useDocuments";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type EmployeeProfile = {
   id: string;
@@ -16,7 +18,6 @@ type EmployeeProfile = {
   is_active: boolean;
   role: string;
   department?: string | null;
-  // ... altri campi se presenti
 };
 
 const AdminDocumentsSection = () => {
@@ -27,7 +28,8 @@ const AdminDocumentsSection = () => {
   const [filterRole, setFilterRole] = useState("");
   const [uploadUserId, setUploadUserId] = useState<string | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const { documents } = useDocuments();
+  const { documents, deleteDocument, refreshDocuments } = useDocuments();
+  const { toast } = useToast();
 
   // Documenti recenti (ultimi 6)
   const recentDocs = documents
@@ -81,6 +83,20 @@ const AdminDocumentsSection = () => {
     }
     setFilteredEmployees(result);
   }, [employeeList, search, filterDept, filterRole, documents]);
+
+  const handleDeleteDocument = async (docId: string) => {
+    const doc = documents.find(d => d.id === docId);
+    if (doc) {
+      const result = await deleteDocument(doc);
+      if (!result.error) {
+        await refreshDocuments();
+        toast({
+          title: "Documento eliminato",
+          description: "Il documento è stato eliminato con successo",
+        });
+      }
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
@@ -180,7 +196,7 @@ const AdminDocumentsSection = () => {
         </div>
       )}
 
-      {/* Widget documenti recenti */}
+      {/* Widget documenti recenti con possibilità di eliminazione */}
       <Card>
         <CardHeader>
           <CardTitle>Ultimi Documenti Caricati</CardTitle>
@@ -195,7 +211,7 @@ const AdminDocumentsSection = () => {
             ) : (
               recentDocs.map(doc => (
                 <div key={doc.id} className="flex justify-between items-center py-2">
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium text-gray-900">{doc.title}</div>
                     <div className="text-xs text-gray-500">
                       {(() => {
@@ -208,15 +224,26 @@ const AdminDocumentsSection = () => {
                       {new Date(doc.created_at).toLocaleDateString("it-IT")}
                     </div>
                   </div>
-                  <Badge variant="outline">{doc.document_type}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{doc.document_type}</Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteDocument(doc.id);
+                      }}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
           </div>
         </CardContent>
       </Card>
-
-      {/* Modale upload documento - adesso UNA SOLA ISTANZA CONTROLLATA */}
     </div>
   );
 };

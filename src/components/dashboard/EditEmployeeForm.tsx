@@ -25,17 +25,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Interfaccia Employee come definita (o simile) in AdminDashboard
+// Interfaccia Employee senza hire_date
 interface Employee {
   id: string;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
-  role: 'admin' | 'employee'; // Usiamo il tipo più specifico
+  role: 'admin' | 'employee';
   department: string | null;
   employee_code: string | null;
   is_active: boolean;
-  // created_at and updated_at might also be part of the full Supabase profile
 }
 
 interface EditEmployeeFormProps {
@@ -47,7 +46,7 @@ interface EditEmployeeFormProps {
 const employeeFormSchema = z.object({
   first_name: z.string().min(1, 'Il nome è obbligatorio').nullable(),
   last_name: z.string().min(1, 'Il cognome è obbligatorio').nullable(),
-  email: z.string().email('Email non valida').nullable(), // Email in profiles table
+  email: z.string().email('Email non valida').nullable(),
   role: z.enum(['admin', 'employee']),
   department: z.string().nullable(),
   employee_code: z.string().nullable(),
@@ -82,7 +81,7 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
     reset({
       first_name: employee.first_name || '',
       last_name: employee.last_name || '',
-      email: employee.email || '', // Assumiamo che l'email del profilo sia modificabile
+      email: employee.email || '',
       role: employee.role || 'employee',
       department: employee.department || '',
       employee_code: employee.employee_code || '',
@@ -98,12 +97,12 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
         .update({
           first_name: data.first_name,
           last_name: data.last_name,
-          email: data.email, // Aggiorna l'email nella tabella profiles
+          email: data.email,
           role: data.role,
           department: data.department,
           employee_code: data.employee_code,
           is_active: data.is_active,
-          updated_at: new Date().toISOString(), // Manually set updated_at
+          updated_at: new Date().toISOString(),
         })
         .eq('id', employee.id);
 
@@ -234,4 +233,3 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
 };
 
 export default EditEmployeeForm;
-

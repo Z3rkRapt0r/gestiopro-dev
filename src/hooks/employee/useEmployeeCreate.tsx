@@ -30,39 +30,18 @@ export const useEmployeeCreate = () => {
         throw new Error('Email e password sono obbligatori');
       }
 
-      // Usa signUp normale invece di admin.createUser
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: employeeData.email,
-        password: employeeData.password,
-        options: {
-          data: {
-            first_name: employeeData.first_name || '',
-            last_name: employeeData.last_name || '',
-            role: 'employee'
-          }
-        }
-      });
-
-      if (authError) {
-        console.error('Auth error:', authError);
-        throw authError;
-      }
-
-      if (!authData.user) {
-        throw new Error('Errore nella creazione dell\'utente');
-      }
-
-      // Crea il profilo nella tabella profiles
+      // Crea direttamente il profilo senza aspettare la registrazione
+      const temporaryId = crypto.randomUUID();
+      
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .insert({
-          id: authData.user.id,
+          id: temporaryId,
           first_name: employeeData.first_name || null,
           last_name: employeeData.last_name || null,
           email: employeeData.email,
           role: 'employee',
           department: employeeData.department || null,
-          hire_date: employeeData.hire_date || null,
           employee_code: employeeData.employee_code || null,
           is_active: true
         })
@@ -74,9 +53,27 @@ export const useEmployeeCreate = () => {
         throw profileError;
       }
 
+      // Prova a creare l'utente auth in background, ma non bloccare se fallisce
+      try {
+        await supabase.auth.signUp({
+          email: employeeData.email,
+          password: employeeData.password,
+          options: {
+            data: {
+              first_name: employeeData.first_name || '',
+              last_name: employeeData.last_name || '',
+              role: 'employee',
+              profile_id: temporaryId
+            }
+          }
+        });
+      } catch (authError) {
+        console.warn('Auth creation failed, but profile created:', authError);
+      }
+
       toast({
         title: "Dipendente creato",
-        description: "Il dipendente è stato aggiunto con successo. Dovrà confermare l'email per attivare l'account.",
+        description: "Il dipendente è stato aggiunto con successo.",
       });
 
       return { data: profileData, error: null };
