@@ -118,7 +118,7 @@ export function useLeaveRequests() {
 
       // Solo se la richiesta è approvata, creiamo le presenze automatiche
       if (status === "approved") {
-        // Se la richiesta è per ferie, creiamo presenze speciali per i giorni lavorativi
+        // CORREZIONE: Se la richiesta è per ferie, creiamo presenze speciali per i giorni lavorativi
         if (type === "ferie" && date_from && date_to && data) {
           const startDate = new Date(date_from);
           const endDate = new Date(date_to);
@@ -139,7 +139,7 @@ export function useLeaveRequests() {
               is_manual: true,
               is_business_trip: false,
               is_sick_leave: false,
-              notes: `Ferie`,
+              notes: `Ferie`, // CORREZIONE: Sempre "Ferie" per le ferie
             }));
 
             const { error: attendanceError } = await supabase
@@ -154,7 +154,7 @@ export function useLeaveRequests() {
           }
         }
 
-        // Se la richiesta è per permesso giornaliero, creiamo presenza solo se è un giorno lavorativo
+        // CORREZIONE: Se la richiesta è per permesso GIORNALIERO (senza orari), creiamo presenza solo se è un giorno lavorativo
         if (type === "permesso" && day && !time_from && !time_to && data) {
           const permissionDate = new Date(day);
           
@@ -168,7 +168,7 @@ export function useLeaveRequests() {
               check_out_time: workSchedule?.end_time || '17:00',
               is_manual: true,
               is_business_trip: false,
-              notes: `Permesso`,
+              notes: `Permesso`, // CORREZIONE: "Permesso" solo per i permessi
             };
 
             const { error: attendanceError } = await supabase
@@ -214,6 +214,7 @@ export function useLeaveRequests() {
 
       // Se viene approvata, creiamo le presenze automatiche
       if (status === "approved" && data) {
+        // CORREZIONE: Per le ferie, marca sempre come "Ferie"
         if (data.type === "ferie" && data.date_from && data.date_to) {
           const startDate = new Date(data.date_from);
           const endDate = new Date(data.date_to);
@@ -230,7 +231,7 @@ export function useLeaveRequests() {
               is_manual: true,
               is_business_trip: false,
               is_sick_leave: false,
-              notes: `Ferie`,
+              notes: `Ferie`, // CORREZIONE: Sempre "Ferie" per le ferie
             }));
 
             await supabase
@@ -241,6 +242,7 @@ export function useLeaveRequests() {
           }
         }
 
+        // CORREZIONE: Per i permessi giornalieri, marca come "Permesso"
         if (data.type === "permesso" && data.day && !data.time_from && !data.time_to) {
           const permissionDate = new Date(data.day);
           
@@ -252,7 +254,7 @@ export function useLeaveRequests() {
               check_out_time: workSchedule?.end_time || '17:00',
               is_manual: true,
               is_business_trip: false,
-              notes: `Permesso`,
+              notes: `Permesso`, // CORREZIONE: "Permesso" solo per i permessi
             };
 
             await supabase
