@@ -32,7 +32,13 @@ export const useAdvancedEmployeeOperations = () => {
       });
 
       if (error) throw error;
-      return data as StorageUsage;
+      
+      // Assicuriamoci che i dati siano nel formato corretto
+      if (data && typeof data === 'object') {
+        return data as StorageUsage;
+      }
+      
+      return null;
     } catch (error: any) {
       console.error('Error getting user storage usage:', error);
       toast({
@@ -50,7 +56,12 @@ export const useAdvancedEmployeeOperations = () => {
       const { data, error } = await supabase.rpc('get_all_users_storage_stats');
 
       if (error) throw error;
-      return (data as any[]).map(item => ({
+      
+      if (!data || !Array.isArray(data)) {
+        return [];
+      }
+      
+      return data.map(item => ({
         user_id: item.user_id,
         first_name: item.first_name,
         last_name: item.last_name,
