@@ -28,146 +28,35 @@ export const useEmployeeOperations = () => {
         employeeCode: data.employeeCode
       });
 
-      // Verifica duplicati email in profiles
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', data.email)
-        .maybeSingle();
-
-      if (existingProfile) {
-        throw new Error('Esiste già un dipendente con questa email nei profili');
-      }
-
-      // Verifica duplicati email in auth.users tramite admin API
-      const { data: usersData } = await supabase.auth.admin.listUsers();
-      const existingAuthUser = usersData?.users?.find((user: any) => user.email === data.email);
-      
-      if (existingAuthUser) {
-        throw new Error('Esiste già un utente con questa email nel sistema di autenticazione');
-      }
-
-      // Crea l'utente in Supabase Auth
-      const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
-        email: data.email,
-        password: data.password,
-        email_confirm: true, // Conferma automaticamente l'email
-        user_metadata: {
-          first_name: data.firstName,
-          last_name: data.lastName,
+      // Utilizza l'edge function per la creazione sicura
+      const { data: result, error } = await supabase.functions.invoke('create-employee', {
+        body: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password,
           role: data.role,
+          employeeCode: data.employeeCode
         }
       });
 
-      console.log('Risultato creazione utente admin:', { signUpData, signUpError });
-
-      if (signUpError) {
-        console.error('Errore nella creazione utente admin:', signUpError);
-        throw new Error(signUpError.message || "Errore durante la creazione dell'account");
+      if (error) {
+        console.error('Errore nella funzione create-employee:', error);
+        throw new Error(error.message || 'Errore durante la creazione del dipendente');
       }
 
-      const userId = signUpData?.user?.id;
-      if (!userId) {
-        throw new Error("Impossibile recuperare l'id del nuovo utente.");
+      if (!result.success) {
+        throw new Error(result.error || 'Errore durante la creazione del dipendente');
       }
 
-      console.log('Utente creato con ID:', userId);
-
-      // Attendi un momento per assicurarsi che l'utente sia salvato
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Verifica che l'utente esista in auth.users
-      const { data: createdUser, error: getUserError } = await supabase.auth.admin.getUserById(userId);
-      
-      if (getUserError || !createdUser.user) {
-        console.error('Utente non trovato dopo la creazione:', getUserError);
-        throw new Error('Utente non trovato dopo la creazione');
-      }
-
-      console.log('Utente verificato in auth.users');
-
-      // Ora crea o aggiorna il profilo manualmente
-      const { data: existingProfileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (existingProfileData) {
-        // Se il profilo esiste già (creato dal trigger), aggiornalo
-        console.log('Profilo esistente trovato, aggiorno i dati');
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            first_name: data.firstName,
-            last_name: data.lastName,
-            email: data.email,
-            role: data.role,
-            employee_code: data.employeeCode || null,
-            is_active: true
-          })
-          .eq('id', userId);
-
-        if (updateError) {
-          console.error('Errore aggiornamento profilo:', updateError);
-          throw new Error(`Errore nell'aggiornamento del profilo: ${updateError.message}`);
-        }
-      } else {
-        // Se il profilo non esiste, crealo manualmente
-        console.log('Creando profilo manualmente...');
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            first_name: data.firstName,
-            last_name: data.lastName,
-            email: data.email,
-            role: data.role,
-            employee_code: data.employeeCode || null,
-            is_active: true
-          });
-
-        if (insertError) {
-          console.error('Errore inserimento profilo:', insertError);
-          
-          // Se l'errore è dovuto alla chiave esterna, elimina l'utente creato
-          if (insertError.message.includes('foreign key constraint')) {
-            console.log('Eliminando utente creato a causa di errore profilo...');
-            await supabase.auth.admin.deleteUser(userId);
-          }
-          
-          throw new Error(`Errore nella creazione del profilo: ${insertError.message}`);
-        }
-      }
-
-      // Crea bilancio ferie iniziale per dipendenti
-      if (data.role === 'employee') {
-        const currentYear = new Date().getFullYear();
-        const { error: balanceError } = await supabase
-          .from('employee_leave_balance')
-          .insert({
-            user_id: userId,
-            year: currentYear,
-            vacation_days_total: 26,
-            permission_hours_total: 32,
-            vacation_days_used: 0,
-            permission_hours_used: 0
-          });
-
-        if (balanceError) {
-          console.warn('Errore creazione bilancio ferie:', balanceError);
-          // Non blocchiamo la creazione per questo errore
-        }
-      }
-
-      console.log('Dipendente creato con successo');
+      console.log('Dipendente creato con successo:', result);
 
       toast({
         title: "Dipendente creato",
-        description: `${data.firstName} ${data.lastName} è stato aggiunto con successo al sistema`,
+        description: result.message,
       });
 
-      return { success: true, userId };
+      return { success: true, userId: result.userId };
 
     } catch (error: any) {
       console.error('Error creating employee:', error);
