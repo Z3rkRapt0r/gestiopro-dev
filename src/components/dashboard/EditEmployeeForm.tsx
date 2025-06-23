@@ -25,7 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Interfaccia Employee senza hire_date
 interface Employee {
   id: string;
   first_name: string | null;
@@ -48,7 +47,6 @@ const employeeFormSchema = z.object({
   last_name: z.string().min(1, 'Il cognome è obbligatorio').nullable(),
   email: z.string().email('Email non valida').nullable(),
   role: z.enum(['admin', 'employee']),
-  department: z.string().nullable(),
   employee_code: z.string().nullable(),
   is_active: z.boolean(),
 });
@@ -71,7 +69,6 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
       last_name: employee.last_name || '',
       email: employee.email || '',
       role: employee.role || 'employee',
-      department: employee.department || '',
       employee_code: employee.employee_code || '',
       is_active: employee.is_active ?? true,
     },
@@ -83,7 +80,6 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
       last_name: employee.last_name || '',
       email: employee.email || '',
       role: employee.role || 'employee',
-      department: employee.department || '',
       employee_code: employee.employee_code || '',
       is_active: employee.is_active ?? true,
     });
@@ -99,7 +95,6 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
           last_name: data.last_name,
           email: data.email,
           role: data.role,
-          department: data.department,
           employee_code: data.employee_code,
           is_active: data.is_active,
           updated_at: new Date().toISOString(),
@@ -184,15 +179,6 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
             {errors.role && <p className="text-red-500 text-sm">{errors.role.message}</p>}
           </div>
           <div>
-            <Label htmlFor="department">Dipartimento</Label>
-            <Controller
-              name="department"
-              control={control}
-              render={({ field }) => <Input id="department" {...field} value={field.value ?? ''} />}
-            />
-            {errors.department && <p className="text-red-500 text-sm">{errors.department.message}</p>}
-          </div>
-          <div>
             <Label htmlFor="employee_code">Codice Dipendente</Label>
             <Controller
               name="employee_code"
@@ -225,7 +211,7 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Salvataggio...' : 'Salva Modifiche'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
