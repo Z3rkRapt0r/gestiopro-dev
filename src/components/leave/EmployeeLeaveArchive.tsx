@@ -1,9 +1,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { User2, Calendar, Clock } from "lucide-react";
-import { LeaveRequest } from "@/hooks/useLeaveRequests";
+import { User2, Calendar, Clock, Trash2 } from "lucide-react";
+import { LeaveRequest, useLeaveRequests } from "@/hooks/useLeaveRequests";
+import { useAuth } from "@/hooks/useAuth";
+import { format, eachDayOfInterval } from "date-fns";
 
 interface EmployeeLeaveArchiveProps {
   employee: {
@@ -17,9 +20,21 @@ interface EmployeeLeaveArchiveProps {
 }
 
 export default function EmployeeLeaveArchive({ employee, leaveRequests, type }: EmployeeLeaveArchiveProps) {
+  const { profile } = useAuth();
+  const { deleteRequestMutation } = useLeaveRequests();
+  const isAdmin = profile?.role === "admin";
+
   const employeeName = employee.first_name && employee.last_name 
     ? `${employee.first_name} ${employee.last_name}` 
     : employee.email || "Dipendente sconosciuto";
+
+  const handleDelete = (request: LeaveRequest) => {
+    const confirmMessage = `Sei sicuro di voler eliminare questa richiesta approvata? Verranno rimosse anche le presenze associate.`;
+      
+    if (confirm(confirmMessage)) {
+      deleteRequestMutation.mutate({ id: request.id, leaveRequest: request });
+    }
+  };
 
   const getDateDisplay = (req: LeaveRequest) => {
     if (req.type === "permesso" && req.day) {
@@ -91,6 +106,19 @@ export default function EmployeeLeaveArchive({ employee, leaveRequests, type }: 
                     <div className="text-xs text-muted-foreground">
                       {new Date(req.created_at).toLocaleDateString('it-IT')}
                     </div>
+                    
+                    {/* Delete button for admins */}
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(req)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 ml-2"
+                        title="Elimina richiesta approvata"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
