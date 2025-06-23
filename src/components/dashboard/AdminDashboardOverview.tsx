@@ -3,7 +3,7 @@ import { useAdminStats } from "@/hooks/useAdminStats";
 import AdminStatsCards from "./AdminStatsCards";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, TrendingUp, Users, Clock } from "lucide-react";
+import { AlertCircle, TrendingUp } from "lucide-react";
 
 const AdminDashboardOverview = () => {
   const { stats, loading } = useAdminStats();

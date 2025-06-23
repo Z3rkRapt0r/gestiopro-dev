@@ -9,6 +9,9 @@ interface AdminStats {
   pendingLeaveRequests: number;
   totalAttendancesToday: number;
   unreadNotifications: number;
+  averageDailyAttendance: number;
+  todayAttendances: number;
+  recentNotifications: any[];
 }
 
 export const useAdminStats = () => {
@@ -19,6 +22,9 @@ export const useAdminStats = () => {
     pendingLeaveRequests: 0,
     totalAttendancesToday: 0,
     unreadNotifications: 0,
+    averageDailyAttendance: 0,
+    todayAttendances: 0,
+    recentNotifications: [],
   });
   const [loading, setLoading] = useState(false);
   const fetchInProgressRef = useRef(false);
@@ -41,15 +47,22 @@ export const useAdminStats = () => {
         { count: totalDocuments },
         { count: pendingLeaveRequests },
         { count: totalAttendancesToday },
-        { count: unreadNotifications }
+        { count: unreadNotifications },
+        recentNotificationsData
       ] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('documents').select('*', { count: 'exact', head: true }),
         supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('attendances').select('*', { count: 'exact', head: true }).eq('date', today),
-        supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false)
+        supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false),
+        supabase.from('notifications').select('title, message, created_at').order('created_at', { ascending: false }).limit(5)
       ]);
+
+      // Calculate average daily attendance (simplified calculation)
+      const averageDailyAttendance = activeEmployees && totalAttendancesToday 
+        ? Math.round((totalAttendancesToday / activeEmployees) * 100) 
+        : 0;
 
       if (mountedRef.current) {
         setStats({
@@ -59,6 +72,9 @@ export const useAdminStats = () => {
           pendingLeaveRequests: pendingLeaveRequests || 0,
           totalAttendancesToday: totalAttendancesToday || 0,
           unreadNotifications: unreadNotifications || 0,
+          averageDailyAttendance,
+          todayAttendances: totalAttendancesToday || 0,
+          recentNotifications: recentNotificationsData.data || [],
         });
       }
     } catch (error) {
