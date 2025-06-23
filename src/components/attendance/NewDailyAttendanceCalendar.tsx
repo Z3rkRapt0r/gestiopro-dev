@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,7 @@ import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
+import { useLeaveBalanceSync } from '@/hooks/useLeaveBalanceSync';
 import { formatTime, isWorkingDay } from '@/utils/attendanceUtils';
 import AttendanceCalendarSidebar from './calendar/AttendanceCalendarSidebar';
 import PresentEmployeesSection from './sections/PresentEmployeesSection';
@@ -26,6 +28,7 @@ export default function NewDailyAttendanceCalendar() {
   const { workSchedule } = useWorkSchedules();
   const { leaveRequests, deleteRequestMutation } = useLeaveRequests();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
+  const { invalidateBalanceQueries } = useLeaveBalanceSync(); // AGGIUNTO: Per sincronizzazione bilanci
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
 
@@ -212,13 +215,18 @@ export default function NewDailyAttendanceCalendar() {
 
   const handleDeleteAttendance = (attendance: any) => {
     if (confirm('Sei sicuro di voler eliminare questa presenza?')) {
+      console.log('Eliminando presenza, i bilanci saranno sincronizzati automaticamente');
       deleteAttendance(attendance);
+      // I bilanci vengono aggiornati automaticamente tramite i trigger del database
+      invalidateBalanceQueries(); // Assicura la sincronizzazione real-time
     }
   };
 
   const handleDeletePermissionRequest = async (leaveRequest: any) => {
     if (confirm('Sei sicuro di voler eliminare questa richiesta di permesso?')) {
       console.log('Eliminando richiesta di permesso:', leaveRequest);
+      console.log('I bilanci saranno aggiornati automaticamente dai trigger del database');
+      
       try {
         // Passa sia l'ID che l'oggetto completo per la pulizia delle presenze
         await deleteRequestMutation.mutateAsync({
@@ -226,6 +234,7 @@ export default function NewDailyAttendanceCalendar() {
           leaveRequest: leaveRequest
         });
         console.log('Richiesta di permesso eliminata con successo');
+        // I bilanci vengono sincronizzati automaticamente dal hook useLeaveRequests
       } catch (error) {
         console.error('Errore nell\'eliminazione della richiesta di permesso:', error);
       }

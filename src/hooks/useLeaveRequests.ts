@@ -1,9 +1,9 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkSchedules } from "@/hooks/useWorkSchedules";
 import { useToast } from "@/hooks/use-toast";
+import { useLeaveBalanceSync } from "@/hooks/useLeaveBalanceSync";
 import { format, eachDayOfInterval } from 'date-fns';
 
 export type LeaveRequest = {
@@ -33,6 +33,7 @@ export function useLeaveRequests() {
   const { profile } = useAuth();
   const { workSchedule } = useWorkSchedules();
   const { toast } = useToast();
+  const { invalidateBalanceQueries } = useLeaveBalanceSync();
   const isAdmin = profile?.role === "admin";
   const queryClient = useQueryClient();
 
@@ -187,8 +188,10 @@ export function useLeaveRequests() {
       return data as LeaveRequest;
     },
     onSuccess: () => {
+      console.log('Richiesta inserita con successo, invalidando query...');
       queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      invalidateBalanceQueries(); // AGGIUNTO: Sincronizza i bilanci
     },
   });
 
@@ -199,6 +202,8 @@ export function useLeaveRequests() {
       status,
       admin_note
     }: { id: string; status: "approved" | "rejected" | "pending"; admin_note?: string }) => {
+      console.log(`Aggiornando stato richiesta ${id} a: ${status}`);
+      
       const { error, data } = await supabase
         .from("leave_requests")
         .update({
@@ -268,13 +273,18 @@ export function useLeaveRequests() {
 
       return data as LeaveRequest;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave_requests"] }),
+    onSuccess: () => {
+      console.log('Stato richiesta aggiornato, invalidando query...');
+      queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      invalidateBalanceQueries(); // AGGIUNTO: Sincronizza i bilanci
+    },
   });
 
   // Nuovo: update richiesta permesso/ferie completo
   const updateRequestMutation = useMutation({
     mutationFn: async (payload: Partial<LeaveRequest> & { id: string }) => {
-      const { id, ...fields } = payload;
+      console.log('Aggiornando richiesta:', payload.id);
       // Pulizia payload solo colonne editabili
       const editableFields = {
         day: fields.day ?? null,
@@ -299,7 +309,11 @@ export function useLeaveRequests() {
       if (error) throw error;
       return data as LeaveRequest;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave_requests"] }),
+    onSuccess: () => {
+      console.log('Richiesta aggiornata, invalidando query...');
+      queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
+      invalidateBalanceQueries(); // AGGIUNTO: Sincronizza i bilanci
+    },
   });
 
   // Nuovo: delete richiesta (ora disponibile anche per ferie approvate se admin)
@@ -317,9 +331,12 @@ export function useLeaveRequests() {
       }
 
       console.log('Eliminando richiesta con ID:', id);
+      console.log('Dati richiesta per pulizia presenze:', leaveRequest);
 
-      // Se è una richiesta approvata, rimuovi anche le presenze associate
+      // MIGLIORATO: Se è una richiesta approvata, rimuovi anche le presenze associate
       if (leaveRequest && leaveRequest.status === 'approved') {
+        console.log('Richiesta approvata trovata, rimuovo presenze associate...');
+        
         if (leaveRequest.type === 'ferie' && leaveRequest.date_from && leaveRequest.date_to) {
           const startDate = new Date(leaveRequest.date_from);
           const endDate = new Date(leaveRequest.date_to);
@@ -339,6 +356,8 @@ export function useLeaveRequests() {
             
             if (attendanceError) {
               console.error('Errore eliminazione presenze ferie:', attendanceError);
+            } else {
+              console.log('Presenze ferie eliminate con successo');
             }
           }
         }
@@ -354,25 +373,31 @@ export function useLeaveRequests() {
           
           if (attendanceError) {
             console.error('Errore eliminazione presenza permesso:', attendanceError);
+          } else {
+            console.log('Presenza permesso eliminata con successo');
           }
         }
       }
 
-      // Elimina la richiesta
+      // Elimina la richiesta - I trigger del database gestiranno l'aggiornamento dei bilanci
       const { error } = await supabase
         .from("leave_requests")
         .delete()
         .eq("id", id);
       if (error) throw error;
+      
+      console.log('Richiesta eliminata con successo, i bilanci saranno aggiornati automaticamente dai trigger');
       return id;
     },
     onSuccess: () => {
+      console.log('Eliminazione completata, invalidando tutte le query correlate...');
       queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
-      queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
+      invalidateBalanceQueries(); // CRITICO: Assicura che i bilanci siano sincronizzati
+      
       toast({
         title: "Richiesta eliminata",
-        description: "La richiesta di ferie/permesso è stata eliminata con successo",
+        description: "La richiesta di ferie/permesso è stata eliminata e i bilanci sono stati aggiornati automaticamente",
       });
     },
     onError: (error: any) => {

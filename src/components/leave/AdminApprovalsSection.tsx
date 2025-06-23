@@ -1,16 +1,31 @@
-
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import LeaveRequestsCardsGrid from "./LeaveRequestsCardsGrid";
 import EmployeeLeaveArchive from "./EmployeeLeaveArchive";
 import { EmployeeLeaveBalanceSection } from "./EmployeeLeaveBalanceSection";
 import { ManualLeaveEntryForm } from "./ManualLeaveEntryForm";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
-import { Settings, Plus } from "lucide-react";
+import { useLeaveBalanceSync } from "@/hooks/useLeaveBalanceSync";
+import { Settings, Plus, CheckCircle, RefreshCw } from "lucide-react";
 
 export default function AdminApprovalsSection() {
   const [tab, setTab] = useState<"pending" | "manual-entry" | "archive-permessi" | "archive-ferie" | "balance">("pending");
+  const [isRecalculating, setIsRecalculating] = useState(false);
   const { leaveRequests, isLoading } = useLeaveRequests();
+  const { recalculateAllBalances } = useLeaveBalanceSync();
+
+  const handleRecalculateAll = async () => {
+    setIsRecalculating(true);
+    try {
+      await recalculateAllBalances();
+    } catch (error) {
+      console.error('Errore nel ricalcolo:', error);
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
 
   // Archivio diviso per tipo
   const archivePermessi = (leaveRequests ?? []).filter(
@@ -55,7 +70,28 @@ export default function AdminApprovalsSection() {
 
   return (
     <div className="max-w-6xl mx-auto py-8">
-      <h2 className="text-2xl font-bold mb-4">Approvazioni Permessi & Ferie</h2>
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h2 className="text-2xl font-bold mb-2">Approvazioni Permessi & Ferie</h2>
+          <Alert className="max-w-2xl">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription>
+              <strong>Sistema di Bilanci Automatico Attivo</strong> - I bilanci vengono aggiornati automaticamente
+              quando si approvano, rifiutano o eliminano richieste di ferie/permessi.
+            </AlertDescription>
+          </Alert>
+        </div>
+        <Button
+          onClick={handleRecalculateAll}
+          disabled={isRecalculating}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${isRecalculating ? 'animate-spin' : ''}`} />
+          {isRecalculating ? 'Sincronizzando...' : 'Sincronizza Bilanci'}
+        </Button>
+      </div>
+
       <Tabs value={tab} onValueChange={val => setTab(val as any)} className="w-full">
         <TabsList className="mb-4 w-full flex">
           <TabsTrigger value="pending" className="flex-1">Pendenti</TabsTrigger>

@@ -1064,6 +1064,10 @@ export type Database = {
         Args: { target_user_id: string; start_date?: string; end_date?: string }
         Returns: number
       }
+      recalculate_all_leave_balances: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       should_track_employee_on_date: {
         Args: { target_user_id: string; check_date: string }
         Returns: boolean
