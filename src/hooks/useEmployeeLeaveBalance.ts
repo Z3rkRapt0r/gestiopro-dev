@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,6 +54,8 @@ export function useEmployeeLeaveBalance() {
       })) as EmployeeLeaveBalance[];
     },
     enabled: !!profile,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
 
   // Create or update leave balance

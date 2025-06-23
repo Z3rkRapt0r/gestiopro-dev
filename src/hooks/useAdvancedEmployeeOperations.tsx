@@ -129,9 +129,23 @@ export const useAdvancedEmployeeOperations = () => {
 
       console.log('Risultato eliminazione completa:', data);
 
+      // FORZA l'invalidazione di TUTTE le query che potrebbero contenere dati dell'utente eliminato
+      const queryClient = (window as any).reactQuery;
+      if (queryClient) {
+        // Invalida specificamente le query dei bilanci ferie
+        await queryClient.invalidateQueries({ queryKey: ['employee_leave_balance'] });
+        await queryClient.invalidateQueries({ queryKey: ['active-employees'] });
+        await queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+        await queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
+        // Invalida tutte le query per sicurezza
+        await queryClient.invalidateQueries();
+        // Forza il refresh immediato
+        await queryClient.refetchQueries();
+      }
+
       toast({
         title: "Utente eliminato",
-        description: `${userName} è stato rimosso completamente dal sistema`,
+        description: `${userName} è stato rimosso completamente dal sistema. Tutti i dati inclusi i bilanci ferie sono stati eliminati.`,
       });
 
       return { success: true, data };
