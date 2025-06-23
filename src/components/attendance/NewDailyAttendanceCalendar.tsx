@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -97,7 +96,7 @@ export default function NewDailyAttendanceCalendar() {
 
   console.log('Presenze per la data selezionata:', selectedDateAttendances);
 
-  // Ottieni le richieste di ferie approvate per la data selezionata
+  // CORREZIONE: Ottieni le richieste di ferie approvate per la data selezionata
   const selectedDateLeaves = leaveRequests?.filter(request => {
     if (request.status !== 'approved') return false;
     
@@ -115,14 +114,14 @@ export default function NewDailyAttendanceCalendar() {
     return false;
   }) || [];
 
-  // CORREZIONE: Dipendenti presenti fisicamente (NON in ferie)
+  // CORREZIONE: Dipendenti presenti fisicamente (NON in ferie e NON in malattia)
   const presentEmployees = selectedDateAttendances
     .filter(att => {
       // Ha check-in e non è in malattia
       if (!att.check_in_time || att.is_sick_leave) return false;
       
-      // NON deve essere marcato come "Ferie"
-      if (att.notes === 'Ferie') return false;
+      // NON deve essere marcato come "Ferie" o "Permesso" (presenza fisica)
+      if (att.notes === 'Ferie' || att.notes === 'Permesso') return false;
       
       return true;
     })
@@ -147,35 +146,79 @@ export default function NewDailyAttendanceCalendar() {
     })
     .filter(emp => emp.id);
 
-  // CORREZIONE: Dipendenti in ferie (con presenze automatiche marchiate come "Ferie")
-  const onLeaveEmployees = selectedDateAttendances
-    .filter(att => att.notes === 'Ferie')
-    .map(att => {
-      const employee = employees?.find(emp => emp.id === att.user_id);
-      const leaveRequest = selectedDateLeaves.find(leave => leave.user_id === att.user_id);
-      return {
-        ...employee,
-        attendance: att,
-        leave: leaveRequest,
-      };
-    })
-    .filter(emp => emp.id);
+  // CORREZIONE: Dipendenti in ferie - prima controlla le richieste di ferie approvate
+  const onLeaveEmployees = [];
 
-  // Se non ci sono presenze automatiche per le ferie, usa le richieste di ferie
-  if (onLeaveEmployees.length === 0) {
-    const additionalOnLeave = selectedDateLeaves
-      .filter(leave => !selectedDateAttendances.some(att => att.user_id === leave.user_id))
-      .map(leave => {
-        const employee = employees?.find(emp => emp.id === leave.user_id);
-        return {
+  // Prima aggiungi quelli con richieste di ferie approvate
+  selectedDateLeaves.forEach(leave => {
+    if (leave.type === 'ferie') {
+      const employee = employees?.find(emp => emp.id === leave.user_id);
+      if (employee) {
+        // Cerca se esiste una presenza automatica per questo dipendente
+        const automaticAttendance = selectedDateAttendances.find(att => 
+          att.user_id === leave.user_id && att.notes === 'Ferie'
+        );
+        
+        onLeaveEmployees.push({
           ...employee,
-          attendance: null, // CORREZIONE: Aggiungi attendance come null
+          attendance: automaticAttendance || null,
           leave: leave,
-        };
-      })
-      .filter(emp => emp.id);
-    
-    onLeaveEmployees.push(...additionalOnLeave);
+        });
+      }
+    }
+  });
+
+  // Se non ci sono dipendenti in ferie dalle richieste, controlla le presenze con note "Ferie"
+  if (onLeaveEmployees.length === 0) {
+    const ferieAttendances = selectedDateAttendances.filter(att => att.notes === 'Ferie');
+    ferieAttendances.forEach(att => {
+      const employee = employees?.find(emp => emp.id === att.user_id);
+      if (employee) {
+        const leaveRequest = selectedDateLeaves.find(leave => leave.user_id === att.user_id);
+        onLeaveEmployees.push({
+          ...employee,
+          attendance: att,
+          leave: leaveRequest || null,
+        });
+      }
+    });
+  }
+
+  // CORREZIONE: Dipendenti con permessi giornalieri
+  const onPermissionEmployees = [];
+  
+  selectedDateLeaves.forEach(leave => {
+    if (leave.type === 'permesso' && leave.day && !leave.time_from && !leave.time_to) {
+      const employee = employees?.find(emp => emp.id === leave.user_id);
+      if (employee) {
+        // Cerca se esiste una presenza automatica per questo dipendente
+        const automaticAttendance = selectedDateAttendances.find(att => 
+          att.user_id === leave.user_id && att.notes === 'Permesso'
+        );
+        
+        onPermissionEmployees.push({
+          ...employee,
+          attendance: automaticAttendance || null,
+          leave: leave,
+        });
+      }
+    }
+  });
+
+  // Se non ci sono dipendenti con permessi dalle richieste, controlla le presenze con note "Permesso"
+  if (onPermissionEmployees.length === 0) {
+    const permissionAttendances = selectedDateAttendances.filter(att => att.notes === 'Permesso');
+    permissionAttendances.forEach(att => {
+      const employee = employees?.find(emp => emp.id === att.user_id);
+      if (employee && !onLeaveEmployees.some(emp => emp.id === employee.id)) { // Non duplicare se già in ferie
+        const leaveRequest = selectedDateLeaves.find(leave => leave.user_id === att.user_id);
+        onPermissionEmployees.push({
+          ...employee,
+          attendance: att,
+          leave: leaveRequest || null,
+        });
+      }
+    });
   }
 
   const formatTime = (timeString: string | null) => {
@@ -401,20 +444,15 @@ export default function NewDailyAttendanceCalendar() {
                                 {employee.first_name} {employee.last_name}
                               </span>
                               <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
-                                {employee.leave?.type === 'ferie' ? 'Ferie' : 'Permesso'}
+                                Ferie
                               </Badge>
                             </div>
                             {employee.leave?.note && (
                               <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
                             )}
-                            {employee.leave?.type === 'ferie' && employee.leave.date_from && employee.leave.date_to && (
+                            {employee.leave?.date_from && employee.leave.date_to && (
                               <div className="text-xs text-gray-600 mt-1">
                                 Dal {format(new Date(employee.leave.date_from), 'dd/MM')} al {format(new Date(employee.leave.date_to), 'dd/MM')}
-                              </div>
-                            )}
-                            {employee.leave?.type === 'permesso' && employee.leave.time_from && employee.leave.time_to && (
-                              <div className="text-xs text-gray-600 mt-1">
-                                Dalle {employee.leave.time_from} alle {employee.leave.time_to}
                               </div>
                             )}
                           </div>
