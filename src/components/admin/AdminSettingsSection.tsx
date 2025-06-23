@@ -17,34 +17,10 @@ import AttendanceSettings from "@/components/attendance/AttendanceSettings";
 import WorkScheduleSettings from "./WorkScheduleSettings";
 
 const AdminSettingsSection = () => {
-  const { apiKey, loading, saveApiKey } = useAdminSettings();
-  const [brevoSettings, setBrevoSettings] = useState({
-    apiKey: '',
-    senderName: '',
-    senderEmail: '',
-    replyTo: '',
-    enableNotifications: true,
-    enableDocumentNotifications: true,
-    enableAttendanceNotifications: true,
-    enableLeaveNotifications: true,
-    enableWelcomeEmails: true,
-    emailSignature: '',
-    trackOpens: true,
-    trackClicks: true,
-    autoRetry: true,
-    maxRetries: 3
-  });
-
-  useEffect(() => {
-    if (apiKey !== null && apiKey !== undefined) {
-      setBrevoSettings(prev => ({ ...prev, apiKey }));
-    }
-  }, [apiKey]);
+  const { brevoSettings, setBrevoSettings, loading, saveBrevoSettings } = useAdminSettings();
 
   const handleSaveBrevoSettings = () => {
-    saveApiKey(brevoSettings.apiKey);
-    // Here you would also save other settings to the database
-    console.log('Saving Brevo settings:', brevoSettings);
+    saveBrevoSettings(brevoSettings);
   };
 
   return (

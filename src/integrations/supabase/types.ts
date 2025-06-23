@@ -13,34 +13,73 @@ export type Database = {
         Row: {
           admin_id: string
           attendance_radius_meters: number | null
+          auto_retry: boolean | null
           brevo_api_key: string
           checkout_enabled: boolean | null
           company_latitude: number | null
           company_longitude: number | null
           created_at: string | null
+          email_signature: string | null
+          enable_attendance_notifications: boolean | null
+          enable_document_notifications: boolean | null
+          enable_leave_notifications: boolean | null
+          enable_notifications: boolean | null
+          enable_welcome_emails: boolean | null
           id: string
+          max_retries: number | null
+          reply_to: string | null
+          sender_email: string | null
+          sender_name: string | null
+          track_clicks: boolean | null
+          track_opens: boolean | null
           updated_at: string | null
         }
         Insert: {
           admin_id: string
           attendance_radius_meters?: number | null
+          auto_retry?: boolean | null
           brevo_api_key: string
           checkout_enabled?: boolean | null
           company_latitude?: number | null
           company_longitude?: number | null
           created_at?: string | null
+          email_signature?: string | null
+          enable_attendance_notifications?: boolean | null
+          enable_document_notifications?: boolean | null
+          enable_leave_notifications?: boolean | null
+          enable_notifications?: boolean | null
+          enable_welcome_emails?: boolean | null
           id?: string
+          max_retries?: number | null
+          reply_to?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          track_clicks?: boolean | null
+          track_opens?: boolean | null
           updated_at?: string | null
         }
         Update: {
           admin_id?: string
           attendance_radius_meters?: number | null
+          auto_retry?: boolean | null
           brevo_api_key?: string
           checkout_enabled?: boolean | null
           company_latitude?: number | null
           company_longitude?: number | null
           created_at?: string | null
+          email_signature?: string | null
+          enable_attendance_notifications?: boolean | null
+          enable_document_notifications?: boolean | null
+          enable_leave_notifications?: boolean | null
+          enable_notifications?: boolean | null
+          enable_welcome_emails?: boolean | null
           id?: string
+          max_retries?: number | null
+          reply_to?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          track_clicks?: boolean | null
+          track_opens?: boolean | null
           updated_at?: string | null
         }
         Relationships: [
