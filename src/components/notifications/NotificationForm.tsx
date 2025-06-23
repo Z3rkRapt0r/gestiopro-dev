@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mail, Users, Send } from "lucide-react";
 
 const TOPICS = [
   "Aggiornamenti aziendali",
@@ -46,50 +48,106 @@ const NotificationForm = ({ onCreated }: Props) => {
     setRecipientId("ALL");
   };
 
+  const selectedEmployeesCount = recipientId === "ALL" ? employees.length : 1;
+
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      <Select
-        value={recipientId}
-        onValueChange={setRecipientId}
-        disabled={loadingEmployees}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Destinatario" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="ALL">Tutti i dipendenti</SelectItem>
-          {employees.map((emp) => (
-            <SelectItem key={emp.id} value={emp.id}>
-              {(emp.first_name || "") + " " + (emp.last_name || "")} {emp.email && `(${emp.email})`}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select value={topic} onValueChange={setTopic}>
-        <SelectTrigger>
-          <SelectValue placeholder="Seleziona argomento" />
-        </SelectTrigger>
-        <SelectContent>
-          {TOPICS.map(t =>
-            <SelectItem key={t} value={t}>{t}</SelectItem>
-          )}
-        </SelectContent>
-      </Select>
-      <Input
-        placeholder="Oggetto (opzionale, se serve diverso dall'argomento)"
-        value={subject}
-        onChange={e => setSubject(e.target.value)}
-      />
-      <Textarea
-        placeholder="Messaggio"
-        required
-        value={shortText}
-        onChange={e => setShortText(e.target.value)}
-      />
-      <Button type="submit" disabled={loading || loadingEmployees}>
-        Invia notifica
-      </Button>
-    </form>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="w-5 h-5" />
+          Nuova Notifica Email
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <Users className="w-4 h-4 inline mr-1" />
+              Destinatari
+            </label>
+            <Select
+              value={recipientId}
+              onValueChange={setRecipientId}
+              disabled={loadingEmployees}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona destinatari" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Tutti i dipendenti ({employees.length})
+                  </div>
+                </SelectItem>
+                {employees.map((emp) => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {(emp.first_name || "") + " " + (emp.last_name || "")} {emp.email && `(${emp.email})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              {selectedEmployeesCount} destinatari selezionati
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Argomento</label>
+            <Select value={topic} onValueChange={setTopic}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona argomento della comunicazione" />
+              </SelectTrigger>
+              <SelectContent>
+                {TOPICS.map(t =>
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Oggetto Email (opzionale)
+            </label>
+            <Input
+              placeholder="Lascia vuoto per usare l'argomento come oggetto"
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Oggetto finale: "{subject.trim() || topic || 'Non specificato'}"
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Messaggio *</label>
+            <Textarea
+              placeholder="Scrivi qui il contenuto della comunicazione..."
+              required
+              value={shortText}
+              onChange={e => setShortText(e.target.value)}
+              rows={6}
+            />
+          </div>
+
+          <Button 
+            type="submit" 
+            disabled={loading || loadingEmployees || !topic || !shortText.trim()}
+            className="w-full"
+          >
+            {loading ? (
+              "Invio in corso..."
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Invia Notifica Email
+              </>
+            )}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 
