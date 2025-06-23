@@ -15,25 +15,13 @@ import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 
 export default function NewDailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
+  
   const { attendances, isLoading, deleteAttendance, isDeleting } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { workSchedule } = useWorkSchedules();
   const { leaveRequests } = useLeaveRequests();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-gray-100 animate-pulse rounded"></div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   // Funzione per verificare se un giorno è lavorativo
   const isWorkingDay = (date: Date) => {
@@ -53,6 +41,52 @@ export default function NewDailyAttendanceCalendar() {
   };
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+
+  // CORREZIONE: Filtra correttamente gli assenti usando la logica del working_days_tracking
+  const getAbsentEmployees = async () => {
+    if (!selectedDate || !employees) return [];
+    
+    const absentEmployees = [];
+    
+    for (const emp of employees) {
+      // Verifica se ha già una presenza registrata
+      const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id);
+      if (hasAttendance) continue;
+      
+      // Verifica se è in ferie
+      const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id);
+      if (isOnLeave) continue;
+      
+      // Verifica se dovrebbe essere tracciato per questa data usando la logica centralizzata
+      const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
+      if (shouldTrack && isWorkingDay(selectedDate)) {
+        absentEmployees.push(emp);
+      }
+    }
+    
+    return absentEmployees;
+  };
+
+  React.useEffect(() => {
+    if (selectedDateStr && employees && attendances) {
+      getAbsentEmployees().then(setAbsentEmployees);
+    }
+  }, [selectedDateStr, employees, attendances]);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-gray-100 animate-pulse rounded"></div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   console.log('Data selezionata nel calendario:', selectedDateStr);
   console.log('Presenze disponibili:', attendances?.map(att => ({ date: att.date, user: att.profiles?.first_name })));
   
@@ -119,39 +153,6 @@ export default function NewDailyAttendanceCalendar() {
       };
     })
     .filter(emp => emp.id);
-
-  // CORREZIONE: Filtra correttamente gli assenti usando la logica del working_days_tracking
-  const getAbsentEmployees = async () => {
-    if (!selectedDate || !employees) return [];
-    
-    const absentEmployees = [];
-    
-    for (const emp of employees) {
-      // Verifica se ha già una presenza registrata
-      const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id);
-      if (hasAttendance) continue;
-      
-      // Verifica se è in ferie
-      const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id);
-      if (isOnLeave) continue;
-      
-      // Verifica se dovrebbe essere tracciato per questa data usando la logica centralizzata
-      const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
-      if (shouldTrack && isWorkingDay(selectedDate)) {
-        absentEmployees.push(emp);
-      }
-    }
-    
-    return absentEmployees;
-  };
-
-  const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
-
-  React.useEffect(() => {
-    if (selectedDateStr && employees) {
-      getAbsentEmployees().then(setAbsentEmployees);
-    }
-  }, [selectedDateStr, employees, selectedDateAttendances, selectedDateLeaves]);
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
