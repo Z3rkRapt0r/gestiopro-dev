@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -71,7 +70,7 @@ export const useEmployeeOperations = () => {
         first_name: employeeData.first_name || null,
         last_name: employeeData.last_name || null,
         email: employeeData.email || null,
-        role: 'employee', // Force employee role
+        role: 'employee' as const, // Force employee role
         department: employeeData.department || null,
         hire_date: employeeData.hire_date || null,
         employee_code: employeeData.employee_code || null,
