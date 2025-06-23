@@ -28,7 +28,7 @@ export const useEmployeeLeaveBalance = () => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: balances, isLoading } = useQuery({
+  const { data: leaveBalances, isLoading } = useQuery({
     queryKey: ['employee-leave-balance'],
     queryFn: async () => {
       console.log('Caricamento bilanci ferie dipendenti...');
@@ -59,7 +59,7 @@ export const useEmployeeLeaveBalance = () => {
       }
 
       console.log('Bilanci caricati:', data);
-      return data as EmployeeLeaveBalance[];
+      return data as unknown as EmployeeLeaveBalance[];
     },
     enabled: !!profile,
   });
@@ -94,14 +94,14 @@ export const useEmployeeLeaveBalance = () => {
     return 30;
   };
 
-  const createBalance = useMutation({
+  const upsertMutation = useMutation({
     mutationFn: async (balanceData: {
       user_id: string;
       year: number;
       vacation_days_total: number;
       permission_hours_total: number;
     }) => {
-      console.log('Creazione nuovo bilancio:', balanceData);
+      console.log('Upsert bilancio:', balanceData);
 
       const { data, error } = await supabase
         .from('employee_leave_balance')
@@ -115,67 +115,27 @@ export const useEmployeeLeaveBalance = () => {
         .single();
 
       if (error) throw error;
-      console.log('Bilancio creato:', data);
+      console.log('Bilancio salvato:', data);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
       toast({
-        title: "Bilancio creato",
-        description: "Il bilancio ferie è stato creato con successo",
+        title: "Bilancio salvato",
+        description: "Il bilancio ferie è stato salvato con successo",
       });
     },
     onError: (error: any) => {
-      console.error('Errore creazione bilancio:', error);
+      console.error('Errore salvataggio bilancio:', error);
       toast({
         title: "Errore",
-        description: error.message || "Errore nella creazione del bilancio",
+        description: error.message || "Errore nel salvataggio del bilancio",
         variant: "destructive",
       });
     },
   });
 
-  const updateBalance = useMutation({
-    mutationFn: async (balanceData: {
-      id: string;
-      vacation_days_total: number;
-      permission_hours_total: number;
-    }) => {
-      console.log('Aggiornamento bilancio:', balanceData);
-
-      const { data, error } = await supabase
-        .from('employee_leave_balance')
-        .update({
-          vacation_days_total: balanceData.vacation_days_total,
-          permission_hours_total: balanceData.permission_hours_total,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', balanceData.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      console.log('Bilancio aggiornato:', data);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
-      toast({
-        title: "Bilancio aggiornato",
-        description: "Il bilancio ferie è stato aggiornato con successo",
-      });
-    },
-    onError: (error: any) => {
-      console.error('Errore aggiornamento bilancio:', error);
-      toast({
-        title: "Errore",
-        description: error.message || "Errore nell'aggiornamento del bilancio",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteBalance = useMutation({
+  const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       console.log('Eliminazione bilancio:', id);
       
@@ -203,15 +163,14 @@ export const useEmployeeLeaveBalance = () => {
     },
   });
 
+  const isAdmin = profile?.role === 'admin';
+
   return {
-    balances,
+    leaveBalances: leaveBalances || [],
     isLoading,
-    createBalance: createBalance.mutate,
-    updateBalance: updateBalance.mutate,
-    deleteBalance: deleteBalance.mutate,
-    isCreating: createBalance.isPending,
-    isUpdating: updateBalance.isPending,
-    isDeleting: deleteBalance.isPending,
+    upsertMutation,
+    deleteMutation,
+    isAdmin,
     calculateWorkingDaysFromHire,
   };
 };
