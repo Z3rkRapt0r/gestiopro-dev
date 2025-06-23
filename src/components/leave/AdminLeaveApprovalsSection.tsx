@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useQueryClient } from "@tanstack/react-query";
 import LeaveRequestsCardsGrid from "./LeaveRequestsCardsGrid";
 import EmployeeLeaveArchive from "./EmployeeLeaveArchive";
 import { ManualLeaveEntryForm } from "./ManualLeaveEntryForm";
@@ -13,11 +13,19 @@ export default function AdminLeaveApprovalsSection() {
   const [tab, setTab] = useState<"pending" | "manual-entry" | "balance-settings" | "archive-permessi" | "archive-ferie">("pending");
   const { leaveRequests, isLoading } = useLeaveRequests();
   const { invalidateBalanceQueries } = useLeaveBalanceSync();
+  const queryClient = useQueryClient();
 
-  // Aggiorna i dati quando si cambia sezione
+  // Aggiorna i dati quando si cambia tab
   useEffect(() => {
+    console.log('Cambio tab permessi, invalidando tutte le query dei bilanci...');
+    // Invalida tutte le query principali per aggiornare i dati in tempo reale
+    queryClient.invalidateQueries({ queryKey: ['leave_requests'] });
+    queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
+    queryClient.invalidateQueries({ queryKey: ['employee-leave-balance-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['leave_balance_validation'] });
+    queryClient.invalidateQueries({ queryKey: ['profiles'] });
     invalidateBalanceQueries();
-  }, [tab, invalidateBalanceQueries]);
+  }, [tab, queryClient, invalidateBalanceQueries]);
 
   // Archivio diviso per tipo
   const archivePermessi = (leaveRequests ?? []).filter(
@@ -97,7 +105,6 @@ export default function AdminLeaveApprovalsSection() {
         <TabsContent value="manual-entry">
           <ManualLeaveEntryForm 
             onSuccess={() => {
-              // Torna alla tab pending dopo il successo
               setTab("pending");
             }}
           />
