@@ -247,8 +247,8 @@ export function LeaveRequestsTable({ searchTerm = "", statusFilter = "all", type
       {editingRequest && (
         <EditLeaveRequestDialog
           request={editingRequest}
-          isOpen={!!editingRequest}
-          onClose={() => setEditingRequest(null)}
+          open={!!editingRequest}
+          onOpenChange={(open) => !open && setEditingRequest(null)}
         />
       )}
     </>
