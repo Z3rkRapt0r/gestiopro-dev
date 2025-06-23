@@ -10,12 +10,14 @@ import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 
 export default function NewDailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { attendances, isLoading, deleteAttendance, isDeleting } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { workSchedule } = useWorkSchedules();
+  const { leaveRequests } = useLeaveRequests();
 
   if (isLoading) {
     return (
@@ -59,6 +61,24 @@ export default function NewDailyAttendanceCalendar() {
 
   console.log('Presenze per la data selezionata:', selectedDateAttendances);
 
+  // Ottieni le richieste di ferie approvate per la data selezionata
+  const selectedDateLeaves = leaveRequests?.filter(request => {
+    if (request.status !== 'approved') return false;
+    
+    if (request.type === 'ferie' && request.date_from && request.date_to) {
+      const leaveStart = new Date(request.date_from);
+      const leaveEnd = new Date(request.date_to);
+      const currentDate = selectedDate ? new Date(selectedDate) : new Date();
+      return currentDate >= leaveStart && currentDate <= leaveEnd;
+    }
+    
+    if (request.type === 'permesso' && request.day) {
+      return request.day === selectedDateStr;
+    }
+    
+    return false;
+  }) || [];
+
   const presentEmployees = selectedDateAttendances
     .filter(att => att.check_in_time && !att.is_sick_leave)
     .map(att => {
@@ -81,8 +101,21 @@ export default function NewDailyAttendanceCalendar() {
     })
     .filter(emp => emp.id);
 
+  // Dipendenti in ferie per la data selezionata
+  const onLeaveEmployees = selectedDateLeaves
+    .map(leave => {
+      const employee = employees?.find(emp => emp.id === leave.user_id);
+      return {
+        ...employee,
+        leave: leave,
+      };
+    })
+    .filter(emp => emp.id);
+
+  // Dipendenti assenti (escludendo quelli in malattia e in ferie)
   const absentEmployees = employees?.filter(emp => 
-    !selectedDateAttendances.some(att => att.user_id === emp.id)
+    !selectedDateAttendances.some(att => att.user_id === emp.id) &&
+    !selectedDateLeaves.some(leave => leave.user_id === emp.id)
   ) || [];
 
   const formatTime = (timeString: string | null) => {
@@ -185,7 +218,7 @@ export default function NewDailyAttendanceCalendar() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
               {/* Dipendenti Presenti */}
               <div>
                 <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
@@ -281,6 +314,47 @@ export default function NewDailyAttendanceCalendar() {
                 </div>
               </div>
 
+              {/* Dipendenti in Ferie */}
+              <div>
+                <h3 className="font-semibold text-purple-700 mb-3 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  In Ferie ({onLeaveEmployees.length})
+                </h3>
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {onLeaveEmployees.length > 0 ? (
+                    onLeaveEmployees.map((employee) => (
+                      <div key={employee.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-medium text-sm">
+                              {employee.first_name} {employee.last_name}
+                            </span>
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
+                              {employee.leave.type === 'ferie' ? 'Ferie' : 'Permesso'}
+                            </Badge>
+                          </div>
+                          {employee.leave.note && (
+                            <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
+                          )}
+                          {employee.leave.type === 'ferie' && employee.leave.date_from && employee.leave.date_to && (
+                            <div className="text-xs text-gray-600 mt-1">
+                              Dal {format(new Date(employee.leave.date_from), 'dd/MM')} al {format(new Date(employee.leave.date_to), 'dd/MM')}
+                            </div>
+                          )}
+                          {employee.leave.type === 'permesso' && employee.leave.time_from && employee.leave.time_to && (
+                            <div className="text-xs text-gray-600 mt-1">
+                              Dalle {employee.leave.time_from} alle {employee.leave.time_to}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">Nessun dipendente in ferie</p>
+                  )}
+                </div>
+              </div>
+
               {/* Dipendenti Assenti */}
               <div>
                 <h3 className="font-semibold text-red-700 mb-3 flex items-center gap-2">
@@ -297,7 +371,7 @@ export default function NewDailyAttendanceCalendar() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-gray-500 text-sm">Tutti i dipendenti sono presenti</p>
+                    <p className="text-gray-500 text-sm">Tutti i dipendenti sono giustificati</p>
                   )}
                 </div>
               </div>
