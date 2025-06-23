@@ -1,7 +1,8 @@
 
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardHeader from "./DashboardHeader";
+import AdminDashboardSidebar from "./AdminDashboardSidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Lazy imports for better performance
@@ -22,6 +23,7 @@ const LoadingSkeleton = () => (
 
 const AdminDashboard = () => {
   const { profile, loading } = useAuth();
+  const [activeSection, setActiveSection] = useState<'overview' | 'employees' | 'documents' | 'attendance' | 'notifications' | 'settings'>('overview');
 
   if (loading) {
     return (
@@ -52,33 +54,65 @@ const AdminDashboard = () => {
     );
   }
 
+  const renderActiveSection = () => {
+    switch (activeSection) {
+      case 'overview':
+        return (
+          <Suspense fallback={<LoadingSkeleton />}>
+            <AdminDashboardOverview />
+          </Suspense>
+        );
+      case 'employees':
+        return (
+          <Suspense fallback={<LoadingSkeleton />}>
+            <AdminEmployeesSection />
+          </Suspense>
+        );
+      case 'documents':
+        return (
+          <Suspense fallback={<LoadingSkeleton />}>
+            <AdminDocumentsSection />
+          </Suspense>
+        );
+      case 'attendance':
+        return (
+          <Suspense fallback={<LoadingSkeleton />}>
+            <AdminAttendanceSection />
+          </Suspense>
+        );
+      case 'notifications':
+        return (
+          <Suspense fallback={<LoadingSkeleton />}>
+            <AdminNotificationsSection />
+          </Suspense>
+        );
+      case 'settings':
+        return (
+          <Suspense fallback={<LoadingSkeleton />}>
+            <AdminSettingsSection />
+          </Suspense>
+        );
+      default:
+        return (
+          <Suspense fallback={<LoadingSkeleton />}>
+            <AdminDashboardOverview />
+          </Suspense>
+        );
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader title="Dashboard Amministratore" />
-      <div className="container mx-auto p-6 space-y-8">
-        <Suspense fallback={<LoadingSkeleton />}>
-          <AdminDashboardOverview />
-        </Suspense>
-        
-        <Suspense fallback={<LoadingSkeleton />}>
-          <AdminEmployeesSection />
-        </Suspense>
-        
-        <Suspense fallback={<LoadingSkeleton />}>
-          <AdminDocumentsSection />
-        </Suspense>
-        
-        <Suspense fallback={<LoadingSkeleton />}>
-          <AdminAttendanceSection />
-        </Suspense>
-        
-        <Suspense fallback={<LoadingSkeleton />}>
-          <AdminNotificationsSection />
-        </Suspense>
-        
-        <Suspense fallback={<LoadingSkeleton />}>
-          <AdminSettingsSection />
-        </Suspense>
+    <div className="min-h-screen bg-gray-50 flex">
+      <AdminDashboardSidebar 
+        activeSection={activeSection} 
+        setActiveSection={setActiveSection} 
+      />
+      
+      <div className="flex-1">
+        <DashboardHeader title="Dashboard Amministratore" />
+        <div className="p-6">
+          {renderActiveSection()}
+        </div>
       </div>
     </div>
   );

@@ -16,6 +16,17 @@ interface Employee {
   updated_at?: string;
 }
 
+interface EmployeeInsertData {
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  role: 'employee';
+  department: string | null;
+  hire_date: string | null;
+  employee_code: string | null;
+  is_active: boolean;
+}
+
 export const useEmployeeOperations = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -65,8 +76,8 @@ export const useEmployeeOperations = () => {
     try {
       setLoading(true);
       
-      // Prepare data for insertion - use Database Insert type
-      const insertData = {
+      // Prepare data for insertion using the correct type
+      const insertData: EmployeeInsertData = {
         first_name: employeeData.first_name || null,
         last_name: employeeData.last_name || null,
         email: employeeData.email || null,
@@ -79,7 +90,7 @@ export const useEmployeeOperations = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .insert([insertData]) // Wrap in array for insert
+        .insert(insertData)
         .select()
         .single();
 
