@@ -211,7 +211,7 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Salvataggio...' : 'Salva Modifiche'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
