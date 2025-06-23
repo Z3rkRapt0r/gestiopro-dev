@@ -32,7 +32,7 @@ export const useAdvancedEmployeeOperations = () => {
       });
 
       if (error) throw error;
-      return data as StorageUsage;
+      return data as unknown as StorageUsage;
     } catch (error: any) {
       console.error('Error getting user storage usage:', error);
       toast({
@@ -55,7 +55,7 @@ export const useAdvancedEmployeeOperations = () => {
         first_name: item.first_name,
         last_name: item.last_name,
         email: item.email,
-        storage_usage: item.storage_usage as StorageUsage
+        storage_usage: item.storage_usage as unknown as StorageUsage
       }));
     } catch (error: any) {
       console.error('Error getting all users storage stats:', error);
