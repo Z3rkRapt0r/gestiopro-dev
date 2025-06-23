@@ -53,12 +53,9 @@ export default function AdminBusinessTripsManagement() {
     setReason('');
   };
 
-  const handleDeleteTrip = async (tripId: string) => {
-    try {
-      await deleteTrip(tripId);
-    } catch (error) {
-      console.error('Errore durante l\'eliminazione della trasferta:', error);
-    }
+  const handleDeleteTrip = (tripId: string) => {
+    console.log('Tentativo di eliminazione trasferta:', tripId);
+    deleteTrip(tripId);
   };
 
   return (

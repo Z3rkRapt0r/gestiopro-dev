@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -200,8 +199,10 @@ export const useBusinessTrips = () => {
     },
   });
 
-  const deleteTrip = useMutation({
+  const deleteTripMutation = useMutation({
     mutationFn: async (tripId: string) => {
+      console.log('Iniziando eliminazione trasferta:', tripId);
+      
       // Prima ottieni i dettagli della trasferta
       const { data: trip, error: fetchError } = await supabase
         .from('business_trips')
@@ -209,7 +210,12 @@ export const useBusinessTrips = () => {
         .eq('id', tripId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Errore nel recupero trasferta:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('Trasferta trovata:', trip);
 
       // Elimina le presenze associate alla trasferta
       const { error: attendanceError } = await supabase
@@ -231,11 +237,16 @@ export const useBusinessTrips = () => {
         .delete()
         .eq('id', tripId);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('Errore eliminazione trasferta:', deleteError);
+        throw deleteError;
+      }
 
+      console.log('Trasferta eliminata con successo');
       return trip;
     },
     onSuccess: () => {
+      console.log('Invalidando cache...');
       queryClient.invalidateQueries({ queryKey: ['business-trips'] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
@@ -258,8 +269,8 @@ export const useBusinessTrips = () => {
     isLoading,
     createTrip: createTrip.mutate,
     isCreating: createTrip.isPending,
-    deleteTrip: deleteTrip.mutate,
-    isDeleting: deleteTrip.isPending,
+    deleteTrip: deleteTripMutation.mutate,
+    isDeleting: deleteTripMutation.isPending,
     isWorkingDay, // Esportiamo la funzione per uso nei componenti
   };
 };
