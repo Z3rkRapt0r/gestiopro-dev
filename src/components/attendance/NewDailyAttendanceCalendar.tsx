@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,9 +60,13 @@ export default function NewDailyAttendanceCalendar() {
 
   console.log('Presenze per la data selezionata:', selectedDateAttendances);
 
-  // Ottieni le richieste di ferie approvate per la data selezionata
+  // Ottieni le richieste di ferie approvate per la data selezionata (solo quelle che non hanno già una presenza registrata)
   const selectedDateLeaves = leaveRequests?.filter(request => {
     if (request.status !== 'approved') return false;
+    
+    // Verifica se c'è già una presenza registrata per questo utente e data
+    const hasAttendance = selectedDateAttendances.some(att => att.user_id === request.user_id);
+    if (hasAttendance) return false; // Non mostrare in ferie se c'è già una presenza
     
     if (request.type === 'ferie' && request.date_from && request.date_to) {
       const leaveStart = new Date(request.date_from);
@@ -79,6 +82,7 @@ export default function NewDailyAttendanceCalendar() {
     return false;
   }) || [];
 
+  // Dipendenti presenti (con check-in e non in malattia)
   const presentEmployees = selectedDateAttendances
     .filter(att => att.check_in_time && !att.is_sick_leave)
     .map(att => {
@@ -90,6 +94,7 @@ export default function NewDailyAttendanceCalendar() {
     })
     .filter(emp => emp.id);
 
+  // Dipendenti in malattia
   const sickEmployees = selectedDateAttendances
     .filter(att => att.is_sick_leave)
     .map(att => {
@@ -101,7 +106,7 @@ export default function NewDailyAttendanceCalendar() {
     })
     .filter(emp => emp.id);
 
-  // Dipendenti in ferie per la data selezionata
+  // Dipendenti in ferie per la data selezionata (solo se non hanno presenza registrata)
   const onLeaveEmployees = selectedDateLeaves
     .map(leave => {
       const employee = employees?.find(emp => emp.id === leave.user_id);
@@ -112,7 +117,7 @@ export default function NewDailyAttendanceCalendar() {
     })
     .filter(emp => emp.id);
 
-  // Dipendenti assenti (escludendo quelli in malattia e in ferie)
+  // Dipendenti assenti (escludendo quelli in malattia, in ferie o con presenza registrata)
   const absentEmployees = employees?.filter(emp => 
     !selectedDateAttendances.some(att => att.user_id === emp.id) &&
     !selectedDateLeaves.some(leave => leave.user_id === emp.id)

@@ -1,336 +1,257 @@
-import { Button } from "@/components/ui/button";
-import { Table, TableHead, TableRow, TableCell, TableBody } from "@/components/ui/table";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { useLeaveRequests, LeaveRequest } from "@/hooks/useLeaveRequests";
-import { useState } from "react";
-import { Edit, Trash, Check, XCircle, User2, Sparkles, Sun } from "lucide-react";
+
+import React from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Check, X, Edit2, Trash2, Calendar, Clock, User } from "lucide-react";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
+import { useLeaveRequests, LeaveRequest } from "@/hooks/useLeaveRequests";
+import { useAuth } from "@/hooks/useAuth";
+import { EditLeaveRequestDialog } from "./EditLeaveRequestDialog";
 
 interface LeaveRequestsTableProps {
-  adminMode?: boolean;
-  leaveRequests?: LeaveRequest[];
-  archive?: boolean;
-  showEdit?: boolean;
-  showDelete?: boolean;
+  searchTerm?: string;
+  statusFilter?: string;
+  typeFilter?: string;
 }
 
-export default function LeaveRequestsTable({
-  adminMode,
-  leaveRequests: propLeaveRequests,
-  archive = false,
-  showEdit = false,
-  showDelete = false,
-}: LeaveRequestsTableProps) {
+export function LeaveRequestsTable({ searchTerm = "", statusFilter = "all", typeFilter = "all" }: LeaveRequestsTableProps) {
+  const { leaveRequests, updateStatusMutation, deleteRequestMutation } = useLeaveRequests();
   const { profile } = useAuth();
-  const { leaveRequests: hookLeaveRequests, isLoading, updateStatusMutation, updateRequestMutation, deleteRequestMutation } = useLeaveRequests();
-  const leaveRequests = propLeaveRequests ?? hookLeaveRequests;
-  const { toast } = useToast();
-  const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [edited, setEdited] = useState<Partial<LeaveRequest>>({});
+  const isAdmin = profile?.role === "admin";
+  const [editingRequest, setEditingRequest] = React.useState<LeaveRequest | null>(null);
+  const [adminNotes, setAdminNotes] = React.useState<{ [key: string]: string }>({});
 
-  const handleAction = async (id: string, status: "approved" | "rejected" | "pending") => {
-    try {
-      await updateStatusMutation.mutateAsync({ id, status, admin_note: adminNotes[id] || "" });
-      let title;
-      switch (status) {
-        case "approved":
-          title = "Richiesta approvata";
-          break;
-        case "rejected":
-          title = "Richiesta rifiutata";
-          break;
-        case "pending":
-          title = "Richiesta riportata a pendente";
-          break;
-        default:
-          title = "Azione completata";
-      }
-      toast({ title });
-      setAdminNotes((prev) => ({ ...prev, [id]: "" }));
-    } catch {
-      toast({ title: "Errore azione amministratore", variant: "destructive" });
+  if (!leaveRequests) return null;
+
+  const filteredRequests = leaveRequests.filter((request) => {
+    const matchesSearch = searchTerm === "" || 
+      (request.profiles?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (request.profiles?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (request.note?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+    
+    const matchesStatus = statusFilter === "all" || request.status === statusFilter;
+    const matchesType = typeFilter === "all" || request.type === typeFilter;
+    
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  const handleStatusUpdate = (id: string, status: "approved" | "rejected") => {
+    const adminNote = adminNotes[id] || "";
+    updateStatusMutation.mutate({ id, status, admin_note: adminNote });
+    setAdminNotes(prev => ({ ...prev, [id]: "" }));
+  };
+
+  const handleDelete = (request: LeaveRequest) => {
+    const canDelete = isAdmin || (request.status === 'pending' && request.user_id === profile?.id);
+    
+    if (!canDelete) return;
+
+    const confirmMessage = request.status === 'approved' 
+      ? `Sei sicuro di voler eliminare questa richiesta approvata? Verranno rimosse anche le presenze associate.`
+      : `Sei sicuro di voler eliminare questa richiesta?`;
+      
+    if (confirm(confirmMessage)) {
+      deleteRequestMutation.mutate({ id: request.id, leaveRequest: request });
     }
   };
 
-  const handleEdit = (req: LeaveRequest) => {
-    setEditingId(req.id);
-    setEdited(req);
-  };
-
-  const handleEditChange = (field: keyof LeaveRequest, value: any) => {
-    setEdited((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleEditSave = async () => {
-    if (!editingId || !edited) return;
-    try {
-      await updateRequestMutation.mutateAsync({ ...edited, id: editingId });
-      toast({ title: "Richiesta aggiornata" });
-      setEditingId(null);
-    } catch {
-      toast({ title: "Errore salvataggio modifica", variant: "destructive" });
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <Badge className="bg-green-100 text-green-800">Approvata</Badge>;
+      case "rejected":
+        return <Badge className="bg-red-100 text-red-800">Rifiutata</Badge>;
+      case "pending":
+        return <Badge className="bg-yellow-100 text-yellow-800">In Attesa</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Sei sicuro di voler eliminare questa richiesta?")) return;
-    try {
-      await deleteRequestMutation.mutateAsync({ id });
-      toast({ title: "Richiesta eliminata" });
-    } catch {
-      toast({ title: "Errore eliminazione", variant: "destructive" });
-    }
+  const getTypeBadge = (type: string) => {
+    return type === "ferie" 
+      ? <Badge className="bg-blue-100 text-blue-800">Ferie</Badge>
+      : <Badge className="bg-purple-100 text-purple-800">Permesso</Badge>;
   };
 
-  if (isLoading) return <div>Caricamento richieste...</div>;
-  if (!leaveRequests || leaveRequests.length === 0) return <div>Nessuna richiesta trovata.</div>;
+  if (filteredRequests.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Richieste Ferie e Permessi
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-gray-500 py-8">
+            Nessuna richiesta trovata con i filtri selezionati
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-white shadow-sm p-2 sm:p-4">
-      <Table className="w-full">
-        <TableHead>
-          <TableRow>
-            {adminMode && (
-              <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[70px] min-w-[56px] max-w-[72px]">
-                Utente
-              </TableCell>
-            )}
-            <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[55px] min-w-[46px] max-w-[60px]">
-              Tipo
-            </TableCell>
-            <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[80px] min-w-[70px] max-w-[90px]">
-              Data
-            </TableCell>
-            <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[53px] min-w-[42px] max-w-[65px]">
-              Stato
-            </TableCell>
-            <TableCell className="font-semibold text-xs px-1 py-2 text-center w-[64px] min-w-[48px] max-w-[72px]">
-              Azioni
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {leaveRequests.map((req: LeaveRequest) => (
-            <TableRow
-              key={req.id}
-              className={`transition-colors ${req.status === "pending"
-                  ? "bg-yellow-50"
-                  : req.status === "approved"
-                  ? "bg-green-50"
-                  : "bg-red-50"
-                } text-xs`}
-            >
-              {adminMode && (
-                <TableCell className="p-1 text-center align-middle">
-                  <div className="flex flex-col items-center gap-0">
-                    <span className="bg-gray-200 rounded-full w-7 h-7 flex items-center justify-center mb-0.5 mx-auto">
-                      <User2 className="w-4 h-4 text-muted-foreground" />
-                    </span>
-                    <span className="truncate max-w-[68px] text-[11px] leading-none">{req.profiles?.first_name
-                      ? `${req.profiles.first_name} ${req.profiles.last_name}`
-                      : "Io"}</span>
-                  </div>
-                </TableCell>
-              )}
-              <TableCell className="p-1 text-center align-middle">
-                <Badge
-                  className={`gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold flex items-center justify-center mx-auto min-w-0 
-                    ${req.type === "ferie"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-violet-100 text-violet-800"
-                    }`}
-                  variant="secondary"
-                >
-                  {req.type === "ferie" ? <Sun className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
-                  <span className="capitalize pl-0.5">{req.type}</span>
-                </Badge>
-              </TableCell>
-              <TableCell className="p-1 text-center align-middle">
-                {editingId === req.id ? (
-                  req.type === "permesso" ? (
-                    <div className="flex flex-col gap-1 items-center">
-                      <input
-                        type="date"
-                        value={edited.day ?? ""}
-                        onChange={e => handleEditChange("day", e.target.value)}
-                        className="border px-1 rounded text-xs w-[78px] mx-auto block"
-                        style={{ height: '28px' }}
-                      />
-                      <div className="flex flex-row gap-1">
-                        <input
-                          type="time"
-                          value={edited.time_from ?? ""}
-                          onChange={e => handleEditChange("time_from", e.target.value)}
-                          className="border px-1 rounded text-xs w-[68px]"
-                          style={{ height: '24px' }}
-                          placeholder="Da"
-                        />
-                        <span className="text-xs text-gray-400 leading-none">-</span>
-                        <input
-                          type="time"
-                          value={edited.time_to ?? ""}
-                          onChange={e => handleEditChange("time_to", e.target.value)}
-                          className="border px-1 rounded text-xs w-[68px]"
-                          style={{ height: '24px' }}
-                          placeholder="A"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-0.5">
-                      <input
-                        type="date"
-                        value={edited.date_from ?? ""}
-                        onChange={e => handleEditChange("date_from", e.target.value)}
-                        className="border px-1 rounded text-xs w-[78px] mb-0.5"
-                        style={{ height: '24px' }}
-                      />
-                      <span className="text-xs text-gray-400 leading-none">al</span>
-                      <input
-                        type="date"
-                        value={edited.date_to ?? ""}
-                        onChange={e => handleEditChange("date_to", e.target.value)}
-                        className="border px-1 rounded text-xs w-[78px] mt-0.5"
-                        style={{ height: '24px' }}
-                      />
-                    </div>
-                  )
-                ) : req.type === "permesso" && req.day ? (
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="whitespace-nowrap">{req.day}</span>
-                    {(req.time_from || req.time_to) && (
-                      <span className="whitespace-nowrap text-xs text-blue-900">
-                        ({[req.time_from, req.time_to].filter(Boolean).join(" - ")})
-                      </span>
-                    )}
-                  </div>
-                ) : req.type === "ferie" && req.date_from && req.date_to ? (
-                  <span className="whitespace-nowrap">{req.date_from}<span className="mx-0.5">-</span>{req.date_to}</span>
-                ) : (
-                  "-"
-                )}
-              </TableCell>
-              <TableCell className="p-1 text-center align-middle">
-                <Badge
-                  className={
-                    `gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold flex items-center justify-center mx-auto min-w-0 ` +
-                    (req.status === "pending"
-                      ? "bg-yellow-200/90 text-yellow-800"
-                      : req.status === "approved"
-                      ? "bg-green-200/90 text-green-800"
-                      : "bg-red-200/80 text-red-800")
-                  }
-                  variant="secondary"
-                >
-                  {req.status === "pending" ? (
-                    <Sparkles className="w-3 h-3" />
-                  ) : req.status === "approved" ? (
-                    <Check className="w-3 h-3" />
-                  ) : (
-                    <XCircle className="w-3 h-3" />
-                  )}
-                  <span className="capitalize pl-0.5">{req.status}</span>
-                </Badge>
-              </TableCell>
-              <TableCell className="p-1 text-center align-middle">
-                {editingId === req.id ? (
-                  <div className="flex gap-0.5 justify-center items-center">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="bg-green-100 border-green-300 text-green-800 h-7 w-7 p-0 flex items-center justify-center"
-                      onClick={handleEditSave}
-                      title="Salva"
-                      style={{ minWidth: 28, minHeight: 28 }}
-                    >
-                      <Check className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 p-0 flex items-center justify-center"
-                      onClick={() => setEditingId(null)}
-                      title="Annulla"
-                      style={{ minWidth: 28, minHeight: 28 }}
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-0.5 justify-center items-center">
-                    {req.status === "pending" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="border-green-500 bg-green-50 hover:bg-green-100 h-7 w-7 p-0 flex items-center justify-center"
-                          onClick={() => handleAction(req.id, "approved")}
-                          title="Approva"
-                          style={{ minWidth: 28, minHeight: 28 }}
-                        >
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="border-red-400 bg-red-50 hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
-                          onClick={() => handleAction(req.id, "rejected")}
-                          title="Rifiuta"
-                          style={{ minWidth: 28, minHeight: 28 }}
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                    {/* Riporta a pendente se APPROVED o REJECTED solo lato admin */}
-                    {(req.status === "approved" || req.status === "rejected") && adminMode && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="border-yellow-400 bg-yellow-50 hover:bg-yellow-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => handleAction(req.id, "pending")}
-                        title="Riporta a pendente"
-                        style={{ minWidth: 28, minHeight: 28 }}
-                      >
-                        <Sparkles className="w-4 h-4 text-yellow-700" />
-                      </Button>
-                    )}
-                    {showEdit && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="hover:bg-blue-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => handleEdit(req)}
-                        title="Modifica"
-                        style={{ minWidth: 28, minHeight: 28 }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                    {showDelete && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="hover:bg-red-100 h-7 w-7 p-0 flex items-center justify-center"
-                        onClick={() => handleDelete(req.id)}
-                        title="Elimina"
-                        style={{ minWidth: 28, minHeight: 28 }}
-                      >
-                        <Trash className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Richieste Ferie e Permessi ({filteredRequests.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {isAdmin && <TableHead>Dipendente</TableHead>}
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Periodo/Data</TableHead>
+                  <TableHead>Orario</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead>Stato</TableHead>
+                  <TableHead>Data Richiesta</TableHead>
+                  <TableHead>Azioni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRequests.map((request) => {
+                  const canEdit = isAdmin || (request.status === 'pending' && request.user_id === profile?.id);
+                  const canDelete = isAdmin || (request.status === 'pending' && request.user_id === profile?.id);
+                  
+                  return (
+                    <TableRow key={request.id}>
+                      {isAdmin && (
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-gray-400" />
+                            <span className="font-medium">
+                              {request.profiles?.first_name} {request.profiles?.last_name}
+                            </span>
+                          </div>
+                        </TableCell>
+                      )}
+                      <TableCell>{getTypeBadge(request.type)}</TableCell>
+                      <TableCell>
+                        {request.type === "ferie" && request.date_from && request.date_to ? (
+                          <div className="text-sm">
+                            <div>Dal: {format(new Date(request.date_from), "dd/MM/yyyy", { locale: it })}</div>
+                            <div>Al: {format(new Date(request.date_to), "dd/MM/yyyy", { locale: it })}</div>
+                          </div>
+                        ) : request.day ? (
+                          format(new Date(request.day), "dd/MM/yyyy", { locale: it })
+                        ) : (
+                          "Non specificato"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {request.time_from && request.time_to ? (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Clock className="w-3 h-3" />
+                            {request.time_from} - {request.time_to}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">Giornata intera</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-xs">
+                          {request.note ? (
+                            <p className="text-sm truncate" title={request.note}>
+                              {request.note}
+                            </p>
+                          ) : (
+                            <span className="text-gray-400 text-sm">Nessuna nota</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(request.status)}</TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-600">
+                          {format(new Date(request.created_at), "dd/MM/yyyy HH:mm", { locale: it })}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {/* Admin approval/rejection buttons */}
+                          {isAdmin && request.status === "pending" && (
+                            <>
+                              <div className="flex flex-col gap-2 min-w-0">
+                                <Textarea
+                                  placeholder="Note admin (opzionale)"
+                                  value={adminNotes[request.id] || ""}
+                                  onChange={(e) => setAdminNotes(prev => ({ ...prev, [request.id]: e.target.value }))}
+                                  className="h-8 text-xs resize-none"
+                                />
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleStatusUpdate(request.id, "approved")}
+                                    className="bg-green-600 hover:bg-green-700 text-white h-7 px-2"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleStatusUpdate(request.id, "rejected")}
+                                    className="h-7 px-2"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Edit button */}
+                          {canEdit && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingRequest(request)}
+                              className="h-7 px-2"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                          )}
+
+                          {/* Delete button - now available for approved requests if admin */}
+                          {canDelete && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDelete(request)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {editingRequest && (
+        <EditLeaveRequestDialog
+          request={editingRequest}
+          isOpen={!!editingRequest}
+          onClose={() => setEditingRequest(null)}
+        />
+      )}
+    </>
   );
 }

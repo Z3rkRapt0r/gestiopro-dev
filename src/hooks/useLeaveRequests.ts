@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkSchedules } from "@/hooks/useWorkSchedules";
+import { useToast } from "@/hooks/use-toast";
 import { format, eachDayOfInterval } from 'date-fns';
 
 export type LeaveRequest = {
@@ -30,6 +31,7 @@ export type LeaveRequest = {
 export function useLeaveRequests() {
   const { profile } = useAuth();
   const { workSchedule } = useWorkSchedules();
+  const { toast } = useToast();
   const isAdmin = profile?.role === "admin";
   const queryClient = useQueryClient();
 
@@ -295,9 +297,39 @@ export function useLeaveRequests() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave_requests"] }),
   });
 
-  // Nuovo: delete richiesta
+  // Nuovo: delete richiesta (ora disponibile anche per ferie approvate se admin)
   const deleteRequestMutation = useMutation({
-    mutationFn: async ({ id }: { id: string }) => {
+    mutationFn: async ({ id, leaveRequest }: { id: string; leaveRequest?: LeaveRequest }) => {
+      // Se è una richiesta approvata, rimuovi anche le presenze associate
+      if (leaveRequest && leaveRequest.status === 'approved') {
+        if (leaveRequest.type === 'ferie' && leaveRequest.date_from && leaveRequest.date_to) {
+          const startDate = new Date(leaveRequest.date_from);
+          const endDate = new Date(leaveRequest.date_to);
+          const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+          
+          const workingDays = allDays.filter(day => isWorkingDay(day));
+          const datesToDelete = workingDays.map(day => format(day, 'yyyy-MM-dd'));
+          
+          if (datesToDelete.length > 0) {
+            await supabase
+              .from('unified_attendances')
+              .delete()
+              .eq('user_id', leaveRequest.user_id)
+              .in('date', datesToDelete)
+              .eq('notes', 'Ferie');
+          }
+        }
+        
+        if (leaveRequest.type === 'permesso' && leaveRequest.day && !leaveRequest.time_from && !leaveRequest.time_to) {
+          await supabase
+            .from('unified_attendances')
+            .delete()
+            .eq('user_id', leaveRequest.user_id)
+            .eq('date', leaveRequest.day)
+            .eq('notes', 'Permesso');
+        }
+      }
+
       const { error } = await supabase
         .from("leave_requests")
         .delete()
@@ -305,7 +337,22 @@ export function useLeaveRequests() {
       if (error) throw error;
       return id;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave_requests"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      toast({
+        title: "Richiesta eliminata",
+        description: "La richiesta di ferie/permesso è stata eliminata con successo",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Delete leave request error:', error);
+      toast({
+        title: "Errore",
+        description: "Errore nell'eliminazione della richiesta",
+        variant: "destructive",
+      });
+    },
   });
 
   return {
