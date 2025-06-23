@@ -1,6 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import EmployeeDashboardContent from './EmployeeDashboardContent';
 import EmployeeDashboardHeader from './EmployeeDashboardHeader';
 import EmployeeLeavePage from '@/components/leave/EmployeeLeavePage';
@@ -25,6 +26,17 @@ import { BarChart3, Calendar, Clock, FileText, MessageSquare, User } from 'lucid
 export default function EmployeeDashboard() {
   const [activeSection, setActiveSection] = useState<'overview' | 'leaves' | 'attendances' | 'documents' | 'messages'>('overview');
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Aggiorna i dati quando si cambia sezione
+  useEffect(() => {
+    // Invalida le query principali per aggiornare i dati
+    queryClient.invalidateQueries({ queryKey: ['leave_requests'] });
+    queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+    queryClient.invalidateQueries({ queryKey: ['documents'] });
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    queryClient.invalidateQueries({ queryKey: ['employee-stats'] });
+  }, [activeSection, queryClient]);
 
   if (!profile) {
     return (

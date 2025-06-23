@@ -1,31 +1,23 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import LeaveRequestsCardsGrid from "./LeaveRequestsCardsGrid";
 import EmployeeLeaveArchive from "./EmployeeLeaveArchive";
 import { EmployeeLeaveBalanceSection } from "./EmployeeLeaveBalanceSection";
 import { ManualLeaveEntryForm } from "./ManualLeaveEntryForm";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useLeaveBalanceSync } from "@/hooks/useLeaveBalanceSync";
-import { Settings, Plus, CheckCircle, RefreshCw } from "lucide-react";
+import { Settings, Plus } from "lucide-react";
 
 export default function AdminApprovalsSection() {
   const [tab, setTab] = useState<"pending" | "manual-entry" | "archive-permessi" | "archive-ferie" | "balance">("pending");
-  const [isRecalculating, setIsRecalculating] = useState(false);
   const { leaveRequests, isLoading } = useLeaveRequests();
-  const { recalculateAllBalances } = useLeaveBalanceSync();
+  const { invalidateBalanceQueries } = useLeaveBalanceSync();
 
-  const handleRecalculateAll = async () => {
-    setIsRecalculating(true);
-    try {
-      await recalculateAllBalances();
-    } catch (error) {
-      console.error('Errore nel ricalcolo:', error);
-    } finally {
-      setIsRecalculating(false);
-    }
-  };
+  // Aggiorna i dati quando si cambia sezione
+  useEffect(() => {
+    invalidateBalanceQueries();
+  }, [tab, invalidateBalanceQueries]);
 
   // Archivio diviso per tipo
   const archivePermessi = (leaveRequests ?? []).filter(
@@ -70,26 +62,11 @@ export default function AdminApprovalsSection() {
 
   return (
     <div className="max-w-6xl mx-auto py-8">
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h2 className="text-2xl font-bold mb-2">Approvazioni Permessi & Ferie</h2>
-          <Alert className="max-w-2xl">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription>
-              <strong>Sistema di Bilanci Automatico Attivo</strong> - I bilanci vengono aggiornati automaticamente
-              quando si approvano, rifiutano o eliminano richieste di ferie/permessi.
-            </AlertDescription>
-          </Alert>
-        </div>
-        <Button
-          onClick={handleRecalculateAll}
-          disabled={isRecalculating}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${isRecalculating ? 'animate-spin' : ''}`} />
-          {isRecalculating ? 'Sincronizzando...' : 'Sincronizza Bilanci'}
-        </Button>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-2">Approvazioni Permessi & Ferie</h2>
+        <p className="text-muted-foreground">
+          Gestisci le richieste di permessi e ferie dei dipendenti
+        </p>
       </div>
 
       <Tabs value={tab} onValueChange={val => setTab(val as any)} className="w-full">

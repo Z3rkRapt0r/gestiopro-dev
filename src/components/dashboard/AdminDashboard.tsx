@@ -1,7 +1,8 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import AdminDashboardOverview from "./AdminDashboardOverview";
 import AdminEmployeesSection from "./AdminEmployeesSection";
 import AdminAttendanceSection from "./AdminAttendanceSection";
@@ -25,6 +26,17 @@ import {
 const AdminDashboard = () => {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const queryClient = useQueryClient();
+
+  // Aggiorna i dati quando si cambia sezione
+  useEffect(() => {
+    // Invalida tutte le query principali per aggiornare i dati
+    queryClient.invalidateQueries({ queryKey: ['leave_requests'] });
+    queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
+    queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+    queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  }, [activeTab, queryClient]);
 
   if (!profile || profile.role !== 'admin') {
     return (
