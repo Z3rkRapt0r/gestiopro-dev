@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -275,24 +276,30 @@ export default function NewDailyAttendanceCalendar() {
     }
   };
 
-  const handleDeletePermissionRequest = (leaveRequest: any) => {
+  const handleDeletePermissionRequest = async (leaveRequest: any) => {
     if (confirm('Sei sicuro di voler eliminare questa richiesta di permesso?')) {
-      deleteRequestMutation.mutate(leaveRequest.id);
+      console.log('Eliminando richiesta di permesso:', leaveRequest);
+      try {
+        await deleteRequestMutation.mutateAsync(leaveRequest.id);
+        console.log('Richiesta di permesso eliminata con successo');
+      } catch (error) {
+        console.error('Errore nell\'eliminazione della richiesta di permesso:', error);
+      }
     }
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
       {/* Calendario */}
       <Card className="xl:col-span-1">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <CalendarIcon className="w-5 h-5" />
+        <CardHeader className="pb-6">
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <CalendarIcon className="w-6 h-6" />
             Calendario Generale
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
-          <div className="flex justify-center">
+        <CardContent className="p-6">
+          <div className="flex justify-center mb-6">
             <Calendar
               mode="single"
               selected={selectedDate}
@@ -301,24 +308,24 @@ export default function NewDailyAttendanceCalendar() {
                 setSelectedDate(date);
               }}
               locale={it}
-              className="rounded-md border w-fit"
+              className="rounded-lg border shadow-sm w-fit"
             />
           </div>
           
           {/* Info giorni lavorativi */}
           {workSchedule && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-sm font-medium text-blue-700 mb-2">Giorni Lavorativi:</div>
-              <div className="text-xs text-blue-600 space-y-1">
-                <div>Orari: {workSchedule.start_time} - {workSchedule.end_time}</div>
-                <div className="flex flex-wrap gap-1">
-                  {workSchedule.monday && <span className="bg-blue-100 px-1 rounded">Lun</span>}
-                  {workSchedule.tuesday && <span className="bg-blue-100 px-1 rounded">Mar</span>}
-                  {workSchedule.wednesday && <span className="bg-blue-100 px-1 rounded">Mer</span>}
-                  {workSchedule.thursday && <span className="bg-blue-100 px-1 rounded">Gio</span>}
-                  {workSchedule.friday && <span className="bg-blue-100 px-1 rounded">Ven</span>}
-                  {workSchedule.saturday && <span className="bg-blue-100 px-1 rounded">Sab</span>}
-                  {workSchedule.sunday && <span className="bg-blue-100 px-1 rounded">Dom</span>}
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-sm font-semibold text-blue-700 mb-3">Giorni Lavorativi:</div>
+              <div className="text-xs text-blue-600 space-y-2">
+                <div className="font-medium">Orari: {workSchedule.start_time} - {workSchedule.end_time}</div>
+                <div className="flex flex-wrap gap-2">
+                  {workSchedule.monday && <span className="bg-blue-100 px-2 py-1 rounded-md text-xs font-medium">Lun</span>}
+                  {workSchedule.tuesday && <span className="bg-blue-100 px-2 py-1 rounded-md text-xs font-medium">Mar</span>}
+                  {workSchedule.wednesday && <span className="bg-blue-100 px-2 py-1 rounded-md text-xs font-medium">Mer</span>}
+                  {workSchedule.thursday && <span className="bg-blue-100 px-2 py-1 rounded-md text-xs font-medium">Gio</span>}
+                  {workSchedule.friday && <span className="bg-blue-100 px-2 py-1 rounded-md text-xs font-medium">Ven</span>}
+                  {workSchedule.saturday && <span className="bg-blue-100 px-2 py-1 rounded-md text-xs font-medium">Sab</span>}
+                  {workSchedule.sunday && <span className="bg-blue-100 px-2 py-1 rounded-md text-xs font-medium">Dom</span>}
                 </div>
               </div>
             </div>
@@ -328,41 +335,41 @@ export default function NewDailyAttendanceCalendar() {
 
       {/* Dettagli presenze */}
       <Card className="xl:col-span-2">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Users className="w-5 h-5" />
+        <CardHeader className="pb-6">
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <Users className="w-6 h-6" />
             Presenze del {selectedDate ? format(selectedDate, 'dd MMMM yyyy', { locale: it }) : ''}
             {selectedDate && !isWorkingDay(selectedDate) && (
-              <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs">
+              <Badge variant="outline" className="bg-gray-50 text-gray-600 text-sm">
                 Non lavorativo
               </Badge>
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-6">
           {selectedDate && !isWorkingDay(selectedDate) ? (
-            <div className="text-center py-8">
-              <div className="text-gray-500 text-lg mb-2">Giorno non lavorativo</div>
-              <div className="text-gray-400 text-sm">
+            <div className="text-center py-12">
+              <div className="text-gray-500 text-xl mb-3">Giorno non lavorativo</div>
+              <div className="text-gray-400 text-base">
                 Questo giorno non è configurato come giorno lavorativo
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-8">
               {/* Dipendenti Presenti FISICAMENTE */}
-              <div>
-                <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <div className="space-y-4">
+                <h3 className="font-semibold text-green-700 text-lg mb-4 flex items-center gap-3">
+                  <div className="w-4 h-4 bg-green-500 rounded-full"></div>
                   Presenti ({presentEmployees.length})
                 </h3>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                   {presentEmployees.length > 0 ? (
                     presentEmployees.map((employee) => (
-                      <div key={employee.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div key={employee.id} className="p-4 bg-green-50 rounded-lg border border-green-200 shadow-sm">
                         <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className="font-medium text-sm">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm">
                                 {employee.first_name} {employee.last_name}
                               </span>
                               {employee.tracking_start_type === 'from_year_start' && (
@@ -387,11 +394,17 @@ export default function NewDailyAttendanceCalendar() {
                               )}
                             </div>
                             {employee.attendance.notes && employee.attendance.notes !== 'Ferie' && (
-                              <p className="text-xs text-gray-600 mt-1">{employee.attendance.notes}</p>
+                              <p className="text-xs text-gray-600">{employee.attendance.notes}</p>
                             )}
-                            <div className="text-xs text-gray-600 mt-1">
-                              <div>Entrata: {formatTime(employee.attendance.check_in_time)}</div>
-                              <div>Uscita: {formatTime(employee.attendance.check_out_time)}</div>
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Entrata:</span>
+                                <span>{formatTime(employee.attendance.check_in_time)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Uscita:</span>
+                                <span>{formatTime(employee.attendance.check_out_time)}</span>
+                              </div>
                             </div>
                           </div>
                           <Button
@@ -399,9 +412,9 @@ export default function NewDailyAttendanceCalendar() {
                             size="sm"
                             onClick={() => handleDeleteAttendance(employee.attendance)}
                             disabled={isDeleting}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-3"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
@@ -413,19 +426,19 @@ export default function NewDailyAttendanceCalendar() {
               </div>
 
               {/* Dipendenti in Malattia */}
-              <div>
-                <h3 className="font-semibold text-orange-700 mb-3 flex items-center gap-2">
-                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+              <div className="space-y-4">
+                <h3 className="font-semibold text-orange-700 text-lg mb-4 flex items-center gap-3">
+                  <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
                   In Malattia ({sickEmployees.length})
                 </h3>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                   {sickEmployees.length > 0 ? (
                     sickEmployees.map((employee) => (
-                      <div key={employee.id} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div key={employee.id} className="p-4 bg-orange-50 rounded-lg border border-orange-200 shadow-sm">
                         <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className="font-medium text-sm">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm">
                                 {employee.first_name} {employee.last_name}
                               </span>
                               <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
@@ -433,7 +446,7 @@ export default function NewDailyAttendanceCalendar() {
                               </Badge>
                             </div>
                             {employee.attendance.notes && (
-                              <p className="text-xs text-gray-600 mt-1">{employee.attendance.notes}</p>
+                              <p className="text-xs text-gray-600">{employee.attendance.notes}</p>
                             )}
                           </div>
                           <Button
@@ -441,9 +454,9 @@ export default function NewDailyAttendanceCalendar() {
                             size="sm"
                             onClick={() => handleDeleteAttendance(employee.attendance)}
                             disabled={isDeleting}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-3"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
@@ -455,19 +468,19 @@ export default function NewDailyAttendanceCalendar() {
               </div>
 
               {/* Dipendenti in Ferie */}
-              <div>
-                <h3 className="font-semibold text-purple-700 mb-3 flex items-center gap-2">
-                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+              <div className="space-y-4">
+                <h3 className="font-semibold text-purple-700 text-lg mb-4 flex items-center gap-3">
+                  <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
                   In Ferie ({onLeaveEmployees.length})
                 </h3>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                   {onLeaveEmployees.length > 0 ? (
                     onLeaveEmployees.map((employee) => (
-                      <div key={employee.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <div key={employee.id} className="p-4 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
                         <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className="font-medium text-sm">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm">
                                 {employee.first_name} {employee.last_name}
                               </span>
                               <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
@@ -475,10 +488,10 @@ export default function NewDailyAttendanceCalendar() {
                               </Badge>
                             </div>
                             {employee.leave?.note && (
-                              <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
+                              <p className="text-xs text-gray-600">{employee.leave.note}</p>
                             )}
                             {employee.leave?.date_from && employee.leave.date_to && (
-                              <div className="text-xs text-purple-600 mt-1 font-medium">
+                              <div className="text-xs text-purple-600 font-medium">
                                 Periodo: {format(new Date(employee.leave.date_from), 'dd/MM/yyyy')} - {format(new Date(employee.leave.date_to), 'dd/MM/yyyy')}
                               </div>
                             )}
@@ -489,9 +502,9 @@ export default function NewDailyAttendanceCalendar() {
                               size="sm"
                               onClick={() => handleDeleteAttendance(employee.attendance)}
                               disabled={isDeleting}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-3"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           )}
                         </div>
@@ -504,19 +517,19 @@ export default function NewDailyAttendanceCalendar() {
               </div>
 
               {/* Dipendenti in Permesso */}
-              <div>
-                <h3 className="font-semibold text-blue-700 mb-3 flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <div className="space-y-4">
+                <h3 className="font-semibold text-blue-700 text-lg mb-4 flex items-center gap-3">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
                   In Permesso ({onPermissionEmployees.length})
                 </h3>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                   {onPermissionEmployees.length > 0 ? (
                     onPermissionEmployees.map((employee) => (
-                      <div key={employee.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div key={employee.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200 shadow-sm">
                         <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className="font-medium text-sm">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm">
                                 {employee.first_name} {employee.last_name}
                               </span>
                               <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
@@ -526,7 +539,7 @@ export default function NewDailyAttendanceCalendar() {
                             
                             {/* Mostra i dettagli del permesso orario */}
                             {employee.permissionType === 'orario' && (
-                              <div className="text-xs text-blue-600 mt-1 font-medium">
+                              <div className="text-xs text-blue-600 font-medium">
                                 {employee.permissionTimeFrom && employee.permissionTimeTo ? (
                                   `Orario: ${employee.permissionTimeFrom} - ${employee.permissionTimeTo}`
                                 ) : employee.attendance && employee.attendance.check_in_time && employee.attendance.check_out_time ? (
@@ -541,14 +554,14 @@ export default function NewDailyAttendanceCalendar() {
                             
                             {/* Note aggiuntive */}
                             {employee.leave?.note && (
-                              <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
+                              <p className="text-xs text-gray-600">{employee.leave.note}</p>
                             )}
                             {employee.attendance?.notes && !employee.leave?.note && employee.attendance.notes !== 'Permesso' && (
-                              <p className="text-xs text-gray-600 mt-1">{employee.attendance.notes}</p>
+                              <p className="text-xs text-gray-600">{employee.attendance.notes}</p>
                             )}
                           </div>
                           
-                          <div className="flex gap-1 ml-2">
+                          <div className="flex gap-2 ml-3">
                             {/* Elimina presenza se esiste */}
                             {employee.attendance && (
                               <Button
@@ -559,7 +572,7 @@ export default function NewDailyAttendanceCalendar() {
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                 title="Elimina presenza"
                               >
-                                <Trash2 className="w-3 h-3" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             )}
                             
@@ -573,7 +586,7 @@ export default function NewDailyAttendanceCalendar() {
                                 className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                                 title="Elimina richiesta permesso"
                               >
-                                <Trash2 className="w-3 h-3" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             )}
                           </div>
@@ -587,20 +600,20 @@ export default function NewDailyAttendanceCalendar() {
               </div>
 
               {/* Dipendenti Assenti */}
-              <div>
-                <h3 className="font-semibold text-red-700 mb-3 flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <div className="space-y-4">
+                <h3 className="font-semibold text-red-700 text-lg mb-4 flex items-center gap-3">
+                  <div className="w-4 h-4 bg-red-500 rounded-full"></div>
                   Assenti ({absentEmployees.length})
                 </h3>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                   {absentEmployees.length > 0 ? (
                     absentEmployees.map((employee) => (
-                      <div key={employee.id} className="p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div key={employee.id} className="p-4 bg-red-50 rounded-lg border border-red-200 shadow-sm">
                         <div className="flex justify-between items-center">
-                          <span className="font-medium text-sm">
+                          <span className="font-semibold text-sm">
                             {employee.first_name} {employee.last_name}
                           </span>
-                          <div className="flex gap-1">
+                          <div className="flex gap-2">
                             {employee.tracking_start_type === 'from_year_start' && (
                               <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
                                 Da caricare manualmente
