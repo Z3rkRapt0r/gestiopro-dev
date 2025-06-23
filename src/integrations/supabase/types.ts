@@ -923,7 +923,55 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      upcoming_leaves: {
+        Row: {
+          admin_note: string | null
+          created_at: string | null
+          date_from: string | null
+          date_to: string | null
+          day: string | null
+          email: string | null
+          end_date: string | null
+          first_name: string | null
+          id: string | null
+          last_name: string | null
+          leave_balance_id: string | null
+          note: string | null
+          notify_employee: boolean | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string | null
+          status: string | null
+          time_from: string | null
+          time_to: string | null
+          type: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_leave_balance_id_fkey"
+            columns: ["leave_balance_id"]
+            isOneToOne: false
+            referencedRelation: "employee_leave_balance"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       clear_user_data: {
@@ -951,6 +999,21 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_upcoming_leaves: {
+        Args: { days_ahead?: number }
+        Returns: {
+          id: string
+          user_id: string
+          type: string
+          start_date: string
+          end_date: string
+          first_name: string
+          last_name: string
+          email: string
+          note: string
+          days_until: number
+        }[]
       }
       get_user_storage_usage: {
         Args: { user_uuid: string }
