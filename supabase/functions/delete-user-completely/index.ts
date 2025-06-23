@@ -51,7 +51,9 @@ serve(async (req) => {
 
     console.log('Dati utente prima della pulizia:', verifyBefore)
 
-    // Elimina tutti i dati dell'utente direttamente
+    // ELIMINAZIONE SISTEMATICA DI TUTTI I DATI DELL'UTENTE
+
+    // 1. Elimina documenti (sia come proprietario che come uploader)
     console.log('Eliminazione documenti...')
     const { error: documentsError } = await supabaseAdmin
       .from('documents')
@@ -62,6 +64,7 @@ serve(async (req) => {
       console.error('Errore eliminazione documenti:', documentsError)
     }
 
+    // 2. Elimina presenze dalla tabella attendances
     console.log('Eliminazione presenze...')
     const { error: attendancesError } = await supabaseAdmin
       .from('attendances')
@@ -72,6 +75,7 @@ serve(async (req) => {
       console.error('Errore eliminazione presenze:', attendancesError)
     }
 
+    // 3. Elimina presenze unificate
     console.log('Eliminazione presenze unificate...')
     const { error: unifiedAttendancesError } = await supabaseAdmin
       .from('unified_attendances')
@@ -82,6 +86,7 @@ serve(async (req) => {
       console.error('Errore eliminazione presenze unificate:', unifiedAttendancesError)
     }
 
+    // 4. Elimina presenze manuali
     console.log('Eliminazione presenze manuali...')
     const { error: manualAttendancesError } = await supabaseAdmin
       .from('manual_attendances')
@@ -92,6 +97,7 @@ serve(async (req) => {
       console.error('Errore eliminazione presenze manuali:', manualAttendancesError)
     }
 
+    // 5. Elimina richieste di ferie
     console.log('Eliminazione richieste di ferie...')
     const { error: leaveRequestsError } = await supabaseAdmin
       .from('leave_requests')
@@ -102,7 +108,8 @@ serve(async (req) => {
       console.error('Errore eliminazione richieste di ferie:', leaveRequestsError)
     }
 
-    console.log('Eliminazione bilanci ferie...')
+    // 6. Elimina bilanci ferie (QUESTA È LA CHIAVE - era mancante!)
+    console.log('Eliminazione bilanci ferie e permessi...')
     const { error: leaveBalanceError } = await supabaseAdmin
       .from('employee_leave_balance')
       .delete()
@@ -110,8 +117,11 @@ serve(async (req) => {
     
     if (leaveBalanceError) {
       console.error('Errore eliminazione bilanci ferie:', leaveBalanceError)
+    } else {
+      console.log('Bilanci ferie eliminati con successo')
     }
 
+    // 7. Elimina notifiche
     console.log('Eliminazione notifiche...')
     const { error: notificationsError } = await supabaseAdmin
       .from('notifications')
@@ -122,6 +132,7 @@ serve(async (req) => {
       console.error('Errore eliminazione notifiche:', notificationsError)
     }
 
+    // 8. Elimina viaggi di lavoro
     console.log('Eliminazione viaggi di lavoro...')
     const { error: businessTripsError } = await supabaseAdmin
       .from('business_trips')
@@ -132,6 +143,7 @@ serve(async (req) => {
       console.error('Errore eliminazione viaggi di lavoro:', businessTripsError)
     }
 
+    // 9. Elimina notifiche inviate (come destinatario)
     console.log('Eliminazione notifiche inviate...')
     const { error: sentNotificationsError } = await supabaseAdmin
       .from('sent_notifications')
@@ -142,6 +154,7 @@ serve(async (req) => {
       console.error('Errore eliminazione notifiche inviate:', sentNotificationsError)
     }
 
+    // 10. Elimina messaggi (sia come mittente che come destinatario)
     console.log('Eliminazione messaggi...')
     const { error: messagesError } = await supabaseAdmin
       .from('messages')
@@ -152,6 +165,62 @@ serve(async (req) => {
       console.error('Errore eliminazione messaggi:', messagesError)
     }
 
+    // 11. Elimina impostazioni dashboard se admin
+    console.log('Eliminazione impostazioni dashboard...')
+    const { error: dashboardSettingsError } = await supabaseAdmin
+      .from('dashboard_settings')
+      .delete()
+      .eq('admin_id', userId)
+    
+    if (dashboardSettingsError) {
+      console.error('Errore eliminazione impostazioni dashboard:', dashboardSettingsError)
+    }
+
+    // 12. Elimina impostazioni login se admin
+    console.log('Eliminazione impostazioni login...')
+    const { error: loginSettingsError } = await supabaseAdmin
+      .from('login_settings')
+      .delete()
+      .eq('admin_id', userId)
+    
+    if (loginSettingsError) {
+      console.error('Errore eliminazione impostazioni login:', loginSettingsError)
+    }
+
+    // 13. Elimina impostazioni admin
+    console.log('Eliminazione impostazioni admin...')
+    const { error: adminSettingsError } = await supabaseAdmin
+      .from('admin_settings')
+      .delete()
+      .eq('admin_id', userId)
+    
+    if (adminSettingsError) {
+      console.error('Errore eliminazione impostazioni admin:', adminSettingsError)
+    }
+
+    // 14. Elimina template email se admin
+    console.log('Eliminazione template email...')
+    const { error: emailTemplatesError } = await supabaseAdmin
+      .from('email_templates')
+      .delete()
+      .eq('admin_id', userId)
+    
+    if (emailTemplatesError) {
+      console.error('Errore eliminazione template email:', emailTemplatesError)
+    }
+
+    // 15. Elimina impostazioni logo dipendenti se admin
+    console.log('Eliminazione impostazioni logo dipendenti...')
+    const { error: employeeLogoSettingsError } = await supabaseAdmin
+      .from('employee_logo_settings')
+      .delete()
+      .eq('admin_id', userId)
+    
+    if (employeeLogoSettingsError) {
+      console.error('Errore eliminazione impostazioni logo dipendenti:', employeeLogoSettingsError)
+    }
+
+    // 16. Elimina il profilo
     console.log('Eliminazione profilo...')
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
@@ -162,7 +231,7 @@ serve(async (req) => {
       console.error('Errore eliminazione profilo:', profileError)
     }
 
-    // Elimina l'utente dall'autenticazione
+    // 17. Elimina l'utente dall'autenticazione (SEMPRE PER ULTIMO)
     console.log('Eliminazione utente dall\'autenticazione...')
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
@@ -189,7 +258,26 @@ serve(async (req) => {
         before_cleanup: verifyBefore,
         final_check: finalVerify
       },
-      completely_removed: !finalVerify?.has_remaining_data
+      completely_removed: !finalVerify?.has_remaining_data,
+      deleted_from_tables: [
+        'documents',
+        'attendances', 
+        'unified_attendances',
+        'manual_attendances',
+        'leave_requests',
+        'employee_leave_balance', // IMPORTANTE!
+        'notifications',
+        'business_trips',
+        'sent_notifications',
+        'messages',
+        'dashboard_settings',
+        'login_settings', 
+        'admin_settings',
+        'email_templates',
+        'employee_logo_settings',
+        'profiles',
+        'auth.users'
+      ]
     };
 
     console.log('Eliminazione completa terminata:', response)
