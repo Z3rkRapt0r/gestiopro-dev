@@ -51,46 +51,119 @@ serve(async (req) => {
 
     console.log('Dati utente prima della pulizia:', verifyBefore)
 
-    // Esegue la pulizia completa usando la nuova funzione
-    const { data: cleanupResult, error: cleanupError } = await supabaseAdmin.rpc('complete_user_cleanup', {
-      user_uuid: userId
-    });
-
-    if (cleanupError) {
-      console.error('Errore durante la pulizia completa:', cleanupError)
-      throw cleanupError
+    // Elimina tutti i dati dell'utente direttamente
+    console.log('Eliminazione documenti...')
+    const { error: documentsError } = await supabaseAdmin
+      .from('documents')
+      .delete()
+      .or(`user_id.eq.${userId},uploaded_by.eq.${userId}`)
+    
+    if (documentsError) {
+      console.error('Errore eliminazione documenti:', documentsError)
     }
 
-    console.log('Risultato pulizia completa:', cleanupResult)
-
-    // Verifica finale per assicurarsi che non ci siano dati residui
-    const { data: verifyAfter, error: verifyAfterError } = await supabaseAdmin.rpc('verify_user_data_exists', {
-      user_uuid: userId
-    });
-
-    if (verifyAfterError) {
-      console.error('Errore verifica dati finale:', verifyAfterError)
-      throw verifyAfterError
+    console.log('Eliminazione presenze...')
+    const { error: attendancesError } = await supabaseAdmin
+      .from('attendances')
+      .delete()
+      .eq('user_id', userId)
+    
+    if (attendancesError) {
+      console.error('Errore eliminazione presenze:', attendancesError)
     }
 
-    console.log('Verifica finale:', verifyAfter)
+    console.log('Eliminazione presenze unificate...')
+    const { error: unifiedAttendancesError } = await supabaseAdmin
+      .from('unified_attendances')
+      .delete()
+      .eq('user_id', userId)
+    
+    if (unifiedAttendancesError) {
+      console.error('Errore eliminazione presenze unificate:', unifiedAttendancesError)
+    }
 
-    // Se ci sono ancora dati residui, tenta una seconda pulizia
-    if (verifyAfter?.has_remaining_data) {
-      console.log('Trovati dati residui, eseguo seconda pulizia per utente:', userId)
-      
-      const { data: secondCleanup, error: secondCleanupError } = await supabaseAdmin.rpc('complete_user_cleanup', {
-        user_uuid: userId
-      });
+    console.log('Eliminazione presenze manuali...')
+    const { error: manualAttendancesError } = await supabaseAdmin
+      .from('manual_attendances')
+      .delete()
+      .eq('user_id', userId)
+    
+    if (manualAttendancesError) {
+      console.error('Errore eliminazione presenze manuali:', manualAttendancesError)
+    }
 
-      if (secondCleanupError) {
-        console.error('Errore durante la seconda pulizia:', secondCleanupError)
-      } else {
-        console.log('Seconda pulizia completata:', secondCleanup)
-      }
+    console.log('Eliminazione richieste di ferie...')
+    const { error: leaveRequestsError } = await supabaseAdmin
+      .from('leave_requests')
+      .delete()
+      .eq('user_id', userId)
+    
+    if (leaveRequestsError) {
+      console.error('Errore eliminazione richieste di ferie:', leaveRequestsError)
+    }
+
+    console.log('Eliminazione bilanci ferie...')
+    const { error: leaveBalanceError } = await supabaseAdmin
+      .from('employee_leave_balance')
+      .delete()
+      .eq('user_id', userId)
+    
+    if (leaveBalanceError) {
+      console.error('Errore eliminazione bilanci ferie:', leaveBalanceError)
+    }
+
+    console.log('Eliminazione notifiche...')
+    const { error: notificationsError } = await supabaseAdmin
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId)
+    
+    if (notificationsError) {
+      console.error('Errore eliminazione notifiche:', notificationsError)
+    }
+
+    console.log('Eliminazione viaggi di lavoro...')
+    const { error: businessTripsError } = await supabaseAdmin
+      .from('business_trips')
+      .delete()
+      .eq('user_id', userId)
+    
+    if (businessTripsError) {
+      console.error('Errore eliminazione viaggi di lavoro:', businessTripsError)
+    }
+
+    console.log('Eliminazione notifiche inviate...')
+    const { error: sentNotificationsError } = await supabaseAdmin
+      .from('sent_notifications')
+      .delete()
+      .eq('recipient_id', userId)
+    
+    if (sentNotificationsError) {
+      console.error('Errore eliminazione notifiche inviate:', sentNotificationsError)
+    }
+
+    console.log('Eliminazione messaggi...')
+    const { error: messagesError } = await supabaseAdmin
+      .from('messages')
+      .delete()
+      .or(`recipient_id.eq.${userId},sender_id.eq.${userId}`)
+    
+    if (messagesError) {
+      console.error('Errore eliminazione messaggi:', messagesError)
+    }
+
+    console.log('Eliminazione profilo...')
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', userId)
+    
+    if (profileError) {
+      console.error('Errore eliminazione profilo:', profileError)
     }
 
     // Elimina l'utente dall'autenticazione
+    console.log('Eliminazione utente dall\'autenticazione...')
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (authError) {
@@ -100,7 +173,7 @@ serve(async (req) => {
 
     console.log('Utente eliminato completamente dalla auth:', userId)
 
-    // Verifica finale finale per confermare la rimozione completa
+    // Verifica finale per confermare la rimozione completa
     const { data: finalVerify, error: finalVerifyError } = await supabaseAdmin.rpc('verify_user_data_exists', {
       user_uuid: userId
     });
@@ -114,9 +187,7 @@ serve(async (req) => {
       message: 'Utente eliminato completamente',
       verification: {
         before_cleanup: verifyBefore,
-        after_cleanup: verifyAfter,
-        final_check: finalVerify,
-        cleanup_result: cleanupResult
+        final_check: finalVerify
       },
       completely_removed: !finalVerify?.has_remaining_data
     };

@@ -107,45 +107,6 @@ export const useAdvancedEmployeeOperations = () => {
     }
   };
 
-  const clearUserData = async (userId: string, userName: string) => {
-    setIsLoading(true);
-    try {
-      console.log('Azzerando dati utente (preservando accesso):', userId);
-
-      // Prima verifica i dati esistenti
-      const beforeVerification = await verifyUserDataExists(userId);
-      console.log('Dati prima della pulizia:', beforeVerification);
-
-      // Usa la funzione clear_user_data che ora preserva il profilo
-      const { data, error } = await supabase.rpc('clear_user_data', {
-        user_uuid: userId
-      });
-
-      if (error) throw error;
-
-      // Verifica dopo la pulizia
-      const afterVerification = await verifyUserDataExists(userId);
-      console.log('Dati dopo la pulizia:', afterVerification);
-
-      toast({
-        title: "Dati azzerati",
-        description: `Tutti i dati di ${userName} sono stati eliminati. L'accesso è stato preservato.`,
-      });
-
-      return { success: true, data, verification: { before: beforeVerification, after: afterVerification } };
-    } catch (error: any) {
-      console.error('Error clearing user data:', error);
-      toast({
-        title: "Errore",
-        description: error.message || "Errore durante l'azzeramento dei dati",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const deleteUserCompletely = async (userId: string, userName: string) => {
     setIsLoading(true);
     try {
@@ -191,7 +152,6 @@ export const useAdvancedEmployeeOperations = () => {
     getUserStorageUsage,
     getAllUsersStorageStats,
     verifyUserDataExists,
-    clearUserData,
     deleteUserCompletely,
     isLoading
   };
