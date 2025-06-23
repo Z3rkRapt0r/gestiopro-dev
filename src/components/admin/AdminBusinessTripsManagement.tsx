@@ -9,26 +9,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
-import { Plane, Calendar as CalendarIcon, Users } from 'lucide-react';
+import { Plane, Calendar as CalendarIcon, Users, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 export default function AdminBusinessTripsManagement() {
-  const { businessTrips, createTrip, isCreating } = useBusinessTrips();
+  const { businessTrips, createTrip, isCreating, deleteTrip, isDeleting } = useBusinessTrips();
   const { employees } = useActiveEmployees();
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('');
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [destination, setDestination] = useState('');
   const [reason, setReason] = useState('');
 
+  const handleEmployeeToggle = (employeeId: string) => {
+    setSelectedEmployees(prev => 
+      prev.includes(employeeId) 
+        ? prev.filter(id => id !== employeeId)
+        : [...prev, employeeId]
+    );
+  };
+
   const handleCreateTrip = () => {
-    if (!selectedEmployee || !startDate || !endDate || !destination) return;
+    if (selectedEmployees.length === 0 || !startDate || !endDate || !destination) return;
 
     createTrip({
-      user_id: selectedEmployee,
+      user_ids: selectedEmployees,
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: format(endDate, 'yyyy-MM-dd'),
       destination,
@@ -36,11 +46,15 @@ export default function AdminBusinessTripsManagement() {
     });
 
     // Reset form
-    setSelectedEmployee('');
+    setSelectedEmployees([]);
     setStartDate(undefined);
     setEndDate(undefined);
     setDestination('');
     setReason('');
+  };
+
+  const handleDeleteTrip = (tripId: string) => {
+    deleteTrip(tripId);
   };
 
   return (
@@ -51,24 +65,31 @@ export default function AdminBusinessTripsManagement() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plane className="w-5 h-5" />
-              Crea Trasferta per Dipendente
+              Crea Trasferta per Dipendenti
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Dipendente</Label>
-              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona dipendente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees?.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
+              <Label>Dipendenti (seleziona uno o più)</Label>
+              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                {employees?.map((employee) => (
+                  <div key={employee.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={employee.id}
+                      checked={selectedEmployees.includes(employee.id)}
+                      onCheckedChange={() => handleEmployeeToggle(employee.id)}
+                    />
+                    <Label htmlFor={employee.id} className="text-sm font-normal cursor-pointer">
                       {employee.first_name} {employee.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              {selectedEmployees.length > 0 && (
+                <div className="text-sm text-blue-600 mt-1">
+                  {selectedEmployees.length} dipendente/i selezionato/i
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -133,10 +154,10 @@ export default function AdminBusinessTripsManagement() {
 
             <Button 
               onClick={handleCreateTrip}
-              disabled={!selectedEmployee || !startDate || !endDate || !destination || isCreating}
+              disabled={selectedEmployees.length === 0 || !startDate || !endDate || !destination || isCreating}
               className="w-full"
             >
-              {isCreating ? 'Creando...' : 'Crea Trasferta'}
+              {isCreating ? 'Creando...' : `Crea Trasferta per ${selectedEmployees.length} dipendente/i`}
             </Button>
           </CardContent>
         </Card>
@@ -188,9 +209,41 @@ export default function AdminBusinessTripsManagement() {
                   <div className="font-medium">
                     {trip.profiles?.first_name} {trip.profiles?.last_name}
                   </div>
-                  <Badge className="bg-green-100 text-green-700">
-                    Approvata
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-green-100 text-green-700">
+                      Approvata
+                    </Badge>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          disabled={isDeleting}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Elimina Trasferta</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Sei sicuro di voler eliminare questa trasferta per {trip.profiles?.first_name} {trip.profiles?.last_name}? 
+                            Questa azione eliminerà anche tutte le presenze associate e non può essere annullata.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annulla</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleDeleteTrip(trip.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Elimina
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
 
                 <div className="text-sm space-y-1">

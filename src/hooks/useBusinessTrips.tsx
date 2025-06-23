@@ -97,6 +97,7 @@ export const useBusinessTrips = () => {
 
   const createTrip = useMutation({
     mutationFn: async (tripData: {
+      user_ids?: string[]; // Nuovo: array di IDs utenti per supportare più dipendenti
       user_id?: string;
       start_date: string;
       end_date: string;
@@ -108,85 +109,85 @@ export const useBusinessTrips = () => {
         throw new Error('Configurazione orari di lavoro non disponibile');
       }
 
-      // Se è admin e user_id è specificato, usa quello, altrimenti usa l'ID dell'utente corrente
-      const targetUserId = (profile?.role === 'admin' && tripData.user_id) ? tripData.user_id : user?.id;
+      // Determina gli utenti target
+      let targetUserIds: string[] = [];
+      if (tripData.user_ids && tripData.user_ids.length > 0) {
+        // Modalità multi-utente (nuova)
+        targetUserIds = tripData.user_ids;
+      } else if (tripData.user_id) {
+        // Modalità singolo utente (retrocompatibilità)
+        targetUserIds = [tripData.user_id];
+      } else {
+        // Utente corrente
+        if (!user?.id) throw new Error('Utente non autenticato');
+        targetUserIds = [user.id];
+      }
 
-      // Crea la trasferta (sempre approvata)
-      const { data: trip, error } = await supabase
-        .from('business_trips')
-        .insert({
+      const createdTrips = [];
+
+      // Crea una trasferta per ogni utente selezionato
+      for (const targetUserId of targetUserIds) {
+        // Crea la trasferta (sempre approvata)
+        const { data: trip, error } = await supabase
+          .from('business_trips')
+          .insert({
+            user_id: targetUserId,
+            start_date: tripData.start_date,
+            end_date: tripData.end_date,
+            destination: tripData.destination,
+            reason: tripData.reason,
+            status: 'approved',
+            approved_by: user?.id,
+            approved_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        createdTrips.push(trip);
+
+        // Genera tutti i giorni della trasferta
+        const startDate = new Date(tripData.start_date);
+        const endDate = new Date(tripData.end_date);
+        const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+        
+        // Filtra solo i giorni lavorativi basandosi sulla configurazione degli orari
+        const workingDays = allDays.filter(day => isWorkingDay(day));
+
+        // Crea le presenze per tutti i giorni lavorativi della trasferta
+        const attendancesToCreate = workingDays.map(day => ({
           user_id: targetUserId,
-          start_date: tripData.start_date,
-          end_date: tripData.end_date,
-          destination: tripData.destination,
-          reason: tripData.reason,
-          status: 'approved',
-          approved_by: user?.id,
-          approved_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+          date: format(day, 'yyyy-MM-dd'),
+          check_in_time: workSchedule.start_time,
+          check_out_time: workSchedule.end_time,
+          is_manual: true,
+          is_business_trip: true,
+          notes: `Trasferta: ${tripData.destination}`,
+          created_by: user?.id,
+        }));
 
-      if (error) throw error;
+        if (attendancesToCreate.length > 0) {
+          const { error: attendanceError } = await supabase
+            .from('unified_attendances')
+            .upsert(attendancesToCreate, {
+              onConflict: 'user_id,date'
+            });
 
-      // Genera tutti i giorni della trasferta
-      const startDate = new Date(tripData.start_date);
-      const endDate = new Date(tripData.end_date);
-      const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-      
-      // Filtra solo i giorni lavorativi basandosi sulla configurazione degli orari
-      const workingDays = allDays.filter(day => isWorkingDay(day));
-
-      console.log('Giorni lavorativi per trasferta:', workingDays.length, 'su', allDays.length, 'giorni totali');
-      console.log('Configurazione orari utilizzata:', {
-        start_time: workSchedule.start_time,
-        end_time: workSchedule.end_time,
-        days: {
-          monday: workSchedule.monday,
-          tuesday: workSchedule.tuesday,
-          wednesday: workSchedule.wednesday,
-          thursday: workSchedule.thursday,
-          friday: workSchedule.friday,
-          saturday: workSchedule.saturday,
-          sunday: workSchedule.sunday,
-        }
-      });
-
-      // Crea le presenze per tutti i giorni lavorativi della trasferta
-      const attendancesToCreate = workingDays.map(day => ({
-        user_id: targetUserId,
-        date: format(day, 'yyyy-MM-dd'),
-        check_in_time: workSchedule.start_time,
-        check_out_time: workSchedule.end_time,
-        is_manual: true,
-        is_business_trip: true,
-        notes: `Trasferta: ${tripData.destination}`,
-        created_by: user?.id,
-      }));
-
-      if (attendancesToCreate.length > 0) {
-        const { error: attendanceError } = await supabase
-          .from('unified_attendances')
-          .upsert(attendancesToCreate, {
-            onConflict: 'user_id,date'
-          });
-
-        if (attendanceError) {
-          console.error('Error creating trip attendances:', attendanceError);
-          // Non blocchiamo la creazione della trasferta se c'è un errore nelle presenze
-        } else {
-          console.log('Presenze trasferta create con successo:', attendancesToCreate.length);
+          if (attendanceError) {
+            console.error('Error creating trip attendances:', attendanceError);
+            // Non blocchiamo la creazione della trasferta se c'è un errore nelle presenze
+          }
         }
       }
 
-      return trip;
+      return createdTrips;
     },
-    onSuccess: () => {
+    onSuccess: (trips) => {
       queryClient.invalidateQueries({ queryKey: ['business-trips'] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
-        title: "Trasferta creata",
-        description: "La trasferta è stata creata e le presenze sono state registrate automaticamente per i giorni lavorativi configurati",
+        title: "Trasferte create",
+        description: `${trips.length} trasferta/e creata/e con successo. Le presenze sono state registrate automaticamente per i giorni lavorativi configurati`,
       });
     },
     onError: (error: any) => {
@@ -199,11 +200,66 @@ export const useBusinessTrips = () => {
     },
   });
 
+  const deleteTrip = useMutation({
+    mutationFn: async (tripId: string) => {
+      // Prima ottieni i dettagli della trasferta
+      const { data: trip, error: fetchError } = await supabase
+        .from('business_trips')
+        .select('*')
+        .eq('id', tripId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Elimina le presenze associate alla trasferta
+      const { error: attendanceError } = await supabase
+        .from('unified_attendances')
+        .delete()
+        .eq('user_id', trip.user_id)
+        .gte('date', trip.start_date)
+        .lte('date', trip.end_date)
+        .eq('is_business_trip', true);
+
+      if (attendanceError) {
+        console.error('Error deleting trip attendances:', attendanceError);
+        // Non blocchiamo l'eliminazione della trasferta
+      }
+
+      // Elimina la trasferta
+      const { error: deleteError } = await supabase
+        .from('business_trips')
+        .delete()
+        .eq('id', tripId);
+
+      if (deleteError) throw deleteError;
+
+      return trip;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['business-trips'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      toast({
+        title: "Trasferta eliminata",
+        description: "La trasferta e le presenze associate sono state eliminate con successo",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Delete trip error:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nell'eliminazione della trasferta",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     businessTrips,
     isLoading,
     createTrip: createTrip.mutate,
     isCreating: createTrip.isPending,
+    deleteTrip: deleteTrip.mutate,
+    isDeleting: deleteTrip.isPending,
     isWorkingDay, // Esportiamo la funzione per uso nei componenti
   };
 };
