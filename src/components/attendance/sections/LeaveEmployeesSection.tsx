@@ -1,8 +1,6 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Employee {
@@ -57,17 +55,6 @@ export default function LeaveEmployeesSection({
                     </div>
                   )}
                 </div>
-                {employee.attendance && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDeleteAttendance(employee.attendance)}
-                    disabled={isDeleting}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2 h-7 w-7 p-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                )}
               </div>
             </div>
           ))
