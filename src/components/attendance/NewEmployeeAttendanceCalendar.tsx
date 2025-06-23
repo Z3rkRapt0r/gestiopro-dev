@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,14 +18,6 @@ interface NewEmployeeAttendanceCalendarProps {
 
 export default function NewEmployeeAttendanceCalendar({ employee, attendances }: NewEmployeeAttendanceCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [yearlyStats, setYearlyStats] = useState({
-    totalWorkingDays: 0,
-    presentDays: 0,
-    sickDays: 0,
-    absentDays: 0,
-    attendancePercentage: 0
-  });
-  const [absentDates, setAbsentDates] = useState<Date[]>([]);
 
   const { workSchedule } = useWorkSchedules();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
@@ -53,21 +45,22 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     return date >= new Date(employee.hire_date);
   };
 
-  // CORREZIONE: Formattiamo la data selezionata in modo consistente
+  // Formattiamo la data selezionata in modo consistente
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-  console.log('Data selezionata calendario operatore:', selectedDateStr);
-  console.log('Presenze operatore disponibili:', attendances?.map(att => ({ date: att.date, check_in: att.check_in_time })));
   
-  const selectedDateAttendance = attendances.find(att => {
-    console.log(`Confronto operatore: ${att.date} === ${selectedDateStr} ?`, att.date === selectedDateStr);
-    return att.date === selectedDateStr;
-  });
+  const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
 
-  console.log('Presenza operatore per data selezionata:', selectedDateAttendance);
-
-  // CORREZIONE: Calcola il resoconto annuale basato sui giorni lavorativi che dovrebbero essere tracciati
-  const calculateYearlyStats = React.useCallback(async () => {
-    if (!employee?.id || !attendances) return;
+  // OTTIMIZZAZIONE: Calcola il resoconto annuale in modo sincrono usando useMemo
+  const yearlyStats = useMemo(() => {
+    if (!employee?.id || !attendances) {
+      return {
+        totalWorkingDays: 0,
+        presentDays: 0,
+        sickDays: 0,
+        absentDays: 0,
+        attendancePercentage: 0
+      };
+    }
 
     const currentYear = new Date().getFullYear();
     const startOfYear = new Date(currentYear, 0, 1);
@@ -79,21 +72,21 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       return attDate >= startOfYear && attDate <= today;
     });
     
-    // Conta i giorni lavorativi che dovrebbero essere tracciati usando la logica centralizzata
+    // Conta i giorni lavorativi dall'inizio dell'anno o dalla data di assunzione
     let workingDaysCount = 0;
     const tempDate = new Date(startOfYear);
     
+    // Se il dipendente è nuovo, inizia dalla data di assunzione
+    if (employee.tracking_start_type === 'from_hire_date' && employee.hire_date) {
+      const hireDate = new Date(employee.hire_date);
+      if (hireDate > startOfYear) {
+        tempDate.setTime(hireDate.getTime());
+      }
+    }
+    
     while (tempDate <= today) {
       if (isWorkingDay(tempDate) && isEmployeeHiredOnDate(tempDate)) {
-        const dateStr = format(tempDate, 'yyyy-MM-dd');
-        try {
-          const shouldTrack = await shouldTrackEmployeeOnDate(employee.id, dateStr);
-          if (shouldTrack) {
-            workingDaysCount++;
-          }
-        } catch (error) {
-          console.error('Errore nel calcolo shouldTrack:', error);
-        }
+        workingDaysCount++;
       }
       tempDate.setDate(tempDate.getDate() + 1);
     }
@@ -102,20 +95,17 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     const sickDays = yearAttendances.filter(att => att.is_sick_leave).length;
     const absentDays = Math.max(0, workingDaysCount - yearAttendances.length);
     
-    const newStats = {
+    return {
       totalWorkingDays: workingDaysCount,
       presentDays,
       sickDays,
       absentDays,
       attendancePercentage: workingDaysCount > 0 ? Math.round((presentDays / workingDaysCount) * 100) : 0
     };
+  }, [employee?.id, employee?.hire_date, employee?.tracking_start_type, attendances, workSchedule]);
 
-    console.log('Statistiche calcolate per', employee.first_name, employee.last_name, ':', newStats);
-    setYearlyStats(newStats);
-  }, [employee?.id, attendances, workSchedule, shouldTrackEmployeeOnDate]);
-
-  // CORREZIONE: Ottieni le date con presenze formattate correttamente
-  const attendanceDates = React.useMemo(() => {
+  // OTTIMIZZAZIONE: Ottieni le date con presenze usando useMemo
+  const attendanceDates = useMemo(() => {
     return attendances
       .filter(att => att.check_in_time || att.is_sick_leave)
       .map(att => {
@@ -124,7 +114,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       });
   }, [attendances]);
 
-  const sickLeaveDates = React.useMemo(() => {
+  const sickLeaveDates = useMemo(() => {
     return attendances
       .filter(att => att.is_sick_leave)
       .map(att => {
@@ -133,8 +123,8 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       });
   }, [attendances]);
 
-  // CORREZIONE: Calcola i giorni di assenza usando la logica centralizzata
-  const getAbsentDates = React.useCallback(async () => {
+  // OTTIMIZZAZIONE: Calcola i giorni di assenza usando useMemo
+  const absentDates = useMemo(() => {
     if (!employee?.id) return [];
 
     const currentDate = new Date();
@@ -150,15 +140,9 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
         const dateStr = format(tempDate, 'yyyy-MM-dd');
         const hasAttendance = attendances.some(att => att.date === dateStr);
         
-        try {
-          const shouldTrack = await shouldTrackEmployeeOnDate(employee.id, dateStr);
-          
-          // Se dovrebbe essere tracciato, è un giorno lavorativo e non ha presenza
-          if (shouldTrack && isWorkingDay(tempDate) && !hasAttendance && tempDate < currentDate) {
-            absentDates.push(new Date(tempDate));
-          }
-        } catch (error) {
-          console.error('Errore nel calcolo getAbsentDates:', error);
+        // Se è un giorno lavorativo, non ha presenza e la data è passata
+        if (isWorkingDay(tempDate) && !hasAttendance && tempDate < currentDate) {
+          absentDates.push(new Date(tempDate));
         }
       }
       
@@ -166,18 +150,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     }
     
     return absentDates;
-  }, [employee?.id, attendances, isWorkingDay, isEmployeeHiredOnDate, shouldTrackEmployeeOnDate]);
-
-  // Effetti per aggiornare i dati quando cambiano le dipendenze
-  React.useEffect(() => {
-    calculateYearlyStats();
-  }, [calculateYearlyStats]);
-
-  React.useEffect(() => {
-    getAbsentDates().then(setAbsentDates);
-  }, [getAbsentDates]);
-
-  console.log('Date con presenze per calendario operatore:', attendanceDates);
+  }, [employee?.id, employee?.hire_date, attendances, workSchedule]);
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
@@ -354,17 +327,8 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3">
-            {selectedDate && !isWorkingDay(selectedDate) ? (
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                  <span className="font-semibold text-gray-700 text-sm">Non lavorativo</span>
-                </div>
-                <p className="text-xs text-gray-600">
-                  Questo giorno non è configurato come giorno lavorativo
-                </p>
-              </div>
-            ) : selectedDate && !isEmployeeHiredOnDate(selectedDate) ? (
+            {/* CORREZIONE: Controllo più specifico per "Non ancora assunto" */}
+            {selectedDate && !isEmployeeHiredOnDate(selectedDate) ? (
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
@@ -372,6 +336,16 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                 </div>
                 <p className="text-xs text-gray-600">
                   Il dipendente è stato assunto il {employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'}
+                </p>
+              </div>
+            ) : selectedDate && !isWorkingDay(selectedDate) ? (
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <span className="font-semibold text-gray-700 text-sm">Non lavorativo</span>
+                </div>
+                <p className="text-xs text-gray-600">
+                  Questo giorno non è configurato come giorno lavorativo
                 </p>
               </div>
             ) : selectedDateAttendance ? (
