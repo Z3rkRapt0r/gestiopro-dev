@@ -169,6 +169,7 @@ export default function NewDailyAttendanceCalendar() {
         const employee = employees?.find(emp => emp.id === leave.user_id);
         return {
           ...employee,
+          attendance: null, // CORREZIONE: Aggiungi attendance come null
           leave: leave,
         };
       })
