@@ -1,7 +1,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NewDailyAttendanceCalendar from './NewDailyAttendanceCalendar';
-import NewOperatorAttendanceSection from './NewOperatorAttendanceSection';
+import OperatorCalendarSection from './OperatorCalendarSection';
 
 export default function NewAttendanceCalendar() {
   return (
@@ -17,7 +17,7 @@ export default function NewAttendanceCalendar() {
         </TabsContent>
 
         <TabsContent value="operator" className="mt-6">
-          <NewOperatorAttendanceSection />
+          <OperatorCalendarSection />
         </TabsContent>
       </Tabs>
     </div>
