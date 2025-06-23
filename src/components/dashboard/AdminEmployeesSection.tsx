@@ -24,7 +24,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { 
   Users, 
@@ -33,36 +32,27 @@ import {
   Eye, 
   Search, 
   Loader2, 
-  Trash2, 
   MoreVertical, 
   HardDrive, 
-  AlertTriangle, 
-  Skull,
-  Database
+  Trash2
 } from 'lucide-react';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import CreateEmployeeForm from './CreateEmployeeForm';
 import EditEmployeeForm from './EditEmployeeForm';
-import DeleteEmployeeDialog from './DeleteEmployeeDialog';
-import ClearUserDataDialog from './ClearUserDataDialog';
-import DeleteUserCompletelyDialog from './DeleteUserCompletelyDialog';
 import UserStorageStatsDialog from './UserStorageStatsDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function AdminEmployeesSection() {
   const { employees, loading } = useActiveEmployees();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
-  const [employeeToDelete, setEmployeeToDelete] = useState<any>(null);
-  const [employeeToClear, setEmployeeToClear] = useState<any>(null);
-  const [employeeToDeleteCompletely, setEmployeeToDeleteCompletely] = useState<any>(null);
+  const [employeeToRemove, setEmployeeToRemove] = useState<any>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isClearDataDialogOpen, setIsClearDataDialogOpen] = useState(false);
-  const [isDeleteCompletelyDialogOpen, setIsDeleteCompletelyDialogOpen] = useState(false);
   const [isStorageStatsDialogOpen, setIsStorageStatsDialogOpen] = useState(false);
   
   const queryClient = useQueryClient();
@@ -78,19 +68,51 @@ export default function AdminEmployeesSection() {
     setIsEditDialogOpen(true);
   };
 
-  const handleDeleteEmployee = (employee: any) => {
-    setEmployeeToDelete(employee);
-    setIsDeleteDialogOpen(true);
-  };
+  const handleRemoveEmployee = async (employee: any) => {
+    if (!employee) return;
 
-  const handleClearUserData = (employee: any) => {
-    setEmployeeToClear(employee);
-    setIsClearDataDialogOpen(true);
-  };
+    const confirmed = window.confirm(
+      `Sei sicuro di voler rimuovere completamente ${employee.first_name} ${employee.last_name}? ` +
+      `Questa azione eliminerà definitivamente tutti i dati del dipendente (documenti, presenze, ferie, notifiche) e non può essere annullata.`
+    );
 
-  const handleDeleteCompletely = (employee: any) => {
-    setEmployeeToDeleteCompletely(employee);
-    setIsDeleteCompletelyDialogOpen(true);
+    if (!confirmed) return;
+
+    setIsRemoving(true);
+    setEmployeeToRemove(employee);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-cleanup-employee', {
+        body: { 
+          userId: employee.id, 
+          userName: `${employee.first_name} ${employee.last_name}` 
+        }
+      });
+
+      if (error) throw error;
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore durante la rimozione');
+      }
+
+      toast({
+        title: "Dipendente rimosso",
+        description: data.message,
+        className: "bg-green-50 border-green-200 text-green-800",
+      });
+
+      await refreshData();
+    } catch (error: any) {
+      console.error('Error removing employee:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la rimozione del dipendente",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRemoving(false);
+      setEmployeeToRemove(null);
+    }
   };
 
   const refreshData = async () => {
@@ -118,24 +140,6 @@ export default function AdminEmployeesSection() {
     });
   };
 
-  const handleDeleteEmployeeSuccess = async () => {
-    setIsDeleteDialogOpen(false);
-    setEmployeeToDelete(null);
-    await refreshData();
-  };
-
-  const handleClearDataSuccess = async () => {
-    setIsClearDataDialogOpen(false);
-    setEmployeeToClear(null);
-    await refreshData();
-  };
-
-  const handleDeleteCompletelySuccess = async () => {
-    setIsDeleteCompletelyDialogOpen(false);
-    setEmployeeToDeleteCompletely(null);
-    await refreshData();
-  };
-
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto py-8 px-6 space-y-6">
@@ -159,9 +163,9 @@ export default function AdminEmployeesSection() {
               <Users className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Gestione Avanzata Dipendenti</h1>
+              <h1 className="text-3xl font-bold text-slate-900">Gestione Dipendenti</h1>
               <p className="text-slate-600 text-lg">
-                Controllo completo su utenti, dati e spazio di archiviazione
+                Gestione completa dei dipendenti con rimozione automatica
               </p>
             </div>
           </div>
@@ -360,33 +364,23 @@ export default function AdminEmployeesSection() {
                                 variant="outline"
                                 size="sm"
                                 className="border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200"
+                                disabled={isRemoving && employeeToRemove?.id === employee.id}
                               >
-                                <MoreVertical className="w-4 h-4" />
+                                {isRemoving && employeeToRemove?.id === employee.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <MoreVertical className="w-4 h-4" />
+                                )}
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
                               <DropdownMenuItem 
-                                onClick={() => handleDeleteEmployee(employee)}
-                                className="text-orange-600 focus:text-orange-700"
+                                onClick={() => handleRemoveEmployee(employee)}
+                                className="text-red-600 focus:text-red-700 font-medium"
+                                disabled={isRemoving}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
-                                Disattiva Utente
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => handleClearUserData(employee)}
-                                className="text-amber-600 focus:text-amber-700"
-                              >
-                                <Database className="w-4 h-4 mr-2" />
-                                Azzera Tutti i Dati
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => handleDeleteCompletely(employee)}
-                                className="text-red-600 focus:text-red-700 font-medium"
-                              >
-                                <Skull className="w-4 h-4 mr-2" />
-                                Elimina Definitivamente
+                                Rimuovi Completamente
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -421,39 +415,6 @@ export default function AdminEmployeesSection() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Delete Dialog */}
-      <DeleteEmployeeDialog
-        employee={employeeToDelete}
-        isOpen={isDeleteDialogOpen}
-        onClose={() => {
-          setIsDeleteDialogOpen(false);
-          setEmployeeToDelete(null);
-        }}
-        onEmployeeDeleted={handleDeleteEmployeeSuccess}
-      />
-
-      {/* Clear Data Dialog */}
-      <ClearUserDataDialog
-        employee={employeeToClear}
-        isOpen={isClearDataDialogOpen}
-        onClose={() => {
-          setIsClearDataDialogOpen(false);
-          setEmployeeToClear(null);
-        }}
-        onDataCleared={handleClearDataSuccess}
-      />
-
-      {/* Delete Completely Dialog */}
-      <DeleteUserCompletelyDialog
-        employee={employeeToDeleteCompletely}
-        isOpen={isDeleteCompletelyDialogOpen}
-        onClose={() => {
-          setIsDeleteCompletelyDialogOpen(false);
-          setEmployeeToDeleteCompletely(null);
-        }}
-        onUserDeleted={handleDeleteCompletelySuccess}
-      />
 
       {/* Storage Stats Dialog */}
       <UserStorageStatsDialog
