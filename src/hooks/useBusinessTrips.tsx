@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -245,10 +246,15 @@ export const useBusinessTrips = () => {
       console.log('Trasferta eliminata con successo');
       return trip;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       console.log('Invalidando cache...');
-      queryClient.invalidateQueries({ queryKey: ['business-trips'] });
-      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      // Invalida le query e attendi che si aggiornino
+      await queryClient.invalidateQueries({ queryKey: ['business-trips'] });
+      await queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      
+      // Forza il refetch delle trasferte
+      await queryClient.refetchQueries({ queryKey: ['business-trips'] });
+      
       toast({
         title: "Trasferta eliminata",
         description: "La trasferta e le presenze associate sono state eliminate con successo",
