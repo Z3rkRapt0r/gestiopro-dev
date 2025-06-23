@@ -7,15 +7,15 @@ import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import NewEmployeeAttendanceCalendar from './NewEmployeeAttendanceCalendar';
 
-export default function NewOperatorAttendanceSection() {
+export default function OperatorCalendarSection() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const { attendances, isLoading } = useUnifiedAttendances();
-  const { employees } = useActiveEmployees();
+  const { employees, loading: employeesLoading } = useActiveEmployees();
 
   const selectedEmployee = employees?.find(emp => emp.id === selectedEmployeeId);
   const employeeAttendances = attendances?.filter(att => att.user_id === selectedEmployeeId) || [];
 
-  if (isLoading) {
+  if (isLoading || employeesLoading) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -67,13 +67,15 @@ export default function NewOperatorAttendanceSection() {
               <SelectContent>
                 {employees.map((employee) => (
                   <SelectItem key={employee.id} value={employee.id}>
-                    {employee.first_name} {employee.last_name} ({employee.email})
-                    {employee.tracking_start_type === 'from_hire_date' && (
-                      <span className="ml-2 text-xs text-purple-600">Nuovo</span>
-                    )}
-                    {employee.tracking_start_type === 'from_year_start' && (
-                      <span className="ml-2 text-xs text-orange-600">Esistente</span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <span>{employee.first_name} {employee.last_name} ({employee.email})</span>
+                      {employee.tracking_start_type === 'from_hire_date' && (
+                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Nuovo</span>
+                      )}
+                      {employee.tracking_start_type === 'from_year_start' && (
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">Esistente</span>
+                      )}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -81,10 +83,12 @@ export default function NewOperatorAttendanceSection() {
           </div>
 
           {selectedEmployee && (
-            <NewEmployeeAttendanceCalendar
-              employee={selectedEmployee}
-              attendances={employeeAttendances}
-            />
+            <div className="mt-6">
+              <NewEmployeeAttendanceCalendar
+                employee={selectedEmployee}
+                attendances={employeeAttendances}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

@@ -4,6 +4,7 @@ import NewAttendanceCalendar from '@/components/attendance/NewAttendanceCalendar
 import AdminBusinessTripsManagement from '@/components/admin/AdminBusinessTripsManagement';
 import AttendanceExportSection from '@/components/attendance/AttendanceExportSection';
 import ManualAttendanceSection from '@/components/attendance/ManualAttendanceSection';
+import OperatorCalendarSection from '@/components/attendance/OperatorCalendarSection';
 
 export default function AdminAttendanceSection() {
   return (
@@ -16,8 +17,9 @@ export default function AdminAttendanceSection() {
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="calendar">Calendario</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="calendar">Calendario Generale</TabsTrigger>
+          <TabsTrigger value="operator">Calendario Operatore</TabsTrigger>
           <TabsTrigger value="manual">Inserimento Manuale</TabsTrigger>
           <TabsTrigger value="business-trips">Trasferte</TabsTrigger>
           <TabsTrigger value="export">Esportazioni</TabsTrigger>
@@ -25,6 +27,10 @@ export default function AdminAttendanceSection() {
 
         <TabsContent value="calendar" className="space-y-6">
           <NewAttendanceCalendar />
+        </TabsContent>
+
+        <TabsContent value="operator" className="space-y-6">
+          <OperatorCalendarSection />
         </TabsContent>
 
         <TabsContent value="manual" className="space-y-6">
