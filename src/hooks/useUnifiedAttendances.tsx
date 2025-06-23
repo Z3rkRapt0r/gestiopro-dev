@@ -31,7 +31,7 @@ export const useUnifiedAttendances = () => {
   const { data: attendances, isLoading } = useQuery({
     queryKey: ['unified-attendances'],
     queryFn: async () => {
-      console.log('Caricamento presenze unificate dalla nuova tabella...');
+      console.log('Caricamento presenze unificate dalla tabella unified_attendances...');
       
       let query = supabase
         .from('unified_attendances')
@@ -124,6 +124,7 @@ export const useUnifiedAttendances = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['attendances'] });
       console.log('SUCCESS CALLBACK - Presenza salvata con data:', data.date);
       toast({
         title: "Presenza salvata",
@@ -142,15 +143,33 @@ export const useUnifiedAttendances = () => {
 
   const deleteAttendance = useMutation({
     mutationFn: async (attendance: UnifiedAttendance) => {
-      const { error } = await supabase
+      console.log('Eliminando presenza:', attendance);
+      
+      // Elimina dalla tabella unificata
+      const { error: unifiedError } = await supabase
         .from('unified_attendances')
         .delete()
         .eq('id', attendance.id);
 
-      if (error) throw error;
+      if (unifiedError) throw unifiedError;
+
+      // Se non è manuale, elimina anche dalla tabella attendances per mantenere la sincronizzazione
+      if (!attendance.is_manual) {
+        const { error: attendanceError } = await supabase
+          .from('attendances')
+          .delete()
+          .eq('user_id', attendance.user_id)
+          .eq('date', attendance.date);
+
+        // Non bloccare se non trova record nella tabella attendances
+        if (attendanceError) {
+          console.warn('Errore eliminazione da attendances (non bloccante):', attendanceError);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza eliminata",
         description: "La presenza è stata eliminata con successo",

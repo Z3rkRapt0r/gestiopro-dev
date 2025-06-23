@@ -27,13 +27,28 @@ export const useAttendanceOperations = () => {
       }
 
       const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const checkInTime = now.toTimeString().slice(0, 5); // HH:MM format
       
-      const { data, error } = await supabase
+      // Controlla se esiste già una presenza per oggi
+      const { data: existingAttendance } = await supabase
+        .from('unified_attendances')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('date', today)
+        .single();
+
+      if (existingAttendance) {
+        throw new Error('Hai già registrato la presenza per oggi');
+      }
+
+      // Inserisci nella tabella attendances (per compatibilità)
+      const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendances')
         .upsert({
           user_id: user?.id,
           date: today,
-          check_in_time: new Date().toISOString(),
+          check_in_time: now.toISOString(),
           check_in_latitude: latitude,
           check_in_longitude: longitude,
           is_business_trip: isBusinessTrip,
@@ -44,11 +59,31 @@ export const useAttendanceOperations = () => {
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (attendanceError) throw attendanceError;
+
+      // Inserisci nella tabella unificata
+      const { data: unifiedData, error: unifiedError } = await supabase
+        .from('unified_attendances')
+        .upsert({
+          user_id: user?.id,
+          date: today,
+          check_in_time: checkInTime,
+          is_manual: false,
+          is_business_trip: isBusinessTrip,
+          created_by: user?.id,
+        }, {
+          onConflict: 'user_id,date'
+        })
+        .select()
+        .single();
+
+      if (unifiedError) throw unifiedError;
+
+      return { attendanceData, unifiedData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
         title: "Check-in effettuato",
         description: "Il tuo check-in è stato registrato con successo",
@@ -67,11 +102,14 @@ export const useAttendanceOperations = () => {
   const checkOutMutation = useMutation({
     mutationFn: async ({ latitude, longitude }: { latitude: number; longitude: number }) => {
       const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const checkOutTime = now.toTimeString().slice(0, 5); // HH:MM format
       
-      const { data, error } = await supabase
+      // Aggiorna la tabella attendances
+      const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendances')
         .update({
-          check_out_time: new Date().toISOString(),
+          check_out_time: now.toISOString(),
           check_out_latitude: latitude,
           check_out_longitude: longitude,
         })
@@ -80,11 +118,26 @@ export const useAttendanceOperations = () => {
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (attendanceError) throw attendanceError;
+
+      // Aggiorna la tabella unificata
+      const { data: unifiedData, error: unifiedError } = await supabase
+        .from('unified_attendances')
+        .update({
+          check_out_time: checkOutTime,
+        })
+        .eq('user_id', user?.id)
+        .eq('date', today)
+        .select()
+        .single();
+
+      if (unifiedError) throw unifiedError;
+
+      return { attendanceData, unifiedData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
         title: "Check-out effettuato",
         description: "Il tuo check-out è stato registrato con successo",

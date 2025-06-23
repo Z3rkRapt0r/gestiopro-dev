@@ -24,7 +24,7 @@ export default function AttendanceCheckInOut() {
   const { attendances } = useUnifiedAttendances();
   const { workSchedule } = useWorkSchedules();
 
-  // Trova la presenza di oggi
+  // Trova la presenza di oggi dalla tabella unificata
   const today = format(new Date(), 'yyyy-MM-dd');
   const todayAttendance = attendances?.find(att => 
     att.user_id === user?.id && att.date === today
@@ -58,6 +58,11 @@ export default function AttendanceCheckInOut() {
   };
 
   const handleCheckIn = async () => {
+    // Controlla se è già stata registrata una presenza
+    if (todayAttendance) {
+      return; // Il pulsante dovrebbe essere disabilitato, ma aggiungiamo comunque il controllo
+    }
+
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -210,6 +215,15 @@ export default function AttendanceCheckInOut() {
                 >
                   {isCheckingOut ? 'Registrando uscita...' : 'Registra Uscita'}
                 </Button>
+              )}
+
+              {/* Mostra se è stata registrata manualmente */}
+              {todayAttendance.is_manual && (
+                <div className="text-center text-sm text-gray-600">
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                    Presenza inserita manualmente
+                  </Badge>
+                </div>
               )}
             </div>
           ) : (
