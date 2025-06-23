@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { it } from 'date-fns/locale';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceStats';
+import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import type { Attendance } from '@/hooks/useAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 
@@ -21,6 +23,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   const { workSchedule } = useWorkSchedules();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
   const { leaveBalance } = useEmployeeLeaveBalanceStats(employee?.id);
+  const { businessTrips } = useBusinessTrips();
 
   // Funzione per verificare se un giorno è lavorativo
   const isWorkingDay = (date: Date) => {
@@ -56,6 +59,45 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     .filter(att => att.check_in_time)
     .map(att => new Date(att.date));
 
+  // Ottieni le date delle trasferte per questo dipendente
+  const businessTripDates = [];
+  if (businessTrips) {
+    businessTrips.forEach(trip => {
+      if (trip.user_id === employee.id) {
+        const startDate = new Date(trip.start_date);
+        const endDate = new Date(trip.end_date);
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          businessTripDates.push(new Date(d));
+        }
+      }
+    });
+  }
+
+  // Verifica se la data selezionata è in trasferta
+  const isOnBusinessTrip = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return businessTrips?.some(trip => {
+      if (trip.user_id !== employee.id) return false;
+      const tripStart = new Date(trip.start_date);
+      const tripEnd = new Date(trip.end_date);
+      const currentDate = new Date(date);
+      return currentDate >= tripStart && currentDate <= tripEnd;
+    }) || false;
+  };
+
+  // Ottieni i dettagli della trasferta per la data selezionata
+  const getBusinessTripForDate = (date: Date) => {
+    if (!businessTrips) return null;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return businessTrips.find(trip => {
+      if (trip.user_id !== employee.id) return false;
+      const tripStart = new Date(trip.start_date);
+      const tripEnd = new Date(trip.end_date);
+      const currentDate = new Date(date);
+      return currentDate >= tripStart && currentDate <= tripEnd;
+    });
+  };
+
   // Genera le date che dovrebbero essere mostrate come assenti (rosse) dall'inizio dell'anno
   const getAbsentDates = async () => {
     const dates = [];
@@ -76,10 +118,11 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const shouldShow = await shouldShowAsAbsent(d);
       if (shouldShow) {
-        // Verifica se NON ha presenza per questa data
+        // Verifica se NON ha presenza per questa data E non è in trasferta
         const dateStr = d.toISOString().split('T')[0];
         const hasAttendance = attendances.some(att => att.date === dateStr && att.check_in_time);
-        if (!hasAttendance) {
+        const isBusinessTrip = isOnBusinessTrip(d);
+        if (!hasAttendance && !isBusinessTrip) {
           dates.push(new Date(d));
         }
       }
@@ -91,7 +134,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
 
   React.useEffect(() => {
     getAbsentDates().then(setAbsentDates);
-  }, [employee.id, attendances]);
+  }, [employee.id, attendances, businessTrips]);
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
@@ -100,6 +143,8 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
       minute: '2-digit'
     });
   };
+
+  const selectedDateBusinessTrip = selectedDate ? getBusinessTripForDate(selectedDate) : null;
 
   return (
     <div className="space-y-6">
@@ -177,7 +222,8 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                 locale={it}
                 modifiers={{
                   present: attendanceDates,
-                  absent: absentDates
+                  absent: absentDates,
+                  businessTrip: businessTripDates
                 }}
                 modifiersStyles={{
                   present: {
@@ -189,6 +235,11 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                     backgroundColor: '#fecaca',
                     color: '#dc2626',
                     fontWeight: 'bold'
+                  },
+                  businessTrip: {
+                    backgroundColor: '#fef3c7',
+                    color: '#92400e',
+                    fontWeight: 'bold'
                   }
                 }}
                 className="rounded-md border w-fit"
@@ -198,6 +249,10 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 bg-green-200 rounded"></div>
                 <span>Giorni di presenza</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-yellow-200 rounded"></div>
+                <span>Giorni in trasferta</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 bg-red-200 rounded"></div>
@@ -260,17 +315,41 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                   Giorno non configurato come lavorativo
                 </p>
               </div>
+            ) : selectedDateBusinessTrip ? (
+              <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <span className="font-semibold text-yellow-700 text-sm">In Trasferta</span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="text-gray-600">Destinazione:</span>
+                    <div className="font-medium text-yellow-700">
+                      {selectedDateBusinessTrip.destination}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Periodo:</span>
+                    <div className="font-medium text-yellow-700">
+                      {format(new Date(selectedDateBusinessTrip.start_date), 'dd/MM/yyyy')} - {format(new Date(selectedDateBusinessTrip.end_date), 'dd/MM/yyyy')}
+                    </div>
+                  </div>
+                  {selectedDateBusinessTrip.reason && (
+                    <div>
+                      <span className="text-gray-600">Motivo:</span>
+                      <div className="font-medium text-yellow-700">
+                        {selectedDateBusinessTrip.reason}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : selectedDateAttendance ? (
               <div className="space-y-3">
                 <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span className="font-semibold text-green-700 text-sm">Presente</span>
-                    {selectedDateAttendance.is_business_trip && (
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs">
-                        Trasferta
-                      </Badge>
-                    )}
                   </div>
                   <div className="space-y-2 text-xs">
                     <div>
