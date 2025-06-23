@@ -202,66 +202,96 @@ export const useBusinessTrips = () => {
 
   const deleteTripMutation = useMutation({
     mutationFn: async (tripId: string) => {
-      console.log('Iniziando eliminazione trasferta:', tripId);
+      console.log('🗑️ Inizio eliminazione trasferta:', tripId);
+      console.log('👤 Utente corrente:', { id: user?.id, role: profile?.role });
       
-      // Prima ottieni i dettagli della trasferta
-      const { data: trip, error: fetchError } = await supabase
-        .from('business_trips')
-        .select('*')
-        .eq('id', tripId)
-        .single();
+      try {
+        // Prima ottieni i dettagli della trasferta
+        console.log('📋 Recupero dettagli trasferta...');
+        const { data: trip, error: fetchError } = await supabase
+          .from('business_trips')
+          .select('*')
+          .eq('id', tripId)
+          .single();
 
-      if (fetchError) {
-        console.error('Errore nel recupero trasferta:', fetchError);
-        throw fetchError;
+        if (fetchError) {
+          console.error('❌ Errore nel recupero trasferta:', fetchError);
+          throw new Error(`Errore nel recupero trasferta: ${fetchError.message}`);
+        }
+
+        if (!trip) {
+          console.error('❌ Trasferta non trovata');
+          throw new Error('Trasferta non trovata');
+        }
+
+        console.log('✅ Trasferta trovata:', {
+          id: trip.id,
+          user_id: trip.user_id,
+          destination: trip.destination,
+          dates: `${trip.start_date} - ${trip.end_date}`
+        });
+
+        // Elimina le presenze associate alla trasferta
+        console.log('🧹 Eliminazione presenze associate...');
+        const { error: attendanceError, count: deletedAttendances } = await supabase
+          .from('unified_attendances')
+          .delete()
+          .eq('user_id', trip.user_id)
+          .gte('date', trip.start_date)
+          .lte('date', trip.end_date)
+          .eq('is_business_trip', true);
+
+        if (attendanceError) {
+          console.warn('⚠️ Errore nell\'eliminazione presenze (continuo comunque):', attendanceError);
+        } else {
+          console.log('✅ Presenze eliminate:', deletedAttendances || 0);
+        }
+
+        // Elimina la trasferta
+        console.log('🗑️ Eliminazione trasferta dal database...');
+        const { error: deleteError, count: deletedTrips } = await supabase
+          .from('business_trips')
+          .delete()
+          .eq('id', tripId);
+
+        if (deleteError) {
+          console.error('❌ Errore eliminazione trasferta:', deleteError);
+          throw new Error(`Errore nell'eliminazione della trasferta: ${deleteError.message}`);
+        }
+
+        console.log('✅ Trasferta eliminata con successo. Righe eliminate:', deletedTrips || 0);
+        
+        if ((deletedTrips || 0) === 0) {
+          console.warn('⚠️ Nessuna riga eliminata - possibile problema con le policy RLS');
+          throw new Error('Nessuna trasferta è stata eliminata. Verificare i permessi.');
+        }
+
+        return { trip, deletedAttendances: deletedAttendances || 0, deletedTrips: deletedTrips || 0 };
+      } catch (error) {
+        console.error('💥 Errore durante l\'eliminazione:', error);
+        throw error;
       }
-
-      console.log('Trasferta trovata:', trip);
-
-      // Elimina le presenze associate alla trasferta
-      const { error: attendanceError } = await supabase
-        .from('unified_attendances')
-        .delete()
-        .eq('user_id', trip.user_id)
-        .gte('date', trip.start_date)
-        .lte('date', trip.end_date)
-        .eq('is_business_trip', true);
-
-      if (attendanceError) {
-        console.error('Error deleting trip attendances:', attendanceError);
-        // Non blocchiamo l'eliminazione della trasferta
-      }
-
-      // Elimina la trasferta
-      const { error: deleteError } = await supabase
-        .from('business_trips')
-        .delete()
-        .eq('id', tripId);
-
-      if (deleteError) {
-        console.error('Errore eliminazione trasferta:', deleteError);
-        throw deleteError;
-      }
-
-      console.log('Trasferta eliminata con successo');
-      return trip;
     },
-    onSuccess: async () => {
-      console.log('Invalidando cache...');
+    onSuccess: async (result) => {
+      console.log('🎉 Eliminazione completata con successo:', result);
+      
       // Invalida le query e attendi che si aggiornino
-      await queryClient.invalidateQueries({ queryKey: ['business-trips'] });
-      await queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      console.log('🔄 Aggiornamento cache...');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['business-trips'] }),
+        queryClient.invalidateQueries({ queryKey: ['unified-attendances'] })
+      ]);
       
       // Forza il refetch delle trasferte
       await queryClient.refetchQueries({ queryKey: ['business-trips'] });
       
       toast({
         title: "Trasferta eliminata",
-        description: "La trasferta e le presenze associate sono state eliminate con successo",
+        description: `La trasferta è stata eliminata con successo insieme a ${result.deletedAttendances} presenza/e associate`,
       });
     },
     onError: (error: any) => {
-      console.error('Delete trip error:', error);
+      console.error('💥 Errore nell\'eliminazione trasferta:', error);
       toast({
         title: "Errore",
         description: error.message || "Errore nell'eliminazione della trasferta",

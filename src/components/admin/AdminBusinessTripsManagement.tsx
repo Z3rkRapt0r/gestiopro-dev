@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
-import { Plane, Calendar as CalendarIcon, Users, Trash2 } from 'lucide-react';
+import { Plane, Calendar as CalendarIcon, Users, Trash2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -53,8 +53,12 @@ export default function AdminBusinessTripsManagement() {
     setReason('');
   };
 
-  const handleDeleteTrip = (tripId: string) => {
-    console.log('Tentativo di eliminazione trasferta:', tripId);
+  const handleDeleteTrip = (tripId: string, employeeName: string) => {
+    console.log('🔴 Richiesta eliminazione trasferta:', {
+      tripId,
+      employeeName,
+      timestamp: new Date().toISOString()
+    });
     deleteTrip(tripId);
   };
 
@@ -222,7 +226,11 @@ export default function AdminBusinessTripsManagement() {
                           disabled={isDeleting}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {isDeleting ? (
+                            <AlertCircle className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -230,17 +238,30 @@ export default function AdminBusinessTripsManagement() {
                           <AlertDialogTitle>Elimina Trasferta</AlertDialogTitle>
                           <AlertDialogDescription>
                             Sei sicuro di voler eliminare questa trasferta per {trip.profiles?.first_name} {trip.profiles?.last_name}? 
-                            Questa azione eliminerà anche tutte le presenze associate e non può essere annullata.
+                            <br /><br />
+                            <strong>Questa azione:</strong>
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                              <li>Eliminerà la trasferta in modo permanente</li>
+                              <li>Rimuoverà tutte le presenze associate alla trasferta</li>
+                              <li>Non può essere annullata</li>
+                            </ul>
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Annulla</AlertDialogCancel>
+                          <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
                           <AlertDialogAction 
-                            onClick={() => handleDeleteTrip(trip.id)}
+                            onClick={() => handleDeleteTrip(trip.id, `${trip.profiles?.first_name} ${trip.profiles?.last_name}`)}
                             className="bg-red-600 hover:bg-red-700"
                             disabled={isDeleting}
                           >
-                            {isDeleting ? 'Eliminando...' : 'Elimina'}
+                            {isDeleting ? (
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 animate-spin" />
+                                Eliminando...
+                              </div>
+                            ) : (
+                              'Elimina Definitivamente'
+                            )}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
