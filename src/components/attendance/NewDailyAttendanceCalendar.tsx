@@ -329,7 +329,7 @@ export default function NewDailyAttendanceCalendar() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-6">
               {/* Dipendenti Presenti FISICAMENTE */}
               <div>
                 <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
@@ -480,6 +480,62 @@ export default function NewDailyAttendanceCalendar() {
                     ))
                   ) : (
                     <p className="text-gray-500 text-sm">Nessun dipendente in ferie</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Dipendenti in Permesso */}
+              <div>
+                <h3 className="font-semibold text-blue-700 mb-3 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  In Permesso ({onPermissionEmployees.length})
+                </h3>
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {onPermissionEmployees.length > 0 ? (
+                    onPermissionEmployees.map((employee) => (
+                      <div key={employee.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className="font-medium text-sm">
+                                {employee.first_name} {employee.last_name}
+                              </span>
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                                {employee.permissionType === 'orario' ? 'Permesso Orario' : 'Permesso'}
+                              </Badge>
+                            </div>
+                            {employee.attendance?.notes && (
+                              <p className="text-xs text-gray-600 mt-1">{employee.attendance.notes}</p>
+                            )}
+                            {employee.permissionType === 'orario' && employee.attendance && (
+                              <div className="text-xs text-blue-600 mt-1 font-medium">
+                                {employee.attendance.check_in_time && employee.attendance.check_out_time ? (
+                                  `Orario: ${formatTime(employee.attendance.check_in_time)} - ${formatTime(employee.attendance.check_out_time)}`
+                                ) : (
+                                  'Orario da definire'
+                                )}
+                              </div>
+                            )}
+                            {employee.leave?.note && (
+                              <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
+                            )}
+                          </div>
+                          {employee.attendance && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteAttendance(employee.attendance)}
+                              disabled={isDeleting}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">Nessun dipendente in permesso</p>
                   )}
                 </div>
               </div>

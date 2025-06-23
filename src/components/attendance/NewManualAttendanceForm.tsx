@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +23,9 @@ export default function NewManualAttendanceForm() {
     check_out_time: '',
     notes: '',
     is_sick_leave: false,
+    is_permission: false, // Nuovo campo per permessi
+    permission_time_from: '', // Nuovo campo per orario inizio permesso
+    permission_time_to: '', // Nuovo campo per orario fine permesso
   });
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -109,6 +111,30 @@ export default function NewManualAttendanceForm() {
         console.log('Salvando giorno di malattia per data:', date);
         createManualAttendance(attendanceData);
       }
+    } else if (formData.is_permission) {
+      // Gestione permesso
+      let notesText = 'Permesso';
+      if (formData.permission_time_from && formData.permission_time_to) {
+        notesText = `Permesso (${formData.permission_time_from}-${formData.permission_time_to})`;
+      } else {
+        notesText = 'Permesso'; // Permesso giornaliero
+      }
+      
+      if (formData.notes) {
+        notesText += ` - ${formData.notes}`;
+      }
+
+      const attendanceData = {
+        user_id: formData.user_id,
+        date: formData.date,
+        check_in_time: formData.permission_time_from || null,
+        check_out_time: formData.permission_time_to || null,
+        notes: notesText,
+        is_sick_leave: false,
+      };
+
+      console.log('Salvando permesso:', attendanceData);
+      createManualAttendance(attendanceData);
     } else {
       // Gestione presenza singola
       const attendanceData = {
@@ -133,6 +159,9 @@ export default function NewManualAttendanceForm() {
       check_out_time: '',
       notes: '',
       is_sick_leave: false,
+      is_permission: false,
+      permission_time_from: '',
+      permission_time_to: '',
     });
     setValidationError(null);
   };
@@ -164,23 +193,47 @@ export default function NewManualAttendanceForm() {
               </Select>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="sick_leave"
-                checked={formData.is_sick_leave}
-                onCheckedChange={(checked) => {
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    is_sick_leave: checked as boolean,
-                    // Se è malattia, svuota gli orari
-                    check_in_time: checked ? '' : prev.check_in_time,
-                    check_out_time: checked ? '' : prev.check_out_time
-                  }));
-                }}
-              />
-              <Label htmlFor="sick_leave" className="text-orange-700 font-medium">
-                Giorno/i di malattia
-              </Label>
+            {/* Tipo di inserimento */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="sick_leave"
+                  checked={formData.is_sick_leave}
+                  onCheckedChange={(checked) => {
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      is_sick_leave: checked as boolean,
+                      is_permission: false, // Reset permesso se selezioni malattia
+                      check_in_time: checked ? '' : prev.check_in_time,
+                      check_out_time: checked ? '' : prev.check_out_time,
+                      permission_time_from: '',
+                      permission_time_to: ''
+                    }));
+                  }}
+                />
+                <Label htmlFor="sick_leave" className="text-orange-700 font-medium">
+                  Giorno/i di malattia
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="permission"
+                  checked={formData.is_permission}
+                  onCheckedChange={(checked) => {
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      is_permission: checked as boolean,
+                      is_sick_leave: false, // Reset malattia se selezioni permesso
+                      check_in_time: '',
+                      check_out_time: ''
+                    }));
+                  }}
+                />
+                <Label htmlFor="permission" className="text-blue-700 font-medium">
+                  Permesso
+                </Label>
+              </div>
             </div>
 
             {validationError && (
@@ -236,7 +289,41 @@ export default function NewManualAttendanceForm() {
               </div>
             )}
 
-            {!formData.is_sick_leave && (
+            {formData.is_permission && (
+              <div className="space-y-4">
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-sm font-medium text-blue-700 mb-2">Tipo di Permesso:</div>
+                  <div className="text-xs text-blue-600">
+                    • Lascia vuoti gli orari per un permesso giornaliero<br/>
+                    • Inserisci orari specifici per un permesso orario
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="permission_from">Dalle ore (opzionale)</Label>
+                    <Input
+                      id="permission_from"
+                      type="time"
+                      value={formData.permission_time_from}
+                      onChange={(e) => setFormData(prev => ({ ...prev, permission_time_from: e.target.value }))}
+                      placeholder="Lascia vuoto per permesso giornaliero"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="permission_to">Alle ore (opzionale)</Label>
+                    <Input
+                      id="permission_to"
+                      type="time"
+                      value={formData.permission_time_to}
+                      onChange={(e) => setFormData(prev => ({ ...prev, permission_time_to: e.target.value }))}
+                      placeholder="Lascia vuoto per permesso giornaliero"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!formData.is_sick_leave && !formData.is_permission && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="check_in">Orario Entrata</Label>
@@ -274,7 +361,10 @@ export default function NewManualAttendanceForm() {
               disabled={isCreating || !formData.user_id || !formData.date || (formData.is_sick_leave && !formData.date_to) || !!validationError} 
               className="w-full"
             >
-              {isCreating ? 'Salvando...' : (formData.is_sick_leave ? 'Registra Malattia' : 'Salva Presenza')}
+              {isCreating ? 'Salvando...' : 
+                formData.is_sick_leave ? 'Registra Malattia' : 
+                formData.is_permission ? 'Registra Permesso' : 
+                'Salva Presenza'}
             </Button>
           </form>
         </CardContent>
