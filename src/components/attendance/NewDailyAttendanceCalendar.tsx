@@ -117,26 +117,28 @@ export default function NewDailyAttendanceCalendar() {
 
   if (businessTrips && selectedDate) {
     businessTrips.forEach(trip => {
-      const tripStart = new Date(trip.start_date);
-      const tripEnd = new Date(trip.end_date);
-      const currentDate = new Date(selectedDate);
+      // Usa le stringhe delle date per la comparazione più affidabile
+      const tripStartStr = trip.start_date;
+      const tripEndStr = trip.end_date;
+      const currentDateStr = selectedDateStr;
       
       console.log('📅 Verifica trasferta:', {
         destination: trip.destination,
-        tripStart: trip.start_date,
-        tripEnd: trip.end_date,
-        currentDate: selectedDateStr,
-        isInRange: currentDate >= tripStart && currentDate <= tripEnd
+        tripStart: tripStartStr,
+        tripEnd: tripEndStr,
+        currentDate: currentDateStr,
+        isInRange: currentDateStr >= tripStartStr && currentDateStr <= tripEndStr
       });
       
-      if (currentDate >= tripStart && currentDate <= tripEnd) {
+      // Confronta le stringhe delle date direttamente (formato YYYY-MM-DD)
+      if (currentDateStr >= tripStartStr && currentDateStr <= tripEndStr) {
         const employee = employees?.find(emp => emp.id === trip.user_id);
         if (employee && !processedEmployeeIds.has(employee.id)) {
           // Trova tutte le trasferte attive per questo dipendente nella data selezionata
           const activeTrips = businessTrips.filter(t => {
-            const tStart = new Date(t.start_date);
-            const tEnd = new Date(t.end_date);
-            return t.user_id === employee.id && currentDate >= tStart && currentDate <= tEnd;
+            return t.user_id === employee.id && 
+                   currentDateStr >= t.start_date && 
+                   currentDateStr <= t.end_date;
           });
 
           // Usa la trasferta più recente o quella con destinazione più specifica
