@@ -13,6 +13,7 @@ export interface Employee {
   hire_date: string | null;
   employee_code: string | null;
   is_active: boolean;
+  tracking_start_type?: 'from_hire_date' | 'from_year_start';
 }
 
 // Export EmployeeProfile as alias for backwards compatibility
