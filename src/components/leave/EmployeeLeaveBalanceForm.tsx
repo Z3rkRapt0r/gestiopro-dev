@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,11 @@ import { useEmployeeLeaveBalance } from "@/hooks/useEmployeeLeaveBalance";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { Calendar, Clock, User, Info } from "lucide-react";
 
-export function EmployeeLeaveBalanceForm() {
+interface EmployeeLeaveBalanceFormProps {
+  onSuccess?: () => void;
+}
+
+export function EmployeeLeaveBalanceForm({ onSuccess }: EmployeeLeaveBalanceFormProps) {
   const { upsertMutation } = useEmployeeLeaveBalance();
   const { employees } = useActiveEmployees();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
@@ -20,24 +23,31 @@ export function EmployeeLeaveBalanceForm() {
 
   const selectedEmployee = employees?.find(emp => emp.id === selectedEmployeeId);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedEmployeeId || !vacationDays || !permissionHours) {
       return;
     }
 
-    upsertMutation.mutate({
-      user_id: selectedEmployeeId,
-      year: parseInt(year),
-      vacation_days_total: parseInt(vacationDays),
-      permission_hours_total: parseInt(permissionHours),
-    });
+    try {
+      await upsertMutation.mutateAsync({
+        user_id: selectedEmployeeId,
+        year: parseInt(year),
+        vacation_days_total: parseInt(vacationDays),
+        permission_hours_total: parseInt(permissionHours),
+      });
 
-    // Reset form
-    setSelectedEmployeeId("");
-    setVacationDays("");
-    setPermissionHours("");
+      // Reset form
+      setSelectedEmployeeId("");
+      setVacationDays("");
+      setPermissionHours("");
+      
+      // Call onSuccess callback if provided
+      onSuccess?.();
+    } catch (error) {
+      console.error('Error saving balance:', error);
+    }
   };
 
   const currentYear = new Date().getFullYear();

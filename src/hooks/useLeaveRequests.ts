@@ -287,14 +287,14 @@ export function useLeaveRequests() {
       console.log('Aggiornando richiesta:', payload.id);
       // Pulizia payload solo colonne editabili
       const editableFields = {
-        day: fields.day ?? null,
-        time_from: fields.time_from ?? null,
-        time_to: fields.time_to ?? null,
-        date_from: fields.date_from ?? null,
-        date_to: fields.date_to ?? null,
-        note: fields.note ?? null,
-        admin_note: fields.admin_note ?? null,
-        status: fields.status,
+        day: payload.day ?? null,
+        time_from: payload.time_from ?? null,
+        time_to: payload.time_to ?? null,
+        date_from: payload.date_from ?? null,
+        date_to: payload.date_to ?? null,
+        note: payload.note ?? null,
+        admin_note: payload.admin_note ?? null,
+        status: payload.status,
       } as any;
       // Non inviare field vuoti se edit non admin
       Object.keys(editableFields).forEach(key => {
@@ -303,7 +303,7 @@ export function useLeaveRequests() {
       const { error, data } = await supabase
         .from("leave_requests")
         .update(editableFields)
-        .eq("id", id)
+        .eq("id", payload.id)
         .select()
         .maybeSingle();
       if (error) throw error;

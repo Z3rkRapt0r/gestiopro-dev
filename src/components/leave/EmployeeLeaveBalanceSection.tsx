@@ -72,7 +72,7 @@ export function EmployeeLeaveBalanceSection() {
               <div className="flex items-center gap-2 mt-3">
                 <CheckCircle className="w-4 h-4 text-green-600" />
                 <span className="text-sm font-medium">Trigger Database Attivi</span>
-                <Badge variant="success" className="text-xs">v2.0</Badge>
+                <Badge variant="default" className="text-xs bg-green-100 text-green-800">v2.0</Badge>
               </div>
             </AlertDescription>
           </Alert>
