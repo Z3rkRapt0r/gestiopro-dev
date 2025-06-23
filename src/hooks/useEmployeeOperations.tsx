@@ -40,8 +40,8 @@ export const useEmployeeOperations = () => {
       }
 
       // Verifica duplicati email in auth.users tramite admin API
-      const { data: { users } } = await supabase.auth.admin.listUsers();
-      const existingAuthUser = users.find(user => user.email === data.email);
+      const { data: usersData } = await supabase.auth.admin.listUsers();
+      const existingAuthUser = usersData?.users?.find((user: any) => user.email === data.email);
       
       if (existingAuthUser) {
         throw new Error('Esiste già un utente con questa email nel sistema di autenticazione');
