@@ -36,6 +36,26 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     }
   };
 
+  // Funzione per verificare se una data è dopo la data di assunzione
+  const isAfterHireDate = (date: Date) => {
+    if (!employee.hire_date) return true;
+    const hireDate = new Date(employee.hire_date);
+    return date >= hireDate;
+  };
+
+  // Funzione per determinare se una data dovrebbe essere considerata come "assente"
+  const shouldShowAsAbsent = (date: Date) => {
+    if (!isWorkingDay(date)) return false; // Non lavorativo, non mostrare come assente
+    
+    // Per dipendenti nuovi (from_hire_date): mostra assente solo dopo la data di assunzione
+    if (employee.tracking_start_type === 'from_hire_date') {
+      return isAfterHireDate(date);
+    }
+    
+    // Per dipendenti esistenti (from_year_start): mostra sempre come assente se non ha presenza
+    return true;
+  };
+
   // Ottieni le presenze per la data selezionata
   const selectedDateStr = selectedDate?.toISOString().split('T')[0];
   const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
@@ -60,7 +80,28 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     return dates;
   };
 
+  // Genera le date che dovrebbero essere mostrate come assenti (rosse)
+  const getAbsentDates = () => {
+    const dates = [];
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      if (shouldShowAsAbsent(d)) {
+        // Verifica se NON ha presenza per questa data
+        const dateStr = d.toISOString().split('T')[0];
+        const hasAttendance = attendances.some(att => att.date === dateStr && att.check_in_time);
+        if (!hasAttendance) {
+          dates.push(new Date(d));
+        }
+      }
+    }
+    return dates;
+  };
+
   const workingDates = getWorkingDates();
+  const absentDates = getAbsentDates();
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
@@ -78,6 +119,11 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
           <CardTitle className="flex items-center gap-2 text-base">
             <CalendarIcon className="w-4 h-4" />
             {employee.first_name} {employee.last_name}
+            {employee.tracking_start_type === 'from_year_start' && (
+              <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
+                Dipendente esistente
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-3">
@@ -89,7 +135,8 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               locale={it}
               modifiers={{
                 present: attendanceDates,
-                workingDay: workingDates
+                workingDay: workingDates,
+                absent: absentDates
               }}
               modifiersStyles={{
                 present: {
@@ -100,6 +147,11 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                 workingDay: {
                   backgroundColor: '#f3f4f6',
                   color: '#374151'
+                },
+                absent: {
+                  backgroundColor: '#fecaca',
+                  color: '#dc2626',
+                  fontWeight: 'bold'
                 }
               }}
               className="rounded-md border w-fit"
@@ -109,6 +161,10 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
             <div className="flex items-center gap-2 text-xs">
               <div className="w-3 h-3 bg-green-200 rounded"></div>
               <span>Giorni di presenza</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 bg-red-200 rounded"></div>
+              <span>Giorni di assenza</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <div className="w-3 h-3 bg-gray-200 rounded"></div>
@@ -131,6 +187,19 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               </div>
             </div>
           )}
+
+          {/* Info sul tipo di tracciamento */}
+          <div className="mt-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div className="text-xs font-medium text-yellow-700 mb-1">
+              Tipo di tracciamento: {employee.tracking_start_type === 'from_year_start' ? 'Dipendente esistente' : 'Nuovo dipendente'}
+            </div>
+            <div className="text-xs text-yellow-600">
+              {employee.tracking_start_type === 'from_year_start' 
+                ? 'Le assenze devono essere caricate manualmente per tutto l\'anno' 
+                : `Tracciamento dal ${employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'}`
+              }
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -156,6 +225,16 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               </div>
               <p className="text-xs text-gray-600">
                 Giorno non configurato come lavorativo
+              </p>
+            </div>
+          ) : selectedDate && employee.tracking_start_type === 'from_hire_date' && !isAfterHireDate(selectedDate) ? (
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                <span className="font-semibold text-blue-700 text-sm">Non ancora assunto</span>
+              </div>
+              <p className="text-xs text-blue-600">
+                Il dipendente è stato assunto il {employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'}
               </p>
             </div>
           ) : selectedDateAttendance ? (
@@ -191,9 +270,17 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                 <span className="font-semibold text-red-700 text-sm">Assente</span>
+                {employee.tracking_start_type === 'from_year_start' && (
+                  <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
+                    Da caricare
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-red-600">
-                Nessuna presenza registrata per questo giorno lavorativo
+                {employee.tracking_start_type === 'from_year_start' 
+                  ? 'Dipendente esistente - presenza da caricare manualmente'
+                  : 'Nessuna presenza registrata per questo giorno lavorativo'
+                }
               </p>
             </div>
           )}

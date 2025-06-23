@@ -28,26 +28,55 @@ export default function DailyAttendanceCalendar() {
     );
   }
 
+  // Funzione per verificare se un dipendente dovrebbe essere considerato "presente" in una data
+  const shouldEmployeeBeConsidered = (employee: any, date: Date) => {
+    if (!employee.hire_date) return true; // Se non ha data di assunzione, considera sempre
+    
+    const hireDate = new Date(employee.hire_date);
+    const selectedDateObj = new Date(date);
+    
+    // Se è un dipendente nuovo (from_hire_date), non considerarlo prima della data di assunzione
+    if (employee.tracking_start_type === 'from_hire_date') {
+      return selectedDateObj >= hireDate;
+    }
+    
+    // Se è un dipendente esistente (from_year_start), consideralo sempre
+    return true;
+  };
+
   // Ottieni le presenze per la data selezionata
   const selectedDateStr = selectedDate?.toISOString().split('T')[0];
   const selectedDateAttendances = attendances?.filter(att => att.date === selectedDateStr) || [];
 
-  // Ottieni i dipendenti presenti e assenti per la data selezionata
+  // Filtra i dipendenti che dovrebbero essere considerati per la data selezionata
+  const relevantEmployeesForDate = employees?.filter(emp => 
+    selectedDate ? shouldEmployeeBeConsidered(emp, selectedDate) : true
+  ) || [];
+
+  // Ottieni i dipendenti presenti
   const presentEmployees = selectedDateAttendances
     .filter(att => att.check_in_time)
     .map(att => {
-      const employee = employees?.find(emp => emp.id === att.user_id);
-      return {
+      const employee = relevantEmployeesForDate.find(emp => emp.id === att.user_id);
+      return employee ? {
         ...employee,
         check_in_time: att.check_in_time,
         check_out_time: att.check_out_time,
         is_business_trip: att.is_business_trip
-      };
+      } : null;
     })
-    .filter(emp => emp.id);
+    .filter(emp => emp !== null);
 
-  const absentEmployees = employees?.filter(emp => 
-    !selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time)
+  // Ottieni i dipendenti assenti (solo quelli che dovrebbero essere considerati per questa data)
+  const absentEmployees = relevantEmployeesForDate.filter(emp => {
+    const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time);
+    return !hasAttendance;
+  });
+
+  // Ottieni i dipendenti non ancora assunti per questa data
+  const notYetHiredEmployees = employees?.filter(emp => 
+    selectedDate && emp.hire_date && emp.tracking_start_type === 'from_hire_date' && 
+    new Date(selectedDate) < new Date(emp.hire_date)
   ) || [];
 
   // Ottieni le date con presenze per evidenziarle nel calendario
@@ -125,6 +154,11 @@ export default function DailyAttendanceCalendar() {
                           <span className="font-medium text-sm">
                             {employee.first_name} {employee.last_name}
                           </span>
+                          {employee.tracking_start_type === 'from_year_start' && (
+                            <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 text-xs">
+                              Esistente
+                            </Badge>
+                          )}
                           {employee.is_business_trip && (
                             <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 text-xs">
                               Trasferta
@@ -154,15 +188,45 @@ export default function DailyAttendanceCalendar() {
                 {absentEmployees.length > 0 ? (
                   absentEmployees.map((employee) => (
                     <div key={employee.id} className="p-3 bg-red-50 rounded-lg border border-red-200">
-                      <span className="font-medium text-sm">
-                        {employee.first_name} {employee.last_name}
-                      </span>
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-sm">
+                          {employee.first_name} {employee.last_name}
+                        </span>
+                        {employee.tracking_start_type === 'from_year_start' && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
+                            Da caricare manualmente
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-sm">Tutti i dipendenti sono presenti</p>
+                  <p className="text-gray-500 text-sm">Tutti i dipendenti rilevanti sono presenti</p>
                 )}
               </div>
+
+              {/* Dipendenti non ancora assunti */}
+              {notYetHiredEmployees.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-medium text-gray-600 mb-2 text-sm">
+                    Non ancora assunti alla data ({notYetHiredEmployees.length})
+                  </h4>
+                  <div className="space-y-1">
+                    {notYetHiredEmployees.map((employee) => (
+                      <div key={employee.id} className="p-2 bg-gray-50 rounded border border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">
+                            {employee.first_name} {employee.last_name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Assunto: {employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
