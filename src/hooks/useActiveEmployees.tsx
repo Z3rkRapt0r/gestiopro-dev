@@ -1,43 +1,71 @@
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
-export interface EmployeeProfile {
+interface Employee {
   id: string;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
   role: 'admin' | 'employee';
+  department: string | null;
+  hire_date: string | null;
   employee_code: string | null;
   is_active: boolean;
 }
 
-export function useActiveEmployees() {
-  const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
+export const useActiveEmployees = () => {
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchEmployees = async () => {
+  const fetchEmployees = async () => {
+    try {
       setLoading(true);
-      console.log('Fetching employees...');
       
+      // Filtra solo i dipendenti attivi con ruolo 'employee' (esclude gli admin)
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, email, role, employee_code, is_active")
-        .eq("is_active", true);
-        
+        .from('profiles')
+        .select('*')
+        .eq('is_active', true)
+        .eq('role', 'employee') // Solo dipendenti, non admin
+        .order('first_name');
+
       if (error) {
         console.error('Error fetching employees:', error);
-      } else {
-        console.log('Dipendenti caricati:', data?.length || 0);
-        setEmployees((data || []) as EmployeeProfile[]);
+        toast({
+          title: "Errore",
+          description: "Impossibile caricare i dipendenti",
+          variant: "destructive",
+        });
+        return;
       }
-      
+
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error in fetchEmployees:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante il caricamento",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    };
-    
+    }
+  };
+
+  useEffect(() => {
     fetchEmployees();
   }, []);
 
-  return { employees, loading };
-}
+  const refreshEmployees = () => {
+    fetchEmployees();
+  };
+
+  return {
+    employees,
+    loading,
+    refreshEmployees,
+  };
+};

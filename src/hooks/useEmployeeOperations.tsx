@@ -3,180 +3,82 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface CreateEmployeeData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
+interface Employee {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
   role: 'admin' | 'employee';
-  employeeCode?: string;
+  department: string | null;
+  hire_date: string | null;
+  employee_code: string | null;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const useEmployeeOperations = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const createEmployee = async (data: CreateEmployeeData) => {
-    setIsLoading(true);
-    
+  const fetchEmployees = async (): Promise<Employee[]> => {
     try {
-      console.log('Tentativo di creazione dipendente con dati:', {
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        role: data.role,
-        employeeCode: data.employeeCode
-      });
-
-      // Verifica duplicati email in profiles
-      const { data: existingProfile } = await supabase
+      setLoading(true);
+      
+      // Filtra solo i dipendenti (esclude gli admin)
+      const { data, error } = await supabase
         .from('profiles')
-        .select('email')
-        .eq('email', data.email)
-        .maybeSingle();
+        .select('*')
+        .eq('role', 'employee') // Solo dipendenti, non admin
+        .order('first_name');
 
-      if (existingProfile) {
-        throw new Error('Esiste già un dipendente con questa email nei profili');
-      }
-
-      // Crea l'utente in Supabase Auth con retry logic
-      let signUpData, signUpError;
-      let retryCount = 0;
-      const maxRetries = 3;
-
-      do {
-        const result = await supabase.auth.signUp({
-          email: data.email,
-          password: data.password,
-          options: {
-            data: {
-              first_name: data.firstName,
-              last_name: data.lastName,
-              role: data.role,
-            }
-          }
+      if (error) {
+        console.error('Error fetching employees:', error);
+        toast({
+          title: "Errore",
+          description: "Impossibile caricare i dipendenti",
+          variant: "destructive",
         });
-        
-        signUpData = result.data;
-        signUpError = result.error;
-        
-        if (signUpError && retryCount < maxRetries - 1) {
-          console.log(`Tentativo ${retryCount + 1} fallito, ritento...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          retryCount++;
-        } else {
-          break;
-        }
-      } while (retryCount < maxRetries);
-
-      console.log('Risultato signUp:', { signUpData, signUpError });
-
-      if (signUpError) {
-        if (signUpError.message === "User already registered") {
-          throw new Error("Esiste già un utente con questa email in Auth");
-        }
-        throw new Error(signUpError.message || "Errore durante la creazione dell'account");
+        return [];
       }
 
-      const userId = signUpData?.user?.id;
-      if (!userId) {
-        throw new Error("Impossibile recuperare l'id del nuovo utente.");
-      }
+      return data || [];
+    } catch (error) {
+      console.error('Error in fetchEmployees:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante il caricamento",
+        variant: "destructive",
+      });
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      console.log('Utente creato con ID:', userId);
+  const createEmployee = async (employeeData: Partial<Employee>) => {
+    try {
+      setLoading(true);
+      
+      // Assicurati che il ruolo sia sempre 'employee' per i nuovi dipendenti
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([{
+          ...employeeData,
+          role: 'employee', // Forza sempre il ruolo dipendente
+          is_active: true
+        }])
+        .select()
+        .single();
 
-      // Attendi e verifica la creazione del profilo
-      let profileExists = false;
-      let attempts = 0;
-      const maxAttempts = 10;
-
-      while (!profileExists && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const { data: profileCheck } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (profileCheck) {
-          profileExists = true;
-          console.log('Profilo trovato:', profileCheck);
-          
-          // Aggiorna il profilo con tutti i dati
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              first_name: data.firstName,
-              last_name: data.lastName,
-              email: data.email,
-              role: data.role,
-              employee_code: data.employeeCode || null,
-              is_active: true
-            })
-            .eq('id', userId);
-
-          if (updateError) {
-            console.error('Errore aggiornamento profilo:', updateError);
-            throw new Error(`Errore nell'aggiornamento del profilo: ${updateError.message}`);
-          }
-          
-          break;
-        }
-        
-        attempts++;
-      }
-
-      if (!profileExists) {
-        // Se il trigger non ha funzionato, crea manualmente il profilo
-        console.log('Creando profilo manualmente...');
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            first_name: data.firstName,
-            last_name: data.lastName,
-            email: data.email,
-            role: data.role,
-            employee_code: data.employeeCode || null,
-            is_active: true
-          });
-
-        if (insertError) {
-          console.error('Errore inserimento profilo:', insertError);
-          throw new Error(`Errore nella creazione del profilo: ${insertError.message}`);
-        }
-      }
-
-      // Crea bilancio ferie iniziale per dipendenti
-      if (data.role === 'employee') {
-        const currentYear = new Date().getFullYear();
-        const { error: balanceError } = await supabase
-          .from('employee_leave_balance')
-          .insert({
-            user_id: userId,
-            year: currentYear,
-            vacation_days_total: 26, // Giorni di ferie standard
-            permission_hours_total: 32, // Ore di permesso standard
-            vacation_days_used: 0,
-            permission_hours_used: 0
-          });
-
-        if (balanceError) {
-          console.warn('Errore creazione bilancio ferie:', balanceError);
-          // Non blocchiamo la creazione per questo errore
-        }
-      }
-
-      console.log('Dipendente creato con successo');
+      if (error) throw error;
 
       toast({
         title: "Dipendente creato",
-        description: `${data.firstName} ${data.lastName} è stato aggiunto con successo al sistema`,
+        description: "Il dipendente è stato aggiunto con successo",
       });
 
-      return { success: true, userId };
-
+      return { data, error: null };
     } catch (error: any) {
       console.error('Error creating employee:', error);
       toast({
@@ -184,51 +86,122 @@ export const useEmployeeOperations = () => {
         description: error.message || "Errore durante la creazione del dipendente",
         variant: "destructive",
       });
-      throw error;
+      return { data: null, error };
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const deleteEmployee = async (employeeId: string, employeeName: string) => {
-    setIsLoading(true);
-    
+  const updateEmployee = async (id: string, employeeData: Partial<Employee>) => {
     try {
-      console.log('Disattivando dipendente:', employeeId);
-
-      // Disattiva il profilo invece di eliminarlo
-      const { error: deactivateError } = await supabase
-        .from('profiles')
-        .update({ is_active: false })
-        .eq('id', employeeId);
-
-      if (deactivateError) {
-        throw new Error(`Errore nella disattivazione: ${deactivateError.message}`);
+      setLoading(true);
+      
+      // Previeni la modifica del ruolo da dipendente ad admin tramite questa funzione
+      const updateData = { ...employeeData };
+      if (updateData.role && updateData.role !== 'employee') {
+        delete updateData.role;
       }
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', id)
+        .eq('role', 'employee') // Aggiorna solo se è un dipendente
+        .select()
+        .single();
+
+      if (error) throw error;
 
       toast({
-        title: "Dipendente disattivato",
-        description: `${employeeName} è stato disattivato dal sistema`,
+        title: "Dipendente aggiornato",
+        description: "Le informazioni sono state salvate con successo",
       });
 
-      return { success: true };
-
+      return { data, error: null };
     } catch (error: any) {
-      console.error('Error deactivating employee:', error);
+      console.error('Error updating employee:', error);
       toast({
         title: "Errore",
-        description: error.message || "Errore durante la disattivazione del dipendente",
+        description: error.message || "Errore durante l'aggiornamento del dipendente",
         variant: "destructive",
       });
-      throw error;
+      return { data: null, error };
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const deleteEmployee = async (id: string) => {
+    try {
+      setLoading(true);
+      
+      // Elimina solo se è un dipendente (non admin)
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id)
+        .eq('role', 'employee'); // Elimina solo dipendenti
+
+      if (error) throw error;
+
+      toast({
+        title: "Dipendente eliminato",
+        description: "Il dipendente è stato rimosso dal sistema",
+      });
+
+      return { error: null };
+    } catch (error: any) {
+      console.error('Error deleting employee:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'eliminazione del dipendente",
+        variant: "destructive",
+      });
+      return { error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleEmployeeStatus = async (id: string, isActive: boolean) => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ is_active: isActive })
+        .eq('id', id)
+        .eq('role', 'employee') // Modifica solo dipendenti
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: isActive ? "Dipendente attivato" : "Dipendente disattivato",
+        description: `Il dipendente è stato ${isActive ? 'riattivato' : 'disattivato'} con successo`,
+      });
+
+      return { data, error: null };
+    } catch (error: any) {
+      console.error('Error toggling employee status:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la modifica dello stato",
+        variant: "destructive",
+      });
+      return { data: null, error };
+    } finally {
+      setLoading(false);
     }
   };
 
   return {
+    fetchEmployees,
     createEmployee,
+    updateEmployee,
     deleteEmployee,
-    isLoading
+    toggleEmployeeStatus,
+    loading
   };
 };
