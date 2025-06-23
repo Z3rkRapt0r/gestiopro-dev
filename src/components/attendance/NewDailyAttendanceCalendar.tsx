@@ -97,13 +97,9 @@ export default function NewDailyAttendanceCalendar() {
 
   console.log('Presenze per la data selezionata:', selectedDateAttendances);
 
-  // Ottieni le richieste di ferie approvate per la data selezionata (solo quelle che non hanno già una presenza registrata)
+  // Ottieni le richieste di ferie approvate per la data selezionata
   const selectedDateLeaves = leaveRequests?.filter(request => {
     if (request.status !== 'approved') return false;
-    
-    // Verifica se c'è già una presenza registrata per questo utente e data
-    const hasAttendance = selectedDateAttendances.some(att => att.user_id === request.user_id);
-    if (hasAttendance) return false; // Non mostrare in ferie se c'è già una presenza
     
     if (request.type === 'ferie' && request.date_from && request.date_to) {
       const leaveStart = new Date(request.date_from);
@@ -119,9 +115,17 @@ export default function NewDailyAttendanceCalendar() {
     return false;
   }) || [];
 
-  // Dipendenti presenti (con check-in e non in malattia)
+  // CORREZIONE: Dipendenti presenti fisicamente (NON in ferie)
   const presentEmployees = selectedDateAttendances
-    .filter(att => att.check_in_time && !att.is_sick_leave)
+    .filter(att => {
+      // Ha check-in e non è in malattia
+      if (!att.check_in_time || att.is_sick_leave) return false;
+      
+      // NON deve essere marcato come "Ferie"
+      if (att.notes === 'Ferie') return false;
+      
+      return true;
+    })
     .map(att => {
       const employee = employees?.find(emp => emp.id === att.user_id);
       return {
@@ -143,16 +147,35 @@ export default function NewDailyAttendanceCalendar() {
     })
     .filter(emp => emp.id);
 
-  // Dipendenti in ferie per la data selezionata (solo se non hanno presenza registrata)
-  const onLeaveEmployees = selectedDateLeaves
-    .map(leave => {
-      const employee = employees?.find(emp => emp.id === leave.user_id);
+  // CORREZIONE: Dipendenti in ferie (con presenze automatiche marchiate come "Ferie")
+  const onLeaveEmployees = selectedDateAttendances
+    .filter(att => att.notes === 'Ferie')
+    .map(att => {
+      const employee = employees?.find(emp => emp.id === att.user_id);
+      const leaveRequest = selectedDateLeaves.find(leave => leave.user_id === att.user_id);
       return {
         ...employee,
-        leave: leave,
+        attendance: att,
+        leave: leaveRequest,
       };
     })
     .filter(emp => emp.id);
+
+  // Se non ci sono presenze automatiche per le ferie, usa le richieste di ferie
+  if (onLeaveEmployees.length === 0) {
+    const additionalOnLeave = selectedDateLeaves
+      .filter(leave => !selectedDateAttendances.some(att => att.user_id === leave.user_id))
+      .map(leave => {
+        const employee = employees?.find(emp => emp.id === leave.user_id);
+        return {
+          ...employee,
+          leave: leave,
+        };
+      })
+      .filter(emp => emp.id);
+    
+    onLeaveEmployees.push(...additionalOnLeave);
+  }
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
@@ -255,7 +278,7 @@ export default function NewDailyAttendanceCalendar() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-              {/* Dipendenti Presenti */}
+              {/* Dipendenti Presenti FISICAMENTE */}
               <div>
                 <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -292,7 +315,7 @@ export default function NewDailyAttendanceCalendar() {
                                 </Badge>
                               )}
                             </div>
-                            {employee.attendance.notes && (
+                            {employee.attendance.notes && employee.attendance.notes !== 'Ferie' && (
                               <p className="text-xs text-gray-600 mt-1">{employee.attendance.notes}</p>
                             )}
                             <div className="text-xs text-gray-600 mt-1">
@@ -313,7 +336,7 @@ export default function NewDailyAttendanceCalendar() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-gray-500 text-sm">Nessun dipendente presente</p>
+                    <p className="text-gray-500 text-sm">Nessun dipendente presente fisicamente</p>
                   )}
                 </div>
               </div>
@@ -370,27 +393,40 @@ export default function NewDailyAttendanceCalendar() {
                   {onLeaveEmployees.length > 0 ? (
                     onLeaveEmployees.map((employee) => (
                       <div key={employee.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="font-medium text-sm">
-                              {employee.first_name} {employee.last_name}
-                            </span>
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
-                              {employee.leave.type === 'ferie' ? 'Ferie' : 'Permesso'}
-                            </Badge>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className="font-medium text-sm">
+                                {employee.first_name} {employee.last_name}
+                              </span>
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
+                                {employee.leave?.type === 'ferie' ? 'Ferie' : 'Permesso'}
+                              </Badge>
+                            </div>
+                            {employee.leave?.note && (
+                              <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
+                            )}
+                            {employee.leave?.type === 'ferie' && employee.leave.date_from && employee.leave.date_to && (
+                              <div className="text-xs text-gray-600 mt-1">
+                                Dal {format(new Date(employee.leave.date_from), 'dd/MM')} al {format(new Date(employee.leave.date_to), 'dd/MM')}
+                              </div>
+                            )}
+                            {employee.leave?.type === 'permesso' && employee.leave.time_from && employee.leave.time_to && (
+                              <div className="text-xs text-gray-600 mt-1">
+                                Dalle {employee.leave.time_from} alle {employee.leave.time_to}
+                              </div>
+                            )}
                           </div>
-                          {employee.leave.note && (
-                            <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
-                          )}
-                          {employee.leave.type === 'ferie' && employee.leave.date_from && employee.leave.date_to && (
-                            <div className="text-xs text-gray-600 mt-1">
-                              Dal {format(new Date(employee.leave.date_from), 'dd/MM')} al {format(new Date(employee.leave.date_to), 'dd/MM')}
-                            </div>
-                          )}
-                          {employee.leave.type === 'permesso' && employee.leave.time_from && employee.leave.time_to && (
-                            <div className="text-xs text-gray-600 mt-1">
-                              Dalle {employee.leave.time_from} alle {employee.leave.time_to}
-                            </div>
+                          {employee.attendance && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteAttendance(employee.attendance)}
+                              disabled={isDeleting}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           )}
                         </div>
                       </div>
