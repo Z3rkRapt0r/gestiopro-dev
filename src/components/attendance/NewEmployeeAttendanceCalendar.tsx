@@ -69,15 +69,21 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       });
   }, [attendances]);
 
-  // Calcola i giorni di assenza realistici (solo ultimi 30 giorni e dopo assunzione)
+  // Calcola i giorni di assenza dall'inizio dell'anno (o dalla data di assunzione se più tarda)
   const absentDates = useMemo(() => {
     if (!employee?.id || !stats.hasValidData) return [];
 
     const currentDate = new Date();
-    const startDate = new Date(Math.max(
-      stats.calculationPeriod.startDate.getTime(),
-      currentDate.getTime() - (30 * 24 * 60 * 60 * 1000) // 30 giorni fa
-    ));
+    const currentYear = currentDate.getFullYear();
+    
+    // Data di inizio: 1° gennaio dell'anno corrente oppure data di assunzione se più tarda
+    let startDate = new Date(currentYear, 0, 1);
+    if (employee.hire_date) {
+      const hireDate = new Date(employee.hire_date);
+      if (hireDate > startDate) {
+        startDate = hireDate;
+      }
+    }
     
     const absentDates = [];
     const tempDate = new Date(startDate);
@@ -269,7 +275,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 bg-red-200 rounded"></div>
-                <span>Giorni di assenza (ultimi 30 giorni)</span>
+                <span>Giorni di assenza (dall'inizio anno)</span>
               </div>
             </div>
           </CardContent>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,12 +55,22 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     .filter(att => att.check_in_time)
     .map(att => new Date(att.date));
 
-  // Genera le date che dovrebbero essere mostrate come assenti (rosse) usando la logica centralizzata
+  // Genera le date che dovrebbero essere mostrate come assenti (rosse) dall'inizio dell'anno
   const getAbsentDates = async () => {
     const dates = [];
     const today = new Date();
-    const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+    const currentYear = today.getFullYear();
+    
+    // Data di inizio: 1° gennaio dell'anno corrente oppure data di assunzione se più tarda
+    let startDate = new Date(currentYear, 0, 1);
+    if (employee.hire_date) {
+      const hireDate = new Date(employee.hire_date);
+      if (hireDate > startDate) {
+        startDate = hireDate;
+      }
+    }
+    
+    const endDate = today;
     
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const shouldShow = await shouldShowAsAbsent(d);
@@ -142,7 +153,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
             </div>
             <div className="flex items-center gap-2 text-xs">
               <div className="w-3 h-3 bg-red-200 rounded"></div>
-              <span>Giorni di assenza</span>
+              <span>Giorni di assenza (dall'inizio anno)</span>
             </div>
           </div>
           
