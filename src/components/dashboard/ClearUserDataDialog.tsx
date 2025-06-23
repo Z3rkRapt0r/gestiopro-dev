@@ -64,13 +64,18 @@ const ClearUserDataDialog = ({ employee, isOpen, onClose, onDataCleared }: Clear
                 <li>Tutti i documenti caricati</li>
                 <li>Cronologia presenze</li>
                 <li>Richieste di ferie e permessi</li>
-                <li>Notifiche</li>
+                <li>Notifiche e messaggi</li>
                 <li>Viaggi di lavoro</li>
               </ul>
             </div>
-            <p className="text-sm text-gray-600">
-              <strong>Nota:</strong> L'account utente rimarrà attivo ma tutti i dati associati verranno eliminati definitivamente.
-            </p>
+            <div className="bg-green-50 p-3 rounded-md border border-green-200">
+              <p className="text-sm text-green-800 font-medium">
+                ✅ L'accesso dell'utente sarà preservato
+              </p>
+              <p className="text-sm text-green-700">
+                L'account rimarrà attivo e l'utente potrà continuare ad accedere al sistema.
+              </p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

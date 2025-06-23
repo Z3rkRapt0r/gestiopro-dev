@@ -110,12 +110,13 @@ export const useAdvancedEmployeeOperations = () => {
   const clearUserData = async (userId: string, userName: string) => {
     setIsLoading(true);
     try {
-      console.log('Azzerando dati utente:', userId);
+      console.log('Azzerando dati utente (preservando accesso):', userId);
 
       // Prima verifica i dati esistenti
       const beforeVerification = await verifyUserDataExists(userId);
       console.log('Dati prima della pulizia:', beforeVerification);
 
+      // Usa la funzione clear_user_data che ora preserva il profilo
       const { data, error } = await supabase.rpc('clear_user_data', {
         user_uuid: userId
       });
@@ -128,7 +129,7 @@ export const useAdvancedEmployeeOperations = () => {
 
       toast({
         title: "Dati azzerati",
-        description: `Tutti i dati di ${userName} sono stati eliminati`,
+        description: `Tutti i dati di ${userName} sono stati eliminati. L'accesso è stato preservato.`,
       });
 
       return { success: true, data, verification: { before: beforeVerification, after: afterVerification } };

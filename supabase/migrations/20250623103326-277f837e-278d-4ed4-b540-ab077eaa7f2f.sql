@@ -98,10 +98,123 @@ BEGIN
             notifications_count > 0 OR 
             business_trips_count > 0 OR 
             sent_notifications_count > 0 OR 
-            messages_count > 0 OR 
-            profile_exists
+            messages_count > 0
         )
     );
+    
+    RETURN result;
+END;
+$$;
+
+-- Funzione per l'azzeramento dati mantenendo l'accesso utente
+CREATE OR REPLACE FUNCTION public.clear_user_data_only(user_uuid UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    deleted_documents INTEGER := 0;
+    deleted_attendances INTEGER := 0;
+    deleted_unified_attendances INTEGER := 0;
+    deleted_manual_attendances INTEGER := 0;
+    deleted_leave_requests INTEGER := 0;
+    deleted_leave_balance INTEGER := 0;
+    deleted_notifications INTEGER := 0;
+    deleted_business_trips INTEGER := 0;
+    deleted_sent_notifications INTEGER := 0;
+    deleted_messages INTEGER := 0;
+    verification_before JSONB;
+    verification_after JSONB;
+    result JSONB;
+BEGIN
+    -- Verifica dati prima della pulizia
+    SELECT public.verify_user_data_exists(user_uuid) INTO verification_before;
+    
+    -- Log dell'inizio dell'azzeramento
+    RAISE NOTICE 'Inizio azzeramento dati per utente: %', user_uuid;
+    
+    -- Elimina documenti
+    DELETE FROM documents WHERE user_id = user_uuid OR uploaded_by = user_uuid;
+    GET DIAGNOSTICS deleted_documents = ROW_COUNT;
+    RAISE NOTICE 'Eliminati % documenti', deleted_documents;
+    
+    -- Elimina presenze
+    DELETE FROM attendances WHERE user_id = user_uuid;
+    GET DIAGNOSTICS deleted_attendances = ROW_COUNT;
+    RAISE NOTICE 'Eliminate % presenze', deleted_attendances;
+    
+    -- Elimina presenze unificate
+    DELETE FROM unified_attendances WHERE user_id = user_uuid;
+    GET DIAGNOSTICS deleted_unified_attendances = ROW_COUNT;
+    RAISE NOTICE 'Eliminate % presenze unificate', deleted_unified_attendances;
+    
+    -- Elimina presenze manuali
+    DELETE FROM manual_attendances WHERE user_id = user_uuid;
+    GET DIAGNOSTICS deleted_manual_attendances = ROW_COUNT;
+    RAISE NOTICE 'Eliminate % presenze manuali', deleted_manual_attendances;
+    
+    -- Elimina richieste di ferie
+    DELETE FROM leave_requests WHERE user_id = user_uuid;
+    GET DIAGNOSTICS deleted_leave_requests = ROW_COUNT;
+    RAISE NOTICE 'Eliminate % richieste di ferie', deleted_leave_requests;
+    
+    -- Elimina bilanci ferie
+    DELETE FROM employee_leave_balance WHERE user_id = user_uuid;
+    GET DIAGNOSTICS deleted_leave_balance = ROW_COUNT;
+    RAISE NOTICE 'Eliminati % bilanci ferie', deleted_leave_balance;
+    
+    -- Elimina notifiche
+    DELETE FROM notifications WHERE user_id = user_uuid;
+    GET DIAGNOSTICS deleted_notifications = ROW_COUNT;
+    RAISE NOTICE 'Eliminate % notifiche', deleted_notifications;
+    
+    -- Elimina viaggi di lavoro
+    DELETE FROM business_trips WHERE user_id = user_uuid;
+    GET DIAGNOSTICS deleted_business_trips = ROW_COUNT;
+    RAISE NOTICE 'Eliminati % viaggi di lavoro', deleted_business_trips;
+    
+    -- Elimina notifiche inviate
+    DELETE FROM sent_notifications WHERE recipient_id = user_uuid;
+    GET DIAGNOSTICS deleted_sent_notifications = ROW_COUNT;
+    RAISE NOTICE 'Eliminate % notifiche inviate', deleted_sent_notifications;
+    
+    -- Elimina messaggi (sia come mittente che come destinatario)
+    DELETE FROM messages WHERE recipient_id = user_uuid OR sender_id = user_uuid;
+    GET DIAGNOSTICS deleted_messages = ROW_COUNT;
+    RAISE NOTICE 'Eliminati % messaggi', deleted_messages;
+    
+    -- NON elimina il profilo per mantenere l'accesso
+    
+    -- Verifica dati dopo la pulizia
+    SELECT public.verify_user_data_exists(user_uuid) INTO verification_after;
+    
+    -- Costruisce il risultato
+    result := jsonb_build_object(
+        'success', true,
+        'user_id', user_uuid,
+        'operation_type', 'data_clearing_only',
+        'verification_before', verification_before,
+        'verification_after', verification_after,
+        'deleted_data', jsonb_build_object(
+            'documents', deleted_documents,
+            'attendances', deleted_attendances,
+            'unified_attendances', deleted_unified_attendances,
+            'manual_attendances', deleted_manual_attendances,
+            'leave_requests', deleted_leave_requests,
+            'leave_balance', deleted_leave_balance,
+            'notifications', deleted_notifications,
+            'business_trips', deleted_business_trips,
+            'sent_notifications', deleted_sent_notifications,
+            'messages', deleted_messages,
+            'profile', 0
+        ),
+        'profile_preserved', true,
+        'cleanup_complete', NOT (verification_after->>'has_remaining_data')::boolean
+    );
+    
+    RAISE NOTICE 'Azzeramento dati completato per utente: %. Profilo preservato. Dati residui: %', 
+        user_uuid, 
+        (verification_after->>'has_remaining_data')::boolean;
     
     RETURN result;
 END;
@@ -185,7 +298,7 @@ BEGIN
     GET DIAGNOSTICS deleted_messages = ROW_COUNT;
     RAISE NOTICE 'Eliminati % messaggi', deleted_messages;
     
-    -- Elimina il profilo (se esiste ancora)
+    -- Elimina il profilo (per eliminazione completa)
     DELETE FROM profiles WHERE id = user_uuid;
     GET DIAGNOSTICS deleted_profile = ROW_COUNT;
     RAISE NOTICE 'Profili eliminati: %', deleted_profile;
@@ -197,6 +310,7 @@ BEGIN
     result := jsonb_build_object(
         'success', true,
         'user_id', user_uuid,
+        'operation_type', 'complete_cleanup',
         'verification_before', verification_before,
         'verification_after', verification_after,
         'deleted_data', jsonb_build_object(
@@ -212,6 +326,7 @@ BEGIN
             'messages', deleted_messages,
             'profile', deleted_profile
         ),
+        'profile_preserved', false,
         'cleanup_complete', NOT (verification_after->>'has_remaining_data')::boolean
     );
     
@@ -223,15 +338,15 @@ BEGIN
 END;
 $$;
 
--- Aggiorna la funzione esistente clear_user_data per usare la nuova funzione di pulizia completa
+-- Aggiorna la funzione clear_user_data per usare la nuova funzione che preserva l'accesso
 CREATE OR REPLACE FUNCTION public.clear_user_data(user_uuid UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-    -- Usa la funzione di pulizia completa
-    RETURN public.complete_user_cleanup(user_uuid);
+    -- Usa la funzione di azzeramento che preserva l'accesso
+    RETURN public.clear_user_data_only(user_uuid);
 END;
 $$;
 
