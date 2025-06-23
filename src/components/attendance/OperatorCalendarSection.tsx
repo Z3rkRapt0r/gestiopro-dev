@@ -69,12 +69,6 @@ export default function OperatorCalendarSection() {
                   <SelectItem key={employee.id} value={employee.id}>
                     <div className="flex items-center gap-2">
                       <span>{employee.first_name} {employee.last_name} ({employee.email})</span>
-                      {employee.tracking_start_type === 'from_hire_date' && (
-                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Nuovo</span>
-                      )}
-                      {employee.tracking_start_type === 'from_year_start' && (
-                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">Esistente</span>
-                      )}
                     </div>
                   </SelectItem>
                 ))}

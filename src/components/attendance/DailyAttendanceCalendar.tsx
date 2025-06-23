@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -164,16 +165,6 @@ export default function DailyAttendanceCalendar() {
                           <span className="font-medium text-sm">
                             {employee.first_name} {employee.last_name}
                           </span>
-                          {employee.tracking_start_type === 'from_year_start' && (
-                            <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 text-xs">
-                              Esistente
-                            </Badge>
-                          )}
-                          {employee.tracking_start_type === 'from_hire_date' && (
-                            <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700 text-xs">
-                              Nuovo
-                            </Badge>
-                          )}
                           {employee.is_business_trip && (
                             <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 text-xs">
                               Trasferta
@@ -212,18 +203,6 @@ export default function DailyAttendanceCalendar() {
                         <span className="font-medium text-sm">
                           {employee.first_name} {employee.last_name}
                         </span>
-                        <div className="flex gap-1">
-                          {employee.tracking_start_type === 'from_year_start' && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
-                              Da caricare manualmente
-                            </Badge>
-                          )}
-                          {employee.tracking_start_type === 'from_hire_date' && (
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
-                              Nuovo dipendente
-                            </Badge>
-                          )}
-                        </div>
                       </div>
                     </div>
                   ))

@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
 
 interface Employee {
   id: string;
@@ -28,18 +27,6 @@ export default function AbsentEmployeesSection({ employees }: AbsentEmployeesSec
                 <span className="font-semibold text-sm">
                   {employee.first_name} {employee.last_name}
                 </span>
-                <div className="flex gap-1.5">
-                  {employee.tracking_start_type === 'from_year_start' && (
-                    <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs px-1.5 py-0.5">
-                      Da caricare manualmente
-                    </Badge>
-                  )}
-                  {employee.tracking_start_type === 'from_hire_date' && (
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs px-1.5 py-0.5">
-                      Nuovo dipendente
-                    </Badge>
-                  )}
-                </div>
               </div>
             </div>
           ))
