@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useLeaveRequests, LeaveRequest } from "@/hooks/useLeaveRequests";
 import { useAuth } from "@/hooks/useAuth";
-import { EditLeaveRequestDialog } from "./EditLeaveRequestDialog";
+import EditLeaveRequestDialog from "./EditLeaveRequestDialog";
 
 interface LeaveRequestsTableProps {
   searchTerm?: string;
