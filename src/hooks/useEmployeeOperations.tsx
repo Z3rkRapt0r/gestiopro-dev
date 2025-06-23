@@ -42,7 +42,13 @@ export const useEmployeeOperations = () => {
         return [];
       }
 
-      return data || [];
+      // Type assertion to ensure compatibility
+      const typedData = (data || []).map(employee => ({
+        ...employee,
+        role: employee.role as 'admin' | 'employee'
+      }));
+
+      return typedData;
     } catch (error) {
       console.error('Error in fetchEmployees:', error);
       toast({
@@ -63,11 +69,11 @@ export const useEmployeeOperations = () => {
       // Assicurati che il ruolo sia sempre 'employee' per i nuovi dipendenti
       const { data, error } = await supabase
         .from('profiles')
-        .insert([{
+        .insert({
           ...employeeData,
           role: 'employee', // Forza sempre il ruolo dipendente
           is_active: true
-        }])
+        })
         .select()
         .single();
 

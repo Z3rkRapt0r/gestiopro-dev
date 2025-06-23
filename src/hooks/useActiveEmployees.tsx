@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface Employee {
+export interface Employee {
   id: string;
   first_name: string | null;
   last_name: string | null;
@@ -14,6 +14,9 @@ interface Employee {
   employee_code: string | null;
   is_active: boolean;
 }
+
+// Export EmployeeProfile as alias for backwards compatibility
+export type EmployeeProfile = Employee;
 
 export const useActiveEmployees = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -42,7 +45,13 @@ export const useActiveEmployees = () => {
         return;
       }
 
-      setEmployees(data || []);
+      // Type assertion to ensure compatibility
+      const typedData = (data || []).map(employee => ({
+        ...employee,
+        role: employee.role as 'admin' | 'employee'
+      }));
+
+      setEmployees(typedData);
     } catch (error) {
       console.error('Error in fetchEmployees:', error);
       toast({

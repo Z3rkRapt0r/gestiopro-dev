@@ -14,15 +14,24 @@ interface EmployeeChartsProps {
 }
 
 const EmployeeCharts = ({ stats }: EmployeeChartsProps) => {
+  // Provide default values if stats is undefined
+  const safeStats = stats || {
+    pendingLeaveRequests: 0,
+    approvedLeaveRequests: 0,
+    rejectedLeaveRequests: 0,
+    documentsCount: 0,
+    unreadNotificationsCount: 0,
+  };
+
   const leaveRequestsData = [
-    { name: 'In Attesa', value: stats.pendingLeaveRequests, color: '#f59e0b' },
-    { name: 'Approvate', value: stats.approvedLeaveRequests, color: '#10b981' },
-    { name: 'Respinte', value: stats.rejectedLeaveRequests, color: '#ef4444' },
+    { name: 'In Attesa', value: safeStats.pendingLeaveRequests, color: '#f59e0b' },
+    { name: 'Approvate', value: safeStats.approvedLeaveRequests, color: '#10b981' },
+    { name: 'Respinte', value: safeStats.rejectedLeaveRequests, color: '#ef4444' },
   ];
 
   const activityData = [
-    { name: 'Documenti', value: stats.documentsCount },
-    { name: 'Notifiche Non Lette', value: stats.unreadNotificationsCount },
+    { name: 'Documenti', value: safeStats.documentsCount },
+    { name: 'Notifiche Non Lette', value: safeStats.unreadNotificationsCount },
   ];
 
   const chartConfig = {

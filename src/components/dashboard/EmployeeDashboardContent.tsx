@@ -95,8 +95,11 @@ export default function EmployeeDashboardContent({ activeSection }: EmployeeDash
 
       {/* Grafici e attività */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <EmployeeCharts />
-        <EmployeeActivityFeed />
+        <EmployeeCharts stats={stats} />
+        <EmployeeActivityFeed 
+          recentDocuments={stats.recentDocuments}
+          recentNotifications={stats.recentNotifications}
+        />
       </div>
 
       {/* Messaggio informativo */}

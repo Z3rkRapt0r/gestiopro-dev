@@ -11,9 +11,13 @@ interface EmployeeActivityFeedProps {
 }
 
 const EmployeeActivityFeed = ({ recentDocuments, recentNotifications }: EmployeeActivityFeedProps) => {
+  // Provide default values if props are undefined
+  const safeDocuments = recentDocuments || [];
+  const safeNotifications = recentNotifications || [];
+
   // Combino documenti e notifiche per creare un feed unificato
   const activities = [
-    ...recentDocuments.map(doc => ({
+    ...safeDocuments.map(doc => ({
       id: `doc-${doc.id}`,
       type: 'document',
       title: doc.title,
@@ -22,7 +26,7 @@ const EmployeeActivityFeed = ({ recentDocuments, recentNotifications }: Employee
       icon: FileText,
       iconColor: 'text-blue-600',
     })),
-    ...recentNotifications.map(notif => ({
+    ...safeNotifications.map(notif => ({
       id: `notif-${notif.id}`,
       type: 'notification',
       title: notif.title,
