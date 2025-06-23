@@ -63,26 +63,28 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     }
 
     const currentYear = new Date().getFullYear();
-    const startOfYear = new Date(currentYear, 0, 1);
     const today = new Date();
     
-    // Filtra le presenze dell'anno corrente
-    const yearAttendances = attendances.filter(att => {
-      const attDate = new Date(att.date);
-      return attDate >= startOfYear && attDate <= today;
-    });
-    
-    // Conta i giorni lavorativi dall'inizio dell'anno o dalla data di assunzione
-    let workingDaysCount = 0;
-    const tempDate = new Date(startOfYear);
-    
-    // Se il dipendente è nuovo, inizia dalla data di assunzione
+    // CORREZIONE: Per i nuovi dipendenti, inizia dalla data di assunzione
+    let startDate: Date;
     if (employee.tracking_start_type === 'from_hire_date' && employee.hire_date) {
       const hireDate = new Date(employee.hire_date);
-      if (hireDate > startOfYear) {
-        tempDate.setTime(hireDate.getTime());
-      }
+      const startOfYear = new Date(currentYear, 0, 1);
+      // Usa la data più recente tra l'inizio dell'anno e la data di assunzione
+      startDate = hireDate > startOfYear ? hireDate : startOfYear;
+    } else {
+      startDate = new Date(currentYear, 0, 1);
     }
+    
+    // Filtra le presenze dell'anno corrente dalla data di inizio calcolata
+    const yearAttendances = attendances.filter(att => {
+      const attDate = new Date(att.date);
+      return attDate >= startDate && attDate <= today;
+    });
+    
+    // Conta i giorni lavorativi dalla data di inizio corretta
+    let workingDaysCount = 0;
+    const tempDate = new Date(startDate);
     
     while (tempDate <= today) {
       if (isWorkingDay(tempDate) && isEmployeeHiredOnDate(tempDate)) {
@@ -128,11 +130,22 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     if (!employee?.id) return [];
 
     const currentDate = new Date();
-    const oneMonthAgo = new Date(currentDate);
-    oneMonthAgo.setMonth(currentDate.getMonth() - 1);
+    
+    // CORREZIONE: Per i nuovi dipendenti, inizia dalla data di assunzione
+    let startDate: Date;
+    if (employee.tracking_start_type === 'from_hire_date' && employee.hire_date) {
+      const hireDate = new Date(employee.hire_date);
+      const oneMonthAgo = new Date(currentDate);
+      oneMonthAgo.setMonth(currentDate.getMonth() - 1);
+      // Usa la data più recente tra un mese fa e la data di assunzione
+      startDate = hireDate > oneMonthAgo ? hireDate : oneMonthAgo;
+    } else {
+      startDate = new Date(currentDate);
+      startDate.setMonth(currentDate.getMonth() - 1);
+    }
     
     const absentDates = [];
-    const tempDate = new Date(oneMonthAgo);
+    const tempDate = new Date(startDate);
     
     while (tempDate <= currentDate) {
       // Solo se il dipendente era già assunto
@@ -150,7 +163,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     }
     
     return absentDates;
-  }, [employee?.id, employee?.hire_date, attendances, workSchedule]);
+  }, [employee?.id, employee?.hire_date, employee?.tracking_start_type, attendances, workSchedule]);
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
