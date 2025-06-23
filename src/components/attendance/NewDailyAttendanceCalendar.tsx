@@ -145,12 +145,12 @@ export default function NewDailyAttendanceCalendar() {
     });
   }
 
-  // Dipendenti presenti fisicamente (escludendo quelli in trasferta)
+  // Dipendenti presenti fisicamente (escludendo quelli in trasferta e malattia)
   const presentEmployees = selectedDateAttendances
     .filter(att => {
       if (!att.check_in_time || att.is_sick_leave) return false;
       if (att.notes === 'Ferie' || att.notes === 'Permesso') return false;
-      // Escludi quelli in trasferta dalla sezione presenti
+      // Escludi quelli in trasferta dalla sezione presenti (anche se hanno presenze automatiche)
       const isOnBusinessTrip = onBusinessTripEmployees.some(emp => emp.id === att.user_id);
       return !isOnBusinessTrip;
     })
