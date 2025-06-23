@@ -39,6 +39,33 @@ serve(async (req) => {
 
     console.log('Avvio pulizia automatica per dipendente:', userId, userName)
 
+    // Prima di eliminare i documenti, ottieni la lista dei file da eliminare dallo storage
+    const { data: documentsToDelete, error: fetchError } = await supabaseAdmin
+      .from('documents')
+      .select('file_path')
+      .or(`user_id.eq.${userId},uploaded_by.eq.${userId}`)
+
+    if (fetchError) {
+      console.error('Errore recupero documenti:', fetchError)
+    }
+
+    // Elimina i file dallo storage se esistono
+    if (documentsToDelete && documentsToDelete.length > 0) {
+      const filePaths = documentsToDelete.map(doc => doc.file_path)
+      console.log('Eliminazione file storage:', filePaths)
+      
+      const { error: storageError } = await supabaseAdmin.storage
+        .from('documents')
+        .remove(filePaths)
+
+      if (storageError) {
+        console.error('Errore eliminazione storage:', storageError)
+        // Continua comunque con la pulizia del database
+      } else {
+        console.log('File storage eliminati con successo')
+      }
+    }
+
     // Usa la funzione di pulizia completa esistente
     const { data: cleanupResult, error: cleanupError } = await supabaseAdmin.rpc('complete_user_cleanup', {
       user_uuid: userId
@@ -63,7 +90,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: `Dipendente ${userName} rimosso completamente dal sistema`,
-        cleanup_result: cleanupResult
+        cleanup_result: cleanupResult,
+        files_deleted: documentsToDelete?.length || 0
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
