@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,9 +16,6 @@ interface Employee {
   created_at?: string;
   updated_at?: string;
 }
-
-// Type for inserting new employee (without auto-generated fields)
-type EmployeeInsert = Omit<Employee, 'id' | 'created_at' | 'updated_at'>;
 
 export const useEmployeeOperations = () => {
   const [loading, setLoading] = useState(false);
@@ -68,8 +66,8 @@ export const useEmployeeOperations = () => {
     try {
       setLoading(true);
       
-      // Prepare data for insertion, ensuring proper format
-      const insertData: EmployeeInsert = {
+      // Prepare data for insertion without id field for new records
+      const insertData = {
         first_name: employeeData.first_name || null,
         last_name: employeeData.last_name || null,
         email: employeeData.email || null,
