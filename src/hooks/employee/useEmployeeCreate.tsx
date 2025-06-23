@@ -11,6 +11,7 @@ interface Employee {
   role: 'admin' | 'employee';
   department: string | null;
   employee_code: string | null;
+  hire_date: string | null;
   is_active: boolean;
   tracking_start_type?: 'from_hire_date' | 'from_year_start';
   created_at?: string;
@@ -63,6 +64,7 @@ export const useEmployeeCreate = () => {
           role: employeeData.role || 'employee',
           department: employeeData.department || null,
           employee_code: employeeData.employee_code || null,
+          hire_date: employeeData.hire_date || null,
           tracking_start_type: employeeData.tracking_start_type || 'from_hire_date',
           is_active: true
         })
