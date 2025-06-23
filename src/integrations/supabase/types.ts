@@ -930,10 +930,6 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: Json
       }
-      complete_user_cleanup: {
-        Args: { user_uuid: string }
-        Returns: Json
-      }
       delete_user_completely: {
         Args: { user_uuid: string }
         Returns: Json
@@ -953,10 +949,6 @@ export type Database = {
         Returns: string
       }
       get_user_storage_usage: {
-        Args: { user_uuid: string }
-        Returns: Json
-      }
-      verify_user_data_exists: {
         Args: { user_uuid: string }
         Returns: Json
       }

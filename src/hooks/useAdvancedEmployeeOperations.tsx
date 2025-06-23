@@ -21,24 +21,6 @@ interface UserStorageStats {
   storage_usage: StorageUsage;
 }
 
-interface UserDataVerification {
-  user_id: string;
-  profile_exists: boolean;
-  remaining_data: {
-    documents: number;
-    attendances: number;
-    unified_attendances: number;
-    manual_attendances: number;
-    leave_requests: number;
-    leave_balance: number;
-    notifications: number;
-    business_trips: number;
-    sent_notifications: number;
-    messages: number;
-  };
-  has_remaining_data: boolean;
-}
-
 export const useAdvancedEmployeeOperations = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -50,7 +32,7 @@ export const useAdvancedEmployeeOperations = () => {
       });
 
       if (error) throw error;
-      return data as unknown as StorageUsage;
+      return data as StorageUsage;
     } catch (error: any) {
       console.error('Error getting user storage usage:', error);
       toast({
@@ -73,7 +55,7 @@ export const useAdvancedEmployeeOperations = () => {
         first_name: item.first_name,
         last_name: item.last_name,
         email: item.email,
-        storage_usage: item.storage_usage as unknown as StorageUsage
+        storage_usage: item.storage_usage as StorageUsage
       }));
     } catch (error: any) {
       console.error('Error getting all users storage stats:', error);
@@ -88,22 +70,33 @@ export const useAdvancedEmployeeOperations = () => {
     }
   };
 
-  const verifyUserDataExists = async (userId: string): Promise<UserDataVerification | null> => {
+  const clearUserData = async (userId: string, userName: string) => {
+    setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('verify_user_data_exists', {
+      console.log('Azzerando dati utente:', userId);
+
+      const { data, error } = await supabase.rpc('clear_user_data', {
         user_uuid: userId
       });
 
       if (error) throw error;
-      return data as unknown as UserDataVerification;
+
+      toast({
+        title: "Dati azzerati",
+        description: `Tutti i dati di ${userName} sono stati eliminati`,
+      });
+
+      return { success: true, data };
     } catch (error: any) {
-      console.error('Error verifying user data:', error);
+      console.error('Error clearing user data:', error);
       toast({
         title: "Errore",
-        description: "Impossibile verificare i dati utente",
+        description: error.message || "Errore durante l'azzeramento dei dati",
         variant: "destructive",
       });
-      return null;
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -111,10 +104,6 @@ export const useAdvancedEmployeeOperations = () => {
     setIsLoading(true);
     try {
       console.log('Eliminando completamente utente:', userId);
-
-      // Verifica iniziale dei dati
-      const initialVerification = await verifyUserDataExists(userId);
-      console.log('Dati iniziali:', initialVerification);
 
       // Utilizza l'edge function per l'eliminazione completa
       const { data, error } = await supabase.functions.invoke('delete-user-completely', {
@@ -127,25 +116,9 @@ export const useAdvancedEmployeeOperations = () => {
         throw new Error(data.error || 'Errore durante l\'eliminazione');
       }
 
-      console.log('Risultato eliminazione completa:', data);
-
-      // FORZA l'invalidazione di TUTTE le query che potrebbero contenere dati dell'utente eliminato
-      const queryClient = (window as any).reactQuery;
-      if (queryClient) {
-        // Invalida specificamente le query dei bilanci ferie
-        await queryClient.invalidateQueries({ queryKey: ['employee_leave_balance'] });
-        await queryClient.invalidateQueries({ queryKey: ['active-employees'] });
-        await queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
-        await queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
-        // Invalida tutte le query per sicurezza
-        await queryClient.invalidateQueries();
-        // Forza il refresh immediato
-        await queryClient.refetchQueries();
-      }
-
       toast({
         title: "Utente eliminato",
-        description: `${userName} è stato rimosso completamente dal sistema. Tutti i dati inclusi i bilanci ferie sono stati eliminati.`,
+        description: `${userName} è stato rimosso completamente dal sistema`,
       });
 
       return { success: true, data };
@@ -165,7 +138,7 @@ export const useAdvancedEmployeeOperations = () => {
   return {
     getUserStorageUsage,
     getAllUsersStorageStats,
-    verifyUserDataExists,
+    clearUserData,
     deleteUserCompletely,
     isLoading
   };

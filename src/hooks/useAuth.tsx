@@ -36,46 +36,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const profileFetchCache = useRef<{ [key: string]: Profile }>({});
   const profileFetchInProgress = useRef<{ [key: string]: boolean }>({});
 
-  const createMissingProfile = async (userId: string, userData: User) => {
-    try {
-      console.log('[useAuth] Creating missing profile for user:', userId);
-      
-      // Estrai i dati dal metadata dell'utente
-      const firstName = userData.user_metadata?.first_name || null;
-      const lastName = userData.user_metadata?.last_name || null;
-      const role = userData.user_metadata?.role || 'employee';
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          first_name: firstName,
-          last_name: lastName,
-          email: userData.email,
-          role: role as 'admin' | 'employee',
-          is_active: true
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('[useAuth] Error creating profile:', error);
-        return null;
-      }
-
-      const newProfile: Profile = {
-        ...data,
-        role: data.role as 'admin' | 'employee'
-      };
-
-      console.log('[useAuth] Profile created successfully:', newProfile);
-      return newProfile;
-    } catch (error) {
-      console.error('[useAuth] Exception creating profile:', error);
-      return null;
-    }
-  };
-
   const fetchUserProfile = async (userId: string) => {
     try {
       // Evita richieste multiple per lo stesso utente
@@ -113,29 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!data) {
         console.log('[useAuth] No profile found for user:', userId);
-        
-        // Tenta di ricreare il profilo se l'utente è autenticato ma non ha un profilo
-        if (user) {
-          console.log('[useAuth] Attempting to recreate missing profile');
-          const newProfile = await createMissingProfile(userId, user);
-          if (newProfile) {
-            profileFetchCache.current[userId] = newProfile;
-            setProfile(newProfile);
-            toast({
-              title: "Profilo ripristinato",
-              description: "Il tuo profilo è stato ripristinato automaticamente.",
-            });
-          } else {
-            setProfile(null);
-            toast({
-              title: "Errore nel profilo",
-              description: "Impossibile ripristinare il profilo. Contatta l'amministratore.",
-              variant: "destructive",
-            });
-          }
-        } else {
-          setProfile(null);
-        }
+        setProfile(null);
         return;
       }
 

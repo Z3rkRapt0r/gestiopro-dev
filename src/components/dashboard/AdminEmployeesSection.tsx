@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,12 +36,15 @@ import {
   Trash2, 
   MoreVertical, 
   HardDrive, 
-  Skull
+  AlertTriangle, 
+  Skull,
+  Database
 } from 'lucide-react';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import CreateEmployeeForm from './CreateEmployeeForm';
 import EditEmployeeForm from './EditEmployeeForm';
 import DeleteEmployeeDialog from './DeleteEmployeeDialog';
+import ClearUserDataDialog from './ClearUserDataDialog';
 import DeleteUserCompletelyDialog from './DeleteUserCompletelyDialog';
 import UserStorageStatsDialog from './UserStorageStatsDialog';
 import { useQueryClient } from '@tanstack/react-query';
@@ -51,11 +55,13 @@ export default function AdminEmployeesSection() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<any>(null);
+  const [employeeToClear, setEmployeeToClear] = useState<any>(null);
   const [employeeToDeleteCompletely, setEmployeeToDeleteCompletely] = useState<any>(null);
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isClearDataDialogOpen, setIsClearDataDialogOpen] = useState(false);
   const [isDeleteCompletelyDialogOpen, setIsDeleteCompletelyDialogOpen] = useState(false);
   const [isStorageStatsDialogOpen, setIsStorageStatsDialogOpen] = useState(false);
   
@@ -75,6 +81,11 @@ export default function AdminEmployeesSection() {
   const handleDeleteEmployee = (employee: any) => {
     setEmployeeToDelete(employee);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleClearUserData = (employee: any) => {
+    setEmployeeToClear(employee);
+    setIsClearDataDialogOpen(true);
   };
 
   const handleDeleteCompletely = (employee: any) => {
@@ -110,6 +121,12 @@ export default function AdminEmployeesSection() {
   const handleDeleteEmployeeSuccess = async () => {
     setIsDeleteDialogOpen(false);
     setEmployeeToDelete(null);
+    await refreshData();
+  };
+
+  const handleClearDataSuccess = async () => {
+    setIsClearDataDialogOpen(false);
+    setEmployeeToClear(null);
     await refreshData();
   };
 
@@ -357,6 +374,14 @@ export default function AdminEmployeesSection() {
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
+                                onClick={() => handleClearUserData(employee)}
+                                className="text-amber-600 focus:text-amber-700"
+                              >
+                                <Database className="w-4 h-4 mr-2" />
+                                Azzera Tutti i Dati
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
                                 onClick={() => handleDeleteCompletely(employee)}
                                 className="text-red-600 focus:text-red-700 font-medium"
                               >
@@ -406,6 +431,17 @@ export default function AdminEmployeesSection() {
           setEmployeeToDelete(null);
         }}
         onEmployeeDeleted={handleDeleteEmployeeSuccess}
+      />
+
+      {/* Clear Data Dialog */}
+      <ClearUserDataDialog
+        employee={employeeToClear}
+        isOpen={isClearDataDialogOpen}
+        onClose={() => {
+          setIsClearDataDialogOpen(false);
+          setEmployeeToClear(null);
+        }}
+        onDataCleared={handleClearDataSuccess}
       />
 
       {/* Delete Completely Dialog */}
