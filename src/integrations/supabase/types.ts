@@ -1060,6 +1060,10 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: Json
       }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       populate_working_days_for_user: {
         Args: { target_user_id: string; start_date?: string; end_date?: string }
         Returns: number

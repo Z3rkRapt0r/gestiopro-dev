@@ -205,6 +205,11 @@ export const useBusinessTrips = () => {
       console.log('🗑️ Inizio eliminazione trasferta:', tripId);
       console.log('👤 Utente corrente:', { id: user?.id, role: profile?.role });
       
+      // Verifica preventiva che l'utente sia admin
+      if (profile?.role !== 'admin') {
+        throw new Error('Solo gli amministratori possono eliminare le trasferte');
+      }
+      
       try {
         // Prima ottieni i dettagli della trasferta
         console.log('📋 Recupero dettagli trasferta...');
@@ -216,6 +221,9 @@ export const useBusinessTrips = () => {
 
         if (fetchError) {
           console.error('❌ Errore nel recupero trasferta:', fetchError);
+          if (fetchError.code === 'PGRST116') {
+            throw new Error('Trasferta non trovata o non hai i permessi per visualizzarla');
+          }
           throw new Error(`Errore nel recupero trasferta: ${fetchError.message}`);
         }
 
@@ -256,14 +264,22 @@ export const useBusinessTrips = () => {
 
         if (deleteError) {
           console.error('❌ Errore eliminazione trasferta:', deleteError);
-          throw new Error(`Errore nell'eliminazione della trasferta: ${deleteError.message}`);
+          
+          // Gestisci diversi tipi di errore
+          if (deleteError.code === 'PGRST301') {
+            throw new Error('Non hai i permessi per eliminare questa trasferta. Verifica di essere un amministratore.');
+          } else if (deleteError.code === 'PGRST116') {
+            throw new Error('Trasferta non trovata o già eliminata.');
+          } else {
+            throw new Error(`Errore nell'eliminazione della trasferta: ${deleteError.message}`);
+          }
         }
 
         console.log('✅ Trasferta eliminata con successo. Righe eliminate:', deletedTrips || 0);
         
         if ((deletedTrips || 0) === 0) {
-          console.warn('⚠️ Nessuna riga eliminata - possibile problema con le policy RLS');
-          throw new Error('Nessuna trasferta è stata eliminata. Verificare i permessi.');
+          console.warn('⚠️ Nessuna riga eliminata - verifico che la policy RLS sia corretta');
+          throw new Error('Nessuna trasferta è stata eliminata. Verificare i permessi o contattare l\'amministratore di sistema.');
         }
 
         return { trip, deletedAttendances: deletedAttendances || 0, deletedTrips: deletedTrips || 0 };
@@ -293,7 +309,7 @@ export const useBusinessTrips = () => {
     onError: (error: any) => {
       console.error('💥 Errore nell\'eliminazione trasferta:', error);
       toast({
-        title: "Errore",
+        title: "Errore nell'eliminazione",
         description: error.message || "Errore nell'eliminazione della trasferta",
         variant: "destructive",
       });
