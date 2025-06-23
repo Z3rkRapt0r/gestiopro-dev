@@ -24,14 +24,13 @@ interface DeleteEmployeeDialogProps {
 }
 
 const DeleteEmployeeDialog = ({ employee, isOpen, onClose, onEmployeeDeleted }: DeleteEmployeeDialogProps) => {
-  const { deleteEmployee, isLoading } = useEmployeeOperations();
+  const { deleteEmployee, loading } = useEmployeeOperations();
 
   const handleDelete = async () => {
     if (!employee) return;
 
     try {
-      const employeeName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
-      await deleteEmployee(employee.id, employeeName);
+      await deleteEmployee(employee.id);
       onEmployeeDeleted();
       onClose();
     } catch (error) {
@@ -59,10 +58,10 @@ const DeleteEmployeeDialog = ({ employee, isOpen, onClose, onEmployeeDeleted }: 
           <AlertDialogCancel onClick={onClose}>Annulla</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
-            disabled={isLoading}
+            disabled={loading}
             className="bg-red-600 hover:bg-red-700"
           >
-            {isLoading ? 'Eliminazione...' : 'Elimina'}
+            {loading ? 'Eliminazione...' : 'Elimina'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

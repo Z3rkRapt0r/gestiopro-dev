@@ -14,7 +14,7 @@ interface CreateEmployeeFormProps {
 }
 
 const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormProps) => {
-  const { createEmployee, isLoading } = useEmployeeOperations();
+  const { createEmployee, loading } = useEmployeeOperations();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -28,7 +28,12 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
     e.preventDefault();
 
     try {
-      await createEmployee(formData);
+      await createEmployee({
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        employee_code: formData.employeeCode
+      });
       onEmployeeCreated();
       onClose();
     } catch (error) {
@@ -124,8 +129,8 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Annulla
               </Button>
-              <Button type="submit" disabled={isLoading} className="flex-1">
-                {isLoading ? "Creazione..." : "Crea Dipendente"}
+              <Button type="submit" disabled={loading} className="flex-1">
+                {loading ? "Creazione..." : "Crea Dipendente"}
               </Button>
             </div>
           </form>

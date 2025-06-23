@@ -66,14 +66,21 @@ export const useEmployeeOperations = () => {
     try {
       setLoading(true);
       
-      // Assicurati che il ruolo sia sempre 'employee' per i nuovi dipendenti
+      // Prepare data for insertion, ensuring proper format
+      const insertData = {
+        first_name: employeeData.first_name || null,
+        last_name: employeeData.last_name || null,
+        email: employeeData.email || null,
+        role: 'employee', // Force employee role
+        department: employeeData.department || null,
+        hire_date: employeeData.hire_date || null,
+        employee_code: employeeData.employee_code || null,
+        is_active: true
+      };
+
       const { data, error } = await supabase
         .from('profiles')
-        .insert({
-          ...employeeData,
-          role: 'employee', // Forza sempre il ruolo dipendente
-          is_active: true
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -208,6 +215,7 @@ export const useEmployeeOperations = () => {
     updateEmployee,
     deleteEmployee,
     toggleEmployeeStatus,
-    loading
+    loading,
+    isLoading: loading // Add alias for backward compatibility
   };
 };
