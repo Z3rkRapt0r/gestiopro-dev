@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,10 +46,10 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
         tracking_start_type: formData.trackingStartType
       });
 
-      if (!result.error && result.user?.id) {
+      if (!result.error && result.data?.id) {
         // Popola automaticamente i giorni lavorativi per il nuovo dipendente
-        console.log('Popolamento giorni lavorativi per nuovo dipendente:', result.user.id);
-        populateWorkingDaysForUser({ userId: result.user.id });
+        console.log('Popolamento giorni lavorativi per nuovo dipendente:', result.data.id);
+        populateWorkingDaysForUser({ userId: result.data.id });
         
         onEmployeeCreated();
         onClose();
