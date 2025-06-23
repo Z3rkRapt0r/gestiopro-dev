@@ -104,8 +104,10 @@ export default function NewDailyAttendanceCalendar() {
     return false;
   }) || [];
 
-  // Dipendenti in trasferta
+  // Dipendenti in trasferta (deduplichiamo per evitare chiavi duplicate)
   const onBusinessTripEmployees = [];
+  const processedEmployeeIds = new Set();
+  
   if (businessTrips && selectedDate) {
     businessTrips.forEach(trip => {
       const tripStart = new Date(trip.start_date);
@@ -114,16 +116,30 @@ export default function NewDailyAttendanceCalendar() {
       
       if (currentDate >= tripStart && currentDate <= tripEnd) {
         const employee = employees?.find(emp => emp.id === trip.user_id);
-        if (employee) {
+        if (employee && !processedEmployeeIds.has(employee.id)) {
+          // Trova tutte le trasferte attive per questo dipendente nella data selezionata
+          const activeTrips = businessTrips.filter(t => {
+            const tStart = new Date(t.start_date);
+            const tEnd = new Date(t.end_date);
+            return t.user_id === employee.id && currentDate >= tStart && currentDate <= tEnd;
+          });
+
+          // Usa la trasferta più recente o quella con destinazione più specifica
+          const primaryTrip = activeTrips.reduce((latest, current) => {
+            return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
+          }, trip);
+
           onBusinessTripEmployees.push({
             ...employee,
             businessTrip: {
-              destination: trip.destination,
-              start_date: trip.start_date,
-              end_date: trip.end_date,
-              reason: trip.reason,
+              destination: primaryTrip.destination,
+              start_date: primaryTrip.start_date,
+              end_date: primaryTrip.end_date,
+              reason: primaryTrip.reason,
             },
           });
+          
+          processedEmployeeIds.add(employee.id);
         }
       }
     });
