@@ -926,9 +926,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_user_data: {
+        Args: { user_uuid: string }
+        Returns: Json
+      }
+      delete_user_completely: {
+        Args: { user_uuid: string }
+        Returns: Json
+      }
+      get_all_users_storage_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          first_name: string
+          last_name: string
+          email: string
+          storage_usage: Json
+        }[]
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_user_storage_usage: {
+        Args: { user_uuid: string }
+        Returns: Json
       }
     }
     Enums: {
