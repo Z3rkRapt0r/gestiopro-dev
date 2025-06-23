@@ -99,12 +99,12 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get Brevo API key for admin
+    // Get Brevo settings for admin including sender configuration
     console.log("[Test Email] Looking for admin settings for user:", userId);
     
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
-      .select("brevo_api_key")
+      .select("brevo_api_key, sender_name, sender_email, reply_to")
       .eq("admin_id", userId)
       .single();
 
@@ -129,7 +129,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("[Test Email] Found Brevo API key for admin");
+    console.log("[Test Email] Found Brevo settings for admin");
 
     // Get email template for the specific template type
     console.log("[Test Email] Looking for email template:", templateType);
@@ -166,7 +166,7 @@ serve(async (req) => {
       border_radius: '6px'
     };
 
-    // Get admin profile info for sender name
+    // Get admin profile for fallback sender info
     const { data: adminProfile, error: profileError } = await supabase
       .from("profiles")
       .select("first_name, last_name")
@@ -177,18 +177,30 @@ serve(async (req) => {
       console.error("[Test Email] Error fetching admin profile:", profileError);
     }
 
-    // Use the verified Brevo email and admin name for sender
-    const senderName = adminProfile?.first_name && adminProfile?.last_name 
-      ? `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche` 
-      : "Sistema Notifiche";
+    // Use configured sender settings with intelligent fallbacks
+    let senderName, senderEmail;
     
-    const senderEmail = "zerkraptor@gmail.com"; // Verified Brevo email
+    if (adminSetting.sender_name && adminSetting.sender_name.trim()) {
+      senderName = adminSetting.sender_name.trim();
+    } else if (adminProfile?.first_name && adminProfile?.last_name) {
+      senderName = `${adminProfile.first_name} ${adminProfile.last_name} - Sistema Notifiche`;
+    } else {
+      senderName = "Sistema Notifiche";
+    }
+
+    if (adminSetting.sender_email && adminSetting.sender_email.trim()) {
+      senderEmail = adminSetting.sender_email.trim();
+    } else {
+      senderEmail = "zerkraptor@gmail.com"; // Fallback verified email
+    }
+
+    console.log("[Test Email] Using sender:", senderName, "<" + senderEmail + ">");
 
     // Generate HTML content using template settings
     const htmlContent = buildTestHtmlContent(template, subject, content);
 
-    // Send test email via Brevo API
-    const brevoPayload = {
+    // Build Brevo payload with configured sender settings
+    const brevoPayload: any = {
       sender: { 
         name: senderName, 
         email: senderEmail
@@ -199,7 +211,12 @@ serve(async (req) => {
       textContent: `[TEST] ${subject}\n\n${content}\n\n--- Questa è un'email di prova ---\nInviata da: ${senderEmail}`
     };
 
-    console.log("[Test Email] Calling Brevo API with sender:", senderEmail);
+    // Add replyTo if configured
+    if (adminSetting.reply_to && adminSetting.reply_to.trim()) {
+      brevoPayload.replyTo = { email: adminSetting.reply_to.trim() };
+    }
+
+    console.log("[Test Email] Calling Brevo API with configured sender:", senderEmail);
 
     const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -242,7 +259,7 @@ serve(async (req) => {
         success: true, 
         message: "Test email sent successfully",
         recipient: testEmail,
-        sender: senderEmail
+        sender: `${senderName} <${senderEmail}>`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

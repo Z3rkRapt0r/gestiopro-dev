@@ -34,10 +34,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get Brevo API key for admin
+    // Get Brevo settings for admin including sender configuration
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
-      .select("brevo_api_key")
+      .select("brevo_api_key, sender_name, sender_email, reply_to")
       .eq("admin_id", userId)
       .single();
 
@@ -62,7 +62,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("[Notification Email] Found Brevo API key for admin");
+    console.log("[Notification Email] Found Brevo settings for admin");
 
     // Determine template type based on topic first, then fallback to subject analysis
     let templateType = 'notifiche'; // default
@@ -151,7 +151,6 @@ serve(async (req) => {
     }
 
     console.log("[Notification Email] Using logoUrl:", logoUrl);
-    console.log("[Notification Email] Template settings - show_details_button:", templateData.show_details_button, "show_leave_details:", templateData.show_leave_details, "show_admin_notes:", templateData.show_admin_notes);
 
     // Get recipients list
     let recipients = [];
@@ -199,17 +198,31 @@ serve(async (req) => {
 
     console.log("[Notification Email] Recipients found:", recipients.length);
 
-    // Get admin profile for sender info
+    // Get admin profile for fallback sender info
     const { data: adminProfile, error: adminProfileError } = await supabase
       .from("profiles")
       .select("first_name, last_name")
       .eq("id", userId)
       .single();
 
-    const senderName = adminProfile?.first_name && adminProfile?.last_name 
-      ? `${adminProfile.first_name} ${adminProfile.last_name}` 
-      : "Sistema Notifiche";
-    const senderEmail = "zerkraptor@gmail.com";
+    // Use configured sender settings with intelligent fallbacks
+    let senderName, senderEmail;
+    
+    if (adminSetting.sender_name && adminSetting.sender_name.trim()) {
+      senderName = adminSetting.sender_name.trim();
+    } else if (adminProfile?.first_name && adminProfile?.last_name) {
+      senderName = `${adminProfile.first_name} ${adminProfile.last_name}`;
+    } else {
+      senderName = "Sistema Notifiche";
+    }
+
+    if (adminSetting.sender_email && adminSetting.sender_email.trim()) {
+      senderEmail = adminSetting.sender_email.trim();
+    } else {
+      senderEmail = "zerkraptor@gmail.com"; // Fallback verified email
+    }
+
+    console.log("[Notification Email] Using sender:", senderName, "<" + senderEmail + ">");
 
     let successCount = 0;
     const errors = [];
@@ -250,12 +263,12 @@ serve(async (req) => {
         }
         
         const htmlContent = buildHtmlContent({
-          subject: emailTemplate?.subject || 'Default Subject', // Usa il subject del template per il design
-          shortText: emailTemplate?.content || 'Default Content', // Usa il content del template per il design
+          subject: emailTemplate?.subject || 'Default Subject',
+          shortText: emailTemplate?.content || 'Default Content',
           logoUrl,
           attachmentSection,
           senderEmail,
-          isDocumentEmail: isDocumentEmail || isNotificationEmail, // This makes notifications and documents show the button
+          isDocumentEmail: isDocumentEmail || isNotificationEmail,
           templateType,
           primaryColor: templateData.primary_color,
           backgroundColor: templateData.background_color,
@@ -284,18 +297,23 @@ serve(async (req) => {
           customBlockText: templateData.custom_block_text,
           customBlockBgColor: templateData.custom_block_bg_color,
           customBlockTextColor: templateData.custom_block_text_color,
-          // Passa il contenuto dinamico per documenti e notifiche
           dynamicSubject: (['notifiche', 'documenti'].includes(templateType)) ? emailSubject : '',
           dynamicContent: (['notifiche', 'documenti'].includes(templateType)) ? emailContent : ''
         });
 
-        const brevoPayload = {
+        // Build Brevo payload with configured sender settings
+        const brevoPayload: any = {
           sender: { name: senderName, email: senderEmail },
           to: [{ email: recipient.email }],
-          subject: emailSubject, // Usa sempre il subject dinamico per l'email effettiva
+          subject: emailSubject,
           htmlContent,
           textContent: `${emailSubject}\n\n${emailContent}\n\nInviato da: ${senderName}`
         };
+
+        // Add replyTo if configured
+        if (adminSetting.reply_to && adminSetting.reply_to.trim()) {
+          brevoPayload.replyTo = { email: adminSetting.reply_to.trim() };
+        }
 
         const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
@@ -327,7 +345,7 @@ serve(async (req) => {
         success: true, 
         message: "Email sent successfully",
         recipients: successCount,
-        sender: senderEmail,
+        sender: `${senderName} <${senderEmail}>`,
         errors: errors.length > 0 ? errors : undefined
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
