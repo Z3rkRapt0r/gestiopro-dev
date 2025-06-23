@@ -9,6 +9,7 @@ import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
+import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useLeaveBalanceSync } from '@/hooks/useLeaveBalanceSync';
 import { formatTime, isWorkingDay } from '@/utils/attendanceUtils';
@@ -17,6 +18,7 @@ import PresentEmployeesSection from './sections/PresentEmployeesSection';
 import SickEmployeesSection from './sections/SickEmployeesSection';
 import LeaveEmployeesSection from './sections/LeaveEmployeesSection';
 import PermissionEmployeesSection from './sections/PermissionEmployeesSection';
+import BusinessTripEmployeesSection from './sections/BusinessTripEmployeesSection';
 import AbsentEmployeesSection from './sections/AbsentEmployeesSection';
 
 export default function NewDailyAttendanceCalendar() {
@@ -27,8 +29,9 @@ export default function NewDailyAttendanceCalendar() {
   const { employees } = useActiveEmployees();
   const { workSchedule } = useWorkSchedules();
   const { leaveRequests, deleteRequestMutation } = useLeaveRequests();
+  const { businessTrips } = useBusinessTrips();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
-  const { invalidateBalanceQueries } = useLeaveBalanceSync(); // AGGIUNTO: Per sincronizzazione bilanci
+  const { invalidateBalanceQueries } = useLeaveBalanceSync();
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
 
@@ -101,12 +104,39 @@ export default function NewDailyAttendanceCalendar() {
     return false;
   }) || [];
 
-  // Dipendenti presenti fisicamente
+  // Dipendenti in trasferta
+  const onBusinessTripEmployees = [];
+  if (businessTrips && selectedDate) {
+    businessTrips.forEach(trip => {
+      const tripStart = new Date(trip.start_date);
+      const tripEnd = new Date(trip.end_date);
+      const currentDate = new Date(selectedDate);
+      
+      if (currentDate >= tripStart && currentDate <= tripEnd) {
+        const employee = employees?.find(emp => emp.id === trip.user_id);
+        if (employee) {
+          onBusinessTripEmployees.push({
+            ...employee,
+            businessTrip: {
+              destination: trip.destination,
+              start_date: trip.start_date,
+              end_date: trip.end_date,
+              reason: trip.reason,
+            },
+          });
+        }
+      }
+    });
+  }
+
+  // Dipendenti presenti fisicamente (escludendo quelli in trasferta)
   const presentEmployees = selectedDateAttendances
     .filter(att => {
       if (!att.check_in_time || att.is_sick_leave) return false;
       if (att.notes === 'Ferie' || att.notes === 'Permesso') return false;
-      return true;
+      // Escludi quelli in trasferta dalla sezione presenti
+      const isOnBusinessTrip = onBusinessTripEmployees.some(emp => emp.id === att.user_id);
+      return !isOnBusinessTrip;
     })
     .map(att => {
       const employee = employees?.find(emp => emp.id === att.user_id);
@@ -217,8 +247,7 @@ export default function NewDailyAttendanceCalendar() {
     if (confirm('Sei sicuro di voler eliminare questa presenza?')) {
       console.log('Eliminando presenza, i bilanci saranno sincronizzati automaticamente');
       deleteAttendance(attendance);
-      // I bilanci vengono aggiornati automaticamente tramite i trigger del database
-      invalidateBalanceQueries(); // Assicura la sincronizzazione real-time
+      invalidateBalanceQueries();
     }
   };
 
@@ -228,13 +257,11 @@ export default function NewDailyAttendanceCalendar() {
       console.log('I bilanci saranno aggiornati automaticamente dai trigger del database');
       
       try {
-        // Passa sia l'ID che l'oggetto completo per la pulizia delle presenze
         await deleteRequestMutation.mutateAsync({
           id: leaveRequest.id,
           leaveRequest: leaveRequest
         });
         console.log('Richiesta di permesso eliminata con successo');
-        // I bilanci vengono sincronizzati automaticamente dal hook useLeaveRequests
       } catch (error) {
         console.error('Errore nell\'eliminazione della richiesta di permesso:', error);
       }
@@ -270,7 +297,7 @@ export default function NewDailyAttendanceCalendar() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-6 gap-4">
               <PresentEmployeesSection
                 employees={presentEmployees}
                 onDeleteAttendance={handleDeleteAttendance}
@@ -297,6 +324,10 @@ export default function NewDailyAttendanceCalendar() {
                 isDeleting={isDeleting}
                 deleteRequestMutation={deleteRequestMutation}
                 formatTime={formatTime}
+              />
+
+              <BusinessTripEmployeesSection
+                employees={onBusinessTripEmployees}
               />
 
               <AbsentEmployeesSection employees={absentEmployees} />
