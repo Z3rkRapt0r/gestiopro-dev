@@ -68,6 +68,12 @@ export default function NewOperatorAttendanceSection() {
                 {employees.map((employee) => (
                   <SelectItem key={employee.id} value={employee.id}>
                     {employee.first_name} {employee.last_name} ({employee.email})
+                    {employee.tracking_start_type === 'from_hire_date' && (
+                      <span className="ml-2 text-xs text-purple-600">Nuovo</span>
+                    )}
+                    {employee.tracking_start_type === 'from_year_start' && (
+                      <span className="ml-2 text-xs text-orange-600">Esistente</span>
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
