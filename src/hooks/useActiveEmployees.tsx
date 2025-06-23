@@ -19,7 +19,7 @@ export function useActiveEmployees() {
   useEffect(() => {
     const fetchEmployees = async () => {
       setLoading(true);
-      console.log('Fetching employees dopo database reset...');
+      console.log('Fetching employees...');
       
       const { data, error } = await supabase
         .from("profiles")
@@ -29,7 +29,7 @@ export function useActiveEmployees() {
       if (error) {
         console.error('Error fetching employees:', error);
       } else {
-        console.log('Dipendenti caricati dopo reset:', data?.length || 0);
+        console.log('Dipendenti caricati:', data?.length || 0);
         setEmployees((data || []) as EmployeeProfile[]);
       }
       
@@ -37,11 +37,6 @@ export function useActiveEmployees() {
     };
     
     fetchEmployees();
-    
-    // Ricarica automatico ogni 5 secondi dopo il reset per vedere subito i cambiamenti
-    const interval = setInterval(fetchEmployees, 5000);
-    
-    return () => clearInterval(interval);
   }, []);
 
   return { employees, loading };

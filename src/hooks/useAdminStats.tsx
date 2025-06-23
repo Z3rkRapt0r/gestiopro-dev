@@ -62,7 +62,7 @@ export const useAdminStats = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching admin stats dopo reset:', error);
+      console.error('Error fetching admin stats:', error);
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -98,12 +98,8 @@ export const useAdminStats = () => {
   useEffect(() => {
     fetchStats();
     
-    // Refresh più frequente dopo il reset per vedere immediatamente i cambiamenti
-    const interval = setInterval(fetchStats, 5000);
-    
     return () => {
       mountedRef.current = false;
-      clearInterval(interval);
     };
   }, []);
 
