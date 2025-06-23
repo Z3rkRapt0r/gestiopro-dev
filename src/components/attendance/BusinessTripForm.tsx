@@ -8,12 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plane, AlertCircle } from 'lucide-react';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { format } from 'date-fns';
 
 export default function BusinessTripForm() {
   const { createTrip, isCreating } = useBusinessTrips();
   const { profile } = useAuth();
+  const { employees } = useActiveEmployees();
+  const { isValidDateForEmployee } = useWorkingDaysTracking();
+  
   const [formData, setFormData] = useState({
     start_date: '',
     end_date: '',
@@ -22,22 +26,21 @@ export default function BusinessTripForm() {
   });
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Funzione per validare le date rispetto alla data di assunzione
-  const validateDatesAgainstHireDate = (startDate: string, endDate: string) => {
-    if (!startDate || !profile?.hire_date) return true;
+  const validateDates = (startDate: string, endDate: string) => {
+    if (!startDate || !profile?.id || !employees) return true;
 
-    const hireDateObj = new Date(profile.hire_date);
-    const startDateObj = new Date(startDate);
-    
-    if (startDateObj < hireDateObj) {
-      setValidationError(`⚠️ Impossibile salvare l'evento: la data di inizio (${format(startDateObj, 'dd/MM/yyyy')}) è antecedente alla data di assunzione (${format(hireDateObj, 'dd/MM/yyyy')}).`);
+    // Valida data di inizio
+    const startValidation = isValidDateForEmployee(profile.id, startDate, employees);
+    if (!startValidation.isValid) {
+      setValidationError(startValidation.message || 'Data di inizio non valida');
       return false;
     }
 
+    // Valida data di fine se presente
     if (endDate) {
-      const endDateObj = new Date(endDate);
-      if (endDateObj < hireDateObj) {
-        setValidationError(`⚠️ Impossibile salvare l'evento: la data di fine (${format(endDateObj, 'dd/MM/yyyy')}) è antecedente alla data di assunzione (${format(hireDateObj, 'dd/MM/yyyy')}).`);
+      const endValidation = isValidDateForEmployee(profile.id, endDate, employees);
+      if (!endValidation.isValid) {
+        setValidationError(endValidation.message?.replace('la data selezionata', 'la data di fine') || 'Data di fine non valida');
         return false;
       }
     }
@@ -52,14 +55,14 @@ export default function BusinessTripForm() {
     const startDate = field === 'start_date' ? value : formData.start_date;
     const endDate = field === 'end_date' ? value : formData.end_date;
     
-    validateDatesAgainstHireDate(startDate, endDate);
+    validateDates(startDate, endDate);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Verifica finale della validazione
-    if (!validateDatesAgainstHireDate(formData.start_date, formData.end_date)) {
+    if (!validateDates(formData.start_date, formData.end_date)) {
       return;
     }
     

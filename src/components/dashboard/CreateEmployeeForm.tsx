@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus, X, Calendar, Clock } from 'lucide-react';
 import { useEmployeeOperations } from '@/hooks/useEmployeeOperations';
+import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 
 interface CreateEmployeeFormProps {
   onClose: () => void;
@@ -15,6 +16,8 @@ interface CreateEmployeeFormProps {
 
 const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormProps) => {
   const { createEmployee, loading } = useEmployeeOperations();
+  const { populateWorkingDaysForUser } = useWorkingDaysTracking();
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -44,7 +47,11 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
         tracking_start_type: formData.trackingStartType
       });
 
-      if (!result.error) {
+      if (!result.error && result.user?.id) {
+        // Popola automaticamente i giorni lavorativi per il nuovo dipendente
+        console.log('Popolamento giorni lavorativi per nuovo dipendente:', result.user.id);
+        populateWorkingDaysForUser({ userId: result.user.id });
+        
         onEmployeeCreated();
         onClose();
       }

@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,18 +6,19 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus, AlertCircle } from 'lucide-react';
-import { useManualAttendances } from '@/hooks/useManualAttendances';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
-import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
+import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 
 export default function ManualAttendanceForm() {
-  const { createManualAttendance, isCreating } = useManualAttendances();
+  const { createManualAttendance, isCreating, attendances } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { leaveRequests } = useLeaveRequests();
-  const { attendances } = useUnifiedAttendances();
+  const { isValidDateForEmployee } = useWorkingDaysTracking();
+  
   const [formData, setFormData] = useState({
     user_id: '',
     date: '',
@@ -28,18 +28,13 @@ export default function ManualAttendanceForm() {
   });
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Funzione per validare la data rispetto alla data di assunzione
-  const validateDateAgainstHireDate = (selectedDate: string, employeeId: string) => {
-    if (!selectedDate || !employeeId) return true;
+  // Funzione per validare la data rispetto alla logica di tracking
+  const validateDate = (selectedDate: string, employeeId: string) => {
+    if (!selectedDate || !employeeId || !employees) return true;
 
-    const employee = employees?.find(emp => emp.id === employeeId);
-    if (!employee || !employee.hire_date) return true;
-
-    const selectedDateObj = new Date(selectedDate);
-    const hireDateObj = new Date(employee.hire_date);
-
-    if (selectedDateObj < hireDateObj) {
-      setValidationError(`⚠️ Impossibile salvare l'evento: la data selezionata (${format(selectedDateObj, 'dd/MM/yyyy')}) è antecedente alla data di assunzione del dipendente (${format(hireDateObj, 'dd/MM/yyyy')}).`);
+    const validation = isValidDateForEmployee(employeeId, selectedDate, employees);
+    if (!validation.isValid) {
+      setValidationError(validation.message || 'Data non valida');
       return false;
     }
 
@@ -88,7 +83,7 @@ export default function ManualAttendanceForm() {
     
     // Valida immediatamente se c'è un dipendente selezionato
     if (formData.user_id) {
-      validateDateAgainstHireDate(date, formData.user_id);
+      validateDate(date, formData.user_id);
     }
   };
 
@@ -97,7 +92,7 @@ export default function ManualAttendanceForm() {
     
     // Valida immediatamente se c'è una data selezionata
     if (formData.date) {
-      validateDateAgainstHireDate(formData.date, userId);
+      validateDate(formData.date, userId);
     }
   };
 
@@ -105,7 +100,7 @@ export default function ManualAttendanceForm() {
     e.preventDefault();
     
     // Verifica finale della validazione
-    if (!validateDateAgainstHireDate(formData.date, formData.user_id)) {
+    if (!validateDate(formData.date, formData.user_id)) {
       return;
     }
     

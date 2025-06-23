@@ -924,6 +924,44 @@ export type Database = {
         }
         Relationships: []
       }
+      working_days_tracking: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          should_be_tracked: boolean
+          tracking_reason: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          should_be_tracked?: boolean
+          tracking_reason?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          should_be_tracked?: boolean
+          tracking_reason?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "working_days_tracking_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       upcoming_leaves: {
@@ -1021,6 +1059,14 @@ export type Database = {
       get_user_storage_usage: {
         Args: { user_uuid: string }
         Returns: Json
+      }
+      populate_working_days_for_user: {
+        Args: { target_user_id: string; start_date?: string; end_date?: string }
+        Returns: number
+      }
+      should_track_employee_on_date: {
+        Args: { target_user_id: string; check_date: string }
+        Returns: boolean
       }
       verify_user_data_exists: {
         Args: { user_uuid: string }

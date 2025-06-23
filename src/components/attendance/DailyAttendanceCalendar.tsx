@@ -6,13 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar as CalendarIcon, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useAttendances } from '@/hooks/useAttendances';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 
 export default function DailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const { attendances, isLoading } = useAttendances();
+  const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
+  const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
 
   if (isLoading) {
     return (
@@ -28,30 +30,23 @@ export default function DailyAttendanceCalendar() {
     );
   }
 
-  // Funzione per verificare se un dipendente dovrebbe essere considerato "presente" in una data
-  const shouldEmployeeBeConsidered = (employee: any, date: Date) => {
-    if (!employee.hire_date) return true; // Se non ha data di assunzione, considera sempre
-    
-    const hireDate = new Date(employee.hire_date);
-    const selectedDateObj = new Date(date);
-    
-    // LOGICA CORRETTA: Per dipendenti nuovi (from_hire_date), non considerarlo prima della data di assunzione
-    if (employee.tracking_start_type === 'from_hire_date') {
-      return selectedDateObj >= hireDate;
-    }
-    
-    // Per dipendenti esistenti (from_year_start), consideralo sempre per mostrare le assenze
-    return true;
-  };
-
   // Ottieni le presenze per la data selezionata
   const selectedDateStr = selectedDate?.toISOString().split('T')[0];
   const selectedDateAttendances = attendances?.filter(att => att.date === selectedDateStr) || [];
 
-  // Filtra i dipendenti che dovrebbero essere considerati per la data selezionata
-  const relevantEmployeesForDate = employees?.filter(emp => 
-    selectedDate ? shouldEmployeeBeConsidered(emp, selectedDate) : true
-  ) || [];
+  // Filtra i dipendenti che dovrebbero essere tracciati per la data selezionata
+  const relevantEmployeesForDate = employees?.filter(emp => {
+    if (!selectedDate) return true;
+    
+    // Usa la logica centralizzata per determinare se il dipendente dovrebbe essere tracciato
+    if (emp.tracking_start_type === 'from_hire_date' && emp.hire_date) {
+      const hireDate = new Date(emp.hire_date);
+      return selectedDate >= hireDate;
+    }
+    
+    // Per dipendenti esistenti (from_year_start), traccia sempre
+    return true;
+  }) || [];
 
   // Ottieni i dipendenti presenti
   const presentEmployees = selectedDateAttendances
@@ -62,7 +57,8 @@ export default function DailyAttendanceCalendar() {
         ...employee,
         check_in_time: att.check_in_time,
         check_out_time: att.check_out_time,
-        is_business_trip: att.is_business_trip
+        is_business_trip: att.is_business_trip,
+        is_sick_leave: att.is_sick_leave
       } : null;
     })
     .filter(emp => emp !== null);
@@ -84,6 +80,13 @@ export default function DailyAttendanceCalendar() {
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
+    
+    // Se è già in formato HH:MM, restituiscilo così com'è
+    if (/^\d{2}:\d{2}$/.test(timeString)) {
+      return timeString;
+    }
+    
+    // Altrimenti prova a parsarlo come timestamp
     return new Date(timeString).toLocaleTimeString('it-IT', {
       hour: '2-digit',
       minute: '2-digit'
@@ -162,6 +165,11 @@ export default function DailyAttendanceCalendar() {
                           {employee.is_business_trip && (
                             <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 text-xs">
                               Trasferta
+                            </Badge>
+                          )}
+                          {employee.is_sick_leave && (
+                            <Badge variant="outline" className="ml-2 bg-red-50 text-red-700 text-xs">
+                              Malattia
                             </Badge>
                           )}
                         </div>
