@@ -21,6 +21,24 @@ interface UserStorageStats {
   storage_usage: StorageUsage;
 }
 
+interface UserDataVerification {
+  user_id: string;
+  profile_exists: boolean;
+  remaining_data: {
+    documents: number;
+    attendances: number;
+    unified_attendances: number;
+    manual_attendances: number;
+    leave_requests: number;
+    leave_balance: number;
+    notifications: number;
+    business_trips: number;
+    sent_notifications: number;
+    messages: number;
+  };
+  has_remaining_data: boolean;
+}
+
 export const useAdvancedEmployeeOperations = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -70,10 +88,33 @@ export const useAdvancedEmployeeOperations = () => {
     }
   };
 
+  const verifyUserDataExists = async (userId: string): Promise<UserDataVerification | null> => {
+    try {
+      const { data, error } = await supabase.rpc('verify_user_data_exists', {
+        user_uuid: userId
+      });
+
+      if (error) throw error;
+      return data as unknown as UserDataVerification;
+    } catch (error: any) {
+      console.error('Error verifying user data:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile verificare i dati utente",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   const clearUserData = async (userId: string, userName: string) => {
     setIsLoading(true);
     try {
       console.log('Azzerando dati utente:', userId);
+
+      // Prima verifica i dati esistenti
+      const beforeVerification = await verifyUserDataExists(userId);
+      console.log('Dati prima della pulizia:', beforeVerification);
 
       const { data, error } = await supabase.rpc('clear_user_data', {
         user_uuid: userId
@@ -81,12 +122,16 @@ export const useAdvancedEmployeeOperations = () => {
 
       if (error) throw error;
 
+      // Verifica dopo la pulizia
+      const afterVerification = await verifyUserDataExists(userId);
+      console.log('Dati dopo la pulizia:', afterVerification);
+
       toast({
         title: "Dati azzerati",
         description: `Tutti i dati di ${userName} sono stati eliminati`,
       });
 
-      return { success: true, data };
+      return { success: true, data, verification: { before: beforeVerification, after: afterVerification } };
     } catch (error: any) {
       console.error('Error clearing user data:', error);
       toast({
@@ -105,6 +150,10 @@ export const useAdvancedEmployeeOperations = () => {
     try {
       console.log('Eliminando completamente utente:', userId);
 
+      // Verifica iniziale dei dati
+      const initialVerification = await verifyUserDataExists(userId);
+      console.log('Dati iniziali:', initialVerification);
+
       // Utilizza l'edge function per l'eliminazione completa
       const { data, error } = await supabase.functions.invoke('delete-user-completely', {
         body: { userId }
@@ -115,6 +164,8 @@ export const useAdvancedEmployeeOperations = () => {
       if (!data.success) {
         throw new Error(data.error || 'Errore durante l\'eliminazione');
       }
+
+      console.log('Risultato eliminazione completa:', data);
 
       toast({
         title: "Utente eliminato",
@@ -138,6 +189,7 @@ export const useAdvancedEmployeeOperations = () => {
   return {
     getUserStorageUsage,
     getAllUsersStorageStats,
+    verifyUserDataExists,
     clearUserData,
     deleteUserCompletely,
     isLoading

@@ -37,27 +37,57 @@ serve(async (req) => {
       }
     )
 
-    console.log('Eliminazione utente completa per:', userId)
+    console.log('Inizio eliminazione completa utente:', userId)
 
-    // Prima elimina tutti i dati dell'utente
-    const { error: clearError } = await supabaseAdmin.rpc('clear_user_data', {
+    // Verifica dati prima della pulizia
+    const { data: verifyBefore, error: verifyBeforeError } = await supabaseAdmin.rpc('verify_user_data_exists', {
       user_uuid: userId
     });
 
-    if (clearError) {
-      console.error('Errore eliminazione dati:', clearError)
-      throw clearError
+    if (verifyBeforeError) {
+      console.error('Errore verifica dati iniziale:', verifyBeforeError)
+      throw verifyBeforeError
     }
 
-    // Elimina il profilo
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
+    console.log('Dati utente prima della pulizia:', verifyBefore)
 
-    if (profileError) {
-      console.error('Errore eliminazione profilo:', profileError)
-      throw profileError
+    // Esegue la pulizia completa usando la nuova funzione
+    const { data: cleanupResult, error: cleanupError } = await supabaseAdmin.rpc('complete_user_cleanup', {
+      user_uuid: userId
+    });
+
+    if (cleanupError) {
+      console.error('Errore durante la pulizia completa:', cleanupError)
+      throw cleanupError
+    }
+
+    console.log('Risultato pulizia completa:', cleanupResult)
+
+    // Verifica finale per assicurarsi che non ci siano dati residui
+    const { data: verifyAfter, error: verifyAfterError } = await supabaseAdmin.rpc('verify_user_data_exists', {
+      user_uuid: userId
+    });
+
+    if (verifyAfterError) {
+      console.error('Errore verifica dati finale:', verifyAfterError)
+      throw verifyAfterError
+    }
+
+    console.log('Verifica finale:', verifyAfter)
+
+    // Se ci sono ancora dati residui, tenta una seconda pulizia
+    if (verifyAfter?.has_remaining_data) {
+      console.log('Trovati dati residui, eseguo seconda pulizia per utente:', userId)
+      
+      const { data: secondCleanup, error: secondCleanupError } = await supabaseAdmin.rpc('complete_user_cleanup', {
+        user_uuid: userId
+      });
+
+      if (secondCleanupError) {
+        console.error('Errore durante la seconda pulizia:', secondCleanupError)
+      } else {
+        console.log('Seconda pulizia completata:', secondCleanup)
+      }
     }
 
     // Elimina l'utente dall'autenticazione
@@ -68,13 +98,33 @@ serve(async (req) => {
       throw authError
     }
 
-    console.log('Utente eliminato completamente:', userId)
+    console.log('Utente eliminato completamente dalla auth:', userId)
+
+    // Verifica finale finale per confermare la rimozione completa
+    const { data: finalVerify, error: finalVerifyError } = await supabaseAdmin.rpc('verify_user_data_exists', {
+      user_uuid: userId
+    });
+
+    if (finalVerifyError) {
+      console.error('Errore verifica finale:', finalVerifyError)
+    }
+
+    const response = {
+      success: true,
+      message: 'Utente eliminato completamente',
+      verification: {
+        before_cleanup: verifyBefore,
+        after_cleanup: verifyAfter,
+        final_check: finalVerify,
+        cleanup_result: cleanupResult
+      },
+      completely_removed: !finalVerify?.has_remaining_data
+    };
+
+    console.log('Eliminazione completa terminata:', response)
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Utente eliminato completamente' 
-      }),
+      JSON.stringify(response),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
@@ -84,7 +134,10 @@ serve(async (req) => {
     console.error('Errore nella funzione delete-user-completely:', error)
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        success: false 
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
