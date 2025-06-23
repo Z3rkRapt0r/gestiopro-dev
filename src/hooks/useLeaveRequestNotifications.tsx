@@ -80,5 +80,103 @@ export const useLeaveRequestNotifications = () => {
     }
   };
 
-  return { sendLeaveRequestNotification };
+  const notifyEmployee = async ({
+    requestId,
+    employeeId,
+    status,
+    adminNote,
+    type,
+    details,
+  }: {
+    requestId: string;
+    employeeId: string;
+    status: 'approved' | 'rejected';
+    adminNote?: string;
+    type: string;
+    details: string;
+  }) => {
+    try {
+      // Get employee profile
+      const { data: employeeProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', employeeId)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching employee profile:', profileError);
+        throw profileError;
+      }
+
+      // Create mock leave request object for notification
+      const mockLeaveRequest = {
+        id: requestId,
+        user_id: employeeId,
+        type,
+        // Parse details to extract date info
+        date_from: details.includes('Dal:') ? details.split('Dal: ')[1]?.split('\n')[0] : null,
+        date_to: details.includes('Al:') ? details.split('Al: ')[1]?.split('\n')[0] : null,
+        day: details.includes('Giorno:') ? details.split('Giorno: ')[1]?.split('\n')[0] : null,
+      };
+
+      return await sendLeaveRequestNotification(
+        mockLeaveRequest,
+        employeeProfile,
+        adminNote,
+        status === 'approved',
+        status === 'rejected'
+      );
+    } catch (error) {
+      console.error('Error in notifyEmployee:', error);
+      return { success: false, error };
+    }
+  };
+
+  const notifyAdmin = async ({
+    requestId,
+    employeeName,
+    type,
+    details,
+  }: {
+    requestId: string;
+    employeeName: string;
+    type: string;
+    details: string;
+  }) => {
+    try {
+      // Create mock objects for notification
+      const mockLeaveRequest = {
+        id: requestId,
+        type,
+        // Parse details to extract date info
+        date_from: details.includes('Dal:') ? details.split('Dal: ')[1]?.split('\n')[0] : null,
+        date_to: details.includes('Al:') ? details.split('Al: ')[1]?.split('\n')[0] : null,
+        day: details.includes('Giorno:') ? details.split('Giorno: ')[1]?.split('\n')[0] : null,
+        time_from: details.includes('Orario:') && details.includes(' - ') ? 
+          details.split('Orario: ')[1]?.split(' - ')[0] : null,
+        time_to: details.includes('Orario:') && details.includes(' - ') ? 
+          details.split(' - ')[1]?.split('\n')[0] : null,
+      };
+
+      const mockEmployeeProfile = {
+        first_name: employeeName.split(' ')[0] || '',
+        last_name: employeeName.split(' ').slice(1).join(' ') || '',
+        email: '', // Will be populated by the edge function if needed
+      };
+
+      return await sendLeaveRequestNotification(
+        mockLeaveRequest,
+        mockEmployeeProfile
+      );
+    } catch (error) {
+      console.error('Error in notifyAdmin:', error);
+      return { success: false, error };
+    }
+  };
+
+  return { 
+    sendLeaveRequestNotification,
+    notifyEmployee,
+    notifyAdmin
+  };
 };
