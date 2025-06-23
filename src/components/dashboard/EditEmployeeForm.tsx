@@ -64,7 +64,6 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
     control,
     handleSubmit,
     reset,
-    watch,
     formState: { errors },
   } = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
@@ -78,8 +77,6 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
       is_active: employee.is_active ?? true,
     },
   });
-
-  const hireDate = watch('hire_date');
 
   useEffect(() => {
     reset({
@@ -226,12 +223,6 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
               )}
             />
             {errors.hire_date && <p className="text-red-500 text-sm">{errors.hire_date.message}</p>}
-            <p className="text-xs text-muted-foreground mt-1">
-              {hireDate 
-                ? '✓ Nuovo dipendente - tracciamento dalla data di assunzione'
-                : '⚠️ Dipendente esistente - tracciamento dall\'inizio dell\'anno'
-              }
-            </p>
           </div>
           <div className="flex items-center space-x-2">
             <Controller

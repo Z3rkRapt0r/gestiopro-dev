@@ -158,12 +158,6 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
                 onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
                 max={new Date().toISOString().split('T')[0]}
               />
-              <p className="text-xs text-muted-foreground">
-                {formData.hireDate 
-                  ? '✓ Nuovo dipendente - tracciamento dalla data di assunzione'
-                  : '⚠️ Dipendente esistente - tracciamento dall\'inizio dell\'anno'
-                }
-              </p>
             </div>
 
             <div className="flex space-x-2 pt-4">

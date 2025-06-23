@@ -47,16 +47,6 @@ export default function PresentEmployeesSection({
                     <span className="font-semibold text-sm">
                       {employee.first_name} {employee.last_name}
                     </span>
-                    {employee.tracking_start_type === 'from_year_start' && (
-                      <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs px-1.5 py-0.5">
-                        Esistente
-                      </Badge>
-                    )}
-                    {employee.tracking_start_type === 'from_hire_date' && (
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs px-1.5 py-0.5">
-                        Nuovo
-                      </Badge>
-                    )}
                     {employee.attendance.is_manual && (
                       <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs px-1.5 py-0.5">
                         Manuale
