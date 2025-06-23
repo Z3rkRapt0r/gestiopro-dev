@@ -50,7 +50,13 @@ export const useAdvancedEmployeeOperations = () => {
       const { data, error } = await supabase.rpc('get_all_users_storage_stats');
 
       if (error) throw error;
-      return data as UserStorageStats[];
+      return (data as any[]).map(item => ({
+        user_id: item.user_id,
+        first_name: item.first_name,
+        last_name: item.last_name,
+        email: item.email,
+        storage_usage: item.storage_usage as StorageUsage
+      }));
     } catch (error: any) {
       console.error('Error getting all users storage stats:', error);
       toast({
@@ -99,11 +105,16 @@ export const useAdvancedEmployeeOperations = () => {
     try {
       console.log('Eliminando completamente utente:', userId);
 
-      const { data, error } = await supabase.rpc('delete_user_completely', {
-        user_uuid: userId
+      // Utilizza l'edge function per l'eliminazione completa
+      const { data, error } = await supabase.functions.invoke('delete-user-completely', {
+        body: { userId }
       });
 
       if (error) throw error;
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore durante l\'eliminazione');
+      }
 
       toast({
         title: "Utente eliminato",
