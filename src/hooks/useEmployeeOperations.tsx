@@ -16,6 +16,9 @@ interface Employee {
   updated_at?: string;
 }
 
+// Type for inserting new employee (without auto-generated fields)
+type EmployeeInsert = Omit<Employee, 'id' | 'created_at' | 'updated_at'>;
+
 export const useEmployeeOperations = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -66,7 +69,7 @@ export const useEmployeeOperations = () => {
       setLoading(true);
       
       // Prepare data for insertion, ensuring proper format
-      const insertData = {
+      const insertData: EmployeeInsert = {
         first_name: employeeData.first_name || null,
         last_name: employeeData.last_name || null,
         email: employeeData.email || null,
