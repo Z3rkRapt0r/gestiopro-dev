@@ -49,7 +49,8 @@ export const useActiveEmployees = () => {
       // Type assertion to ensure compatibility
       const typedData = (data || []).map(employee => ({
         ...employee,
-        role: employee.role as 'admin' | 'employee'
+        role: employee.role as 'admin' | 'employee',
+        tracking_start_type: employee.tracking_start_type as 'from_hire_date' | 'from_year_start' | undefined
       }));
 
       setEmployees(typedData);
