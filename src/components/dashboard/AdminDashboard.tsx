@@ -10,8 +10,7 @@ import AdminDocumentsSection from "./AdminDocumentsSection";
 import NotificationsSection from "./NotificationsSection";
 import AdminSettingsSection from "../admin/AdminSettingsSection";
 import DashboardHeader from "./DashboardHeader";
-import EmployeeLeavePage from "../leave/EmployeeLeavePage";
-import { EmployeeLeaveBalanceSection } from "../leave/EmployeeLeaveBalanceSection";
+import AdminLeaveApprovalsSection from "../leave/AdminLeaveApprovalsSection";
 import { 
   LayoutDashboard, 
   Users, 
@@ -19,8 +18,7 @@ import {
   FileText, 
   Bell, 
   Settings,
-  Calendar,
-  Wallet
+  Calendar
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -56,7 +54,7 @@ const AdminDashboard = () => {
       <DashboardHeader title="Dashboard Amministratore" />
       <div className="container mx-auto py-6 px-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-8 mb-6">
+          <TabsList className="grid w-full grid-cols-7 mb-6">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <LayoutDashboard className="w-4 h-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -72,10 +70,6 @@ const AdminDashboard = () => {
             <TabsTrigger value="leaves" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               <span className="hidden sm:inline">Permessi</span>
-            </TabsTrigger>
-            <TabsTrigger value="leave-balance" className="flex items-center gap-2">
-              <Wallet className="w-4 h-4" />
-              <span className="hidden sm:inline">Saldi</span>
             </TabsTrigger>
             <TabsTrigger value="documents" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
@@ -104,11 +98,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="leaves">
-            <EmployeeLeavePage />
-          </TabsContent>
-
-          <TabsContent value="leave-balance">
-            <EmployeeLeaveBalanceSection />
+            <AdminLeaveApprovalsSection />
           </TabsContent>
 
           <TabsContent value="documents">
