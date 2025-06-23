@@ -12,7 +12,7 @@ import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { format, eachDayOfInterval } from 'date-fns';
+import { format } from 'date-fns';
 
 export default function ManualAttendanceForm() {
   const { createManualAttendance, isCreating } = useManualAttendances();
@@ -26,6 +26,26 @@ export default function ManualAttendanceForm() {
     check_out_time: '',
     notes: '',
   });
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Funzione per validare la data rispetto alla data di assunzione
+  const validateDateAgainstHireDate = (selectedDate: string, employeeId: string) => {
+    if (!selectedDate || !employeeId) return true;
+
+    const employee = employees?.find(emp => emp.id === employeeId);
+    if (!employee || !employee.hire_date) return true;
+
+    const selectedDateObj = new Date(selectedDate);
+    const hireDateObj = new Date(employee.hire_date);
+
+    if (selectedDateObj < hireDateObj) {
+      setValidationError(`⚠️ Impossibile salvare l'evento: la data selezionata (${format(selectedDateObj, 'dd/MM/yyyy')}) è antecedente alla data di assunzione del dipendente (${format(hireDateObj, 'dd/MM/yyyy')}).`);
+      return false;
+    }
+
+    setValidationError(null);
+    return true;
+  };
 
   // Filtra i dipendenti disponibili escludendo quelli in ferie o malattia nella data selezionata
   const availableEmployees = useMemo(() => {
@@ -63,8 +83,31 @@ export default function ManualAttendanceForm() {
     });
   }, [formData.date, employees, leaveRequests, attendances]);
 
+  const handleDateChange = (date: string) => {
+    setFormData(prev => ({ ...prev, date }));
+    
+    // Valida immediatamente se c'è un dipendente selezionato
+    if (formData.user_id) {
+      validateDateAgainstHireDate(date, formData.user_id);
+    }
+  };
+
+  const handleEmployeeChange = (userId: string) => {
+    setFormData(prev => ({ ...prev, user_id: userId }));
+    
+    // Valida immediatamente se c'è una data selezionata
+    if (formData.date) {
+      validateDateAgainstHireDate(formData.date, userId);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Verifica finale della validazione
+    if (!validateDateAgainstHireDate(formData.date, formData.user_id)) {
+      return;
+    }
     
     // Costruiamo gli orari mantenendo la data e l'orario esatti senza conversioni di fuso orario
     const attendanceData = {
@@ -84,6 +127,7 @@ export default function ManualAttendanceForm() {
       check_out_time: '',
       notes: '',
     });
+    setValidationError(null);
   };
 
   // Calcola dipendenti esclusi per mostrare l'avviso
@@ -137,10 +181,17 @@ export default function ManualAttendanceForm() {
                 id="date"
                 type="date"
                 value={formData.date}
-                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value, user_id: '' }))}
+                onChange={(e) => handleDateChange(e.target.value)}
                 required
               />
             </div>
+
+            {validationError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{validationError}</AlertDescription>
+              </Alert>
+            )}
 
             {excludedEmployees.length > 0 && formData.date && (
               <Alert>
@@ -154,7 +205,7 @@ export default function ManualAttendanceForm() {
 
             <div>
               <Label htmlFor="employee">Dipendente</Label>
-              <Select value={formData.user_id} onValueChange={(value) => setFormData(prev => ({ ...prev, user_id: value }))}>
+              <Select value={formData.user_id} onValueChange={handleEmployeeChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleziona dipendente" />
                 </SelectTrigger>
@@ -199,7 +250,11 @@ export default function ManualAttendanceForm() {
               />
             </div>
 
-            <Button type="submit" disabled={isCreating || !formData.user_id || !formData.date} className="w-full">
+            <Button 
+              type="submit" 
+              disabled={isCreating || !formData.user_id || !formData.date || !!validationError} 
+              className="w-full"
+            >
               {isCreating ? 'Salvando...' : 'Salva Presenza'}
             </Button>
           </form>

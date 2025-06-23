@@ -8,11 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Clock, User } from "lucide-react";
+import { CalendarIcon, Clock, User, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 interface ManualLeaveEntryFormProps {
@@ -32,15 +33,60 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [timeFrom, setTimeFrom] = useState<string>("");
   const [timeTo, setTimeTo] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const { employees } = useActiveEmployees();
   const { insertMutation } = useLeaveRequests();
+
+  // Funzione per validare le date rispetto alla data di assunzione
+  const validateDatesAgainstHireDate = (startDate?: Date, endDate?: Date, employeeId?: string) => {
+    if (!startDate || !employeeId) return true;
+
+    const employee = employees?.find(emp => emp.id === employeeId);
+    if (!employee || !employee.hire_date) return true;
+
+    const hireDateObj = new Date(employee.hire_date);
+    
+    if (startDate < hireDateObj) {
+      setValidationError(`⚠️ Impossibile salvare l'evento: la data di inizio (${format(startDate, 'dd/MM/yyyy')}) è antecedente alla data di assunzione del dipendente (${format(hireDateObj, 'dd/MM/yyyy')}).`);
+      return false;
+    }
+
+    if (endDate && endDate < hireDateObj) {
+      setValidationError(`⚠️ Impossibile salvare l'evento: la data di fine (${format(endDate, 'dd/MM/yyyy')}) è antecedente alla data di assunzione del dipendente (${format(hireDateObj, 'dd/MM/yyyy')}).`);
+      return false;
+    }
+
+    setValidationError(null);
+    return true;
+  };
+
+  const handleEmployeeChange = (userId: string) => {
+    setSelectedUserId(userId);
+    // Valida immediatamente se ci sono date selezionate
+    validateDatesAgainstHireDate(startDate, endDate, userId);
+  };
+
+  const handleStartDateChange = (date: Date | undefined) => {
+    setStartDate(date);
+    validateDatesAgainstHireDate(date, endDate, selectedUserId);
+  };
+
+  const handleEndDateChange = (date: Date | undefined) => {
+    setEndDate(date);
+    validateDatesAgainstHireDate(startDate, date, selectedUserId);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedUserId) {
       alert("Seleziona un dipendente");
+      return;
+    }
+
+    // Verifica finale della validazione
+    if (!validateDatesAgainstHireDate(startDate, endDate, selectedUserId)) {
       return;
     }
 
@@ -69,6 +115,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           setStartDate(undefined);
           setEndDate(undefined);
           setNote("");
+          setValidationError(null);
           onSuccess?.();
         }
       });
@@ -102,6 +149,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           setTimeFrom("");
           setTimeTo("");
           setNote("");
+          setValidationError(null);
           onSuccess?.();
         }
       });
@@ -121,7 +169,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           {/* Selezione dipendente */}
           <div className="space-y-2">
             <Label htmlFor="employee">Dipendente *</Label>
-            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <Select value={selectedUserId} onValueChange={handleEmployeeChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleziona un dipendente" />
               </SelectTrigger>
@@ -149,6 +197,13 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
             </Select>
           </div>
 
+          {validationError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{validationError}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Date selection */}
           {leaveType === "ferie" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -171,7 +226,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                     <Calendar
                       mode="single"
                       selected={startDate}
-                      onSelect={setStartDate}
+                      onSelect={handleStartDateChange}
                       disabled={(date) => date < new Date()}
                       locale={it}
                       initialFocus
@@ -199,7 +254,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                     <Calendar
                       mode="single"
                       selected={endDate}
-                      onSelect={setEndDate}
+                      onSelect={handleEndDateChange}
                       disabled={(date) => date < (startDate || new Date())}
                       locale={it}
                       initialFocus
@@ -244,7 +299,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                     <Calendar
                       mode="single"
                       selected={startDate}
-                      onSelect={setStartDate}
+                      onSelect={handleStartDateChange}
                       disabled={(date) => date < new Date()}
                       locale={it}
                       initialFocus
@@ -304,7 +359,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={insertMutation.isPending}
+            disabled={insertMutation.isPending || !!validationError}
           >
             {insertMutation.isPending ? "Salvando..." : "Salva Richiesta"}
           </Button>

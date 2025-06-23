@@ -47,7 +47,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   const shouldShowAsAbsent = (date: Date) => {
     if (!isWorkingDay(date)) return false; // Non lavorativo, non mostrare come assente
     
-    // Per dipendenti nuovi (from_hire_date): mostra assente solo dopo la data di assunzione
+    // LOGICA CORRETTA: Per dipendenti nuovi (from_hire_date): mostra assente solo dopo la data di assunzione
     if (employee.tracking_start_type === 'from_hire_date') {
       return isAfterHireDate(date);
     }
@@ -73,7 +73,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0);
     
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      if (isWorkingDay(d)) {
+      if (isWorkingDay(d) && shouldShowAsAbsent(d)) {
         dates.push(new Date(d));
       }
     }

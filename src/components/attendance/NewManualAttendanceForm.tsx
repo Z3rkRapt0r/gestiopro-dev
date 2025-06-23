@@ -7,9 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, AlertCircle } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { format } from 'date-fns';
 
 export default function NewManualAttendanceForm() {
   const { createManualAttendance, isCreating } = useUnifiedAttendances();
@@ -23,9 +25,62 @@ export default function NewManualAttendanceForm() {
     notes: '',
     is_sick_leave: false,
   });
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Funzione per validare le date rispetto alla data di assunzione
+  const validateDatesAgainstHireDate = (startDate: string, endDate: string, employeeId: string) => {
+    if (!startDate || !employeeId) return true;
+
+    const employee = employees?.find(emp => emp.id === employeeId);
+    if (!employee || !employee.hire_date) return true;
+
+    const hireDateObj = new Date(employee.hire_date);
+    const startDateObj = new Date(startDate);
+    
+    if (startDateObj < hireDateObj) {
+      setValidationError(`⚠️ Impossibile salvare l'evento: la data di inizio (${format(startDateObj, 'dd/MM/yyyy')}) è antecedente alla data di assunzione del dipendente (${format(hireDateObj, 'dd/MM/yyyy')}).`);
+      return false;
+    }
+
+    if (endDate) {
+      const endDateObj = new Date(endDate);
+      if (endDateObj < hireDateObj) {
+        setValidationError(`⚠️ Impossibile salvare l'evento: la data di fine (${format(endDateObj, 'dd/MM/yyyy')}) è antecedente alla data di assunzione del dipendente (${format(hireDateObj, 'dd/MM/yyyy')}).`);
+        return false;
+      }
+    }
+
+    setValidationError(null);
+    return true;
+  };
+
+  const handleEmployeeChange = (userId: string) => {
+    setFormData(prev => ({ ...prev, user_id: userId }));
+    
+    // Valida immediatamente se ci sono date selezionate
+    if (formData.date) {
+      validateDatesAgainstHireDate(formData.date, formData.date_to, userId);
+    }
+  };
+
+  const handleDateChange = (field: 'date' | 'date_to', value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Valida immediatamente se c'è un dipendente selezionato
+    if (formData.user_id) {
+      const startDate = field === 'date' ? value : formData.date;
+      const endDate = field === 'date_to' ? value : formData.date_to;
+      validateDatesAgainstHireDate(startDate, endDate, formData.user_id);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Verifica finale della validazione
+    if (!validateDatesAgainstHireDate(formData.date, formData.date_to, formData.user_id)) {
+      return;
+    }
     
     if (formData.is_sick_leave && formData.date && formData.date_to) {
       // Gestione range di date per malattia
@@ -79,6 +134,7 @@ export default function NewManualAttendanceForm() {
       notes: '',
       is_sick_leave: false,
     });
+    setValidationError(null);
   };
 
   return (
@@ -94,7 +150,7 @@ export default function NewManualAttendanceForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="employee">Dipendente</Label>
-              <Select value={formData.user_id} onValueChange={(value) => setFormData(prev => ({ ...prev, user_id: value }))}>
+              <Select value={formData.user_id} onValueChange={handleEmployeeChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleziona dipendente" />
                 </SelectTrigger>
@@ -127,6 +183,13 @@ export default function NewManualAttendanceForm() {
               </Label>
             </div>
 
+            {validationError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{validationError}</AlertDescription>
+              </Alert>
+            )}
+
             {formData.is_sick_leave ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -137,7 +200,7 @@ export default function NewManualAttendanceForm() {
                     value={formData.date}
                     onChange={(e) => {
                       console.log('Data inizio malattia selezionata:', e.target.value);
-                      setFormData(prev => ({ ...prev, date: e.target.value }));
+                      handleDateChange('date', e.target.value);
                     }}
                     required
                   />
@@ -151,7 +214,7 @@ export default function NewManualAttendanceForm() {
                     min={formData.date}
                     onChange={(e) => {
                       console.log('Data fine malattia selezionata:', e.target.value);
-                      setFormData(prev => ({ ...prev, date_to: e.target.value }));
+                      handleDateChange('date_to', e.target.value);
                     }}
                     required
                   />
@@ -166,7 +229,7 @@ export default function NewManualAttendanceForm() {
                   value={formData.date}
                   onChange={(e) => {
                     console.log('Data selezionata dal picker:', e.target.value);
-                    setFormData(prev => ({ ...prev, date: e.target.value }));
+                    handleDateChange('date', e.target.value);
                   }}
                   required
                 />
@@ -208,7 +271,7 @@ export default function NewManualAttendanceForm() {
 
             <Button 
               type="submit" 
-              disabled={isCreating || !formData.user_id || !formData.date || (formData.is_sick_leave && !formData.date_to)} 
+              disabled={isCreating || !formData.user_id || !formData.date || (formData.is_sick_leave && !formData.date_to) || !!validationError} 
               className="w-full"
             >
               {isCreating ? 'Salvando...' : (formData.is_sick_leave ? 'Registra Malattia' : 'Salva Presenza')}

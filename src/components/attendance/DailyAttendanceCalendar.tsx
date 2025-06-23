@@ -35,12 +35,12 @@ export default function DailyAttendanceCalendar() {
     const hireDate = new Date(employee.hire_date);
     const selectedDateObj = new Date(date);
     
-    // Se è un dipendente nuovo (from_hire_date), non considerarlo prima della data di assunzione
+    // LOGICA CORRETTA: Per dipendenti nuovi (from_hire_date), non considerarlo prima della data di assunzione
     if (employee.tracking_start_type === 'from_hire_date') {
       return selectedDateObj >= hireDate;
     }
     
-    // Se è un dipendente esistente (from_year_start), consideralo sempre
+    // Per dipendenti esistenti (from_year_start), consideralo sempre per mostrare le assenze
     return true;
   };
 
