@@ -54,8 +54,10 @@ export function useEmployeeLeaveBalance() {
       })) as EmployeeLeaveBalance[];
     },
     enabled: !!profile,
-    refetchInterval: 30000,
+    // Refresh più frequente per intercettare rapidamente i cambiamenti dopo reset
+    refetchInterval: 10000,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   // Create or update leave balance
