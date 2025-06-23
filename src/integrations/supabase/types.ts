@@ -759,6 +759,7 @@ export type Database = {
           is_active: boolean | null
           last_name: string | null
           role: string
+          tracking_start_type: string | null
           updated_at: string | null
         }
         Insert: {
@@ -772,6 +773,7 @@ export type Database = {
           is_active?: boolean | null
           last_name?: string | null
           role?: string
+          tracking_start_type?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -785,6 +787,7 @@ export type Database = {
           is_active?: boolean | null
           last_name?: string | null
           role?: string
+          tracking_start_type?: string | null
           updated_at?: string | null
         }
         Relationships: []

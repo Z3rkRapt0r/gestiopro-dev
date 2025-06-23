@@ -41,7 +41,8 @@ export const useEmployeeLeaveBalance = () => {
             first_name,
             last_name,
             email,
-            hire_date
+            hire_date,
+            tracking_start_type
           )
         `)
         .order('year', { ascending: false });
@@ -64,11 +65,17 @@ export const useEmployeeLeaveBalance = () => {
     enabled: !!profile,
   });
 
-  // Calcola i giorni lavorativi dal momento dell'assunzione
-  const calculateWorkingDaysFromHire = (hireDate: string, year: number) => {
+  // Calcola i giorni lavorativi considerando il tipo di tracciamento
+  const calculateWorkingDaysFromHire = (hireDate: string, year: number, trackingStartType?: string) => {
     const hire = new Date(hireDate);
     const currentYear = new Date().getFullYear();
     
+    // Se trackingStartType è 'from_year_start', inizia sempre dal 1° gennaio
+    if (trackingStartType === 'from_year_start') {
+      return 30; // Giorni pieni per l'anno
+    }
+    
+    // Logica originale per 'from_hire_date'
     // Se l'anno è precedente all'assunzione, 0 giorni
     if (year < hire.getFullYear()) {
       return 0;

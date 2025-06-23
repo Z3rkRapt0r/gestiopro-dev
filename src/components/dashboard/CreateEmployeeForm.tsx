@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, X } from 'lucide-react';
+import { UserPlus, X, Calendar, Clock } from 'lucide-react';
 import { useEmployeeOperations } from '@/hooks/useEmployeeOperations';
 
 interface CreateEmployeeFormProps {
@@ -21,7 +21,8 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
     email: '',
     password: '',
     role: 'employee' as 'admin' | 'employee',
-    employeeCode: ''
+    employeeCode: '',
+    trackingStartType: 'from_hire_date' as 'from_hire_date' | 'from_year_start'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +40,8 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
         password: formData.password,
         role: formData.role,
         employee_code: formData.employeeCode || null,
-        department: null // Rimosso dipartimento, ora c'è solo il ruolo
+        department: null,
+        tracking_start_type: formData.trackingStartType
       });
 
       if (!result.error) {
@@ -53,7 +55,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center">
             <UserPlus className="mr-2 h-5 w-5" />
@@ -133,6 +135,46 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
                 onChange={(e) => setFormData({ ...formData, employeeCode: e.target.value })}
                 placeholder="Es: EMP001"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="trackingStartType">Inizio Conteggio Giorni Lavorativi</Label>
+              <Select
+                value={formData.trackingStartType}
+                onValueChange={(value: 'from_hire_date' | 'from_year_start') => 
+                  setFormData({ ...formData, trackingStartType: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="from_hire_date">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">Dal giorno di creazione</div>
+                        <div className="text-xs text-muted-foreground">Per nuovi assunti</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="from_year_start">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">Dall'inizio dell'anno</div>
+                        <div className="text-xs text-muted-foreground">Per dipendenti esistenti</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.trackingStartType === 'from_hire_date' 
+                  ? 'Il monitoraggio inizierà dalla data di inserimento nel sistema.'
+                  : 'Permette di registrare manualmente assenze passate dal 1° gennaio.'
+                }
+              </p>
             </div>
 
             <div className="flex space-x-2 pt-4">

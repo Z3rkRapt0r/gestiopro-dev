@@ -12,6 +12,7 @@ interface Employee {
   department: string | null;
   employee_code: string | null;
   is_active: boolean;
+  tracking_start_type?: 'from_hire_date' | 'from_year_start';
   created_at?: string;
   updated_at?: string;
 }
@@ -62,6 +63,7 @@ export const useEmployeeCreate = () => {
           role: employeeData.role || 'employee',
           department: employeeData.department || null,
           employee_code: employeeData.employee_code || null,
+          tracking_start_type: employeeData.tracking_start_type || 'from_hire_date',
           is_active: true
         })
         .select()
