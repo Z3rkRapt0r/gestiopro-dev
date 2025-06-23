@@ -51,7 +51,6 @@ const employeeFormSchema = z.object({
   role: z.enum(['admin', 'employee']),
   employee_code: z.string().nullable(),
   hire_date: z.string().nullable(),
-  tracking_start_type: z.enum(['from_hire_date', 'from_year_start']).nullable(),
   is_active: z.boolean(),
 });
 
@@ -76,12 +75,11 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
       role: employee.role || 'employee',
       employee_code: employee.employee_code || '',
       hire_date: employee.hire_date || '',
-      tracking_start_type: (employee.tracking_start_type as 'from_hire_date' | 'from_year_start') || 'from_hire_date',
       is_active: employee.is_active ?? true,
     },
   });
 
-  const trackingStartType = watch('tracking_start_type');
+  const hireDate = watch('hire_date');
 
   useEffect(() => {
     reset({
@@ -91,22 +89,11 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
       role: employee.role || 'employee',
       employee_code: employee.employee_code || '',
       hire_date: employee.hire_date || '',
-      tracking_start_type: (employee.tracking_start_type as 'from_hire_date' | 'from_year_start') || 'from_hire_date',
       is_active: employee.is_active ?? true,
     });
   }, [employee, reset]);
 
   const onSubmit = async (data: EmployeeFormData) => {
-    // Validate hire date for employees with from_hire_date tracking
-    if (data.tracking_start_type === 'from_hire_date' && !data.hire_date) {
-      toast({
-        title: 'Errore',
-        description: 'La data di assunzione è obbligatoria per dipendenti con tracciamento dalla data di assunzione.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     // Validate hire date is not in the future
     if (data.hire_date && new Date(data.hire_date) > new Date()) {
       toast({
@@ -119,6 +106,9 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
 
     setIsSubmitting(true);
     try {
+      // La logica di tracking_start_type è ora automatica
+      const trackingStartType = data.hire_date ? 'from_hire_date' : 'from_year_start';
+
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -128,7 +118,7 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
           role: data.role,
           employee_code: data.employee_code,
           hire_date: data.hire_date,
-          tracking_start_type: data.tracking_start_type,
+          tracking_start_type: trackingStartType,
           is_active: data.is_active,
           updated_at: new Date().toISOString(),
         })
@@ -236,30 +226,12 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
               )}
             />
             {errors.hire_date && <p className="text-red-500 text-sm">{errors.hire_date.message}</p>}
-            {trackingStartType === 'from_hire_date' && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Obbligatoria per dipendenti con tracciamento dalla data di assunzione
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="tracking_start_type">Tipo di Tracciamento</Label>
-            <Controller
-              name="tracking_start_type"
-              control={control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value || 'from_hire_date'}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona tipo di tracciamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="from_hire_date">Dalla data di assunzione</SelectItem>
-                    <SelectItem value="from_year_start">Dall'inizio dell'anno</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.tracking_start_type && <p className="text-red-500 text-sm">{errors.tracking_start_type.message}</p>}
+            <p className="text-xs text-muted-foreground mt-1">
+              {hireDate 
+                ? '✓ Nuovo dipendente - tracciamento dalla data di assunzione'
+                : '⚠️ Dipendente esistente - tracciamento dall\'inizio dell\'anno'
+              }
+            </p>
           </div>
           <div className="flex items-center space-x-2">
             <Controller

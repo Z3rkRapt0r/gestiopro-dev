@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, X, Calendar, Clock } from 'lucide-react';
+import { UserPlus, X } from 'lucide-react';
 import { useEmployeeOperations } from '@/hooks/useEmployeeOperations';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 
@@ -25,8 +25,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
     password: '',
     role: 'employee' as 'admin' | 'employee',
     employeeCode: '',
-    hireDate: '',
-    trackingStartType: 'from_hire_date' as 'from_hire_date' | 'from_year_start'
+    hireDate: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,13 +35,12 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
       return;
     }
 
-    // Validate hire date for new employees
-    if (formData.trackingStartType === 'from_hire_date' && !formData.hireDate) {
-      alert('La data di assunzione è obbligatoria per i nuovi dipendenti');
-      return;
-    }
-
     try {
+      // La logica di tracking_start_type è ora automatica:
+      // - Se c'è hire_date -> 'from_hire_date' 
+      // - Se non c'è hire_date -> 'from_year_start'
+      const trackingStartType = formData.hireDate ? 'from_hire_date' : 'from_year_start';
+
       const result = await createEmployee({
         first_name: formData.firstName || null,
         last_name: formData.lastName || null,
@@ -52,7 +50,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
         employee_code: formData.employeeCode || null,
         department: null,
         hire_date: formData.hireDate || null,
-        tracking_start_type: formData.trackingStartType
+        tracking_start_type: trackingStartType
       });
 
       if (!result.error && result.data?.id) {
@@ -159,51 +157,11 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
                 value={formData.hireDate}
                 onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
                 max={new Date().toISOString().split('T')[0]}
-                required={formData.trackingStartType === 'from_hire_date'}
               />
-              {formData.trackingStartType === 'from_hire_date' && (
-                <p className="text-xs text-muted-foreground">
-                  Obbligatoria per nuovi dipendenti
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="trackingStartType">Inizio Conteggio Giorni Lavorativi</Label>
-              <Select
-                value={formData.trackingStartType}
-                onValueChange={(value: 'from_hire_date' | 'from_year_start') => 
-                  setFormData({ ...formData, trackingStartType: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="from_hire_date">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Dal giorno di assunzione</div>
-                        <div className="text-xs text-muted-foreground">Per nuovi assunti</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="from_year_start">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Dall'inizio dell'anno</div>
-                        <div className="text-xs text-muted-foreground">Per dipendenti esistenti</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
               <p className="text-xs text-muted-foreground">
-                {formData.trackingStartType === 'from_hire_date' 
-                  ? 'Il monitoraggio inizierà dalla data di assunzione specificata.'
-                  : 'Permette di registrare manualmente assenze passate dal 1° gennaio.'
+                {formData.hireDate 
+                  ? '✓ Nuovo dipendente - tracciamento dalla data di assunzione'
+                  : '⚠️ Dipendente esistente - tracciamento dall\'inizio dell\'anno'
                 }
               </p>
             </div>
