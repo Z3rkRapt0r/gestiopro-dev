@@ -53,8 +53,12 @@ export default function AdminBusinessTripsManagement() {
     setReason('');
   };
 
-  const handleDeleteTrip = (tripId: string) => {
-    deleteTrip(tripId);
+  const handleDeleteTrip = async (tripId: string) => {
+    try {
+      await deleteTrip(tripId);
+    } catch (error) {
+      console.error('Errore durante l\'eliminazione della trasferta:', error);
+    }
   };
 
   return (
@@ -237,8 +241,9 @@ export default function AdminBusinessTripsManagement() {
                           <AlertDialogAction 
                             onClick={() => handleDeleteTrip(trip.id)}
                             className="bg-red-600 hover:bg-red-700"
+                            disabled={isDeleting}
                           >
-                            Elimina
+                            {isDeleting ? 'Eliminando...' : 'Elimina'}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
