@@ -30,12 +30,17 @@ const AdminDashboard = () => {
 
   // Aggiorna i dati quando si cambia sezione
   useEffect(() => {
-    // Invalida tutte le query principali per aggiornare i dati
+    console.log('Cambio sezione admin, invalidando tutte le query dei bilanci...');
+    // Invalida tutte le query principali per aggiornare i dati in tempo reale
     queryClient.invalidateQueries({ queryKey: ['leave_requests'] });
     queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
+    queryClient.invalidateQueries({ queryKey: ['employee-leave-balance-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['leave_balance_validation'] });
     queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
     queryClient.invalidateQueries({ queryKey: ['profiles'] });
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    queryClient.invalidateQueries({ queryKey: ['documents'] });
+    queryClient.invalidateQueries({ queryKey: ['attendances'] });
   }, [activeTab, queryClient]);
 
   if (!profile || profile.role !== 'admin') {
