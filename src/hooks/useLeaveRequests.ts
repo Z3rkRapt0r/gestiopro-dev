@@ -304,7 +304,20 @@ export function useLeaveRequests() {
 
   // Nuovo: delete richiesta (ora disponibile anche per ferie approvate se admin)
   const deleteRequestMutation = useMutation({
-    mutationFn: async ({ id, leaveRequest }: { id: string; leaveRequest?: LeaveRequest }) => {
+    mutationFn: async (payload: string | { id: string; leaveRequest?: LeaveRequest }) => {
+      let id: string;
+      let leaveRequest: LeaveRequest | undefined;
+      
+      // Gestisci sia il formato vecchio (solo string) che quello nuovo (oggetto)
+      if (typeof payload === 'string') {
+        id = payload;
+      } else {
+        id = payload.id;
+        leaveRequest = payload.leaveRequest;
+      }
+
+      console.log('Eliminando richiesta con ID:', id);
+
       // Se è una richiesta approvata, rimuovi anche le presenze associate
       if (leaveRequest && leaveRequest.status === 'approved') {
         if (leaveRequest.type === 'ferie' && leaveRequest.date_from && leaveRequest.date_to) {
@@ -316,25 +329,36 @@ export function useLeaveRequests() {
           const datesToDelete = workingDays.map(day => format(day, 'yyyy-MM-dd'));
           
           if (datesToDelete.length > 0) {
-            await supabase
+            console.log('Eliminando presenze per ferie:', datesToDelete);
+            const { error: attendanceError } = await supabase
               .from('unified_attendances')
               .delete()
               .eq('user_id', leaveRequest.user_id)
               .in('date', datesToDelete)
               .eq('notes', 'Ferie');
+            
+            if (attendanceError) {
+              console.error('Errore eliminazione presenze ferie:', attendanceError);
+            }
           }
         }
         
         if (leaveRequest.type === 'permesso' && leaveRequest.day && !leaveRequest.time_from && !leaveRequest.time_to) {
-          await supabase
+          console.log('Eliminando presenza per permesso giornaliero:', leaveRequest.day);
+          const { error: attendanceError } = await supabase
             .from('unified_attendances')
             .delete()
             .eq('user_id', leaveRequest.user_id)
             .eq('date', leaveRequest.day)
             .eq('notes', 'Permesso');
+          
+          if (attendanceError) {
+            console.error('Errore eliminazione presenza permesso:', attendanceError);
+          }
         }
       }
 
+      // Elimina la richiesta
       const { error } = await supabase
         .from("leave_requests")
         .delete()
@@ -345,6 +369,7 @@ export function useLeaveRequests() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
       toast({
         title: "Richiesta eliminata",
         description: "La richiesta di ferie/permesso è stata eliminata con successo",

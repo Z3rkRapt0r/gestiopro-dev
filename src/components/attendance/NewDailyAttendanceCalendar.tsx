@@ -220,7 +220,11 @@ export default function NewDailyAttendanceCalendar() {
     if (confirm('Sei sicuro di voler eliminare questa richiesta di permesso?')) {
       console.log('Eliminando richiesta di permesso:', leaveRequest);
       try {
-        await deleteRequestMutation.mutateAsync(leaveRequest.id);
+        // Passa sia l'ID che l'oggetto completo per la pulizia delle presenze
+        await deleteRequestMutation.mutateAsync({
+          id: leaveRequest.id,
+          leaveRequest: leaveRequest
+        });
         console.log('Richiesta di permesso eliminata con successo');
       } catch (error) {
         console.error('Errore nell\'eliminazione della richiesta di permesso:', error);
