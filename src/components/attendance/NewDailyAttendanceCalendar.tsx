@@ -104,15 +104,30 @@ export default function NewDailyAttendanceCalendar() {
     return false;
   }) || [];
 
-  // Dipendenti in trasferta (deduplichiamo per evitare chiavi duplicate)
+  // PRIMA: Calcola i dipendenti in trasferta (riorganizzato per essere calcolato per primo)
   const onBusinessTripEmployees = [];
   const processedEmployeeIds = new Set();
   
+  console.log('🔍 Calcolo dipendenti in trasferta per la data:', selectedDateStr);
+  console.log('📋 Trasferte disponibili:', businessTrips?.map(trip => ({
+    user_id: trip.user_id,
+    destination: trip.destination,
+    dates: `${trip.start_date} - ${trip.end_date}`
+  })));
+
   if (businessTrips && selectedDate) {
     businessTrips.forEach(trip => {
       const tripStart = new Date(trip.start_date);
       const tripEnd = new Date(trip.end_date);
       const currentDate = new Date(selectedDate);
+      
+      console.log('📅 Verifica trasferta:', {
+        destination: trip.destination,
+        tripStart: trip.start_date,
+        tripEnd: trip.end_date,
+        currentDate: selectedDateStr,
+        isInRange: currentDate >= tripStart && currentDate <= tripEnd
+      });
       
       if (currentDate >= tripStart && currentDate <= tripEnd) {
         const employee = employees?.find(emp => emp.id === trip.user_id);
@@ -140,19 +155,52 @@ export default function NewDailyAttendanceCalendar() {
           });
           
           processedEmployeeIds.add(employee.id);
+          console.log('✅ Dipendente aggiunto alla lista trasferte:', employee.first_name, employee.last_name);
         }
       }
     });
   }
 
-  // Dipendenti presenti fisicamente (escludendo quelli in trasferta e malattia)
+  console.log('🚌 Dipendenti in trasferta finali:', onBusinessTripEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
+
+  // DOPO: Calcola i dipendenti presenti fisicamente (escludendo quelli in trasferta)
   const presentEmployees = selectedDateAttendances
     .filter(att => {
-      if (!att.check_in_time || att.is_sick_leave) return false;
-      if (att.notes === 'Ferie' || att.notes === 'Permesso') return false;
-      // Escludi quelli in trasferta dalla sezione presenti (anche se hanno presenze automatiche)
+      console.log('🔍 Verifica presenza per filtro:', {
+        user_id: att.user_id,
+        check_in_time: att.check_in_time,
+        is_sick_leave: att.is_sick_leave,
+        is_business_trip: att.is_business_trip,
+        notes: att.notes
+      });
+
+      // Escludi se non ha orario di entrata o è in malattia
+      if (!att.check_in_time || att.is_sick_leave) {
+        console.log('❌ Escluso: nessun check-in o malattia');
+        return false;
+      }
+      
+      // Escludi se è ferie o permesso
+      if (att.notes === 'Ferie' || att.notes === 'Permesso') {
+        console.log('❌ Escluso: ferie o permesso');
+        return false;
+      }
+      
+      // Escludi se ha il flag is_business_trip a true
+      if (att.is_business_trip) {
+        console.log('❌ Escluso: flag is_business_trip = true');
+        return false;
+      }
+      
+      // Escludi se è nella lista dei dipendenti in trasferta
       const isOnBusinessTrip = onBusinessTripEmployees.some(emp => emp.id === att.user_id);
-      return !isOnBusinessTrip;
+      if (isOnBusinessTrip) {
+        console.log('❌ Escluso: presente nella lista trasferte');
+        return false;
+      }
+      
+      console.log('✅ Incluso nella sezione presenti');
+      return true;
     })
     .map(att => {
       const employee = employees?.find(emp => emp.id === att.user_id);
@@ -162,6 +210,8 @@ export default function NewDailyAttendanceCalendar() {
       };
     })
     .filter(emp => emp.id);
+
+  console.log('👥 Dipendenti presenti finali:', presentEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
 
   // Dipendenti in malattia
   const sickEmployees = selectedDateAttendances
