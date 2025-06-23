@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
     password: '',
     role: 'employee' as 'admin' | 'employee',
     employeeCode: '',
+    hireDate: '',
     trackingStartType: 'from_hire_date' as 'from_hire_date' | 'from_year_start'
   });
 
@@ -31,6 +33,12 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
     e.preventDefault();
 
     if (!formData.email || !formData.password) {
+      return;
+    }
+
+    // Validate hire date for new employees
+    if (formData.trackingStartType === 'from_hire_date' && !formData.hireDate) {
+      alert('La data di assunzione è obbligatoria per i nuovi dipendenti');
       return;
     }
 
@@ -43,11 +51,11 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
         role: formData.role,
         employee_code: formData.employeeCode || null,
         department: null,
+        hire_date: formData.hireDate || null,
         tracking_start_type: formData.trackingStartType
       });
 
       if (!result.error && result.data?.id) {
-        // Popola automaticamente i giorni lavorativi per il nuovo dipendente
         console.log('Popolamento giorni lavorativi per nuovo dipendente:', result.data.id);
         populateWorkingDaysForUser({ userId: result.data.id });
         
@@ -144,6 +152,23 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="hireDate">Data di Assunzione</Label>
+              <Input
+                id="hireDate"
+                type="date"
+                value={formData.hireDate}
+                onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
+                max={new Date().toISOString().split('T')[0]}
+                required={formData.trackingStartType === 'from_hire_date'}
+              />
+              {formData.trackingStartType === 'from_hire_date' && (
+                <p className="text-xs text-muted-foreground">
+                  Obbligatoria per nuovi dipendenti
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="trackingStartType">Inizio Conteggio Giorni Lavorativi</Label>
               <Select
                 value={formData.trackingStartType}
@@ -159,7 +184,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
                       <div>
-                        <div className="font-medium">Dal giorno di creazione</div>
+                        <div className="font-medium">Dal giorno di assunzione</div>
                         <div className="text-xs text-muted-foreground">Per nuovi assunti</div>
                       </div>
                     </div>
@@ -177,7 +202,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
               </Select>
               <p className="text-xs text-muted-foreground">
                 {formData.trackingStartType === 'from_hire_date' 
-                  ? 'Il monitoraggio inizierà dalla data di inserimento nel sistema.'
+                  ? 'Il monitoraggio inizierà dalla data di assunzione specificata.'
                   : 'Permette di registrare manualmente assenze passate dal 1° gennaio.'
                 }
               </p>

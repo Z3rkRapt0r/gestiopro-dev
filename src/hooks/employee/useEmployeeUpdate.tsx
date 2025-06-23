@@ -12,6 +12,7 @@ interface Employee {
   department: string | null;
   hire_date: string | null;
   employee_code: string | null;
+  tracking_start_type: string | null;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

@@ -33,6 +33,8 @@ interface Employee {
   role: 'admin' | 'employee';
   department: string | null;
   employee_code: string | null;
+  hire_date: string | null;
+  tracking_start_type: string | null;
   is_active: boolean;
 }
 
@@ -48,6 +50,8 @@ const employeeFormSchema = z.object({
   email: z.string().email('Email non valida').nullable(),
   role: z.enum(['admin', 'employee']),
   employee_code: z.string().nullable(),
+  hire_date: z.string().nullable(),
+  tracking_start_type: z.enum(['from_hire_date', 'from_year_start']).nullable(),
   is_active: z.boolean(),
 });
 
@@ -61,6 +65,7 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
@@ -70,9 +75,13 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
       email: employee.email || '',
       role: employee.role || 'employee',
       employee_code: employee.employee_code || '',
+      hire_date: employee.hire_date || '',
+      tracking_start_type: (employee.tracking_start_type as 'from_hire_date' | 'from_year_start') || 'from_hire_date',
       is_active: employee.is_active ?? true,
     },
   });
+
+  const trackingStartType = watch('tracking_start_type');
 
   useEffect(() => {
     reset({
@@ -81,11 +90,33 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
       email: employee.email || '',
       role: employee.role || 'employee',
       employee_code: employee.employee_code || '',
+      hire_date: employee.hire_date || '',
+      tracking_start_type: (employee.tracking_start_type as 'from_hire_date' | 'from_year_start') || 'from_hire_date',
       is_active: employee.is_active ?? true,
     });
   }, [employee, reset]);
 
   const onSubmit = async (data: EmployeeFormData) => {
+    // Validate hire date for employees with from_hire_date tracking
+    if (data.tracking_start_type === 'from_hire_date' && !data.hire_date) {
+      toast({
+        title: 'Errore',
+        description: 'La data di assunzione è obbligatoria per dipendenti con tracciamento dalla data di assunzione.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate hire date is not in the future
+    if (data.hire_date && new Date(data.hire_date) > new Date()) {
+      toast({
+        title: 'Errore',
+        description: 'La data di assunzione non può essere nel futuro.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const { error } = await supabase
@@ -96,6 +127,8 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
           email: data.email,
           role: data.role,
           employee_code: data.employee_code,
+          hire_date: data.hire_date,
+          tracking_start_type: data.tracking_start_type,
           is_active: data.is_active,
           updated_at: new Date().toISOString(),
         })
@@ -186,6 +219,47 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
               render={({ field }) => <Input id="employee_code" {...field} value={field.value ?? ''} />}
             />
             {errors.employee_code && <p className="text-red-500 text-sm">{errors.employee_code.message}</p>}
+          </div>
+          <div>
+            <Label htmlFor="hire_date">Data di Assunzione</Label>
+            <Controller
+              name="hire_date"
+              control={control}
+              render={({ field }) => (
+                <Input 
+                  id="hire_date" 
+                  type="date" 
+                  {...field} 
+                  value={field.value ?? ''} 
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              )}
+            />
+            {errors.hire_date && <p className="text-red-500 text-sm">{errors.hire_date.message}</p>}
+            {trackingStartType === 'from_hire_date' && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Obbligatoria per dipendenti con tracciamento dalla data di assunzione
+              </p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="tracking_start_type">Tipo di Tracciamento</Label>
+            <Controller
+              name="tracking_start_type"
+              control={control}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} defaultValue={field.value || 'from_hire_date'}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona tipo di tracciamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="from_hire_date">Dalla data di assunzione</SelectItem>
+                    <SelectItem value="from_year_start">Dall'inizio dell'anno</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.tracking_start_type && <p className="text-red-500 text-sm">{errors.tracking_start_type.message}</p>}
           </div>
           <div className="flex items-center space-x-2">
             <Controller
