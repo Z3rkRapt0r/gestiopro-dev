@@ -28,7 +28,7 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <DashboardHeader />
+        <DashboardHeader title="Dashboard Amministratore" />
         <div className="container mx-auto p-6">
           <LoadingSkeleton />
         </div>
@@ -39,7 +39,7 @@ const AdminDashboard = () => {
   if (!profile || profile.role !== 'admin') {
     return (
       <div className="min-h-screen bg-gray-50">
-        <DashboardHeader />
+        <DashboardHeader title="Dashboard Amministratore" />
         <div className="container mx-auto p-6">
           <AuthDebugInfo />
           <div className="text-center py-12">
@@ -60,7 +60,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
+      <DashboardHeader title="Dashboard Amministratore" />
       <div className="container mx-auto p-6 space-y-8">
         <AuthDebugInfo />
         <AdminRoleDebug />

@@ -34,8 +34,8 @@ export const useAdvancedEmployeeOperations = () => {
       if (error) throw error;
       
       // Assicuriamoci che i dati siano nel formato corretto
-      if (data && typeof data === 'object') {
-        return data as StorageUsage;
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        return data as unknown as StorageUsage;
       }
       
       return null;
@@ -66,7 +66,7 @@ export const useAdvancedEmployeeOperations = () => {
         first_name: item.first_name,
         last_name: item.last_name,
         email: item.email,
-        storage_usage: item.storage_usage as StorageUsage
+        storage_usage: item.storage_usage as unknown as StorageUsage
       }));
     } catch (error: any) {
       console.error('Error getting all users storage stats:', error);
