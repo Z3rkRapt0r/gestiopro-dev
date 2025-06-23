@@ -19,7 +19,7 @@ export default function NewDailyAttendanceCalendar() {
   const { attendances, isLoading, deleteAttendance, isDeleting } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { workSchedule } = useWorkSchedules();
-  const { leaveRequests, deleteMutation } = useLeaveRequests();
+  const { leaveRequests, deleteRequestMutation } = useLeaveRequests();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
 
   // Funzione per verificare se un giorno è lavorativo
@@ -277,7 +277,7 @@ export default function NewDailyAttendanceCalendar() {
 
   const handleDeletePermissionRequest = (leaveRequest: any) => {
     if (confirm('Sei sicuro di voler eliminare questa richiesta di permesso?')) {
-      deleteMutation.mutate(leaveRequest.id);
+      deleteRequestMutation.mutate(leaveRequest.id);
     }
   };
 
@@ -569,7 +569,7 @@ export default function NewDailyAttendanceCalendar() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleDeletePermissionRequest(employee.leave)}
-                                disabled={deleteMutation.isPending}
+                                disabled={deleteRequestMutation.isPending}
                                 className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                                 title="Elimina richiesta permesso"
                               >
