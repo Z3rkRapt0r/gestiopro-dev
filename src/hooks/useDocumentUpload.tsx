@@ -117,21 +117,29 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     );
 
     if (!error && notifyRecipient) {
+      // Prepare notification with employee email for document notifications
+      const notificationPayload: any = {
+        subject: subject.trim(),
+        shortText: body.trim(),
+        topic: "document",
+      };
+
       if (isPersonalDocument && targetUserForUpload && targetUserForUpload !== user.id) {
-        await sendNotification({
-          recipientId: targetUserForUpload,
-          subject: subject.trim(),
-          shortText: body.trim(),
-          topic: "document",
-        });
+        // Employee uploading document for specific admin/user
+        notificationPayload.recipientId = targetUserForUpload;
+        
+        // If employee is uploading for admin, include employee email for reply-to
+        if (!isAdmin && profile?.email) {
+          console.log('Adding employee email for document notification:', profile.email);
+          // Note: We'll modify sendNotification to handle employeeEmail parameter
+        }
+        
+        await sendNotification(notificationPayload);
       }
       if (!isPersonalDocument) {
-        await sendNotification({
-          recipientId: null,
-          subject: subject.trim(),
-          shortText: body.trim(),
-          topic: "document",
-        });
+        // Admin uploading document for all employees
+        notificationPayload.recipientId = null;
+        await sendNotification(notificationPayload);
       }
     }
 

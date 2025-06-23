@@ -1,115 +1,84 @@
 
-import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-
-interface NotifyAdminParams {
-  requestId: string;
-  employeeName: string;
-  type: "permesso" | "ferie";
-  details: string;
-}
-
-interface NotifyEmployeeParams {
-  requestId: string;
-  employeeId: string;
-  status: "approved" | "rejected";
-  adminNote?: string;
-  type: "permesso" | "ferie";
-  details: string;
-}
 
 export const useLeaveRequestNotifications = () => {
-  const { profile } = useAuth();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-
-  const notifyAdmin = async ({ requestId, employeeName, type, details }: NotifyAdminParams) => {
-    setLoading(true);
+  const sendLeaveRequestNotification = async (
+    leaveRequest: any,
+    employeeProfile: any,
+    adminNote?: string,
+    isApproval: boolean = false,
+    isRejection: boolean = false
+  ) => {
     try {
-      console.log('Sending leave request notification to admin:', { requestId, employeeName, type, details });
+      console.log('Sending leave request notification:', { leaveRequest, employeeProfile, adminNote, isApproval, isRejection });
 
-      const subject = `Nuova richiesta ${type} da ${employeeName}`;
-      const message = `${employeeName} ha inviato una nuova richiesta di ${type}.`;
-      const body = `${details}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
+      let topic, subject, shortText, body;
+      let recipientId = null; // Default to all admins
+
+      if (isApproval) {
+        // Approval notification goes to the employee
+        topic = 'permessi-approvazione';
+        subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} approvata`;
+        shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata approvata.`;
+        recipientId = leaveRequest.user_id; // Send to the employee
+        body = `Dal: ${leaveRequest.date_from || leaveRequest.day}\nAl: ${leaveRequest.date_to || leaveRequest.day}\n\nLa tua richiesta è stata approvata dall'amministratore.`;
+      } else if (isRejection) {
+        // Rejection notification goes to the employee
+        topic = 'permessi-rifiuto';
+        subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} rifiutata`;
+        shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata rifiutata.`;
+        recipientId = leaveRequest.user_id; // Send to the employee
+        body = `Dal: ${leaveRequest.date_from || leaveRequest.day}\nAl: ${leaveRequest.date_to || leaveRequest.day}\n\nLa tua richiesta è stata rifiutata dall'amministratore.`;
+      } else {
+        // New leave request notification goes to all admins
+        topic = 'permessi-richiesta';
+        subject = `Nuova richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} da ${employeeProfile.first_name} ${employeeProfile.last_name}`;
+        shortText = `${employeeProfile.first_name} ${employeeProfile.last_name} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
+        recipientId = null; // Send to all admins
+        
+        if (leaveRequest.type === 'ferie') {
+          body = `Dal: ${leaveRequest.date_from}\nAl: ${leaveRequest.date_to}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
+        } else {
+          const timeInfo = leaveRequest.time_from && leaveRequest.time_to 
+            ? `dalle ${leaveRequest.time_from} alle ${leaveRequest.time_to}`
+            : 'giornata intera';
+          body = `Data: ${leaveRequest.day}\nOrario: ${timeInfo}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
+        }
+      }
+
+      // Prepare email payload
+      const emailPayload: any = {
+        recipientId,
+        subject,
+        shortText,
+        userId: employeeProfile.id,
+        topic,
+        body,
+        adminNote
+      };
+
+      // For new leave requests from employee to admin, include employee email for reply-to
+      if (!isApproval && !isRejection && employeeProfile.email) {
+        emailPayload.employeeEmail = employeeProfile.email;
+        console.log('Adding employee email for leave request notification:', employeeProfile.email);
+      }
 
       const { data, error } = await supabase.functions.invoke('send-notification-email', {
-        body: {
-          recipientId: null, // Invia a tutti gli admin
-          subject,
-          shortText: message,
-          body,
-          userId: profile?.id,
-          topic: 'permessi-richiesta'
-        }
+        body: emailPayload
       });
 
       if (error) {
-        console.error('Error sending admin notification:', error);
-        toast({
-          title: "Avviso",
-          description: "Richiesta salvata ma errore nell'invio email all'amministratore",
-          variant: "destructive",
-        });
-      } else {
-        console.log('Admin notification sent successfully:', data);
+        console.error('Error sending leave request notification:', error);
+        throw error;
       }
-    } catch (error: any) {
-      console.error('Error in notifyAdmin:', error);
-    } finally {
-      setLoading(false);
+
+      console.log('Leave request notification sent successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Failed to send leave request notification:', error);
+      return { success: false, error };
     }
   };
 
-  const notifyEmployee = async ({ requestId, employeeId, status, adminNote, type, details }: NotifyEmployeeParams) => {
-    setLoading(true);
-    try {
-      console.log('Sending leave request status notification to employee:', { requestId, employeeId, status, type, adminNote });
-
-      const statusText = status === 'approved' ? 'approvata' : 'rifiutata';
-      const subject = `Richiesta ${type} ${statusText}`;
-      const message = `La tua richiesta di ${type} è stata ${statusText}.`;
-      const body = details;
-
-      const topic = status === 'approved' ? 'permessi-approvazione' : 'permessi-rifiuto';
-
-      const { data, error } = await supabase.functions.invoke('send-notification-email', {
-        body: {
-          recipientId: employeeId,
-          subject,
-          shortText: message,
-          body,
-          adminNote,
-          userId: profile?.id,
-          topic
-        }
-      });
-
-      if (error) {
-        console.error('Error sending employee notification:', error);
-        toast({
-          title: "Avviso",
-          description: "Stato aggiornato ma errore nell'invio email al dipendente",
-          variant: "destructive",
-        });
-      } else {
-        console.log('Employee notification sent successfully:', data);
-        toast({
-          title: "Notifica inviata",
-          description: "Il dipendente è stato notificato via email",
-        });
-      }
-    } catch (error: any) {
-      console.error('Error in notifyEmployee:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return {
-    notifyAdmin,
-    notifyEmployee,
-    loading,
-  };
+  return { sendLeaveRequestNotification };
 };

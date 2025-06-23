@@ -1,79 +1,4 @@
-
-/** Helpers per sezioni HTML email (logo, corpo, allegato, pulsante vedi doc) */
-
-// Pulsante centrato che porta alla dashboard - per documenti e permessi
-export function buildDashboardButton(buttonUrl: string, templateType: string = 'documenti', buttonColor: string = '#007bff', buttonTextColor: string = '#ffffff', borderRadius: string = '6px', showButton: boolean = true) {
-  // Se il pulsante è disabilitato nel template, non mostrarlo
-  if (!showButton) {
-    return "";
-  }
-  
-  let buttonText = 'Visualizza';
-  
-  switch (templateType) {
-    case 'documenti':
-      buttonText = 'Visualizza documento';
-      break;
-    case 'notifiche':
-      buttonText = 'Visualizza';
-      break;
-    case 'permessi-richiesta':
-      buttonText = 'Gestisci Richiesta';
-      break;
-    case 'permessi-approvazione':
-    case 'permessi-rifiuto':
-      buttonText = 'Visualizza Dettagli';
-      break;
-    case 'approvazioni':
-      buttonText = 'Gestisci Richiesta';
-      break;
-    default:
-      buttonText = 'Visualizza';
-  }
-  
-  // Show button for documents, notifications and leave-related templates
-  if (!['documenti', 'notifiche', 'approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType)) {
-    return "";
-  }
-  
-  return `
-    <div style="width:100%;text-align:center;margin:28px 0 0 0;">
-      <a href="${buttonUrl}" target="_blank" style="
-        background-color:${buttonColor};
-        color:${buttonTextColor};
-        padding:12px 26px;
-        border-radius:${borderRadius};
-        text-decoration:none;
-        font-size:16px;
-        font-weight:bold;
-        letter-spacing:0.5px;
-        display:inline-block;
-        box-shadow:0 1px 6px rgba(40,82,180,.06);
-        margin:auto;
-      ">
-        ${buttonText}
-      </a>
-    </div>
-  `;
-}
-
-export function buildAttachmentSection(bucketUrl: string | null, primaryColor: string = '#007bff') {
-  if (!bucketUrl) return "";
-  return `
-    <div style="margin-top: 20px; border-left: 4px solid ${primaryColor}; padding-left: 10px;">
-      <strong>Documento allegato disponibile</strong><br>
-      <span style="font-size: 14px; color: #333;">
-        Per visualizzare o scaricare il documento, clicca sul link sottostante.<br/>
-        <span style="font-size: 12px; color: #888;">È necessario effettuare l'accesso con il tuo account aziendale.</span>
-      </span>
-      <div style="margin-top: 8px;">
-        <a href="${bucketUrl}" target="_blank" style="color: ${primaryColor}; font-weight: bold;">Apri allegato</a>
-      </div>
-    </div>
-  `;
-}
-
-interface EmailTemplateData {
+export interface EmailContentParams {
   subject: string;
   shortText: string;
   logoUrl: string | null;
@@ -81,7 +6,6 @@ interface EmailTemplateData {
   senderEmail: string;
   isDocumentEmail?: boolean;
   templateType?: string;
-  // Parametri per personalizzazione template
   primaryColor?: string;
   backgroundColor?: string;
   textColor?: string;
@@ -105,42 +29,37 @@ interface EmailTemplateData {
   leaveDetailsTextColor?: string;
   adminNotesBgColor?: string;
   adminNotesTextColor?: string;
-  // Nuovi parametri per blocco personalizzabile
   showCustomBlock?: boolean;
   customBlockText?: string;
   customBlockBgColor?: string;
   customBlockTextColor?: string;
-  // Parametri per contenuto dinamico notifiche e documenti
   dynamicSubject?: string;
   dynamicContent?: string;
 }
 
-function getLogoSize(size?: string) {
-  switch (size) {
-    case 'small': return '40px';
-    case 'medium': return '60px';
-    case 'large': return '80px';
-    default: return '60px';
+export function buildAttachmentSection(attachmentUrl: string | null, primaryColor: string = '#007bff'): string {
+  if (!attachmentUrl) {
+    return '';
   }
+
+  return `
+    <div style="margin-top: 20px; padding: 15px; border: 1px solid ${primaryColor}; border-radius: 5px;">
+      <h4>Allegato:</h4>
+      <a href="${attachmentUrl}" style="color: ${primaryColor}; text-decoration: none;">
+        Scarica l'allegato
+      </a>
+    </div>
+  `;
 }
 
-function getFontSize(size?: string) {
-  switch (size) {
-    case 'small': return '14px';
-    case 'medium': return '16px';
-    case 'large': return '18px';
-    default: return '16px';
-  }
-}
-
-export function buildHtmlContent({ 
-  subject, 
-  shortText, 
-  logoUrl, 
-  attachmentSection, 
-  senderEmail, 
+export function buildHtmlContent({
+  subject,
+  shortText,
+  logoUrl,
+  attachmentSection,
+  senderEmail,
   isDocumentEmail = false,
-  templateType = 'documenti',
+  templateType = 'notifiche',
   primaryColor = '#007bff',
   backgroundColor = '#ffffff',
   textColor = '#333333',
@@ -169,77 +88,105 @@ export function buildHtmlContent({
   customBlockBgColor = '#fff3cd',
   customBlockTextColor = '#856404',
   dynamicSubject = '',
-  dynamicContent = ''
-}: EmailTemplateData) {
-  // Determine if we should show button based on template type and settings
-  const shouldShowButton = isDocumentEmail || (['approvazioni', 'permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto', 'notifiche'].includes(templateType) && showDetailsButton);
-  const dashboardButton = shouldShowButton ? buildDashboardButton("https://alm-app.lovable.app/", templateType, buttonColor, buttonTextColor, borderRadius, showDetailsButton) : "";
+  dynamicContent = '',
+  employeeEmail = '' // New parameter for employee email
+}: EmailContentParams & {
+  employeeEmail?: string;
+}) {
+  // Logo Section
+  const logoSection = logoUrl
+    ? `<div style="text-align:${logoAlignment};margin-bottom:24px;">
+        <img src="${logoUrl}" alt="Logo" style="max-height:${logoSize === 'small' ? '40px' : logoSize === 'large' ? '80px' : '60px'};max-width:180px;" />
+      </div>`
+    : "";
 
-  // Check if we should show leave details
-  const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
-  const shouldShowLeaveDetailsSection = isLeaveTemplate && showLeaveDetails && leaveDetails;
+  // Employee info section for admin notifications
+  const employeeInfoSection = employeeEmail ? `
+    <div style="background-color: #e8f4fd; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px;">
+      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📧 Comunicazione da dipendente</h4>
+      <p style="margin: 0; font-size: 14px; color: #2c5282;">
+        <strong>Email dipendente:</strong> ${employeeEmail}<br>
+        <span style="font-size: 12px; color: #64748b;">Puoi rispondere direttamente a questa email per contattare il dipendente</span>
+      </p>
+    </div>
+  ` : "";
 
-  // Check if we should show admin notes
-  const isAdminActionTemplate = ['permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
-  const shouldShowAdminNotesSection = isAdminActionTemplate && showAdminNotes && adminNotes;
+  // Custom Block Section
+  const customBlockSection = showCustomBlock ? `
+    <div style="background-color: ${customBlockBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${customBlockTextColor};">
+      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📣 Avviso Importante</h4>
+      <p style="margin: 0; font-size: 14px;">
+        ${customBlockText}
+      </p>
+    </div>
+  ` : "";
 
-  // Check if we should show custom block (solo per notifiche)
-  const isNotificationTemplate = templateType === 'notifiche';
-  const shouldShowCustomBlockSection = isNotificationTemplate && showCustomBlock && customBlockText;
+  // Determine final subject and content
+  const finalSubject = dynamicSubject || subject;
+  const finalContent = dynamicContent || shortText;
 
-  // Per notifiche e documenti, usa contenuto dinamico se disponibile, altrimenti usa quello del template
-  const isDocumentTemplate = templateType === 'documenti';
-  const isDynamicTemplate = isNotificationTemplate || isDocumentTemplate;
-  const finalSubject = (isDynamicTemplate && dynamicSubject) ? dynamicSubject : subject;
-  const finalContent = (isDynamicTemplate && dynamicContent) ? dynamicContent : shortText;
+  // Leave Details Section
+  const leaveDetailsSection = showLeaveDetails && leaveDetails ? `
+    <div style="background-color: ${leaveDetailsBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${leaveDetailsTextColor};">
+      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">Dettagli Richiesta</h4>
+      <p style="margin: 0; font-size: 14px;">
+        ${leaveDetails.replace(/\n/g, '<br>')}
+      </p>
+    </div>
+  ` : "";
 
+  // Admin Notes Section
+  const adminNotesSection = showAdminNotes && adminNotes ? `
+    <div style="background-color: ${adminNotesBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${adminNotesTextColor};">
+      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">Note Amministratore</h4>
+      <p style="margin: 0; font-size: 14px;">
+        ${adminNotes.replace(/\n/g, '<br>')}
+      </p>
+    </div>
+  ` : "";
+
+  // Dashboard button for document and notification emails
+  const dashboardButton = (isDocumentEmail && showDetailsButton) ? `
+    <div style="width:100%;text-align:center;margin:28px 0 0 0;">
+      <a href="https://alm-app.lovable.app/" target="_blank" style="
+        background-color:${buttonColor};
+        color:${buttonTextColor};
+        padding:12px 26px;
+        border-radius:${borderRadius};
+        text-decoration:none;
+        font-size:16px;
+        font-weight:bold;
+        letter-spacing:0.5px;
+        display:inline-block;
+        box-shadow:0 1px 6px rgba(40,82,180,.06);
+        margin:auto;
+      ">
+        ${templateType === 'documenti' ? 'Visualizza documento' : 'Vai alla dashboard'}
+      </a>
+    </div>
+  ` : "";
+
+  // Build the complete HTML
   return `
-    <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      ${
-        logoUrl
-          ? `<div style="text-align:${logoAlignment};margin-bottom:24px;">
-              <img src="${logoUrl}" alt="Logo" style="max-height:${getLogoSize(logoSize)};max-width:200px;object-fit:contain;" />
-            </div>`
-          : ""
-      }
-      <div style="text-align:${headerAlignment};margin-bottom:24px;">
-        <h2 style="color: ${primaryColor}; margin: 0 0 16px 0; font-size: 24px; font-weight: bold;">
-          ${finalSubject}
-        </h2>
+    <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor};">
+      ${logoSection}
+      ${employeeInfoSection}
+      ${customBlockSection}
+      <h2 style="color: ${primaryColor}; border-bottom: 2px solid ${primaryColor}; padding-bottom: 10px; text-align: ${headerAlignment};">
+        ${finalSubject}
+      </h2>
+      <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${textColor}; text-align: ${bodyAlignment};">
+        ${finalContent.replace(/\n/g, '<br>')}
+        ${leaveDetailsSection}
+        ${adminNotesSection}
+        ${dashboardButton}
+        ${attachmentSection}
       </div>
-      <div style="text-align: ${bodyAlignment}; line-height: 1.6; margin-bottom: 24px; font-size: ${getFontSize(fontSize)};">
-        
-        ${shouldShowCustomBlockSection ? `
-          <div style="background-color: ${customBlockBgColor}; color: ${customBlockTextColor}; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; white-space: pre-line; border-left: 3px solid ${customBlockTextColor};">
-            <strong>Informazioni:</strong><br/>
-            ${customBlockText.replace(/\n/g, '<br>')}
-          </div>
-        ` : ''}
-
-        <div style="margin: 0 0 16px 0; white-space: pre-line;">
-          ${finalContent.replace(/\n/g, '<br>')}
-        </div>
-        
-        ${shouldShowLeaveDetailsSection ? `
-          <div style="background-color: ${leaveDetailsBgColor}; color: ${leaveDetailsTextColor}; padding: 12px; border-radius: 6px; margin-top: 16px; font-size: 14px; white-space: pre-line;">
-            <strong>Dettagli richiesta:</strong><br/>
-            ${leaveDetails.replace(/\n/g, '<br>')}
-          </div>
-        ` : ''}
-
-        ${shouldShowAdminNotesSection ? `
-          <div style="background-color: ${adminNotesBgColor}; color: ${adminNotesTextColor}; padding: 12px; border-radius: 6px; margin-top: 16px; font-size: 14px; white-space: pre-line; border-left: 3px solid ${adminNotesTextColor};">
-            <strong>Note amministratore:</strong><br/>
-            ${adminNotes.replace(/\n/g, '<br>')}
-          </div>
-        ` : ''}
-      </div>
-      ${dashboardButton}
-      ${attachmentSection}
-      <div style="border-top: 1px solid ${primaryColor}20; padding-top: 24px; margin-top: 32px; text-align: center;">
-        <p style="color: ${footerColor}; font-size: 13px; margin: 0; line-height: 1.4;">
+      <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+      <div style="width:100%;text-align:center;margin-top:18px;">
+        <span style="color:${footerColor}; font-size:13px;">
           ${footerText}
-        </p>
+        </span>
       </div>
     </div>
   `;

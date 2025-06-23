@@ -19,7 +19,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote } = body;
+    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail } = body;
 
     if (!userId) {
       console.error("[Notification Email] Missing userId in request");
@@ -224,6 +224,24 @@ serve(async (req) => {
 
     console.log("[Notification Email] Using sender:", senderName, "<" + senderEmail + ">");
 
+    // Determine if we should use employee email as reply-to
+    // This happens when:
+    // 1. An employee sends a leave request to admin (templateType === 'permessi-richiesta')
+    // 2. An employee uploads a document for admin
+    // 3. employeeEmail is explicitly provided in the request
+    let dynamicReplyTo = null;
+    const isEmployeeToAdminNotification = templateType === 'permessi-richiesta' || 
+                                        (templateType === 'documenti' && employeeEmail) ||
+                                        employeeEmail;
+    
+    if (isEmployeeToAdminNotification && employeeEmail) {
+      dynamicReplyTo = employeeEmail;
+      console.log("[Notification Email] Using employee email as reply-to:", employeeEmail);
+    } else if (adminSetting.reply_to && adminSetting.reply_to.trim()) {
+      dynamicReplyTo = adminSetting.reply_to.trim();
+      console.log("[Notification Email] Using configured reply-to:", dynamicReplyTo);
+    }
+
     let successCount = 0;
     const errors = [];
 
@@ -298,7 +316,8 @@ serve(async (req) => {
           customBlockBgColor: templateData.custom_block_bg_color,
           customBlockTextColor: templateData.custom_block_text_color,
           dynamicSubject: (['notifiche', 'documenti'].includes(templateType)) ? emailSubject : '',
-          dynamicContent: (['notifiche', 'documenti'].includes(templateType)) ? emailContent : ''
+          dynamicContent: (['notifiche', 'documenti'].includes(templateType)) ? emailContent : '',
+          employeeEmail: employeeEmail // Pass employee email to template for display
         });
 
         // Build Brevo payload with configured sender settings
@@ -310,9 +329,10 @@ serve(async (req) => {
           textContent: `${emailSubject}\n\n${emailContent}\n\nInviato da: ${senderName}`
         };
 
-        // Add replyTo if configured
-        if (adminSetting.reply_to && adminSetting.reply_to.trim()) {
-          brevoPayload.replyTo = { email: adminSetting.reply_to.trim() };
+        // Add replyTo if we have one (either employee email or configured reply-to)
+        if (dynamicReplyTo) {
+          brevoPayload.replyTo = { email: dynamicReplyTo };
+          console.log("[Notification Email] Setting reply-to:", dynamicReplyTo);
         }
 
         const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -346,6 +366,7 @@ serve(async (req) => {
         message: "Email sent successfully",
         recipients: successCount,
         sender: `${senderName} <${senderEmail}>`,
+        replyTo: dynamicReplyTo,
         errors: errors.length > 0 ? errors : undefined
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

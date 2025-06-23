@@ -172,16 +172,24 @@ export const useNotificationForm = (onCreated?: () => void) => {
       // Invio email tramite Edge Function Brevo
       console.log("Calling send-notification-email function...");
       
+      // Prepare email payload with employee email if available
+      const emailPayload: any = {
+        recipientId,
+        subject,
+        shortText,
+        userId: profile?.id,
+        topic: topic || "notification", // Always pass a topic, default to "notification"
+      };
+
+      // Add employee email if this is an employee sending to admin
+      if (profile?.email && (topic === "notification" || !recipientId)) {
+        emailPayload.employeeEmail = profile.email;
+      }
+
       const { data: emailResult, error: emailError } = await supabase.functions.invoke(
         'send-notification-email',
         {
-          body: {
-            recipientId,
-            subject,
-            shortText,
-            userId: profile?.id,
-            topic: topic || "notification", // Always pass a topic, default to "notification"
-          }
+          body: emailPayload
         }
       );
 
