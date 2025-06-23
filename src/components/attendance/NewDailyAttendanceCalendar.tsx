@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -451,8 +452,8 @@ export default function NewDailyAttendanceCalendar() {
                               <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
                             )}
                             {employee.leave?.date_from && employee.leave.date_to && (
-                              <div className="text-xs text-gray-600 mt-1">
-                                Dal {format(new Date(employee.leave.date_from), 'dd/MM')} al {format(new Date(employee.leave.date_to), 'dd/MM')}
+                              <div className="text-xs text-purple-600 mt-1 font-medium">
+                                Periodo: {format(new Date(employee.leave.date_from), 'dd/MM/yyyy')} - {format(new Date(employee.leave.date_to), 'dd/MM/yyyy')}
                               </div>
                             )}
                           </div>
