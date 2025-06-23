@@ -34,19 +34,27 @@ export default function DailyAttendanceCalendar() {
   const selectedDateStr = selectedDate?.toISOString().split('T')[0];
   const selectedDateAttendances = attendances?.filter(att => att.date === selectedDateStr) || [];
 
-  // Filtra i dipendenti che dovrebbero essere tracciati per la data selezionata
-  const relevantEmployeesForDate = employees?.filter(emp => {
-    if (!selectedDate) return true;
+  // Funzione per filtrare i dipendenti che dovrebbero essere tracciati per la data selezionata
+  const getRelevantEmployeesForDate = async (dateStr: string) => {
+    if (!employees) return [];
     
-    // Usa la logica centralizzata per determinare se il dipendente dovrebbe essere tracciato
-    if (emp.tracking_start_type === 'from_hire_date' && emp.hire_date) {
-      const hireDate = new Date(emp.hire_date);
-      return selectedDate >= hireDate;
+    const relevantEmployees = [];
+    for (const emp of employees) {
+      const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, dateStr);
+      if (shouldTrack) {
+        relevantEmployees.push(emp);
+      }
     }
-    
-    // Per dipendenti esistenti (from_year_start), traccia sempre
-    return true;
-  }) || [];
+    return relevantEmployees;
+  };
+
+  const [relevantEmployeesForDate, setRelevantEmployeesForDate] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (selectedDateStr) {
+      getRelevantEmployeesForDate(selectedDateStr).then(setRelevantEmployeesForDate);
+    }
+  }, [selectedDateStr, employees]);
 
   // Ottieni i dipendenti presenti
   const presentEmployees = selectedDateAttendances
@@ -162,6 +170,11 @@ export default function DailyAttendanceCalendar() {
                               Esistente
                             </Badge>
                           )}
+                          {employee.tracking_start_type === 'from_hire_date' && (
+                            <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700 text-xs">
+                              Nuovo
+                            </Badge>
+                          )}
                           {employee.is_business_trip && (
                             <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 text-xs">
                               Trasferta
@@ -200,11 +213,18 @@ export default function DailyAttendanceCalendar() {
                         <span className="font-medium text-sm">
                           {employee.first_name} {employee.last_name}
                         </span>
-                        {employee.tracking_start_type === 'from_year_start' && (
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
-                            Da caricare manualmente
-                          </Badge>
-                        )}
+                        <div className="flex gap-1">
+                          {employee.tracking_start_type === 'from_year_start' && (
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 text-xs">
+                              Da caricare manualmente
+                            </Badge>
+                          )}
+                          {employee.tracking_start_type === 'from_hire_date' && (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
+                              Nuovo dipendente
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))

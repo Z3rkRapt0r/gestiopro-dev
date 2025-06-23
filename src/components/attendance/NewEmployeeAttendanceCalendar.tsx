@@ -7,6 +7,7 @@ import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 
@@ -18,6 +19,7 @@ interface NewEmployeeAttendanceCalendarProps {
 export default function NewEmployeeAttendanceCalendar({ employee, attendances }: NewEmployeeAttendanceCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { workSchedule } = useWorkSchedules();
+  const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
 
   // Funzione per verificare se un giorno è lavorativo
   const isWorkingDay = (date: Date) => {
@@ -48,8 +50,8 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
 
   console.log('Presenza operatore per data selezionata:', selectedDateAttendance);
 
-  // NUOVO: Calcola il resoconto annuale basato sui giorni lavorativi configurati
-  const calculateYearlyStats = () => {
+  // NUOVO: Calcola il resoconto annuale basato sui giorni lavorativi che dovrebbero essere tracciati
+  const calculateYearlyStats = async () => {
     const currentYear = new Date().getFullYear();
     const startOfYear = new Date(currentYear, 0, 1);
     const today = new Date();
@@ -60,20 +62,24 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       return attDate >= startOfYear && attDate <= today;
     });
     
-    // Conta i giorni lavorativi dall'inizio dell'anno ad oggi usando la configurazione
+    // Conta i giorni lavorativi che dovrebbero essere tracciati usando la logica centralizzata
     let workingDaysCount = 0;
     const tempDate = new Date(startOfYear);
     
     while (tempDate <= today) {
       if (isWorkingDay(tempDate)) {
-        workingDaysCount++;
+        const dateStr = format(tempDate, 'yyyy-MM-dd');
+        const shouldTrack = await shouldTrackEmployeeOnDate(employee.id, dateStr);
+        if (shouldTrack) {
+          workingDaysCount++;
+        }
       }
       tempDate.setDate(tempDate.getDate() + 1);
     }
     
     const presentDays = yearAttendances.filter(att => att.check_in_time && !att.is_sick_leave).length;
     const sickDays = yearAttendances.filter(att => att.is_sick_leave).length;
-    const absentDays = workingDaysCount - yearAttendances.length;
+    const absentDays = Math.max(0, workingDaysCount - yearAttendances.length);
     
     return {
       totalWorkingDays: workingDaysCount,
@@ -84,15 +90,25 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     };
   };
 
-  const yearlyStats = calculateYearlyStats();
+  const [yearlyStats, setYearlyStats] = useState({
+    totalWorkingDays: 0,
+    presentDays: 0,
+    sickDays: 0,
+    absentDays: 0,
+    attendancePercentage: 0
+  });
+
+  // Calcola le statistiche quando il componente si monta
+  React.useEffect(() => {
+    calculateYearlyStats().then(setYearlyStats);
+  }, [employee.id, attendances]);
 
   // CORREZIONE: Ottieni le date con presenze formattate correttamente
   const attendanceDates = attendances
     .filter(att => att.check_in_time || att.is_sick_leave)
     .map(att => {
-      // Convertiamo la stringa data in oggetto Date senza problemi di timezone
       const [year, month, day] = att.date.split('-').map(Number);
-      return new Date(year, month - 1, day); // month - 1 perché JavaScript usa mesi 0-based
+      return new Date(year, month - 1, day);
     });
 
   const sickLeaveDates = attendances
@@ -102,25 +118,36 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       return new Date(year, month - 1, day);
     });
 
-  // Calcola i giorni di assenza per questo operatore basato sui giorni lavorativi configurati
-  const currentDate = new Date();
-  const oneMonthAgo = new Date(currentDate);
-  oneMonthAgo.setMonth(currentDate.getMonth() - 1);
-  
-  const absentDates = [];
-  const tempDate = new Date(oneMonthAgo);
-  
-  while (tempDate <= currentDate) {
-    const dateStr = format(tempDate, 'yyyy-MM-dd');
-    const hasAttendance = attendances.some(att => att.date === dateStr);
+  // Calcola i giorni di assenza basandosi sulla logica centralizzata
+  const getAbsentDates = async () => {
+    const currentDate = new Date();
+    const oneMonthAgo = new Date(currentDate);
+    oneMonthAgo.setMonth(currentDate.getMonth() - 1);
     
-    // Se è un giorno lavorativo (basato sulla configurazione) e non ha presenza
-    if (isWorkingDay(tempDate) && !hasAttendance && tempDate < currentDate) {
-      absentDates.push(new Date(tempDate));
+    const absentDates = [];
+    const tempDate = new Date(oneMonthAgo);
+    
+    while (tempDate <= currentDate) {
+      const dateStr = format(tempDate, 'yyyy-MM-dd');
+      const hasAttendance = attendances.some(att => att.date === dateStr);
+      const shouldTrack = await shouldTrackEmployeeOnDate(employee.id, dateStr);
+      
+      // Se dovrebbe essere tracciato, è un giorno lavorativo e non ha presenza
+      if (shouldTrack && isWorkingDay(tempDate) && !hasAttendance && tempDate < currentDate) {
+        absentDates.push(new Date(tempDate));
+      }
+      
+      tempDate.setDate(tempDate.getDate() + 1);
     }
     
-    tempDate.setDate(tempDate.getDate() + 1);
-  }
+    return absentDates;
+  };
+
+  const [absentDates, setAbsentDates] = useState<Date[]>([]);
+
+  React.useEffect(() => {
+    getAbsentDates().then(setAbsentDates);
+  }, [employee.id, attendances]);
 
   console.log('Date con presenze per calendario operatore:', attendanceDates);
 
@@ -153,14 +180,23 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     }
   };
 
+  // Verifica se una data dovrebbe essere tracciata per questo dipendente
+  const shouldShowDate = async (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return await shouldTrackEmployeeOnDate(employee.id, dateStr);
+  };
+
   return (
     <div className="space-y-6">
-      {/* NUOVO: Resoconto Annuale */}
+      {/* Resoconto Annuale */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <CalendarIcon className="w-4 h-4" />
             Resoconto Annuale {new Date().getFullYear()}
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+              {employee.tracking_start_type === 'from_hire_date' ? 'Nuovo Dipendente' : 'Dipendente Esistente'}
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
@@ -188,7 +224,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             </div>
           </div>
           
-          {/* Info configurazione orari di lavoro */}
+          {/* Info configurazione */}
           {workSchedule && (
             <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <div className="text-sm font-medium text-blue-700 mb-2">Configurazione Orari:</div>
@@ -206,6 +242,19 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               </div>
             </div>
           )}
+
+          {/* Info sul tipo di tracciamento */}
+          <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div className="text-xs font-medium text-yellow-700 mb-1">
+              Tipo di tracciamento: {employee.tracking_start_type === 'from_hire_date' ? 'Nuovo dipendente' : 'Dipendente esistente'}
+            </div>
+            <div className="text-xs text-yellow-600">
+              {employee.tracking_start_type === 'from_hire_date' 
+                ? `Tracciamento dal ${employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'} (data di creazione)` 
+                : 'Tracciamento dall\'inizio dell\'anno - le assenze devono essere caricate manualmente'
+              }
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -360,10 +409,18 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               <div className="p-3 bg-red-50 rounded-lg border border-red-200">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span className="font-semibold text-red-700 text-sm">Assente</span>
+                  <span className="font-semibold text-red-700 text-sm">
+                    {selectedDate && employee.tracking_start_type === 'from_hire_date' && employee.hire_date && selectedDate < new Date(employee.hire_date) 
+                      ? 'Non ancora assunto' 
+                      : 'Assente'
+                    }
+                  </span>
                 </div>
                 <p className="text-xs text-red-600">
-                  Nessuna presenza registrata per questo giorno lavorativo
+                  {selectedDate && employee.tracking_start_type === 'from_hire_date' && employee.hire_date && selectedDate < new Date(employee.hire_date)
+                    ? `Il dipendente è stato assunto il ${format(new Date(employee.hire_date), 'dd/MM/yyyy')}`
+                    : 'Nessuna presenza registrata per questo giorno lavorativo'
+                  }
                 </p>
               </div>
             )}
