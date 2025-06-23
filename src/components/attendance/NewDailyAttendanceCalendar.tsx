@@ -19,7 +19,7 @@ export default function NewDailyAttendanceCalendar() {
   const { attendances, isLoading, deleteAttendance, isDeleting } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { workSchedule } = useWorkSchedules();
-  const { leaveRequests } = useLeaveRequests();
+  const { leaveRequests, deleteMutation } = useLeaveRequests();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
 
   // Funzione per verificare se un giorno è lavorativo
@@ -192,22 +192,29 @@ export default function NewDailyAttendanceCalendar() {
     }
   });
 
-  // CORREZIONE: Dipendenti con permessi giornalieri
+  // CORREZIONE: Dipendenti con permessi (sia giornalieri che orari)
   const onPermissionEmployees = [];
   
+  // Prima controlla le richieste approvate per permessi
   selectedDateLeaves.forEach(leave => {
-    if (leave.type === 'permesso' && leave.day && !leave.time_from && !leave.time_to) {
+    if (leave.type === 'permesso' && leave.day) {
       const employee = employees?.find(emp => emp.id === leave.user_id);
       if (employee) {
         // Cerca se esiste una presenza automatica per questo dipendente
         const automaticAttendance = selectedDateAttendances.find(att => 
-          att.user_id === leave.user_id && att.notes === 'Permesso'
+          att.user_id === leave.user_id && (att.notes === 'Permesso' || att.notes?.includes('Permesso'))
         );
+        
+        // Determina il tipo di permesso
+        const isHourlyPermission = leave.time_from && leave.time_to;
         
         onPermissionEmployees.push({
           ...employee,
           attendance: automaticAttendance || null,
           leave: leave,
+          permissionType: isHourlyPermission ? 'orario' : 'giornaliero',
+          permissionTimeFrom: leave.time_from,
+          permissionTimeTo: leave.time_to,
         });
       }
     }
@@ -215,15 +222,21 @@ export default function NewDailyAttendanceCalendar() {
 
   // Se non ci sono dipendenti con permessi dalle richieste, controlla le presenze con note "Permesso"
   if (onPermissionEmployees.length === 0) {
-    const permissionAttendances = selectedDateAttendances.filter(att => att.notes === 'Permesso');
+    const permissionAttendances = selectedDateAttendances.filter(att => 
+      att.notes === 'Permesso' || att.notes?.includes('Permesso')
+    );
     permissionAttendances.forEach(att => {
       const employee = employees?.find(emp => emp.id === att.user_id);
       if (employee && !onLeaveEmployees.some(emp => emp.id === employee.id)) { // Non duplicare se già in ferie
-        const leaveRequest = selectedDateLeaves.find(leave => leave.user_id === att.user_id);
+        // Determina se è un permesso orario dalle note o dagli orari
+        const isHourlyPermission = (att.check_in_time && att.check_out_time) || 
+                                  (att.notes && att.notes.includes('(') && att.notes.includes('-') && att.notes.includes(')'));
+        
         onPermissionEmployees.push({
           ...employee,
           attendance: att,
-          leave: leaveRequest || null,
+          leave: null,
+          permissionType: isHourlyPermission ? 'orario' : 'giornaliero',
         });
       }
     });
@@ -259,6 +272,12 @@ export default function NewDailyAttendanceCalendar() {
   const handleDeleteAttendance = (attendance: any) => {
     if (confirm('Sei sicuro di voler eliminare questa presenza?')) {
       deleteAttendance(attendance);
+    }
+  };
+
+  const handleDeletePermissionRequest = (leaveRequest: any) => {
+    if (confirm('Sei sicuro di voler eliminare questa richiesta di permesso?')) {
+      deleteMutation.mutate(leaveRequest.id);
     }
   };
 
@@ -501,36 +520,63 @@ export default function NewDailyAttendanceCalendar() {
                                 {employee.first_name} {employee.last_name}
                               </span>
                               <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-                                {employee.permissionType === 'orario' ? 'Permesso Orario' : 'Permesso'}
+                                {employee.permissionType === 'orario' ? 'Permesso Orario' : 'Permesso Giornaliero'}
                               </Badge>
                             </div>
-                            {employee.attendance?.notes && (
-                              <p className="text-xs text-gray-600 mt-1">{employee.attendance.notes}</p>
-                            )}
-                            {employee.permissionType === 'orario' && employee.attendance && (
+                            
+                            {/* Mostra i dettagli del permesso orario */}
+                            {employee.permissionType === 'orario' && (
                               <div className="text-xs text-blue-600 mt-1 font-medium">
-                                {employee.attendance.check_in_time && employee.attendance.check_out_time ? (
+                                {employee.permissionTimeFrom && employee.permissionTimeTo ? (
+                                  `Orario: ${employee.permissionTimeFrom} - ${employee.permissionTimeTo}`
+                                ) : employee.attendance && employee.attendance.check_in_time && employee.attendance.check_out_time ? (
                                   `Orario: ${formatTime(employee.attendance.check_in_time)} - ${formatTime(employee.attendance.check_out_time)}`
+                                ) : employee.attendance && employee.attendance.notes && employee.attendance.notes.includes('(') ? (
+                                  employee.attendance.notes
                                 ) : (
-                                  'Orario da definire'
+                                  'Permesso Orario'
                                 )}
                               </div>
                             )}
+                            
+                            {/* Note aggiuntive */}
                             {employee.leave?.note && (
                               <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
                             )}
+                            {employee.attendance?.notes && !employee.leave?.note && employee.attendance.notes !== 'Permesso' && (
+                              <p className="text-xs text-gray-600 mt-1">{employee.attendance.notes}</p>
+                            )}
                           </div>
-                          {employee.attendance && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteAttendance(employee.attendance)}
-                              disabled={isDeleting}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          )}
+                          
+                          <div className="flex gap-1 ml-2">
+                            {/* Elimina presenza se esiste */}
+                            {employee.attendance && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteAttendance(employee.attendance)}
+                                disabled={isDeleting}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Elimina presenza"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            )}
+                            
+                            {/* Elimina richiesta di permesso se esiste */}
+                            {employee.leave && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeletePermissionRequest(employee.leave)}
+                                disabled={deleteMutation.isPending}
+                                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                title="Elimina richiesta permesso"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))
