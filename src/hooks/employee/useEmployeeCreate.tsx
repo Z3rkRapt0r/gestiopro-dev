@@ -30,15 +30,16 @@ export const useEmployeeCreate = () => {
         throw new Error('Email e password sono obbligatori');
       }
 
-      // 1. Prima crea l'utente nell'auth di Supabase
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Usa signUp normale invece di admin.createUser
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: employeeData.email,
         password: employeeData.password,
-        email_confirm: true, // Conferma automaticamente l'email
-        user_metadata: {
-          first_name: employeeData.first_name || '',
-          last_name: employeeData.last_name || '',
-          role: 'employee'
+        options: {
+          data: {
+            first_name: employeeData.first_name || '',
+            last_name: employeeData.last_name || '',
+            role: 'employee'
+          }
         }
       });
 
@@ -51,7 +52,7 @@ export const useEmployeeCreate = () => {
         throw new Error('Errore nella creazione dell\'utente');
       }
 
-      // 2. Poi crea il profilo nella tabella profiles
+      // Crea il profilo nella tabella profiles
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .insert({
@@ -70,14 +71,12 @@ export const useEmployeeCreate = () => {
 
       if (profileError) {
         console.error('Profile error:', profileError);
-        // Se fallisce la creazione del profilo, elimina l'utente auth
-        await supabase.auth.admin.deleteUser(authData.user.id);
         throw profileError;
       }
 
       toast({
         title: "Dipendente creato",
-        description: "Il dipendente è stato aggiunto con successo",
+        description: "Il dipendente è stato aggiunto con successo. Dovrà confermare l'email per attivare l'account.",
       });
 
       return { data: profileData, error: null };
