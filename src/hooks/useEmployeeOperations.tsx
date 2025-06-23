@@ -39,42 +39,30 @@ export const useEmployeeOperations = () => {
         throw new Error('Esiste già un dipendente con questa email nei profili');
       }
 
-      // Crea l'utente in Supabase Auth con retry logic
-      let signUpData, signUpError;
-      let retryCount = 0;
-      const maxRetries = 3;
+      // Verifica duplicati email in auth.users tramite admin API
+      const { data: { users } } = await supabase.auth.admin.listUsers();
+      const existingAuthUser = users.find(user => user.email === data.email);
+      
+      if (existingAuthUser) {
+        throw new Error('Esiste già un utente con questa email nel sistema di autenticazione');
+      }
 
-      do {
-        const result = await supabase.auth.signUp({
-          email: data.email,
-          password: data.password,
-          options: {
-            data: {
-              first_name: data.firstName,
-              last_name: data.lastName,
-              role: data.role,
-            }
-          }
-        });
-        
-        signUpData = result.data;
-        signUpError = result.error;
-        
-        if (signUpError && retryCount < maxRetries - 1) {
-          console.log(`Tentativo ${retryCount + 1} fallito, ritento...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          retryCount++;
-        } else {
-          break;
+      // Crea l'utente in Supabase Auth
+      const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
+        email: data.email,
+        password: data.password,
+        email_confirm: true, // Conferma automaticamente l'email
+        user_metadata: {
+          first_name: data.firstName,
+          last_name: data.lastName,
+          role: data.role,
         }
-      } while (retryCount < maxRetries);
+      });
 
-      console.log('Risultato signUp:', { signUpData, signUpError });
+      console.log('Risultato creazione utente admin:', { signUpData, signUpError });
 
       if (signUpError) {
-        if (signUpError.message === "User already registered") {
-          throw new Error("Esiste già un utente con questa email in Auth");
-        }
+        console.error('Errore nella creazione utente admin:', signUpError);
         throw new Error(signUpError.message || "Errore durante la creazione dell'account");
       }
 
@@ -85,50 +73,47 @@ export const useEmployeeOperations = () => {
 
       console.log('Utente creato con ID:', userId);
 
-      // Attendi e verifica la creazione del profilo
-      let profileExists = false;
-      let attempts = 0;
-      const maxAttempts = 10;
+      // Attendi un momento per assicurarsi che l'utente sia salvato
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      while (!profileExists && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const { data: profileCheck } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (profileCheck) {
-          profileExists = true;
-          console.log('Profilo trovato:', profileCheck);
-          
-          // Aggiorna il profilo con tutti i dati
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              first_name: data.firstName,
-              last_name: data.lastName,
-              email: data.email,
-              role: data.role,
-              employee_code: data.employeeCode || null,
-              is_active: true
-            })
-            .eq('id', userId);
-
-          if (updateError) {
-            console.error('Errore aggiornamento profilo:', updateError);
-            throw new Error(`Errore nell'aggiornamento del profilo: ${updateError.message}`);
-          }
-          
-          break;
-        }
-        
-        attempts++;
+      // Verifica che l'utente esista in auth.users
+      const { data: createdUser, error: getUserError } = await supabase.auth.admin.getUserById(userId);
+      
+      if (getUserError || !createdUser.user) {
+        console.error('Utente non trovato dopo la creazione:', getUserError);
+        throw new Error('Utente non trovato dopo la creazione');
       }
 
-      if (!profileExists) {
-        // Se il trigger non ha funzionato, crea manualmente il profilo
+      console.log('Utente verificato in auth.users');
+
+      // Ora crea o aggiorna il profilo manualmente
+      const { data: existingProfileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (existingProfileData) {
+        // Se il profilo esiste già (creato dal trigger), aggiornalo
+        console.log('Profilo esistente trovato, aggiorno i dati');
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            first_name: data.firstName,
+            last_name: data.lastName,
+            email: data.email,
+            role: data.role,
+            employee_code: data.employeeCode || null,
+            is_active: true
+          })
+          .eq('id', userId);
+
+        if (updateError) {
+          console.error('Errore aggiornamento profilo:', updateError);
+          throw new Error(`Errore nell'aggiornamento del profilo: ${updateError.message}`);
+        }
+      } else {
+        // Se il profilo non esiste, crealo manualmente
         console.log('Creando profilo manualmente...');
         const { error: insertError } = await supabase
           .from('profiles')
@@ -144,6 +129,13 @@ export const useEmployeeOperations = () => {
 
         if (insertError) {
           console.error('Errore inserimento profilo:', insertError);
+          
+          // Se l'errore è dovuto alla chiave esterna, elimina l'utente creato
+          if (insertError.message.includes('foreign key constraint')) {
+            console.log('Eliminando utente creato a causa di errore profilo...');
+            await supabase.auth.admin.deleteUser(userId);
+          }
+          
           throw new Error(`Errore nella creazione del profilo: ${insertError.message}`);
         }
       }
@@ -156,8 +148,8 @@ export const useEmployeeOperations = () => {
           .insert({
             user_id: userId,
             year: currentYear,
-            vacation_days_total: 26, // Giorni di ferie standard
-            permission_hours_total: 32, // Ore di permesso standard
+            vacation_days_total: 26,
+            permission_hours_total: 32,
             vacation_days_used: 0,
             permission_hours_used: 0
           });
