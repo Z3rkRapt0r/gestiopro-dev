@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -117,7 +118,7 @@ export function useLeaveRequests() {
 
       // Solo se la richiesta è approvata, creiamo le presenze automatiche
       if (status === "approved") {
-        // Se la richiesta è per ferie, creiamo presenze per i giorni lavorativi
+        // Se la richiesta è per ferie, creiamo presenze speciali per i giorni lavorativi
         if (type === "ferie" && date_from && date_to && data) {
           const startDate = new Date(date_from);
           const endDate = new Date(date_to);
@@ -128,7 +129,7 @@ export function useLeaveRequests() {
 
           console.log('Giorni lavorativi per ferie:', workingDays.length, 'su', allDays.length, 'giorni totali');
 
-          // Crea le presenze per tutti i giorni lavorativi delle ferie
+          // Crea le presenze per tutti i giorni lavorativi delle ferie - MARCATE COME FERIE
           if (workingDays.length > 0) {
             const attendancesToCreate = workingDays.map(day => ({
               user_id: user_id!,
@@ -137,6 +138,7 @@ export function useLeaveRequests() {
               check_out_time: workSchedule?.end_time || '17:00',
               is_manual: true,
               is_business_trip: false,
+              is_sick_leave: false,
               notes: `Ferie`,
             }));
 
@@ -227,6 +229,7 @@ export function useLeaveRequests() {
               check_out_time: workSchedule?.end_time || '17:00',
               is_manual: true,
               is_business_trip: false,
+              is_sick_leave: false,
               notes: `Ferie`,
             }));
 

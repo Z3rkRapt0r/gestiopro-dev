@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useRealisticAttendanceStats } from '@/hooks/useRealisticAttendanceStats';
+import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceStats';
 import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 
@@ -22,6 +22,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
 
   const { workSchedule } = useWorkSchedules();
   const stats = useRealisticAttendanceStats(employee, attendances, workSchedule);
+  const { leaveBalance } = useEmployeeLeaveBalanceStats(employee?.id);
 
   // Funzione per verificare se un giorno è lavorativo
   const isWorkingDay = (date: Date) => {
@@ -50,16 +51,27 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
 
-  // Date con presenze per il calendario
+  // Date con presenze per il calendario (escludendo ferie e malattie)
   const attendanceDates = useMemo(() => {
     return attendances
-      .filter(att => att.check_in_time || att.is_sick_leave)
+      .filter(att => (att.check_in_time || att.is_sick_leave) && !att.notes?.includes('Ferie'))
       .map(att => {
         const [year, month, day] = att.date.split('-').map(Number);
         return new Date(year, month - 1, day);
       });
   }, [attendances]);
 
+  // Date di ferie
+  const vacationDates = useMemo(() => {
+    return attendances
+      .filter(att => att.notes?.includes('Ferie'))
+      .map(att => {
+        const [year, month, day] = att.date.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      });
+  }, [attendances]);
+
+  // Date con presenze per il calendario
   const sickLeaveDates = useMemo(() => {
     return attendances
       .filter(att => att.is_sick_leave)
@@ -184,6 +196,45 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                   Periodo: {stats.calculationPeriod.description}
                 </div>
               </div>
+
+              {/* Sezione Bilanci Ferie e Permessi */}
+              {leaveBalance && (
+                <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <h3 className="text-sm font-medium text-purple-700 mb-3">Bilanci Ferie e Permessi {leaveBalance.year}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-purple-700">Giorni di Ferie</div>
+                      <div className="flex justify-between text-sm">
+                        <span>Totali:</span>
+                        <span className="font-medium">{leaveBalance.vacation_days_total}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Utilizzati:</span>
+                        <span className="font-medium text-red-600">{leaveBalance.vacation_days_used}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Rimanenti:</span>
+                        <span className="font-medium text-green-600">{leaveBalance.vacation_days_remaining}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-purple-700">Ore di Permesso</div>
+                      <div className="flex justify-between text-sm">
+                        <span>Totali:</span>
+                        <span className="font-medium">{leaveBalance.permission_hours_total}h</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Utilizzate:</span>
+                        <span className="font-medium text-red-600">{leaveBalance.permission_hours_used}h</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Rimanenti:</span>
+                        <span className="font-medium text-green-600">{leaveBalance.permission_hours_remaining}h</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
           
@@ -238,9 +289,11 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                 onSelect={setSelectedDate}
                 locale={it}
                 modifiers={{
-                  present: attendanceDates.filter(date => !sickLeaveDates.some(sickDate => 
-                    sickDate.getTime() === date.getTime()
-                  )),
+                  present: attendanceDates.filter(date => 
+                    !sickLeaveDates.some(sickDate => sickDate.getTime() === date.getTime()) &&
+                    !vacationDates.some(vacDate => vacDate.getTime() === date.getTime())
+                  ),
+                  vacation: vacationDates,
                   sickLeave: sickLeaveDates,
                   absent: absentDates
                 }}
@@ -248,6 +301,11 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                   present: {
                     backgroundColor: '#dcfce7',
                     color: '#166534',
+                    fontWeight: 'bold'
+                  },
+                  vacation: {
+                    backgroundColor: '#ddd6fe',
+                    color: '#6b21a8',
                     fontWeight: 'bold'
                   },
                   sickLeave: {
@@ -268,6 +326,10 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 bg-green-200 rounded"></div>
                 <span>Giorni di presenza</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-purple-200 rounded"></div>
+                <span>Giorni di ferie</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 bg-orange-200 rounded"></div>
@@ -317,7 +379,33 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               </div>
             ) : selectedDateAttendance ? (
               <div className="space-y-3">
-                {selectedDateAttendance.is_sick_leave ? (
+                {selectedDateAttendance.notes?.includes('Ferie') ? (
+                  <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="font-semibold text-purple-700 text-sm">Ferie</span>
+                      {selectedDateAttendance.is_manual && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                          Manuale
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div>
+                        <span className="text-gray-600">Entrata:</span>
+                        <div className="font-medium">
+                          {formatTime(selectedDateAttendance.check_in_time)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Uscita:</span>
+                        <div className="font-medium">
+                          {formatTime(selectedDateAttendance.check_out_time)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : selectedDateAttendance.is_sick_leave ? (
                   <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
