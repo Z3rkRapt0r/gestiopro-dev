@@ -3,11 +3,12 @@ import React, { useState, useMemo } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Calendar as CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
-import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
+import { useRealisticAttendanceStats } from '@/hooks/useRealisticAttendanceStats';
 import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 
@@ -20,7 +21,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const { workSchedule } = useWorkSchedules();
-  const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
+  const stats = useRealisticAttendanceStats(employee, attendances, workSchedule);
 
   // Funzione per verificare se un giorno è lavorativo
   const isWorkingDay = (date: Date) => {
@@ -47,66 +48,9 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
 
   // Formattiamo la data selezionata in modo consistente
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-  
   const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
 
-  // OTTIMIZZAZIONE: Calcola il resoconto annuale in modo sincrono usando useMemo
-  const yearlyStats = useMemo(() => {
-    if (!employee?.id || !attendances) {
-      return {
-        totalWorkingDays: 0,
-        presentDays: 0,
-        sickDays: 0,
-        absentDays: 0,
-        attendancePercentage: 0
-      };
-    }
-
-    const currentYear = new Date().getFullYear();
-    const today = new Date();
-    
-    // CORREZIONE: Per i nuovi dipendenti, inizia dalla data di assunzione
-    let startDate: Date;
-    if (employee.tracking_start_type === 'from_hire_date' && employee.hire_date) {
-      const hireDate = new Date(employee.hire_date);
-      const startOfYear = new Date(currentYear, 0, 1);
-      // Usa la data più recente tra l'inizio dell'anno e la data di assunzione
-      startDate = hireDate > startOfYear ? hireDate : startOfYear;
-    } else {
-      startDate = new Date(currentYear, 0, 1);
-    }
-    
-    // Filtra le presenze dell'anno corrente dalla data di inizio calcolata
-    const yearAttendances = attendances.filter(att => {
-      const attDate = new Date(att.date);
-      return attDate >= startDate && attDate <= today;
-    });
-    
-    // Conta i giorni lavorativi dalla data di inizio corretta
-    let workingDaysCount = 0;
-    const tempDate = new Date(startDate);
-    
-    while (tempDate <= today) {
-      if (isWorkingDay(tempDate) && isEmployeeHiredOnDate(tempDate)) {
-        workingDaysCount++;
-      }
-      tempDate.setDate(tempDate.getDate() + 1);
-    }
-    
-    const presentDays = yearAttendances.filter(att => att.check_in_time && !att.is_sick_leave).length;
-    const sickDays = yearAttendances.filter(att => att.is_sick_leave).length;
-    const absentDays = Math.max(0, workingDaysCount - yearAttendances.length);
-    
-    return {
-      totalWorkingDays: workingDaysCount,
-      presentDays,
-      sickDays,
-      absentDays,
-      attendancePercentage: workingDaysCount > 0 ? Math.round((presentDays / workingDaysCount) * 100) : 0
-    };
-  }, [employee?.id, employee?.hire_date, employee?.tracking_start_type, attendances, workSchedule]);
-
-  // OTTIMIZZAZIONE: Ottieni le date con presenze usando useMemo
+  // Date con presenze per il calendario
   const attendanceDates = useMemo(() => {
     return attendances
       .filter(att => att.check_in_time || att.is_sick_leave)
@@ -125,30 +69,20 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       });
   }, [attendances]);
 
-  // OTTIMIZZAZIONE: Calcola i giorni di assenza usando useMemo
+  // Calcola i giorni di assenza realistici (solo ultimi 30 giorni e dopo assunzione)
   const absentDates = useMemo(() => {
-    if (!employee?.id) return [];
+    if (!employee?.id || !stats.hasValidData) return [];
 
     const currentDate = new Date();
-    
-    // CORREZIONE: Per i nuovi dipendenti, inizia dalla data di assunzione
-    let startDate: Date;
-    if (employee.tracking_start_type === 'from_hire_date' && employee.hire_date) {
-      const hireDate = new Date(employee.hire_date);
-      const oneMonthAgo = new Date(currentDate);
-      oneMonthAgo.setMonth(currentDate.getMonth() - 1);
-      // Usa la data più recente tra un mese fa e la data di assunzione
-      startDate = hireDate > oneMonthAgo ? hireDate : oneMonthAgo;
-    } else {
-      startDate = new Date(currentDate);
-      startDate.setMonth(currentDate.getMonth() - 1);
-    }
+    const startDate = new Date(Math.max(
+      stats.calculationPeriod.startDate.getTime(),
+      currentDate.getTime() - (30 * 24 * 60 * 60 * 1000) // 30 giorni fa
+    ));
     
     const absentDates = [];
     const tempDate = new Date(startDate);
     
     while (tempDate <= currentDate) {
-      // Solo se il dipendente era già assunto
       if (isEmployeeHiredOnDate(tempDate)) {
         const dateStr = format(tempDate, 'yyyy-MM-dd');
         const hasAttendance = attendances.some(att => att.date === dateStr);
@@ -163,12 +97,12 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     }
     
     return absentDates;
-  }, [employee?.id, employee?.hire_date, employee?.tracking_start_type, attendances, workSchedule]);
+  }, [employee?.id, employee?.hire_date, attendances, workSchedule, stats]);
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
-    // Gestione semplice per il nuovo formato HH:MM
+    // Gestione per il formato HH:MM
     if (timeString.match(/^\d{2}:\d{2}$/)) {
       return timeString;
     }
@@ -208,29 +142,44 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-2xl font-bold text-blue-700">{yearlyStats.totalWorkingDays}</div>
-              <div className="text-sm text-blue-600">Giorni Lavorativi</div>
-            </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-              <div className="text-2xl font-bold text-green-700">{yearlyStats.presentDays}</div>
-              <div className="text-sm text-green-600">Giorni Presenti</div>
-            </div>
-            <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
-              <div className="text-2xl font-bold text-orange-700">{yearlyStats.sickDays}</div>
-              <div className="text-sm text-orange-600">Giorni Malattia</div>
-            </div>
-            <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
-              <div className="text-2xl font-bold text-red-700">{yearlyStats.absentDays}</div>
-              <div className="text-sm text-red-600">Giorni Assenti</div>
-            </div>
-          </div>
-          <div className="mt-4 text-center">
-            <div className="text-lg font-semibold">
-              Percentuale Presenza: <span className="text-blue-700">{yearlyStats.attendancePercentage}%</span>
-            </div>
-          </div>
+          {!stats.hasValidData ? (
+            <Alert className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {stats.errorMessage}
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-700">{stats.totalWorkingDays}</div>
+                  <div className="text-sm text-blue-600">Giorni Lavorativi</div>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-2xl font-bold text-green-700">{stats.presentDays}</div>
+                  <div className="text-sm text-green-600">Giorni Presenti</div>
+                </div>
+                <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="text-2xl font-bold text-orange-700">{stats.sickDays}</div>
+                  <div className="text-sm text-orange-600">Giorni Malattia</div>
+                </div>
+                <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+                  <div className="text-2xl font-bold text-red-700">{stats.absentDays}</div>
+                  <div className="text-sm text-red-600">Giorni Assenti</div>
+                </div>
+              </div>
+              
+              <div className="mt-4 text-center">
+                <div className="text-lg font-semibold">
+                  Percentuale Presenza: <span className="text-blue-700">{stats.attendancePercentage}%</span>
+                </div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Periodo: {stats.calculationPeriod.description}
+                </div>
+              </div>
+            </>
+          )}
           
           {/* Info configurazione */}
           {workSchedule && (
@@ -320,7 +269,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 bg-red-200 rounded"></div>
-                <span>Giorni di assenza</span>
+                <span>Giorni di assenza (ultimi 30 giorni)</span>
               </div>
             </div>
           </CardContent>
@@ -340,7 +289,6 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3">
-            {/* CORREZIONE: Controllo più specifico per "Non ancora assunto" */}
             {selectedDate && !isEmployeeHiredOnDate(selectedDate) ? (
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex items-center gap-2 mb-2">
