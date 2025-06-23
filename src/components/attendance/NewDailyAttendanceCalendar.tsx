@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,71 +85,6 @@ export default function NewDailyAttendanceCalendar() {
     !selectedDateAttendances.some(att => att.user_id === emp.id)
   ) || [];
 
-  const getDayStatus = (dateStr: string) => {
-    const date = new Date(dateStr);
-    
-    // Se non è un giorno lavorativo, non mostriamo alcuno stato
-    if (!isWorkingDay(date)) return null;
-    
-    const dayAttendances = attendances?.filter(att => att.date === dateStr) || [];
-    const totalEmployees = employees?.length || 0;
-    
-    if (totalEmployees === 0) return null;
-    
-    const presentCount = dayAttendances.filter(att => att.check_in_time && !att.is_sick_leave).length;
-    const sickCount = dayAttendances.filter(att => att.is_sick_leave).length;
-    const absentCount = totalEmployees - dayAttendances.length;
-    
-    if (presentCount === totalEmployees) return 'all-present';
-    if (sickCount > 0) return 'has-sick';
-    if (absentCount > 0 || presentCount < totalEmployees) return 'has-absent';
-    
-    return null;
-  };
-
-  const generateCalendarDates = () => {
-    const today = new Date();
-    const oneMonthAgo = new Date(today);
-    oneMonthAgo.setMonth(today.getMonth() - 1);
-    const oneMonthForward = new Date(today);
-    oneMonthForward.setMonth(today.getMonth() + 1);
-    
-    const dates = {
-      allPresent: [],
-      hasSick: [],
-      hasAbsent: []
-    };
-    
-    const tempDate = new Date(oneMonthAgo);
-    while (tempDate <= oneMonthForward) {
-      const dateStr = format(tempDate, 'yyyy-MM-dd');
-      
-      // Solo per i giorni lavorativi
-      if (isWorkingDay(tempDate)) {
-        const status = getDayStatus(dateStr);
-        const dateObj = new Date(tempDate);
-        
-        switch (status) {
-          case 'all-present':
-            dates.allPresent.push(dateObj);
-            break;
-          case 'has-sick':
-            dates.hasSick.push(dateObj);
-            break;
-          case 'has-absent':
-            dates.hasAbsent.push(dateObj);
-            break;
-        }
-      }
-      
-      tempDate.setDate(tempDate.getDate() + 1);
-    }
-    
-    return dates;
-  };
-
-  const calendarDates = generateCalendarDates();
-
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
@@ -202,44 +138,8 @@ export default function NewDailyAttendanceCalendar() {
                 setSelectedDate(date);
               }}
               locale={it}
-              modifiers={{
-                allPresent: calendarDates.allPresent,
-                hasSick: calendarDates.hasSick,
-                hasAbsent: calendarDates.hasAbsent
-              }}
-              modifiersStyles={{
-                allPresent: {
-                  backgroundColor: '#22c55e',
-                  color: '#ffffff',
-                  fontWeight: 'bold'
-                },
-                hasSick: {
-                  backgroundColor: '#f97316',
-                  color: '#ffffff',
-                  fontWeight: 'bold'
-                },
-                hasAbsent: {
-                  backgroundColor: '#ef4444',
-                  color: '#ffffff',
-                  fontWeight: 'bold'
-                }
-              }}
               className="rounded-md border w-fit"
             />
-          </div>
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 bg-green-500 rounded"></div>
-              <span>Tutti presenti</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 bg-orange-500 rounded"></div>
-              <span>Giorni con malattie</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 bg-red-500 rounded"></div>
-              <span>Giorni con assenze</span>
-            </div>
           </div>
           
           {/* Info giorni lavorativi */}

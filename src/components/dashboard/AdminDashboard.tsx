@@ -1,118 +1,111 @@
 
-import { Suspense, lazy, useState } from "react";
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
+import AdminDashboardOverview from "./AdminDashboardOverview";
+import AdminEmployeesSection from "./AdminEmployeesSection";
+import AdminAttendanceSection from "./AdminAttendanceSection";
+import AdminDocumentsSection from "./AdminDocumentsSection";
+import NotificationsSection from "./NotificationsSection";
+import AdminSettingsSection from "../admin/AdminSettingsSection";
 import DashboardHeader from "./DashboardHeader";
-import AdminDashboardSidebar from "./AdminDashboardSidebar";
-import { Skeleton } from "@/components/ui/skeleton";
-
-// Lazy imports for better performance
-const AdminDashboardOverview = lazy(() => import("./AdminDashboardOverview"));
-const AdminEmployeesSection = lazy(() => import("./AdminEmployeesSection"));
-const AdminDocumentsSection = lazy(() => import("./AdminDocumentsSection"));
-const AdminAttendanceSection = lazy(() => import("./AdminAttendanceSection"));
-const AdminNotificationsSection = lazy(() => import("./AdminNotificationsSection"));
-const AdminSettingsSection = lazy(() => import("@/components/admin/AdminSettingsSection"));
-
-const LoadingSkeleton = () => (
-  <div className="space-y-6">
-    <Skeleton className="h-32 w-full" />
-    <Skeleton className="h-64 w-full" />
-    <Skeleton className="h-48 w-full" />
-  </div>
-);
+import EmployeeLeavePage from "../leave/EmployeeLeavePage";
+import { EmployeeLeaveBalanceSection } from "../leave/EmployeeLeaveBalanceSection";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Clock, 
+  FileText, 
+  Bell, 
+  Settings,
+  Calendar,
+  Wallet
+} from "lucide-react";
 
 const AdminDashboard = () => {
-  const { profile, loading } = useAuth();
-  const [activeSection, setActiveSection] = useState<'overview' | 'employees' | 'documents' | 'attendance' | 'notifications' | 'settings'>('overview');
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardHeader title="Dashboard Amministratore" />
-        <div className="container mx-auto p-6">
-          <LoadingSkeleton />
-        </div>
-      </div>
-    );
-  }
+  const { profile } = useAuth();
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   if (!profile || profile.role !== 'admin') {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardHeader title="Dashboard Amministratore" />
-        <div className="container mx-auto p-6">
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-              Accesso Negato
-            </h2>
-            <p className="text-gray-600">
-              Solo gli amministratori possono accedere a questa sezione.
-            </p>
-          </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-red-500">Accesso non autorizzato</p>
       </div>
     );
   }
 
-  const renderActiveSection = () => {
-    switch (activeSection) {
-      case 'overview':
-        return (
-          <Suspense fallback={<LoadingSkeleton />}>
-            <AdminDashboardOverview />
-          </Suspense>
-        );
-      case 'employees':
-        return (
-          <Suspense fallback={<LoadingSkeleton />}>
-            <AdminEmployeesSection />
-          </Suspense>
-        );
-      case 'documents':
-        return (
-          <Suspense fallback={<LoadingSkeleton />}>
-            <AdminDocumentsSection />
-          </Suspense>
-        );
-      case 'attendance':
-        return (
-          <Suspense fallback={<LoadingSkeleton />}>
-            <AdminAttendanceSection />
-          </Suspense>
-        );
-      case 'notifications':
-        return (
-          <Suspense fallback={<LoadingSkeleton />}>
-            <AdminNotificationsSection />
-          </Suspense>
-        );
-      case 'settings':
-        return (
-          <Suspense fallback={<LoadingSkeleton />}>
-            <AdminSettingsSection />
-          </Suspense>
-        );
-      default:
-        return (
-          <Suspense fallback={<LoadingSkeleton />}>
-            <AdminDashboardOverview />
-          </Suspense>
-        );
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <AdminDashboardSidebar 
-        activeSection={activeSection} 
-        setActiveSection={setActiveSection} 
-      />
-      
-      <div className="flex-1">
-        <DashboardHeader title="Dashboard Amministratore" />
-        <div className="p-6">
-          {renderActiveSection()}
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <DashboardHeader />
+      <div className="container mx-auto py-6 px-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-8 mb-6">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <LayoutDashboard className="w-4 h-4" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="employees" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Dipendenti</span>
+            </TabsTrigger>
+            <TabsTrigger value="attendance" className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              <span className="hidden sm:inline">Presenze</span>
+            </TabsTrigger>
+            <TabsTrigger value="leaves" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              <span className="hidden sm:inline">Permessi</span>
+            </TabsTrigger>
+            <TabsTrigger value="leave-balance" className="flex items-center gap-2">
+              <Wallet className="w-4 h-4" />
+              <span className="hidden sm:inline">Saldi</span>
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Documenti</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              <span className="hidden sm:inline">Notifiche</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline">Impostazioni</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard">
+            <AdminDashboardOverview />
+          </TabsContent>
+
+          <TabsContent value="employees">
+            <AdminEmployeesSection />
+          </TabsContent>
+
+          <TabsContent value="attendance">
+            <AdminAttendanceSection />
+          </TabsContent>
+
+          <TabsContent value="leaves">
+            <EmployeeLeavePage />
+          </TabsContent>
+
+          <TabsContent value="leave-balance">
+            <EmployeeLeaveBalanceSection />
+          </TabsContent>
+
+          <TabsContent value="documents">
+            <AdminDocumentsSection />
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <NotificationsSection />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <AdminSettingsSection />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
