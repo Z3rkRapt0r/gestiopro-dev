@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -66,7 +65,7 @@ export const useEmployeeOperations = () => {
     try {
       setLoading(true);
       
-      // Prepare data for insertion without id field for new records
+      // Prepare data for insertion - use Database Insert type
       const insertData = {
         first_name: employeeData.first_name || null,
         last_name: employeeData.last_name || null,
@@ -80,7 +79,7 @@ export const useEmployeeOperations = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .insert(insertData)
+        .insert([insertData]) // Wrap in array for insert
         .select()
         .single();
 
