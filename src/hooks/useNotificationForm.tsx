@@ -64,59 +64,92 @@ export const useNotificationForm = (onCreated?: () => void) => {
       console.log('Notification data to insert:', notificationData);
 
       if (!recipientId) {
-        // Tutti i dipendenti
-        console.log('useNotificationForm: Sending to all employees');
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, email, first_name, last_name")
-          .eq("is_active", true);
-          
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-          throw profilesError;
-        }
-
-        console.log('Found active profiles:', profiles);
-
-        // Per ogni dipendente attivo, crea una notifica nella tabella notifications
-        const notificationsToInsert = (profiles || []).map(p => ({
-          user_id: p.id,
-          title: subject,
-          message: shortText,
-          type: topic || "system",
-          body,
-          attachment_url,
-          created_by: profile?.id,
-          is_read: false
-        }));
-
-        console.log('Creating notifications for all employees:', notificationsToInsert);
-        console.log('Number of notifications to insert:', notificationsToInsert.length);
+        // Send to all appropriate users based on topic and sender
+        console.log('useNotificationForm: Determining recipients for broadcast notification');
         
-        if (notificationsToInsert.length > 0) {
-          const { data: insertData, error: insertError } = await supabase
-            .from("notifications")
-            .insert(notificationsToInsert)
-            .select();
+        if (topic === 'document' && profile?.role !== 'admin') {
+          // Employee sending document notification - send to all admins
+          console.log('useNotificationForm: Employee document notification - sending to all admins');
+          const { data: adminProfiles, error: profilesError } = await supabase
+            .from("profiles")
+            .select("id, email, first_name, last_name")
+            .eq("role", "admin")
+            .eq("is_active", true);
             
-          if (insertError) {
-            console.error('Error inserting notifications:', insertError);
-            console.error('Insert error details:', {
-              message: insertError.message,
-              details: insertError.details,
-              hint: insertError.hint,
-              code: insertError.code
-            });
-            throw insertError;
+          if (profilesError) {
+            console.error('Error fetching admin profiles:', profilesError);
+            throw profilesError;
           }
-          
-          console.log('Notifications created successfully for all employees:', insertData);
+
+          console.log('Found admin profiles:', adminProfiles);
+
+          const notificationsToInsert = (adminProfiles || []).map(p => ({
+            user_id: p.id,
+            title: subject,
+            message: shortText,
+            type: topic || "system",
+            body,
+            attachment_url,
+            created_by: profile?.id,
+            is_read: false
+          }));
+
+          if (notificationsToInsert.length > 0) {
+            const { data: insertData, error: insertError } = await supabase
+              .from("notifications")
+              .insert(notificationsToInsert)
+              .select();
+              
+            if (insertError) {
+              console.error('Error inserting admin notifications:', insertError);
+              throw insertError;
+            }
+            
+            console.log('Notifications created successfully for admins:', insertData);
+          }
         } else {
-          console.warn('No active profiles found to send notifications to');
+          // General broadcast - send to all active users
+          console.log('useNotificationForm: General broadcast - sending to all employees');
+          const { data: profiles, error: profilesError } = await supabase
+            .from("profiles")
+            .select("id, email, first_name, last_name")
+            .eq("is_active", true);
+            
+          if (profilesError) {
+            console.error('Error fetching profiles:', profilesError);
+            throw profilesError;
+          }
+
+          console.log('Found active profiles:', profiles);
+
+          const notificationsToInsert = (profiles || []).map(p => ({
+            user_id: p.id,
+            title: subject,
+            message: shortText,
+            type: topic || "system",
+            body,
+            attachment_url,
+            created_by: profile?.id,
+            is_read: false
+          }));
+
+          if (notificationsToInsert.length > 0) {
+            const { data: insertData, error: insertError } = await supabase
+              .from("notifications")
+              .insert(notificationsToInsert)
+              .select();
+              
+            if (insertError) {
+              console.error('Error inserting notifications:', insertError);
+              throw insertError;
+            }
+            
+            console.log('Notifications created successfully for all employees:', insertData);
+          }
         }
       } else {
-        // Notifica singolo dipendente
-        console.log('useNotificationForm: Sending to single employee:', recipientId);
+        // Send to specific recipient
+        console.log('useNotificationForm: Sending to single recipient:', recipientId);
         
         const singleNotificationData = {
           user_id: recipientId,
@@ -138,19 +171,13 @@ export const useNotificationForm = (onCreated?: () => void) => {
           
         if (insertError) {
           console.error('Error inserting notification:', insertError);
-          console.error('Insert error details:', {
-            message: insertError.message,
-            details: insertError.details,
-            hint: insertError.hint,
-            code: insertError.code
-          });
           throw insertError;
         }
         
         console.log('Notification created successfully for user:', recipientId, insertData);
       }
 
-      // Salva nella cronologia delle notifiche inviate
+      // Save to sent notifications history
       console.log("Saving to sent_notifications table...");
       const { error: sentNotificationError } = await supabase
         .from("sent_notifications")
@@ -171,26 +198,27 @@ export const useNotificationForm = (onCreated?: () => void) => {
 
       console.log("Successfully saved to sent_notifications table");
 
-      // Invio email tramite Edge Function Brevo
+      // Send email via Edge Function
       console.log("Calling send-notification-email function...");
       
-      // Prepare email payload with employee email if available
       const emailPayload: any = {
         recipientId,
         subject,
         shortText,
-        topic: topic || "notification", // Always pass a topic, default to "notification"
+        topic: topic || "notification",
       };
 
-      // Add employee email if this is an employee sending notification or if explicitly provided
-      const finalEmployeeEmail = employeeEmail || (profile?.role !== 'admin' ? profile?.email : null);
-      if (finalEmployeeEmail) {
-        emailPayload.employeeEmail = finalEmployeeEmail;
-        console.log('Adding employee email to notification payload:', finalEmployeeEmail);
+      // Include employee email for reply-to if available
+      if (employeeEmail) {
+        emailPayload.employeeEmail = employeeEmail;
+        console.log('Adding employee email to notification payload:', employeeEmail);
+      } else if (profile?.role !== 'admin' && profile?.email) {
+        // If sender is not admin, use their email for reply-to
+        emailPayload.employeeEmail = profile.email;
+        console.log('Adding sender employee email to notification payload:', profile.email);
       }
 
-      // Don't pass userId - let the edge function find admin with Brevo settings
-      console.log('Email payload:', emailPayload);
+      console.log('Final email payload:', emailPayload);
 
       const { data: emailResult, error: emailError } = await supabase.functions.invoke(
         'send-notification-email',
@@ -214,7 +242,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
         });
       }
       
-      // Chiama onCreated con un piccolo delay per assicurarsi che il database sia aggiornato
+      // Call onCreated callback
       console.log("useNotificationForm: calling onCreated callback after delay");
       setTimeout(() => {
         onCreated?.();

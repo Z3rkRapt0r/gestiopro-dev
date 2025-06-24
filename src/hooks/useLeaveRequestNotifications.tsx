@@ -62,7 +62,6 @@ export const useLeaveRequestNotifications = () => {
         console.log('Adding employee email for leave request notification:', employeeProfile.email);
       }
 
-      // Don't pass userId for leave requests - let the edge function find the admin with Brevo settings
       console.log('Sending leave request notification payload:', emailPayload);
 
       const { data, error } = await supabase.functions.invoke('send-notification-email', {
@@ -98,10 +97,10 @@ export const useLeaveRequestNotifications = () => {
     details: string;
   }) => {
     try {
-      // Get employee profile
+      // Get employee profile with email
       const { data: employeeProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, email')
         .eq('id', employeeId)
         .single();
 
@@ -109,6 +108,8 @@ export const useLeaveRequestNotifications = () => {
         console.error('Error fetching employee profile:', profileError);
         throw profileError;
       }
+
+      console.log('Employee profile for notification:', employeeProfile);
 
       // Create mock leave request object for notification
       const mockLeaveRequest = {
@@ -139,13 +140,38 @@ export const useLeaveRequestNotifications = () => {
     employeeName,
     type,
     details,
+    employeeId,
   }: {
     requestId: string;
     employeeName: string;
     type: string;
     details: string;
+    employeeId?: string;
   }) => {
     try {
+      // Get employee profile with email if employeeId is provided
+      let employeeProfile = {
+        first_name: employeeName.split(' ')[0] || '',
+        last_name: employeeName.split(' ').slice(1).join(' ') || '',
+        email: '',
+      };
+
+      if (employeeId) {
+        console.log('Fetching employee profile for admin notification:', employeeId);
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, email')
+          .eq('id', employeeId)
+          .single();
+
+        if (profile && !profileError) {
+          employeeProfile = profile;
+          console.log('Found employee profile:', employeeProfile);
+        } else {
+          console.warn('Could not fetch employee profile:', profileError);
+        }
+      }
+
       // Create mock objects for notification
       const mockLeaveRequest = {
         id: requestId,
@@ -160,15 +186,11 @@ export const useLeaveRequestNotifications = () => {
           details.split(' - ')[1]?.split('\n')[0] : null,
       };
 
-      const mockEmployeeProfile = {
-        first_name: employeeName.split(' ')[0] || '',
-        last_name: employeeName.split(' ').slice(1).join(' ') || '',
-        email: '', // Will be populated by the edge function if needed
-      };
+      console.log('Sending admin notification with employee profile:', employeeProfile);
 
       return await sendLeaveRequestNotification(
         mockLeaveRequest,
-        mockEmployeeProfile
+        employeeProfile
       );
     } catch (error) {
       console.error('Error in notifyAdmin:', error);
