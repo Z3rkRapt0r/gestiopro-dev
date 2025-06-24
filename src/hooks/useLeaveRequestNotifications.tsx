@@ -10,7 +10,14 @@ export const useLeaveRequestNotifications = () => {
     isRejection: boolean = false
   ) => {
     try {
-      console.log('Sending leave request notification:', { leaveRequest, employeeProfile, adminNote, isApproval, isRejection });
+      console.log('[LeaveRequestNotifications] Sending notification:', { 
+        leaveRequest, 
+        employeeProfile, 
+        adminNote, 
+        isApproval, 
+        isRejection,
+        employeeEmail: employeeProfile?.email 
+      });
 
       let topic, subject, shortText, body;
       let recipientId = null; // Default to all admins
@@ -57,27 +64,26 @@ export const useLeaveRequestNotifications = () => {
       };
 
       // For new leave requests from employee to admin, include employee email for reply-to
-      if (!isApproval && !isRejection && employeeProfile.email) {
+      if (!isApproval && !isRejection && employeeProfile?.email) {
         emailPayload.employeeEmail = employeeProfile.email;
-        console.log('Adding employee email for leave request notification:', employeeProfile.email);
+        console.log('[LeaveRequestNotifications] Adding employee email for leave request notification:', employeeProfile.email);
       }
 
-      // Don't pass userId for leave requests - let the edge function find the admin with Brevo settings
-      console.log('Sending leave request notification payload:', emailPayload);
+      console.log('[LeaveRequestNotifications] Final email payload:', emailPayload);
 
       const { data, error } = await supabase.functions.invoke('send-notification-email', {
         body: emailPayload
       });
 
       if (error) {
-        console.error('Error sending leave request notification:', error);
+        console.error('[LeaveRequestNotifications] Error sending notification:', error);
         throw error;
       }
 
-      console.log('Leave request notification sent successfully:', data);
+      console.log('[LeaveRequestNotifications] Notification sent successfully:', data);
       return { success: true, data };
     } catch (error) {
-      console.error('Failed to send leave request notification:', error);
+      console.error('[LeaveRequestNotifications] Failed to send notification:', error);
       return { success: false, error };
     }
   };
@@ -98,6 +104,8 @@ export const useLeaveRequestNotifications = () => {
     details: string;
   }) => {
     try {
+      console.log('[LeaveRequestNotifications] NotifyEmployee called:', { requestId, employeeId, status, type });
+      
       // Get employee profile
       const { data: employeeProfile, error: profileError } = await supabase
         .from('profiles')
@@ -106,16 +114,17 @@ export const useLeaveRequestNotifications = () => {
         .single();
 
       if (profileError) {
-        console.error('Error fetching employee profile:', profileError);
+        console.error('[LeaveRequestNotifications] Error fetching employee profile:', profileError);
         throw profileError;
       }
+
+      console.log('[LeaveRequestNotifications] Found employee profile:', employeeProfile);
 
       // Create mock leave request object for notification
       const mockLeaveRequest = {
         id: requestId,
         user_id: employeeId,
         type,
-        // Parse details to extract date info
         date_from: details.includes('Dal:') ? details.split('Dal: ')[1]?.split('\n')[0] : null,
         date_to: details.includes('Al:') ? details.split('Al: ')[1]?.split('\n')[0] : null,
         day: details.includes('Giorno:') ? details.split('Giorno: ')[1]?.split('\n')[0] : null,
@@ -129,7 +138,7 @@ export const useLeaveRequestNotifications = () => {
         status === 'rejected'
       );
     } catch (error) {
-      console.error('Error in notifyEmployee:', error);
+      console.error('[LeaveRequestNotifications] Error in notifyEmployee:', error);
       return { success: false, error };
     }
   };
@@ -139,18 +148,45 @@ export const useLeaveRequestNotifications = () => {
     employeeName,
     type,
     details,
+    employeeId,
   }: {
     requestId: string;
     employeeName: string;
     type: string;
     details: string;
+    employeeId?: string;
   }) => {
     try {
+      console.log('[LeaveRequestNotifications] NotifyAdmin called:', { requestId, employeeName, type, employeeId });
+      
+      // Fetch actual employee profile to get the real email
+      let employeeProfile: any = {
+        first_name: employeeName.split(' ')[0] || '',
+        last_name: employeeName.split(' ').slice(1).join(' ') || '',
+        email: '', // Will be populated below if employeeId is provided
+      };
+
+      if (employeeId) {
+        console.log('[LeaveRequestNotifications] Fetching employee profile for ID:', employeeId);
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, email')
+          .eq('id', employeeId)
+          .single();
+
+        if (!profileError && profile) {
+          employeeProfile = profile;
+          console.log('[LeaveRequestNotifications] Found employee profile with email:', profile.email);
+        } else {
+          console.error('[LeaveRequestNotifications] Error fetching employee profile:', profileError);
+        }
+      }
+
       // Create mock objects for notification
       const mockLeaveRequest = {
         id: requestId,
         type,
-        // Parse details to extract date info
+        user_id: employeeId,
         date_from: details.includes('Dal:') ? details.split('Dal: ')[1]?.split('\n')[0] : null,
         date_to: details.includes('Al:') ? details.split('Al: ')[1]?.split('\n')[0] : null,
         day: details.includes('Giorno:') ? details.split('Giorno: ')[1]?.split('\n')[0] : null,
@@ -160,18 +196,14 @@ export const useLeaveRequestNotifications = () => {
           details.split(' - ')[1]?.split('\n')[0] : null,
       };
 
-      const mockEmployeeProfile = {
-        first_name: employeeName.split(' ')[0] || '',
-        last_name: employeeName.split(' ').slice(1).join(' ') || '',
-        email: '', // Will be populated by the edge function if needed
-      };
+      console.log('[LeaveRequestNotifications] Sending notification with employee profile:', employeeProfile);
 
       return await sendLeaveRequestNotification(
         mockLeaveRequest,
-        mockEmployeeProfile
+        employeeProfile
       );
     } catch (error) {
-      console.error('Error in notifyAdmin:', error);
+      console.error('[LeaveRequestNotifications] Error in notifyAdmin:', error);
       return { success: false, error };
     }
   };

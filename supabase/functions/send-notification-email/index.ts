@@ -85,7 +85,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("[Notification Email] Found Brevo settings for admin");
+    console.log("[Notification Email] Found Brevo settings for admin, employeeEmail received:", employeeEmail);
 
     // Determine template type based on topic first, then fallback to subject analysis
     let templateType = 'notifiche'; // default
@@ -169,7 +169,7 @@ serve(async (req) => {
     if (!logoUrl) {
       const { data: logoData } = await supabase.storage
         .from('company-assets')
-        .getPublicUrl(`${userId}/email-logo.png?v=${Date.now()}`);
+        .getPublicUrl(`${adminSettingsUserId}/email-logo.png?v=${Date.now()}`);
       logoUrl = logoData?.publicUrl;
     }
 
@@ -180,9 +180,9 @@ serve(async (req) => {
     console.log("[Notification Email] Determining recipients for recipientId:", recipientId, "templateType:", templateType);
     
     if (!recipientId) {
-      // For leave requests to admin, send to all admins
+      // For leave requests to admin or document uploads from employees, send to all admins
       if (templateType === 'permessi-richiesta' || (employeeEmail && templateType === 'documenti')) {
-        console.log("[Notification Email] Sending to all admins");
+        console.log("[Notification Email] Sending to all admins (leave request or employee document)");
         const { data: adminProfiles, error: adminProfilesError } = await supabase
           .from("profiles")
           .select("id, email, first_name, last_name")
@@ -359,7 +359,7 @@ serve(async (req) => {
           to: [{ email: recipient.email }],
           subject: emailSubject,
           htmlContent,
-          textContent: `${emailSubject}\n\n${emailContent}\n\nInviato da: ${senderName}`
+          textContent: `${emailSubject}\n\n${emailContent}${employeeEmail ? `\n\nEmail dipendente: ${employeeEmail}` : ''}\n\nInviato da: ${senderName}`
         };
 
         // Add replyTo if we have one (either employee email or configured reply-to)
@@ -368,7 +368,7 @@ serve(async (req) => {
           console.log("[Notification Email] Setting reply-to:", dynamicReplyTo);
         }
 
-        console.log("[Notification Email] Sending email to:", recipient.email, "with sender:", senderEmail);
+        console.log("[Notification Email] Sending email to:", recipient.email, "with sender:", senderEmail, "and reply-to:", dynamicReplyTo);
 
         const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
@@ -404,6 +404,7 @@ serve(async (req) => {
         recipients: successCount,
         sender: `${senderName} <${senderEmail}>`,
         replyTo: dynamicReplyTo,
+        employeeEmail: employeeEmail,
         errors: errors.length > 0 ? errors : undefined
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
