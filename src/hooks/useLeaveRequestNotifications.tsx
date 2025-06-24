@@ -51,7 +51,6 @@ export const useLeaveRequestNotifications = () => {
         recipientId,
         subject,
         shortText,
-        userId: employeeProfile.id,
         topic,
         body,
         adminNote
@@ -62,6 +61,9 @@ export const useLeaveRequestNotifications = () => {
         emailPayload.employeeEmail = employeeProfile.email;
         console.log('Adding employee email for leave request notification:', employeeProfile.email);
       }
+
+      // Don't pass userId for leave requests - let the edge function find the admin with Brevo settings
+      console.log('Sending leave request notification payload:', emailPayload);
 
       const { data, error } = await supabase.functions.invoke('send-notification-email', {
         body: emailPayload

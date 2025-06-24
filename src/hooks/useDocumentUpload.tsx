@@ -90,6 +90,7 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     }
 
     setLoading(true);
+    console.log('[DocumentUpload] Starting document upload process');
 
     let targetUserForUpload: string | undefined = user.id;
     let isPersonalDocument = true;
@@ -107,6 +108,13 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
       }
     }
 
+    console.log('[DocumentUpload] Upload configuration:', {
+      targetUserForUpload,
+      isPersonalDocument,
+      uploadTarget,
+      notifyRecipient
+    });
+
     const { error } = await uploadDocument(
       file,
       subject,
@@ -117,29 +125,42 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     );
 
     if (!error && notifyRecipient) {
-      // Prepare notification with employee email for document notifications
+      console.log('[DocumentUpload] Document uploaded successfully, sending notification');
+      
+      // Prepare notification with proper employee email handling
       const notificationPayload: any = {
         subject: subject.trim(),
         shortText: body.trim(),
         topic: "document",
       };
 
+      // Determine who should receive the notification and who is the sender
       if (isPersonalDocument && targetUserForUpload && targetUserForUpload !== user.id) {
         // Employee uploading document for specific admin/user
         notificationPayload.recipientId = targetUserForUpload;
-        
-        // If employee is uploading for admin, include employee email for reply-to
-        if (!isAdmin && profile?.email) {
-          console.log('Adding employee email for document notification:', profile.email);
-          // Note: We'll modify sendNotification to handle employeeEmail parameter
-        }
-        
-        await sendNotification(notificationPayload);
-      }
-      if (!isPersonalDocument) {
+        console.log('[DocumentUpload] Sending notification to specific user:', targetUserForUpload);
+      } else if (!isPersonalDocument) {
         // Admin uploading document for all employees
         notificationPayload.recipientId = null;
+        console.log('[DocumentUpload] Sending notification to all employees');
+      } else if (isPersonalDocument && !isAdmin && profile?.email) {
+        // Employee uploading document - notify admin(s)
+        notificationPayload.recipientId = null; // Send to all admins
+        notificationPayload.employeeEmail = profile.email;
+        console.log('[DocumentUpload] Employee uploading document, notifying admins with employee email:', profile.email);
+      }
+
+      // Always pass the current user's profile email if available for reply-to purposes
+      if (profile?.email && !isAdmin) {
+        notificationPayload.employeeEmail = profile.email;
+        console.log('[DocumentUpload] Adding employee email for reply-to:', profile.email);
+      }
+
+      try {
         await sendNotification(notificationPayload);
+        console.log('[DocumentUpload] Notification sent successfully');
+      } catch (notificationError) {
+        console.error('[DocumentUpload] Error sending notification:', notificationError);
       }
     }
 

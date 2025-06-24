@@ -11,6 +11,7 @@ interface NotificationInput {
   body?: string;
   file?: File | null;
   topic?: string;
+  employeeEmail?: string;
 }
 
 export const useNotificationForm = (onCreated?: () => void) => {
@@ -25,12 +26,13 @@ export const useNotificationForm = (onCreated?: () => void) => {
     body,
     file,
     topic,
+    employeeEmail,
   }: NotificationInput) => {
     setLoading(true);
 
     try {
       console.log('useNotificationForm: Starting notification send process');
-      console.log('Parameters:', { recipientId, subject, shortText, body, topic });
+      console.log('Parameters:', { recipientId, subject, shortText, body, topic, employeeEmail });
       
       let attachment_url: string | null = null;
 
@@ -177,14 +179,18 @@ export const useNotificationForm = (onCreated?: () => void) => {
         recipientId,
         subject,
         shortText,
-        userId: profile?.id,
         topic: topic || "notification", // Always pass a topic, default to "notification"
       };
 
-      // Add employee email if this is an employee sending to admin
-      if (profile?.email && (topic === "notification" || !recipientId)) {
-        emailPayload.employeeEmail = profile.email;
+      // Add employee email if this is an employee sending notification or if explicitly provided
+      const finalEmployeeEmail = employeeEmail || (profile?.role !== 'admin' ? profile?.email : null);
+      if (finalEmployeeEmail) {
+        emailPayload.employeeEmail = finalEmployeeEmail;
+        console.log('Adding employee email to notification payload:', finalEmployeeEmail);
       }
+
+      // Don't pass userId - let the edge function find admin with Brevo settings
+      console.log('Email payload:', emailPayload);
 
       const { data: emailResult, error: emailError } = await supabase.functions.invoke(
         'send-notification-email',

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -21,24 +20,48 @@ serve(async (req) => {
 
     const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail } = body;
 
-    if (!userId) {
-      console.error("[Notification Email] Missing userId in request");
-      return new Response(
-        JSON.stringify({ error: "Missing userId" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Improved admin identification logic
+    let adminSettingsUserId = userId;
+    
+    // If no userId provided or if we need to find an admin with Brevo settings
+    if (!userId || !adminSettingsUserId) {
+      console.log("[Notification Email] No userId provided, searching for admin with Brevo settings");
+      
+      const { data: adminWithBrevo, error: adminSearchError } = await supabase
+        .from("admin_settings")
+        .select("admin_id, brevo_api_key")
+        .not("brevo_api_key", "is", null)
+        .limit(1)
+        .single();
+
+      if (!adminSearchError && adminWithBrevo) {
+        adminSettingsUserId = adminWithBrevo.admin_id;
+        console.log("[Notification Email] Found admin with Brevo settings:", adminSettingsUserId);
+      } else {
+        console.error("[Notification Email] No admin with Brevo settings found:", adminSearchError);
+      }
+    }
+
+    if (!adminSettingsUserId) {
+      console.error("[Notification Email] No valid admin ID found for Brevo settings");
+      return new Response(
+        JSON.stringify({ error: "No admin with Brevo configuration found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("[Notification Email] Using admin ID for settings:", adminSettingsUserId);
+
     // Get Brevo settings for admin including sender configuration
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
       .select("brevo_api_key, sender_name, sender_email, reply_to")
-      .eq("admin_id", userId)
+      .eq("admin_id", adminSettingsUserId)
       .single();
 
     if (settingsError) {
@@ -53,7 +76,7 @@ serve(async (req) => {
     }
 
     if (!adminSetting?.brevo_api_key) {
-      console.error("[Notification Email] No Brevo API key found for admin:", userId);
+      console.error("[Notification Email] No Brevo API key found for admin:", adminSettingsUserId);
       return new Response(
         JSON.stringify({ 
           error: "No Brevo API key configured for this admin" 
@@ -101,7 +124,7 @@ serve(async (req) => {
     const { data: emailTemplate, error: templateError } = await supabase
       .from("email_templates")
       .select("*")
-      .eq("admin_id", userId)
+      .eq("admin_id", adminSettingsUserId)
       .eq("template_type", templateType)
       .maybeSingle();
 
@@ -152,11 +175,14 @@ serve(async (req) => {
 
     console.log("[Notification Email] Using logoUrl:", logoUrl);
 
-    // Get recipients list
+    // Get recipients list with improved logic
     let recipients = [];
+    console.log("[Notification Email] Determining recipients for recipientId:", recipientId, "templateType:", templateType);
+    
     if (!recipientId) {
       // For leave requests to admin, send to all admins
-      if (templateType === 'permessi-richiesta') {
+      if (templateType === 'permessi-richiesta' || (employeeEmail && templateType === 'documenti')) {
+        console.log("[Notification Email] Sending to all admins");
         const { data: adminProfiles, error: adminProfilesError } = await supabase
           .from("profiles")
           .select("id, email, first_name, last_name")
@@ -168,8 +194,10 @@ serve(async (req) => {
           throw adminProfilesError;
         }
         recipients = adminProfiles || [];
+        console.log("[Notification Email] Found admin recipients:", recipients.length);
       } else {
         // Send to all active employees for other notifications
+        console.log("[Notification Email] Sending to all employees");
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, email, first_name, last_name")
@@ -180,9 +208,11 @@ serve(async (req) => {
           throw profilesError;
         }
         recipients = profiles || [];
+        console.log("[Notification Email] Found employee recipients:", recipients.length);
       }
     } else {
       // Send to specific recipient
+      console.log("[Notification Email] Sending to specific recipient:", recipientId);
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("id, email, first_name, last_name")
@@ -194,6 +224,7 @@ serve(async (req) => {
         throw profileError;
       }
       recipients = profile ? [profile] : [];
+      console.log("[Notification Email] Found specific recipient:", recipients.length);
     }
 
     console.log("[Notification Email] Recipients found:", recipients.length);
@@ -202,7 +233,7 @@ serve(async (req) => {
     const { data: adminProfile, error: adminProfileError } = await supabase
       .from("profiles")
       .select("first_name, last_name")
-      .eq("id", userId)
+      .eq("id", adminSettingsUserId)
       .single();
 
     // Use configured sender settings with intelligent fallbacks
@@ -247,6 +278,8 @@ serve(async (req) => {
 
     for (const recipient of recipients) {
       try {
+        console.log("[Notification Email] Preparing email for recipient:", recipient.email);
+        
         const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
         
         // Determine if this should show button - notifications and documents should always show button unless explicitly disabled
@@ -335,6 +368,8 @@ serve(async (req) => {
           console.log("[Notification Email] Setting reply-to:", dynamicReplyTo);
         }
 
+        console.log("[Notification Email] Sending email to:", recipient.email, "with sender:", senderEmail);
+
         const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
           headers: {
@@ -346,7 +381,7 @@ serve(async (req) => {
 
         if (brevoResponse.ok) {
           successCount++;
-          console.log(`[Notification Email] Email sent to ${recipient.email}`);
+          console.log(`[Notification Email] Email sent successfully to ${recipient.email}`);
         } else {
           const errorText = await brevoResponse.text();
           console.error(`[Notification Email] Failed to send to ${recipient.email}:`, errorText);
@@ -358,7 +393,9 @@ serve(async (req) => {
       }
     }
 
-    console.log("[Notification Email] Email sent successfully!");
+    console.log("[Notification Email] Email sending completed!");
+    console.log("[Notification Email] Success count:", successCount);
+    console.log("[Notification Email] Errors:", errors);
 
     return new Response(
       JSON.stringify({ 
