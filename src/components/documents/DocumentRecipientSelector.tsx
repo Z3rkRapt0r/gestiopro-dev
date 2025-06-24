@@ -33,13 +33,14 @@ const DocumentRecipientSelector: React.FC<DocumentRecipientSelectorProps> = ({
   selectedUserId,
   setSelectedUserId,
 }) => {
+  // Don't show recipient selector for non-admin users as documents always go to admins
   if (!isAdmin) return null;
 
   return (
     <>
       {!targetUserId && (
         <div className="space-y-2">
-          <Label htmlFor="uploadTarget">Destinatario</Label>
+          <Label htmlFor="uploadTarget">Destinatario del documento</Label>
           <Select value={uploadTarget} onValueChange={(value) => setUploadTarget(value as UploadTarget)}>
             <SelectTrigger>
               <SelectValue placeholder="Seleziona destinatario" />
@@ -49,7 +50,7 @@ const DocumentRecipientSelector: React.FC<DocumentRecipientSelectorProps> = ({
                 <User className="inline mr-2 h-4 w-4" /> Utente Specifico
               </SelectItem>
               <SelectItem value="all_employees">
-                <Users className="inline mr-2 h-4 w-4" /> Tutti i Dipendenti (Aziendale)
+                <Users className="inline mr-2 h-4 w-4" /> Tutti i Dipendenti (Documento Aziendale)
               </SelectItem>
               <SelectItem value="self">
                 <User className="inline mr-2 h-4 w-4" /> Personale (per me Admin)
@@ -60,7 +61,7 @@ const DocumentRecipientSelector: React.FC<DocumentRecipientSelectorProps> = ({
       )}
       {uploadTarget === "specific_user" && (
         <div className="space-y-2">
-          <Label htmlFor="specificUser">Seleziona Utente</Label>
+          <Label htmlFor="specificUser">Seleziona Utente Specifico</Label>
           {targetUserId ? (
             <Input
               value={

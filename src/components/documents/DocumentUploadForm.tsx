@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText } from 'lucide-react';
+import { FileText, Info } from 'lucide-react';
 import DocumentRecipientSelector from './DocumentRecipientSelector';
 import DocumentTypeSelector from './DocumentTypeSelector';
 import { defaultNotificationBody } from './documentNotificationDefaults';
@@ -95,6 +95,19 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Information section for employees */}
+      {!isAdmin && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <div className="flex items-start space-x-2">
+            <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800">
+              <p className="font-medium">Il documento sarà inviato agli amministratori</p>
+              <p className="text-xs mt-1">Gli amministratori riceveranno una notifica email del caricamento del documento</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <DocumentRecipientSelector
         isAdmin={isAdmin}
         uploadTarget={uploadTarget}
@@ -126,19 +139,32 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="subject">Oggetto della mail</Label>
+        <Label htmlFor="subject">
+          {isAdmin 
+            ? "Oggetto della mail" 
+            : "Oggetto della mail per gli amministratori"
+          }
+        </Label>
         <Input
           id="subject"
           value={subject}
           onChange={(e) => onSubjectChange(e.target.value)}
-          placeholder="Oggetto della mail"
+          placeholder={isAdmin 
+            ? "Oggetto della mail" 
+            : "Oggetto della mail per gli amministratori"
+          }
           required={notifyRecipient}
           disabled={!notifyRecipient}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="body">Messaggio per il destinatario</Label>
+        <Label htmlFor="body">
+          {isAdmin 
+            ? "Messaggio per il destinatario" 
+            : "Messaggio per gli amministratori"
+          }
+        </Label>
         <Textarea
           id="body"
           value={body}
@@ -162,7 +188,10 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
           className="border-gray-300 rounded focus:ring-blue-500 h-4 w-4"
         />
         <Label htmlFor="notify" className="cursor-pointer select-none">
-          Avvisa il destinatario del caricamento del documento (invia una notifica email)
+          {isAdmin 
+            ? "Avvisa il destinatario del caricamento del documento (invia una notifica email)"
+            : "Avvisa gli amministratori del caricamento del documento (invia una notifica email)"
+          }
         </Label>
       </div>
 
