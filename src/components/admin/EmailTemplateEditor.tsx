@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,8 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Save, Eye, Settings, Type, Palette, Lock } from "lucide-react";
-import EmailTemplatePreview from "./EmailTemplatePreview";
+import { Save, Settings, Type, Palette, Lock } from "lucide-react";
+import TestEmailDialog from "./TestEmailDialog";
 
 interface EmailTemplateEditorProps {
   templateType: string;
@@ -75,7 +74,6 @@ const EmailTemplateEditor = ({
   
   // State
   const [loading, setLoading] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null);
 
   // Load existing template
@@ -251,13 +249,13 @@ const EmailTemplateEditor = ({
           )}
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowPreview(!showPreview)}
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            {showPreview ? "Nascondi" : "Anteprima"}
-          </Button>
+          <TestEmailDialog
+            templateType={templateType as any}
+            templateCategory={templateCategory}
+            subject={subject}
+            content={content}
+            disabled={loading}
+          />
           <Button onClick={handleSave} disabled={loading}>
             <Save className="w-4 h-4 mr-2" />
             {loading ? "Salvataggio..." : "Salva Template"}
@@ -265,40 +263,8 @@ const EmailTemplateEditor = ({
         </div>
       </div>
 
-      {showPreview && (
-        <EmailTemplatePreview
-          subject={subject}
-          content={content}
-          templateType={templateType}
-          templateData={{
-            primary_color: primaryColor,
-            secondary_color: secondaryColor,
-            background_color: backgroundColor,
-            text_color: textColor,
-            font_family: fontFamily,
-            font_size: fontSize,
-            border_radius: borderRadius,
-            footer_text: footerText,
-            footer_color: footerColor,
-            show_details_button: showDetailsButton,
-            show_leave_details: showLeaveDetails,
-            show_admin_notes: showAdminNotes,
-            show_custom_block: showCustomBlock,
-            custom_block_text: customBlockText,
-            custom_block_bg_color: customBlockBgColor,
-            custom_block_text_color: customBlockTextColor,
-            leave_details_bg_color: leaveDetailsBgColor,
-            leave_details_text_color: leaveDetailsTextColor,
-            admin_notes_bg_color: adminNotesBgColor,
-            admin_notes_text_color: adminNotesTextColor,
-            button_color: buttonColor,
-            button_text_color: buttonTextColor,
-            text_alignment: textAlignment,
-          }}
-        />
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
         {/* Content Section */}
         <Card>
           <CardHeader>
