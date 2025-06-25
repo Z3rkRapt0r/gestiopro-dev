@@ -170,36 +170,47 @@ serve(async (req) => {
 
     console.log("[Notification Email] Found email template:", emailTemplate);
 
-    // Use template data with fallback to defaults
-    const templateData = emailTemplate || {
-      primary_color: '#007bff',
-      secondary_color: '#6c757d',
-      background_color: '#ffffff',
-      text_color: '#333333',
-      logo_alignment: 'center',
-      logo_size: 'medium',
-      footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
-      footer_color: '#888888',
-      header_alignment: 'center',
-      body_alignment: 'left',
-      font_family: 'Arial, sans-serif',
-      font_size: 'medium',
-      button_color: '#007bff',
-      button_text_color: '#ffffff',
-      border_radius: '6px',
-      show_details_button: true,
-      show_leave_details: true,
-      show_admin_notes: true,
-      admin_notes_bg_color: '#f8f9fa',
-      admin_notes_text_color: '#495057',
-      leave_details_bg_color: '#e3f2fd',
-      leave_details_text_color: '#1565c0',
-      show_custom_block: false,
-      custom_block_text: '',
-      custom_block_bg_color: '#fff3cd',
-      custom_block_text_color: '#856404',
-      text_alignment: 'left'
-    };
+    // ELIMINAZIONE TEMPLATE BASE: Se non c'è template personalizzato, usa solo i valori minimi di fallback
+    let templateData;
+    if (emailTemplate) {
+      templateData = emailTemplate;
+      console.log("[Notification Email] Using custom template from database");
+    } else {
+      // Template minimo di emergenza - solo stili di base
+      templateData = {
+        primary_color: '#007bff',
+        secondary_color: '#6c757d',
+        background_color: '#ffffff',
+        text_color: '#333333',
+        logo_alignment: 'center',
+        logo_size: 'medium',
+        footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+        footer_color: '#888888',
+        header_alignment: 'center',
+        body_alignment: 'left',
+        font_family: 'Arial, sans-serif',
+        font_size: 'medium',
+        button_color: '#007bff',
+        button_text_color: '#ffffff',
+        border_radius: '6px',
+        show_details_button: true,
+        show_leave_details: true,
+        show_admin_notes: true,
+        admin_notes_bg_color: '#f8f9fa',
+        admin_notes_text_color: '#495057',
+        leave_details_bg_color: '#e3f2fd',
+        leave_details_text_color: '#1565c0',
+        show_custom_block: false,
+        custom_block_text: '',
+        custom_block_bg_color: '#fff3cd',
+        custom_block_text_color: '#856404',
+        text_alignment: 'left',
+        // NO CONTENT/SUBJECT - sarà utilizzato quello fornito nella richiesta
+        subject: null,
+        content: null
+      };
+      console.log("[Notification Email] No custom template found, using minimal fallback");
+    }
 
     // Use global logo settings if available, otherwise fallback to template or default
     let logoUrl = adminSetting.global_logo_url;
@@ -219,7 +230,7 @@ serve(async (req) => {
     console.log("[Notification Email] Using logoUrl:", logoUrl);
     console.log("[Notification Email] Logo settings - alignment:", logoAlignment, "size:", logoSize);
 
-    // Get recipients list with CORRECTED LOGIC
+    // Get recipients list - CORREZIONE: Solo admin per richieste leave
     let recipients = [];
     console.log("[Notification Email] Determining recipients for recipientId:", recipientId, "templateType:", templateType);
     
@@ -323,22 +334,22 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // CORREZIONE: Utilizzare sempre il template se disponibile
+        // UTILIZZO PRIORITARIO DEL TEMPLATE DAL DATABASE
         let emailSubject = subject;
         let emailContent = shortText;
         
-        // Utilizzare il template se disponibile
-        if (emailTemplate) {
-          emailSubject = emailTemplate.subject || subject;
-          emailContent = emailTemplate.content || shortText;
-          
-          console.log("[Notification Email] Using template content:", { 
-            templateSubject: emailTemplate.subject, 
-            templateContent: emailTemplate.content 
-          });
+        // Utilizzare il template dal database se disponibile
+        if (emailTemplate && emailTemplate.subject) {
+          emailSubject = emailTemplate.subject;
+          console.log("[Notification Email] Using template subject:", emailTemplate.subject);
         }
         
-        // Sostituire le variabili dinamiche
+        if (emailTemplate && emailTemplate.content) {
+          emailContent = emailTemplate.content;
+          console.log("[Notification Email] Using template content:", emailTemplate.content);
+        }
+        
+        // SOSTITUZIONE COMPLETA DELLE VARIABILI DINAMICHE
         if (employeeName) {
           emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
           emailContent = emailContent.replace(/{employee_name}/g, employeeName);
@@ -360,6 +371,11 @@ serve(async (req) => {
         // Sostituire i dettagli delle richieste leave
         if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
           emailContent = emailContent.replace(/{leave_details}/g, emailBody);
+        }
+        
+        // Sostituire le note admin per approvazioni/rifiuti
+        if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
+          emailContent = emailContent.replace(/{admin_note}/g, adminNote);
         }
         
         // Prepare leave details and admin notes for templates that support them
@@ -466,6 +482,7 @@ serve(async (req) => {
         replyTo: dynamicReplyTo,
         templateType: templateType,
         templateCategory: templateCategory,
+        templateUsed: !!emailTemplate,
         errors: errors.length > 0 ? errors : undefined
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
