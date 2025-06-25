@@ -88,13 +88,12 @@ serve(async (req) => {
 
     console.log("[Notification Email] Found Brevo settings for admin");
 
-    // Determine template type and category based on topic and sender
+    // ENHANCED TEMPLATE TYPE MAPPING - Now includes all template types
     let templateType = 'notifiche'; // default
     let templateCategory = 'generale'; // default
     
     if (topic === 'document' || topic === 'documents') {
       templateType = 'documenti';
-      // Determine category based on sender: if employeeEmail exists, it's employee sending to admin
       templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
     } else if (topic === 'approvals' || topic === 'approval') {
       templateType = 'approvazioni';
@@ -121,7 +120,7 @@ serve(async (req) => {
       templateType = 'ferie-rifiuto';
       templateCategory = 'amministratori';
     } else {
-      // Fallback to subject analysis if topic is not clear
+      // Enhanced fallback to subject analysis if topic is not clear
       const lowerSubject = subject.toLowerCase();
       if (lowerSubject.includes('documento') || lowerSubject.includes('document')) {
         templateType = 'documenti';
@@ -130,10 +129,10 @@ serve(async (req) => {
         templateType = 'approvazioni';
         templateCategory = 'amministratori';
       } else if (lowerSubject.includes('permesso')) {
-        if (lowerSubject.includes('approvata')) {
+        if (lowerSubject.includes('approvata') || lowerSubject.includes('approvato')) {
           templateType = 'permessi-approvazione';
           templateCategory = 'amministratori';
-        } else if (lowerSubject.includes('rifiutata')) {
+        } else if (lowerSubject.includes('rifiutata') || lowerSubject.includes('rifiutato')) {
           templateType = 'permessi-rifiuto';
           templateCategory = 'amministratori';
         } else {
@@ -141,10 +140,10 @@ serve(async (req) => {
           templateCategory = 'dipendenti';
         }
       } else if (lowerSubject.includes('ferie')) {
-        if (lowerSubject.includes('approvata')) {
+        if (lowerSubject.includes('approvata') || lowerSubject.includes('approvato')) {
           templateType = 'ferie-approvazione';
           templateCategory = 'amministratori';
-        } else if (lowerSubject.includes('rifiutata')) {
+        } else if (lowerSubject.includes('rifiutata') || lowerSubject.includes('rifiutato')) {
           templateType = 'ferie-rifiuto';
           templateCategory = 'amministratori';
         } else {
@@ -153,6 +152,8 @@ serve(async (req) => {
         }
       }
     }
+
+    console.log("[Notification Email] Template mapping - Type:", templateType, "Category:", templateCategory, "Topic:", topic);
 
     // Get email template for the specific template type and category
     console.log("[Notification Email] Looking for email template:", templateType, templateCategory);
@@ -168,15 +169,15 @@ serve(async (req) => {
       console.error("[Notification Email] Error fetching email template:", templateError);
     }
 
-    console.log("[Notification Email] Found email template:", emailTemplate);
+    console.log("[Notification Email] Template query result:", emailTemplate ? "Found custom template" : "No custom template found");
 
-    // ELIMINAZIONE TEMPLATE BASE: Se non c'è template personalizzato, usa solo i valori minimi di fallback
+    // Template data handling - prioritize database template or use minimal fallback
     let templateData;
     if (emailTemplate) {
       templateData = emailTemplate;
       console.log("[Notification Email] Using custom template from database");
     } else {
-      // Template minimo di emergenza - solo stili di base
+      // Minimal fallback template with basic styling only
       templateData = {
         primary_color: '#007bff',
         secondary_color: '#6c757d',
@@ -205,11 +206,10 @@ serve(async (req) => {
         custom_block_bg_color: '#fff3cd',
         custom_block_text_color: '#856404',
         text_alignment: 'left',
-        // NO CONTENT/SUBJECT - sarà utilizzato quello fornito nella richiesta
         subject: null,
         content: null
       };
-      console.log("[Notification Email] No custom template found, using minimal fallback");
+      console.log("[Notification Email] No custom template found, using minimal fallback styling only");
     }
 
     // Use global logo settings if available, otherwise fallback to template or default
@@ -230,14 +230,14 @@ serve(async (req) => {
     console.log("[Notification Email] Using logoUrl:", logoUrl);
     console.log("[Notification Email] Logo settings - alignment:", logoAlignment, "size:", logoSize);
 
-    // Get recipients list - CORREZIONE: Solo admin per richieste leave
+    // Get recipients list - FIXED: Only admin for employee requests
     let recipients = [];
     console.log("[Notification Email] Determining recipients for recipientId:", recipientId, "templateType:", templateType);
     
     if (!recipientId) {
-      // CORREZIONE: Per TUTTE le richieste (permessi e ferie) dai dipendenti, inviare SOLO agli amministratori
+      // CORRECTED: For ALL employee requests (permessi/ferie/documents), send ONLY to administrators
       if (templateType === 'permessi-richiesta' || templateType === 'ferie-richiesta' || (employeeEmail && templateType === 'documenti')) {
-        console.log("[Notification Email] Sending to all admins");
+        console.log("[Notification Email] Sending to all admins for employee request");
         const { data: adminProfiles, error: adminProfilesError } = await supabase
           .from("profiles")
           .select("id, email, first_name, last_name")
@@ -251,8 +251,8 @@ serve(async (req) => {
         recipients = adminProfiles || [];
         console.log("[Notification Email] Found admin recipients:", recipients.length);
       } else {
-        // Send to all active employees for other notifications
-        console.log("[Notification Email] Sending to all employees");
+        // Send to all active employees for admin notifications
+        console.log("[Notification Email] Sending to all employees for admin notification");
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, email, first_name, last_name")
@@ -334,51 +334,53 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // UTILIZZO PRIORITARIO DEL TEMPLATE DAL DATABASE
+        // ENHANCED TEMPLATE CONTENT HANDLING - Always prioritize database template
         let emailSubject = subject;
         let emailContent = shortText;
         
-        // Utilizzare il template dal database se disponibile
-        if (emailTemplate && emailTemplate.subject) {
-          emailSubject = emailTemplate.subject;
-          console.log("[Notification Email] Using template subject:", emailTemplate.subject);
+        // Use database template content if available - THIS IS THE KEY FIX
+        if (emailTemplate) {
+          if (emailTemplate.subject) {
+            emailSubject = emailTemplate.subject;
+            console.log("[Notification Email] Using database template subject");
+          }
+          
+          if (emailTemplate.content) {
+            emailContent = emailTemplate.content;
+            console.log("[Notification Email] Using database template content");
+          }
         }
         
-        if (emailTemplate && emailTemplate.content) {
-          emailContent = emailTemplate.content;
-          console.log("[Notification Email] Using template content:", emailTemplate.content);
-        }
-        
-        // SOSTITUZIONE COMPLETA DELLE VARIABILI DINAMICHE
+        // COMPREHENSIVE DYNAMIC VARIABLE SUBSTITUTION
         if (employeeName) {
           emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
           emailContent = emailContent.replace(/{employee_name}/g, employeeName);
         }
         
-        // Sostituire il nome del destinatario
+        // Replace recipient name in content
         if (recipient.first_name && recipient.last_name) {
           const recipientName = `${recipient.first_name} ${recipient.last_name}`;
           emailContent = emailContent.replace(/Gentile [^,]+,/g, `Gentile ${recipientName},`);
         }
         
-        // Sostituire le note del dipendente per i template documenti
+        // Replace employee notes for document templates
         if (templateType === 'documenti' && employeeNote) {
           emailContent = emailContent.replace(/{employee_note}/g, employeeNote);
         } else if (templateType === 'documenti') {
           emailContent = emailContent.replace(/{employee_note}/g, 'Nessuna nota aggiuntiva.');
         }
         
-        // Sostituire i dettagli delle richieste leave
+        // Replace leave details for leave request templates
         if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
           emailContent = emailContent.replace(/{leave_details}/g, emailBody);
         }
         
-        // Sostituire le note admin per approvazioni/rifiuti
+        // Replace admin notes for approval/rejection templates
         if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
           emailContent = emailContent.replace(/{admin_note}/g, adminNote);
         }
         
-        // Prepare leave details and admin notes for templates that support them
+        // Prepare structured data for HTML template
         let leaveDetails = '';
         let adminNotes = '';
         
@@ -389,6 +391,8 @@ serve(async (req) => {
         if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
           adminNotes = adminNote;
         }
+        
+        console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 100) + "...");
         
         const htmlContent = buildHtmlContent({
           subject: emailSubject,
@@ -483,6 +487,7 @@ serve(async (req) => {
         templateType: templateType,
         templateCategory: templateCategory,
         templateUsed: !!emailTemplate,
+        templateContent: emailTemplate ? "Custom template from database" : "Fallback template",
         errors: errors.length > 0 ? errors : undefined
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
