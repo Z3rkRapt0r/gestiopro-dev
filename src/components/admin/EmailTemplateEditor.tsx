@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,6 +75,19 @@ const EmailTemplateEditor = ({
   // State
   const [loading, setLoading] = useState(false);
   const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null);
+
+  // Helper functions to determine template characteristics
+  const isEmployeeRequestTemplate = () => {
+    return templateCategory === 'dipendenti' && (templateType.includes('richiesta') || templateType === 'documenti');
+  };
+
+  const isAdminResponseTemplate = () => {
+    return templateCategory === 'amministratori' && (templateType.includes('approvazione') || templateType.includes('rifiuto'));
+  };
+
+  const isLeaveTemplate = () => {
+    return templateType.includes('permessi') || templateType.includes('ferie');
+  };
 
   // Load existing template
   useEffect(() => {
@@ -292,9 +304,19 @@ const EmailTemplateEditor = ({
                 disabled={!contentEditable}
                 className={!contentEditable ? "bg-gray-50 cursor-not-allowed" : ""}
               />
-              {templateType === 'documenti' && templateCategory === 'dipendenti' && (
+              {isEmployeeRequestTemplate() && (
                 <p className="text-xs text-gray-500 mt-1">
                   Puoi usare <code>{'{employee_note}'}</code> per le note del dipendente
+                </p>
+              )}
+              {isLeaveTemplate() && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Puoi usare <code>{'{leave_details}'}</code> per i dettagli della richiesta
+                </p>
+              )}
+              {isAdminResponseTemplate() && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Puoi usare <code>{'{admin_note}'}</code> per le note dell'amministratore
                 </p>
               )}
             </div>
@@ -436,7 +458,7 @@ const EmailTemplateEditor = ({
                 />
               </div>
 
-              {(templateType.includes('permessi') || templateType.includes('ferie')) && (
+              {isLeaveTemplate() && (
                 <>
                   <div className="flex items-center justify-between">
                     <Label>Mostra Dettagli Permessi/Ferie</Label>
@@ -447,7 +469,9 @@ const EmailTemplateEditor = ({
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <Label>Mostra Note Admin</Label>
+                    <Label>
+                      {isEmployeeRequestTemplate() ? 'Mostra Note Dipendente' : 'Mostra Note Admin'}
+                    </Label>
                     <Switch
                       checked={showAdminNotes}
                       onCheckedChange={setShowAdminNotes}

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -352,6 +351,7 @@ serve(async (req) => {
         // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING - IMPROVED FOR VACATION REQUESTS
         console.log("[Notification Email] Starting variable substitution for template type:", templateType);
         console.log("[Notification Email] Employee name provided:", employeeName);
+        console.log("[Notification Email] Employee note provided:", employeeNote);
         
         // Replace {employee_name} with enhanced logging - CRITICAL FOR VACATION REQUESTS
         if (employeeName) {
@@ -361,7 +361,7 @@ serve(async (req) => {
           emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
           emailContent = emailContent.replace(/{employee_name}/g, employeeName);
           
-          console.log("[Notification Email] Enhanced employee name substitution for vacation requests:");
+          console.log("[Notification Email] Enhanced employee name substitution:");
           console.log("  Template type:", templateType);
           console.log("  Original subject:", originalSubject);
           console.log("  Final subject:", emailSubject);
@@ -369,7 +369,7 @@ serve(async (req) => {
           console.log("  Subject changed:", originalSubject !== emailSubject);
           console.log("  Content changed:", originalContent !== emailContent);
         } else {
-          console.log("[Notification Email] No employee name provided for vacation request substitution");
+          console.log("[Notification Email] No employee name provided for substitution");
         }
         
         // Replace recipient name in content
@@ -380,11 +380,11 @@ serve(async (req) => {
           console.log("[Notification Email] Replaced recipient greeting with:", recipientName);
         }
         
-        // Replace employee notes for document templates
-        if (templateType === 'documenti' && employeeNote) {
+        // Replace employee notes for employee request templates
+        if (templateType.includes('richiesta') && employeeNote) {
           emailContent = emailContent.replace(/{employee_note}/g, employeeNote);
-          console.log("[Notification Email] Replaced employee note for document template");
-        } else if (templateType === 'documenti') {
+          console.log("[Notification Email] Replaced employee note for request template");
+        } else if (templateType.includes('richiesta')) {
           emailContent = emailContent.replace(/{employee_note}/g, 'Nessuna nota aggiuntiva.');
         }
         
@@ -403,6 +403,7 @@ serve(async (req) => {
         // Prepare structured data for HTML template
         let leaveDetails = '';
         let adminNotes = '';
+        let employeeNotes = '';
         
         if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
           leaveDetails = emailBody;
@@ -410,6 +411,10 @@ serve(async (req) => {
         
         if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
           adminNotes = adminNote;
+        }
+        
+        if (['permessi-richiesta', 'ferie-richiesta'].includes(templateType) && employeeNote) {
+          employeeNotes = employeeNote;
         }
         
         console.log("[Notification Email] Final email subject:", emailSubject);
@@ -443,6 +448,7 @@ serve(async (req) => {
           showAdminNotes: templateData.show_admin_notes,
           leaveDetails,
           adminNotes,
+          employeeNotes,
           leaveDetailsBgColor: templateData.leave_details_bg_color,
           leaveDetailsTextColor: templateData.leave_details_text_color,
           adminNotesBgColor: templateData.admin_notes_bg_color,
@@ -513,7 +519,9 @@ serve(async (req) => {
         templatePriority: emailTemplate ? "Database template (ABSOLUTE PRIORITY)" : "Frontend fallback",
         variableSubstitution: {
           employeeName: employeeName || "Not provided",
-          employeeNameSubstituted: !!employeeName
+          employeeNameSubstituted: !!employeeName,
+          employeeNote: employeeNote || "Not provided",
+          employeeNoteSubstituted: !!employeeNote
         },
         errors: errors.length > 0 ? errors : undefined
       }),

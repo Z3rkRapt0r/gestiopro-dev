@@ -26,6 +26,7 @@ export interface EmailContentParams {
   showAdminNotes?: boolean;
   leaveDetails?: string;
   adminNotes?: string;
+  employeeNotes?: string;
   leaveDetailsBgColor?: string;
   leaveDetailsTextColor?: string;
   adminNotesBgColor?: string;
@@ -80,6 +81,7 @@ export function buildHtmlContent({
   showAdminNotes = true,
   leaveDetails = '',
   adminNotes = '',
+  employeeNotes = '',
   leaveDetailsBgColor = '#e3f2fd',
   leaveDetailsTextColor = '#1565c0',
   adminNotesBgColor = '#f8f9fa',
@@ -144,10 +146,24 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // Admin Notes Section
-  const adminNotesSection = showAdminNotes && adminNotes ? `
+  // Determine if this is an employee request (from employee to admin) or admin response (from admin to employee)
+  const isEmployeeRequest = templateType.includes('richiesta');
+  const isAdminResponse = templateType.includes('approvazione') || templateType.includes('rifiuto');
+
+  // Employee Notes Section (for employee requests)
+  const employeeNotesSection = showAdminNotes && isEmployeeRequest && employeeNotes ? `
+    <div style="background-color: #e8f4fd; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: #2c5282;">
+      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">💬 Note del Dipendente</h4>
+      <p style="margin: 0; font-size: 14px;">
+        ${employeeNotes.replace(/\n/g, '<br>')}
+      </p>
+    </div>
+  ` : "";
+
+  // Admin Notes Section (for admin responses)
+  const adminNotesSection = showAdminNotes && isAdminResponse && adminNotes ? `
     <div style="background-color: ${adminNotesBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${adminNotesTextColor};">
-      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">Note Amministratore</h4>
+      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📋 Note Amministratore</h4>
       <p style="margin: 0; font-size: 14px;">
         ${adminNotes.replace(/\n/g, '<br>')}
       </p>
@@ -187,6 +203,7 @@ export function buildHtmlContent({
       <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${textColor}; text-align: ${bodyAlignment}; font-size: ${actualFontSize};">
         ${finalContent.replace(/\n/g, '<br>')}
         ${leaveDetailsSection}
+        ${employeeNotesSection}
         ${adminNotesSection}
         ${dashboardButton}
         ${attachmentSection}
