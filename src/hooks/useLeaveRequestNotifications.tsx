@@ -14,6 +14,13 @@ export const useLeaveRequestNotifications = () => {
       let topic, subject, shortText, body;
       let recipientId = null; // Default to all admins
 
+      // FIXED: Construct proper employee name from profile
+      const employeeFullName = employeeProfile?.first_name && employeeProfile?.last_name 
+        ? `${employeeProfile.first_name} ${employeeProfile.last_name}`
+        : (employeeProfile?.first_name || 'Dipendente');
+      
+      console.log('Using employee full name:', employeeFullName);
+
       if (isApproval) {
         // Approval notification goes to the employee - use specific template type
         topic = leaveRequest.type === 'ferie' ? 'ferie-approvazione' : 'permessi-approvazione';
@@ -31,8 +38,8 @@ export const useLeaveRequestNotifications = () => {
       } else {
         // New leave request notification goes to all admins - use specific template type
         topic = leaveRequest.type === 'ferie' ? 'ferie-richiesta' : 'permessi-richiesta';
-        subject = `Nuova richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} da ${employeeProfile.first_name} ${employeeProfile.last_name}`;
-        shortText = `${employeeProfile.first_name} ${employeeProfile.last_name} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
+        subject = `Nuova richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} da ${employeeFullName}`;
+        shortText = `${employeeFullName} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
         recipientId = null; // Send to all admins
         
         if (leaveRequest.type === 'ferie') {
@@ -45,14 +52,15 @@ export const useLeaveRequestNotifications = () => {
         }
       }
 
-      // Prepare email payload
+      // CRITICAL FIX: Prepare email payload with proper employeeName
       const emailPayload: any = {
         recipientId,
         subject,
         shortText,
         topic,
         body,
-        adminNote
+        adminNote,
+        employeeName: employeeFullName // FIXED: Pass the constructed full name
       };
 
       // For new leave requests from employee to admin, include employee email for reply-to
@@ -148,7 +156,7 @@ export const useLeaveRequestNotifications = () => {
     employeeId?: string;
   }) => {
     try {
-      // Get employee profile with email if employeeId is provided
+      // FIXED: Get employee profile with email if employeeId is provided
       let employeeProfile = {
         first_name: employeeName.split(' ')[0] || '',
         last_name: employeeName.split(' ').slice(1).join(' ') || '',
@@ -168,6 +176,7 @@ export const useLeaveRequestNotifications = () => {
           console.log('Found employee profile:', employeeProfile);
         } else {
           console.warn('Could not fetch employee profile:', profileError);
+          // Keep the constructed profile from employeeName as fallback
         }
       }
 

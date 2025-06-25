@@ -334,11 +334,11 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // ENHANCED TEMPLATE CONTENT HANDLING - Always prioritize database template
+        // FIXED: Enhanced template content handling with proper variable substitution
         let emailSubject = subject;
         let emailContent = shortText;
         
-        // Use database template content if available - THIS IS THE KEY FIX
+        // Use database template content if available
         if (emailTemplate) {
           if (emailTemplate.subject) {
             emailSubject = emailTemplate.subject;
@@ -351,16 +351,22 @@ serve(async (req) => {
           }
         }
         
-        // COMPREHENSIVE DYNAMIC VARIABLE SUBSTITUTION
+        // CRITICAL FIX: Enhanced dynamic variable substitution with proper employee name handling
+        console.log("[Notification Email] Substituting variables - employeeName:", employeeName);
+        
         if (employeeName) {
+          // Replace {employee_name} in both subject and content
           emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
           emailContent = emailContent.replace(/{employee_name}/g, employeeName);
+          console.log("[Notification Email] Replaced {employee_name} with:", employeeName);
         }
         
         // Replace recipient name in content
         if (recipient.first_name && recipient.last_name) {
           const recipientName = `${recipient.first_name} ${recipient.last_name}`;
           emailContent = emailContent.replace(/Gentile [^,]+,/g, `Gentile ${recipientName},`);
+          emailContent = emailContent.replace(/Gentile Admin Sistema,/g, `Gentile ${recipientName},`);
+          console.log("[Notification Email] Replaced recipient greeting with:", recipientName);
         }
         
         // Replace employee notes for document templates
@@ -392,7 +398,8 @@ serve(async (req) => {
           adminNotes = adminNote;
         }
         
-        console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 100) + "...");
+        console.log("[Notification Email] Final email subject:", emailSubject);
+        console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 150) + "...");
         
         const htmlContent = buildHtmlContent({
           subject: emailSubject,
