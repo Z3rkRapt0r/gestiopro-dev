@@ -334,25 +334,26 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // CRITICAL FIX: ALWAYS PRIORITIZE DATABASE TEMPLATE CONTENT
+        // ENHANCED PRIORITY LOGIC: ALWAYS PRIORITIZE DATABASE TEMPLATE CONTENT
         let emailSubject, emailContent;
         
         if (emailTemplate && emailTemplate.subject && emailTemplate.content) {
-          // Use database template content - ABSOLUTE PRIORITY
+          // ABSOLUTE PRIORITY: Use database template content
           emailSubject = emailTemplate.subject;
           emailContent = emailTemplate.content;
-          console.log("[Notification Email] Using database template subject and content - PRIORITY");
+          console.log("[Notification Email] Using database template subject and content - ABSOLUTE PRIORITY");
         } else {
-          // Only use frontend content as absolute fallback when no database template exists
+          // IMPROVED FALLBACK: Only use frontend content when no database template exists
           emailSubject = subject || 'Notifica Sistema';
           emailContent = shortText || 'Hai ricevuto una nuova notifica.';
           console.log("[Notification Email] Using frontend fallback content - no database template found");
         }
         
-        // ENHANCED VARIABLE SUBSTITUTION - More robust handling
-        console.log("[Notification Email] Starting variable substitution - employeeName:", employeeName);
+        // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING - IMPROVED FOR VACATION REQUESTS
+        console.log("[Notification Email] Starting variable substitution for template type:", templateType);
+        console.log("[Notification Email] Employee name provided:", employeeName);
         
-        // Replace {employee_name} with proper handling
+        // Replace {employee_name} with enhanced logging - CRITICAL FOR VACATION REQUESTS
         if (employeeName) {
           const originalSubject = emailSubject;
           const originalContent = emailContent;
@@ -360,12 +361,15 @@ serve(async (req) => {
           emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
           emailContent = emailContent.replace(/{employee_name}/g, employeeName);
           
-          console.log("[Notification Email] Employee name substitution:");
+          console.log("[Notification Email] Enhanced employee name substitution for vacation requests:");
+          console.log("  Template type:", templateType);
           console.log("  Original subject:", originalSubject);
           console.log("  Final subject:", emailSubject);
           console.log("  Employee name used:", employeeName);
+          console.log("  Subject changed:", originalSubject !== emailSubject);
+          console.log("  Content changed:", originalContent !== emailContent);
         } else {
-          console.log("[Notification Email] No employee name provided for substitution");
+          console.log("[Notification Email] No employee name provided for vacation request substitution");
         }
         
         // Replace recipient name in content
@@ -379,18 +383,21 @@ serve(async (req) => {
         // Replace employee notes for document templates
         if (templateType === 'documenti' && employeeNote) {
           emailContent = emailContent.replace(/{employee_note}/g, employeeNote);
+          console.log("[Notification Email] Replaced employee note for document template");
         } else if (templateType === 'documenti') {
           emailContent = emailContent.replace(/{employee_note}/g, 'Nessuna nota aggiuntiva.');
         }
         
-        // Replace leave details for leave request templates
+        // Replace leave details for leave request templates - ENHANCED FOR VACATION REQUESTS
         if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
           emailContent = emailContent.replace(/{leave_details}/g, emailBody);
+          console.log("[Notification Email] Replaced leave details for template type:", templateType);
         }
         
         // Replace admin notes for approval/rejection templates
         if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
           emailContent = emailContent.replace(/{admin_note}/g, adminNote);
+          console.log("[Notification Email] Replaced admin note for template type:", templateType);
         }
         
         // Prepare structured data for HTML template
@@ -407,6 +414,7 @@ serve(async (req) => {
         
         console.log("[Notification Email] Final email subject:", emailSubject);
         console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 150) + "...");
+        console.log("[Notification Email] Template database usage:", !!emailTemplate);
         
         const htmlContent = buildHtmlContent({
           subject: emailSubject,
@@ -502,6 +510,11 @@ serve(async (req) => {
         templateCategory: templateCategory,
         templateUsed: !!emailTemplate,
         templateContent: emailTemplate ? "Custom template from database" : "Fallback template",
+        templatePriority: emailTemplate ? "Database template (ABSOLUTE PRIORITY)" : "Frontend fallback",
+        variableSubstitution: {
+          employeeName: employeeName || "Not provided",
+          employeeNameSubstituted: !!employeeName
+        },
         errors: errors.length > 0 ? errors : undefined
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
