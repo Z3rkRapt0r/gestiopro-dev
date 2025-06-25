@@ -19,7 +19,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail } = body;
+    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName } = body;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -305,18 +305,34 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // Per documenti e notifiche, usa sempre il contenuto dinamico dal request
+        // Handle dynamic content replacement for leave requests and documents
         let emailSubject = subject;
         let emailContent = shortText;
         
-        // Per i template di permessi, usa il contenuto del template se disponibile
+        // Replace dynamic variables in subject and content
+        if (employeeName) {
+          emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
+          emailContent = emailContent.replace(/{employee_name}/g, employeeName);
+        }
+        
+        // For leave request templates, use template content if available
         if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailTemplate) {
-          emailSubject = emailTemplate.subject || subject;
-          emailContent = emailTemplate.content || shortText;
+          if (emailTemplate.subject) {
+            emailSubject = emailTemplate.subject;
+            if (employeeName) {
+              emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
+            }
+          }
           
-          // Replace placeholders with actual data for leave templates
-          if (recipient.first_name && recipient.last_name) {
-            emailContent = emailContent.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
+          if (emailTemplate.content) {
+            emailContent = emailTemplate.content;
+            if (employeeName) {
+              emailContent = emailContent.replace(/{employee_name}/g, employeeName);
+            }
+            // Replace placeholder with actual recipient name if needed
+            if (recipient.first_name && recipient.last_name) {
+              emailContent = emailContent.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
+            }
           }
         }
         
@@ -333,8 +349,8 @@ serve(async (req) => {
         }
         
         const htmlContent = buildHtmlContent({
-          subject: emailTemplate?.subject || 'Default Subject',
-          shortText: emailTemplate?.content || 'Default Content',
+          subject: emailSubject,
+          shortText: emailContent,
           logoUrl,
           attachmentSection,
           senderEmail,
