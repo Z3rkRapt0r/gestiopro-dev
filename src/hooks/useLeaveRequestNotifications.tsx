@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const useLeaveRequestNotifications = () => {
@@ -16,22 +15,22 @@ export const useLeaveRequestNotifications = () => {
       let recipientId = null; // Default to all admins
 
       if (isApproval) {
-        // Approval notification goes to the employee
-        topic = 'permessi-approvazione';
+        // Approval notification goes to the employee - use specific template type
+        topic = leaveRequest.type === 'ferie' ? 'ferie-approvazione' : 'permessi-approvazione';
         subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} approvata`;
         shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata approvata.`;
         recipientId = leaveRequest.user_id; // Send to the employee
         body = `Dal: ${leaveRequest.date_from || leaveRequest.day}\nAl: ${leaveRequest.date_to || leaveRequest.day}\n\nLa tua richiesta è stata approvata dall'amministratore.`;
       } else if (isRejection) {
-        // Rejection notification goes to the employee
-        topic = 'permessi-rifiuto';
+        // Rejection notification goes to the employee - use specific template type
+        topic = leaveRequest.type === 'ferie' ? 'ferie-rifiuto' : 'permessi-rifiuto';
         subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} rifiutata`;
         shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata rifiutata.`;
         recipientId = leaveRequest.user_id; // Send to the employee
         body = `Dal: ${leaveRequest.date_from || leaveRequest.day}\nAl: ${leaveRequest.date_to || leaveRequest.day}\n\nLa tua richiesta è stata rifiutata dall'amministratore.`;
       } else {
-        // New leave request notification goes to all admins
-        topic = 'permessi-richiesta';
+        // New leave request notification goes to all admins - use specific template type
+        topic = leaveRequest.type === 'ferie' ? 'ferie-richiesta' : 'permessi-richiesta';
         subject = `Nuova richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} da ${employeeProfile.first_name} ${employeeProfile.last_name}`;
         shortText = `${employeeProfile.first_name} ${employeeProfile.last_name} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
         recipientId = null; // Send to all admins

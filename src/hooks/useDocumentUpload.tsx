@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
@@ -160,6 +159,7 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
         shortText: body.trim() || `Nuovo documento caricato: ${subject}`,
         topic: "document",
         employeeName, // Pass employee name for template personalization
+        body: body.trim(), // Include the body/note content
       };
 
       // Determine notification recipients and sender email
@@ -168,7 +168,9 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
         console.log('[DocumentUpload] Notifying all admins - employee document upload');
         notificationPayload.recipientId = null; // Send to all admins
         notificationPayload.employeeEmail = profile?.email; // Include employee email for reply-to
+        notificationPayload.employeeNote = body.trim(); // Include employee note for template
         console.log('[DocumentUpload] Including employee email for admin notification:', profile?.email);
+        console.log('[DocumentUpload] Including employee note:', body.trim());
       } else if (shouldNotifyEmployee && specificEmployeeToNotify) {
         // Admin uploading document for specific employee
         console.log('[DocumentUpload] Notifying specific employee:', specificEmployeeToNotify);

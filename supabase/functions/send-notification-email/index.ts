@@ -18,7 +18,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName } = body;
+    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName, employeeNote } = body;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -104,11 +104,20 @@ serve(async (req) => {
     } else if (topic === 'permessi-richiesta') {
       templateType = 'permessi-richiesta';
       templateCategory = 'dipendenti';
+    } else if (topic === 'ferie-richiesta') {
+      templateType = 'ferie-richiesta';
+      templateCategory = 'dipendenti';
     } else if (topic === 'permessi-approvazione') {
       templateType = 'permessi-approvazione';
       templateCategory = 'amministratori';
+    } else if (topic === 'ferie-approvazione') {
+      templateType = 'ferie-approvazione';
+      templateCategory = 'amministratori';
     } else if (topic === 'permessi-rifiuto') {
       templateType = 'permessi-rifiuto';
+      templateCategory = 'amministratori';
+    } else if (topic === 'ferie-rifiuto') {
+      templateType = 'ferie-rifiuto';
       templateCategory = 'amministratori';
     } else {
       // Fallback to subject analysis if topic is not clear
@@ -119,7 +128,7 @@ serve(async (req) => {
       } else if (lowerSubject.includes('approv')) {
         templateType = 'approvazioni';
         templateCategory = 'amministratori';
-      } else if (lowerSubject.includes('permesso') || lowerSubject.includes('ferie')) {
+      } else if (lowerSubject.includes('permesso')) {
         if (lowerSubject.includes('approvata')) {
           templateType = 'permessi-approvazione';
           templateCategory = 'amministratori';
@@ -128,6 +137,17 @@ serve(async (req) => {
           templateCategory = 'amministratori';
         } else {
           templateType = 'permessi-richiesta';
+          templateCategory = 'dipendenti';
+        }
+      } else if (lowerSubject.includes('ferie')) {
+        if (lowerSubject.includes('approvata')) {
+          templateType = 'ferie-approvazione';
+          templateCategory = 'amministratori';
+        } else if (lowerSubject.includes('rifiutata')) {
+          templateType = 'ferie-rifiuto';
+          templateCategory = 'amministratori';
+        } else {
+          templateType = 'ferie-richiesta';
           templateCategory = 'dipendenti';
         }
       }
@@ -306,22 +326,35 @@ serve(async (req) => {
         let emailSubject = subject;
         let emailContent = shortText;
         
-        // For employee document templates, use the configured template
-        if (templateType === 'documenti' && templateCategory === 'dipendenti' && emailTemplate) {
+        // For document templates, use the configured template with employee note support
+        if (templateType === 'documenti' && emailTemplate) {
           emailSubject = emailTemplate.subject || subject;
           emailContent = emailTemplate.content || shortText;
           
-          // Replace {employee_name} placeholder with actual employee name
+          // Replace template variables
           if (employeeName) {
             emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
             emailContent = emailContent.replace(/{employee_name}/g, employeeName);
           }
+          
+          // Replace employee note variable
+          if (employeeNote) {
+            emailContent = emailContent.replace(/{employee_note}/g, employeeNote);
+          } else {
+            // Remove the employee note placeholder if no note provided
+            emailContent = emailContent.replace(/{employee_note}/g, 'Nessuna nota aggiuntiva.');
+          }
         }
         
         // For other template types, use the template content if available
-        if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailTemplate) {
+        if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailTemplate) {
           emailSubject = emailTemplate.subject || subject;
           emailContent = emailTemplate.content || shortText;
+          
+          if (employeeName) {
+            emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
+            emailContent = emailContent.replace(/{employee_name}/g, employeeName);
+          }
           
           if (recipient.first_name && recipient.last_name) {
             emailContent = emailContent.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
@@ -332,7 +365,7 @@ serve(async (req) => {
         let leaveDetails = '';
         let adminNotes = '';
         
-        if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailBody) {
+        if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
           leaveDetails = emailBody;
         }
         
