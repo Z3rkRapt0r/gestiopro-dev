@@ -8,8 +8,8 @@ interface LeaveRejectionTemplateEditorProps {
 const LeaveRejectionTemplateEditor = ({ 
   templateCategory = "amministratori"
 }: LeaveRejectionTemplateEditorProps) => {
-  const defaultContent = "Gentile Mario Rossi,\n\nLa tua richiesta di permesso è stata rifiutata dall'amministratore.\n\nDettagli:\nTipo: Permesso\nGiorno: 18 Giugno 2025\nOrario: 14:00 - 16:00\nMotivo: Visita medica\n\nNote amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un'altra data.";
-  const defaultSubject = "Richiesta Rifiutata";
+  const defaultContent = "Gentile {employee_name},\n\nLa tua richiesta di permesso è stata rifiutata dall'amministratore.\n\nDettagli della richiesta:\n{leave_details}\n\nNote amministratore:\n{admin_note}\n\nPer maggiori informazioni, contatta l'amministrazione.";
+  const defaultSubject = "Richiesta Permesso Rifiutata";
 
   return (
     <EmailTemplateEditor
@@ -17,6 +17,8 @@ const LeaveRejectionTemplateEditor = ({
       templateCategory={templateCategory}
       defaultContent={defaultContent}
       defaultSubject={defaultSubject}
+      subjectEditable={true}
+      contentEditable={true}
     />
   );
 };
