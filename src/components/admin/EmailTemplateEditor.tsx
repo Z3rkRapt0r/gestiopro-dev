@@ -76,6 +76,9 @@ const EmailTemplateEditor = ({
   const [loading, setLoading] = useState(false);
   const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null);
 
+  // Check if this is the employee documents template that should have hidden content fields
+  const isEmployeeDocumentTemplate = templateType === 'documenti' && templateCategory === 'dipendenti';
+
   // Load existing template
   useEffect(() => {
     if (profile?.id) {
@@ -185,7 +188,6 @@ const EmailTemplateEditor = ({
         content_editable: contentEditable,
       };
 
-      // Use DELETE + INSERT approach to avoid conflicts
       if (existingTemplateId) {
         console.log('Deleting existing template:', existingTemplateId);
         const { error: deleteError } = await supabase
@@ -239,11 +241,14 @@ const EmailTemplateEditor = ({
             Categoria: {templateCategory === 'dipendenti' ? 'Per Dipendenti' : 'Per Amministratori'} | 
             Tipo: {templateType}
           </p>
-          {(!subjectEditable || !contentEditable) && (
+          {(!subjectEditable || !contentEditable || isEmployeeDocumentTemplate) && (
             <div className="flex items-center gap-2 mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
               <Lock className="w-4 h-4 text-yellow-600" />
               <span className="text-sm text-yellow-700">
-                Alcuni campi sono bloccati per questo template
+                {isEmployeeDocumentTemplate 
+                  ? "Template per documenti dipendenti - utilizza contenuto dinamico"
+                  : "Alcuni campi sono bloccati per questo template"
+                }
               </span>
             </div>
           )}
@@ -265,78 +270,83 @@ const EmailTemplateEditor = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Content Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Type className="w-5 h-5" />
-              Contenuto Email
-              {(!subjectEditable || !contentEditable) && (
-                <Lock className="w-4 h-4 text-yellow-600" />
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="subject" className="flex items-center gap-2">
-                Oggetto Email
-                {!subjectEditable && <Lock className="w-3 h-3 text-yellow-600" />}
-              </Label>
-              <Input
-                id="subject"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Oggetto dell'email"
-                disabled={!subjectEditable}
-                className={!subjectEditable ? "bg-gray-50 cursor-not-allowed" : ""}
-              />
-              {!subjectEditable && (
-                <p className="text-xs text-yellow-600 mt-1">
-                  L'oggetto viene personalizzato automaticamente durante l'invio
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="content" className="flex items-center gap-2">
+        {/* Content Section - Hidden for employee document templates */}
+        {!isEmployeeDocumentTemplate && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Type className="w-5 h-5" />
                 Contenuto Email
-                {!contentEditable && <Lock className="w-3 h-3 text-yellow-600" />}
-              </Label>
-              <Textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Contenuto dell'email"
-                rows={8}
-                disabled={!contentEditable}
-                className={!contentEditable ? "bg-gray-50 cursor-not-allowed" : ""}
-              />
-              {!contentEditable && (
-                <p className="text-xs text-yellow-600 mt-1">
-                  Il contenuto viene personalizzato automaticamente durante l'invio
+                {(!subjectEditable || !contentEditable) && (
+                  <Lock className="w-4 h-4 text-yellow-600" />
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="subject" className="flex items-center gap-2">
+                  Oggetto Email
+                  {!subjectEditable && <Lock className="w-3 h-3 text-yellow-600" />}
+                </Label>
+                <Input
+                  id="subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Oggetto dell'email"
+                  disabled={!subjectEditable}
+                  className={!subjectEditable ? "bg-gray-50 cursor-not-allowed" : ""}
+                />
+                {!subjectEditable && (
+                  <p className="text-xs text-yellow-600 mt-1">
+                    L'oggetto viene personalizzato automaticamente durante l'invio
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Puoi usare <code>{'{employee_name}'}</code> per inserire il nome del dipendente
                 </p>
-              )}
-            </div>
+              </div>
 
-            <div>
-              <Label htmlFor="text-alignment">Allineamento Testo</Label>
-              <Select value={textAlignment} onValueChange={setTextAlignment}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona allineamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="left">Sinistra</SelectItem>
-                  <SelectItem value="center">Centro</SelectItem>
-                  <SelectItem value="right">Destra</SelectItem>
-                  <SelectItem value="justify">Giustificato</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+              <div>
+                <Label htmlFor="content" className="flex items-center gap-2">
+                  Contenuto Email
+                  {!contentEditable && <Lock className="w-3 h-3 text-yellow-600" />}
+                </Label>
+                <Textarea
+                  id="content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Contenuto dell'email"
+                  rows={8}
+                  disabled={!contentEditable}
+                  className={!contentEditable ? "bg-gray-50 cursor-not-allowed" : ""}
+                />
+                {!contentEditable && (
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Il contenuto viene personalizzato automaticamente durante l'invio
+                  </p>
+                )}
+              </div>
 
-        {/* Design Section */}
-        <Card>
+              <div>
+                <Label htmlFor="text-alignment">Allineamento Testo</Label>
+                <Select value={textAlignment} onValueChange={setTextAlignment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona allineamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="left">Sinistra</SelectItem>
+                    <SelectItem value="center">Centro</SelectItem>
+                    <SelectItem value="right">Destra</SelectItem>
+                    <SelectItem value="justify">Giustificato</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Design Section - Always visible but adjusted for employee document templates */}
+        <Card className={isEmployeeDocumentTemplate ? "lg:col-span-2" : ""}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="w-5 h-5" />
@@ -344,6 +354,24 @@ const EmailTemplateEditor = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Text alignment for employee document templates */}
+            {isEmployeeDocumentTemplate && (
+              <div>
+                <Label htmlFor="text-alignment">Allineamento Testo</Label>
+                <Select value={textAlignment} onValueChange={setTextAlignment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona allineamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="left">Sinistra</SelectItem>
+                    <SelectItem value="center">Centro</SelectItem>
+                    <SelectItem value="right">Destra</SelectItem>
+                    <SelectItem value="justify">Giustificato</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="primary-color">Colore Primario</Label>

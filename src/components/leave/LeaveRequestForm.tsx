@@ -119,7 +119,7 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
       const payload: any = {
         type,
         note,
-        status: "pending",
+        status: "pending", // Cambiato da "approved" a "pending"
         user_id: profile.id,
         notify_employee: true,
       };
@@ -137,26 +137,16 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
         payload.date_to = dateTo?.toISOString().slice(0, 10);
       }
 
-      console.log('Submitting leave request:', payload);
-
       const result = await insertMutation.mutateAsync(payload);
       
       if (notifyAdmin && result) {
-        console.log('Sending notification to admins...');
-        const notificationResult = await sendAdminNotification({
+        const employeeName = `${profile.first_name} ${profile.last_name}`;
+        await sendAdminNotification({
           requestId: result.id,
-          employeeName: `${profile.first_name} ${profile.last_name}`,
+          employeeName,
           type,
           details: getRequestDetails(),
-          employeeId: profile.id,
         });
-
-        if (notificationResult.success) {
-          console.log('Admin notification sent successfully');
-        } else {
-          console.error('Failed to send admin notification:', notificationResult.error);
-          // Non blocchiamo il processo se la notifica fallisce
-        }
       }
 
       toast({ 
@@ -333,16 +323,13 @@ export default function LeaveRequestForm({ type, onSuccess }: LeaveRequestFormPr
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Note (opzionali)</label>
-            <Textarea
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="Aggiungi eventuali note alla richiesta..."
-              rows={3}
-              className="resize-none"
-            />
-          </div>
+          <Textarea
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Note facoltative..."
+            rows={2}
+            className="resize-none"
+          />
 
           <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <Checkbox

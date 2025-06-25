@@ -32,17 +32,17 @@ export const useLeaveRequestNotifications = () => {
       } else {
         // New leave request notification goes to all admins
         topic = 'permessi-richiesta';
-        subject = `Nuova richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} da {employee_name}`;
-        shortText = `{employee_name} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
+        subject = `Nuova richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} da ${employeeProfile.first_name} ${employeeProfile.last_name}`;
+        shortText = `${employeeProfile.first_name} ${employeeProfile.last_name} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
         recipientId = null; // Send to all admins
         
         if (leaveRequest.type === 'ferie') {
-          body = `Dal: ${leaveRequest.date_from}\nAl: ${leaveRequest.date_to}${leaveRequest.note ? `\nNote: ${leaveRequest.note}` : ''}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
+          body = `Dal: ${leaveRequest.date_from}\nAl: ${leaveRequest.date_to}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
         } else {
           const timeInfo = leaveRequest.time_from && leaveRequest.time_to 
             ? `dalle ${leaveRequest.time_from} alle ${leaveRequest.time_to}`
             : 'giornata intera';
-          body = `Data: ${leaveRequest.day}\nOrario: ${timeInfo}${leaveRequest.note ? `\nNote: ${leaveRequest.note}` : ''}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
+          body = `Data: ${leaveRequest.day}\nOrario: ${timeInfo}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
         }
       }
 
@@ -53,8 +53,7 @@ export const useLeaveRequestNotifications = () => {
         shortText,
         topic,
         body,
-        adminNote,
-        employeeName: `${employeeProfile.first_name} ${employeeProfile.last_name}`
+        adminNote
       };
 
       // For new leave requests from employee to admin, include employee email for reply-to
@@ -185,7 +184,6 @@ export const useLeaveRequestNotifications = () => {
           details.split('Orario: ')[1]?.split(' - ')[0] : null,
         time_to: details.includes('Orario:') && details.includes(' - ') ? 
           details.split(' - ')[1]?.split('\n')[0] : null,
-        note: details.includes('Note:') ? details.split('Note: ')[1]?.split('\n')[0] : null,
       };
 
       console.log('Sending admin notification with employee profile:', employeeProfile);
