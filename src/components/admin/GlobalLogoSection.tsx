@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -95,17 +94,46 @@ const GlobalLogoSection = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      // First, try to update existing record
+      const { data: existingData, error: fetchError } = await supabase
         .from("admin_settings")
-        .upsert({
-          admin_id: profile.id,
-          global_logo_url: globalLogoUrl,
-          global_logo_alignment: globalLogoAlignment,
-          global_logo_size: globalLogoSize,
-        });
+        .select("id")
+        .eq("admin_id", profile.id)
+        .single();
 
-      if (error) {
-        throw error;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      if (existingData) {
+        // Update existing record
+        const { error } = await supabase
+          .from("admin_settings")
+          .update({
+            global_logo_url: globalLogoUrl,
+            global_logo_alignment: globalLogoAlignment,
+            global_logo_size: globalLogoSize,
+          })
+          .eq("admin_id", profile.id);
+
+        if (error) {
+          throw error;
+        }
+      } else {
+        // Insert new record with required fields
+        const { error } = await supabase
+          .from("admin_settings")
+          .insert({
+            admin_id: profile.id,
+            brevo_api_key: '', // Required field, set to empty string
+            global_logo_url: globalLogoUrl,
+            global_logo_alignment: globalLogoAlignment,
+            global_logo_size: globalLogoSize,
+          });
+
+        if (error) {
+          throw error;
+        }
       }
 
       toast({

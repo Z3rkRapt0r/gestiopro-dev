@@ -219,6 +219,7 @@ const EmailTemplateEditor = ({
         <EmailTemplatePreview
           subject={subject}
           content={content}
+          templateType={templateType}
           templateData={{
             primary_color: primaryColor,
             secondary_color: secondaryColor,

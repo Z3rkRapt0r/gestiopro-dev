@@ -1,3 +1,4 @@
+
 interface EmailTemplate {
   template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   name: string;
@@ -31,13 +32,76 @@ interface EmailTemplate {
   custom_block_text?: string;
   custom_block_bg_color?: string;
   custom_block_text_color?: string;
+  text_alignment?: 'left' | 'center' | 'right' | 'justify';
 }
 
 interface EmailTemplatePreviewProps {
-  template: EmailTemplate;
+  subject: string;
+  content: string;
+  templateData: {
+    primary_color: string;
+    secondary_color: string;
+    background_color: string;
+    text_color: string;
+    font_family: string;
+    font_size: string;
+    border_radius: string;
+    footer_text: string;
+    footer_color: string;
+    show_details_button: boolean;
+    show_leave_details: boolean;
+    show_admin_notes: boolean;
+    show_custom_block: boolean;
+    custom_block_text: string;
+    custom_block_bg_color: string;
+    custom_block_text_color: string;
+    leave_details_bg_color: string;
+    leave_details_text_color: string;
+    admin_notes_bg_color: string;
+    admin_notes_text_color: string;
+    button_color: string;
+    button_text_color: string;
+    text_alignment: string;
+  };
+  templateType?: string;
 }
 
-const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
+const EmailTemplatePreview = ({ subject, content, templateData, templateType }: EmailTemplatePreviewProps) => {
+  // Create a template object from the props
+  const template: EmailTemplate = {
+    template_type: (templateType as any) || 'generale',
+    name: '',
+    subject,
+    content,
+    show_details_button: templateData.show_details_button,
+    show_leave_details: templateData.show_leave_details,
+    show_admin_notes: templateData.show_admin_notes,
+    primary_color: templateData.primary_color,
+    secondary_color: templateData.secondary_color,
+    background_color: templateData.background_color,
+    text_color: templateData.text_color,
+    logo_alignment: 'center',
+    logo_size: 'medium',
+    footer_text: templateData.footer_text,
+    footer_color: templateData.footer_color,
+    header_alignment: 'left',
+    body_alignment: (templateData.text_alignment as any) || 'left',
+    font_family: templateData.font_family,
+    font_size: (templateData.font_size as any) || 'medium',
+    button_color: templateData.button_color,
+    button_text_color: templateData.button_text_color,
+    border_radius: templateData.border_radius,
+    admin_notes_bg_color: templateData.admin_notes_bg_color,
+    admin_notes_text_color: templateData.admin_notes_text_color,
+    leave_details_bg_color: templateData.leave_details_bg_color,
+    leave_details_text_color: templateData.leave_details_text_color,
+    show_custom_block: templateData.show_custom_block,
+    custom_block_text: templateData.custom_block_text,
+    custom_block_bg_color: templateData.custom_block_bg_color,
+    custom_block_text_color: templateData.custom_block_text_color,
+    text_alignment: (templateData.text_alignment as any) || 'left',
+  };
+
   const getLogoSize = () => {
     switch (template.logo_size) {
       case 'small': return '40px';
@@ -79,19 +143,19 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
       case 'permessi-richiesta':
         return {
           content: template.content || 'Gentile Amministratore,\n\nMario Rossi ha inviato una nuova richiesta di permesso. Ti preghiamo di prenderne visione e procedere con l\'approvazione o il rifiuto.',
-          details: template.details || 'Tipo: Permesso\nDal: 2025-06-29\nAl: 2025-07-01\nMotivo: Visita medica',
+          details: 'Tipo: Permesso\nDal: 2025-06-29\nAl: 2025-07-01\nMotivo: Visita medica',
           adminNotes: ''
         };
       case 'permessi-approvazione':
         return {
           content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso/ferie è stata approvata dall\'amministratore.',
-          details: template.details || 'Tipo: Permesso\nDal: 2025-06-29\nAl: 2025-07-01\nMotivo: Visita medica',
-          adminNotes: 'Note amministratore: FOFOF'
+          details: 'Tipo: Permesso\nDal: 2025-06-29\nAl: 2025-07-01\nMotivo: Visita medica',
+          adminNotes: 'Note amministratore: Richiesta approvata. Ricorda di recuperare le ore.'
         };
       case 'permessi-rifiuto':
         return {
           content: template.content || 'Gentile Mario Rossi,\n\nLa tua richiesta di permesso/ferie è stata rifiutata dall\'amministratore.',
-          details: template.details || 'Tipo: Permesso\nDal: 2025-06-29\nAl: 2025-07-01\nMotivo: Visita medica',
+          details: 'Tipo: Permesso\nDal: 2025-06-29\nAl: 2025-07-01\nMotivo: Visita medica',
           adminNotes: 'Note amministratore: Impossibile concedere il permesso per esigenze di servizio. Riprova per un\'altra data.'
         };
       default:
@@ -123,7 +187,6 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
   };
 
   const shouldShowButton = () => {
-    // Show button for all template types unless explicitly disabled
     return template.show_details_button !== false;
   };
 
@@ -141,7 +204,7 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
     return template.template_type === 'notifiche' && template.show_custom_block === true && template.custom_block_text;
   };
 
-  const { content, details, adminNotes } = getRealisticContent();
+  const { content: displayContent, details, adminNotes } = getRealisticContent();
 
   return (
     <div className="border rounded-lg p-4 bg-gray-50 max-h-[600px] overflow-auto">
@@ -188,7 +251,6 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
           lineHeight: '1.6',
           marginBottom: '24px'
         }}>
-          {/* Blocco personalizzabile per notifiche */}
           {shouldShowCustomBlock() && (
             <div style={{ 
               backgroundColor: template.custom_block_bg_color || '#fff3cd',
@@ -206,7 +268,7 @@ const EmailTemplatePreview = ({ template }: EmailTemplatePreviewProps) => {
           )}
 
           <div style={{ margin: '0 0 16px 0', whiteSpace: 'pre-line' }}>
-            {content}
+            {displayContent}
           </div>
           
           {shouldShowLeaveDetails() && details && (
