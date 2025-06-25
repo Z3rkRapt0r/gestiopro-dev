@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -218,13 +219,13 @@ serve(async (req) => {
     console.log("[Notification Email] Using logoUrl:", logoUrl);
     console.log("[Notification Email] Logo settings - alignment:", logoAlignment, "size:", logoSize);
 
-    // Get recipients list with improved logic
+    // Get recipients list with CORRECTED LOGIC
     let recipients = [];
     console.log("[Notification Email] Determining recipients for recipientId:", recipientId, "templateType:", templateType);
     
     if (!recipientId) {
-      // For leave requests to admin, send to all admins
-      if (templateType === 'permessi-richiesta' || (employeeEmail && templateType === 'documenti')) {
+      // CORREZIONE: Per TUTTE le richieste (permessi e ferie) dai dipendenti, inviare SOLO agli amministratori
+      if (templateType === 'permessi-richiesta' || templateType === 'ferie-richiesta' || (employeeEmail && templateType === 'documenti')) {
         console.log("[Notification Email] Sending to all admins");
         const { data: adminProfiles, error: adminProfilesError } = await supabase
           .from("profiles")
@@ -322,43 +323,43 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // Determine email subject and content based on template
+        // CORREZIONE: Utilizzare sempre il template se disponibile
         let emailSubject = subject;
         let emailContent = shortText;
         
-        // For document templates, use the configured template with employee note support
-        if (templateType === 'documenti' && emailTemplate) {
+        // Utilizzare il template se disponibile
+        if (emailTemplate) {
           emailSubject = emailTemplate.subject || subject;
           emailContent = emailTemplate.content || shortText;
           
-          // Replace template variables
-          if (employeeName) {
-            emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
-            emailContent = emailContent.replace(/{employee_name}/g, employeeName);
-          }
-          
-          // Replace employee note variable
-          if (employeeNote) {
-            emailContent = emailContent.replace(/{employee_note}/g, employeeNote);
-          } else {
-            // Remove the employee note placeholder if no note provided
-            emailContent = emailContent.replace(/{employee_note}/g, 'Nessuna nota aggiuntiva.');
-          }
+          console.log("[Notification Email] Using template content:", { 
+            templateSubject: emailTemplate.subject, 
+            templateContent: emailTemplate.content 
+          });
         }
         
-        // For other template types, use the template content if available
-        if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailTemplate) {
-          emailSubject = emailTemplate.subject || subject;
-          emailContent = emailTemplate.content || shortText;
-          
-          if (employeeName) {
-            emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
-            emailContent = emailContent.replace(/{employee_name}/g, employeeName);
-          }
-          
-          if (recipient.first_name && recipient.last_name) {
-            emailContent = emailContent.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
-          }
+        // Sostituire le variabili dinamiche
+        if (employeeName) {
+          emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
+          emailContent = emailContent.replace(/{employee_name}/g, employeeName);
+        }
+        
+        // Sostituire il nome del destinatario
+        if (recipient.first_name && recipient.last_name) {
+          const recipientName = `${recipient.first_name} ${recipient.last_name}`;
+          emailContent = emailContent.replace(/Gentile [^,]+,/g, `Gentile ${recipientName},`);
+        }
+        
+        // Sostituire le note del dipendente per i template documenti
+        if (templateType === 'documenti' && employeeNote) {
+          emailContent = emailContent.replace(/{employee_note}/g, employeeNote);
+        } else if (templateType === 'documenti') {
+          emailContent = emailContent.replace(/{employee_note}/g, 'Nessuna nota aggiuntiva.');
+        }
+        
+        // Sostituire i dettagli delle richieste leave
+        if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
+          emailContent = emailContent.replace(/{leave_details}/g, emailBody);
         }
         
         // Prepare leave details and admin notes for templates that support them
@@ -369,7 +370,7 @@ serve(async (req) => {
           leaveDetails = emailBody;
         }
         
-        if (['permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && adminNote) {
+        if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
           adminNotes = adminNote;
         }
         
@@ -408,8 +409,8 @@ serve(async (req) => {
           customBlockText: templateData.custom_block_text,
           customBlockBgColor: templateData.custom_block_bg_color,
           customBlockTextColor: templateData.custom_block_text_color,
-          dynamicSubject: (['notifiche', 'documenti'].includes(templateType) && templateCategory !== 'dipendenti') ? emailSubject : '',
-          dynamicContent: (['notifiche', 'documenti'].includes(templateType) && templateCategory !== 'dipendenti') ? emailContent : '',
+          dynamicSubject: emailSubject,
+          dynamicContent: emailContent,
           employeeEmail: employeeEmail
         });
 

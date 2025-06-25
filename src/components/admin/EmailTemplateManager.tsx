@@ -198,7 +198,7 @@ const EmailTemplateManager = () => {
                   <h4 className="font-semibold text-green-800 mb-2">Template Documenti per Amministratori</h4>
                   <p className="text-sm text-green-700">
                     Template utilizzato quando un dipendente carica un documento e invia notifica agli amministratori.
-                    Usa <code>{'{employee_name}'}</code> per il nome del dipendente e <code>{'{employee_note}'}</code> per le note.
+                    Usa <code>{'{employee_name}'}</code> per il nome del dipendente e <code>{'{employee_note}'}</code> per le note del dipendente.
                   </p>
                 </div>
                 <DocumentTemplateEditor 
