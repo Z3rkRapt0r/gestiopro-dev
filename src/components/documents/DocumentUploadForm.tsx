@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { FileText, Info } from 'lucide-react';
 import DocumentRecipientSelector from './DocumentRecipientSelector';
 import DocumentTypeSelector from './DocumentTypeSelector';
-import { defaultNotificationBody } from './documentNotificationDefaults';
 
 interface Profile {
   id: string;
@@ -90,7 +89,6 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
     notificationLoading ||
     !file ||
     !documentType ||
-    (notifyRecipient && (!subject.trim() || !body.trim())) ||
     (isAdmin && uploadTarget === 'specific_user' && !selectedUserId);
 
   return (
@@ -138,46 +136,55 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="subject">
-          {isAdmin 
-            ? "Oggetto della mail" 
-            : "Oggetto della mail per gli amministratori"
-          }
-        </Label>
-        <Input
-          id="subject"
-          value={subject}
-          onChange={(e) => onSubjectChange(e.target.value)}
-          placeholder={isAdmin 
-            ? "Oggetto della mail" 
-            : "Oggetto della mail per gli amministratori"
-          }
-          required={notifyRecipient}
-          disabled={!notifyRecipient}
-        />
-      </div>
+      {/* Admin-specific fields */}
+      {isAdmin && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="subject">Oggetto della mail</Label>
+            <Input
+              id="subject"
+              value={subject}
+              onChange={(e) => onSubjectChange(e.target.value)}
+              placeholder="Oggetto della mail"
+              required={notifyRecipient}
+              disabled={!notifyRecipient}
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="body">
-          {isAdmin 
-            ? "Messaggio per il destinatario" 
-            : "Messaggio per gli amministratori"
-          }
-        </Label>
-        <Textarea
-          id="body"
-          value={body}
-          onChange={(e) => onBodyChange(e.target.value)}
-          placeholder={defaultNotificationBody}
-          required={notifyRecipient}
-          disabled={!notifyRecipient}
-          rows={3}
-        />
-        <div className="text-xs text-muted-foreground">
-          Puoi usare HTML per link (esempio: {'<a href="/">Vai alla dashboard</a>'})
+          <div className="space-y-2">
+            <Label htmlFor="body">Messaggio per il destinatario</Label>
+            <Textarea
+              id="body"
+              value={body}
+              onChange={(e) => onBodyChange(e.target.value)}
+              placeholder="Messaggio per il destinatario"
+              required={notifyRecipient}
+              disabled={!notifyRecipient}
+              rows={3}
+            />
+            <div className="text-xs text-muted-foreground">
+              Puoi usare HTML per link (esempio: {'<a href="/">Vai alla dashboard</a>'})
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Employee-specific note field */}
+      {!isAdmin && (
+        <div className="space-y-2">
+          <Label htmlFor="note">Nota (opzionale)</Label>
+          <Textarea
+            id="note"
+            value={body}
+            onChange={(e) => onBodyChange(e.target.value)}
+            placeholder="Aggiungi una nota per gli amministratori..."
+            rows={3}
+          />
+          <div className="text-xs text-muted-foreground">
+            Questa nota sarà inclusa nella notifica agli amministratori
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex items-center space-x-2">
         <input
