@@ -334,31 +334,38 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // FIXED: Enhanced template content handling with proper variable substitution
-        let emailSubject = subject;
-        let emailContent = shortText;
+        // CRITICAL FIX: ALWAYS PRIORITIZE DATABASE TEMPLATE CONTENT
+        let emailSubject, emailContent;
         
-        // Use database template content if available
-        if (emailTemplate) {
-          if (emailTemplate.subject) {
-            emailSubject = emailTemplate.subject;
-            console.log("[Notification Email] Using database template subject");
-          }
-          
-          if (emailTemplate.content) {
-            emailContent = emailTemplate.content;
-            console.log("[Notification Email] Using database template content");
-          }
+        if (emailTemplate && emailTemplate.subject && emailTemplate.content) {
+          // Use database template content - ABSOLUTE PRIORITY
+          emailSubject = emailTemplate.subject;
+          emailContent = emailTemplate.content;
+          console.log("[Notification Email] Using database template subject and content - PRIORITY");
+        } else {
+          // Only use frontend content as absolute fallback when no database template exists
+          emailSubject = subject || 'Notifica Sistema';
+          emailContent = shortText || 'Hai ricevuto una nuova notifica.';
+          console.log("[Notification Email] Using frontend fallback content - no database template found");
         }
         
-        // CRITICAL FIX: Enhanced dynamic variable substitution with proper employee name handling
-        console.log("[Notification Email] Substituting variables - employeeName:", employeeName);
+        // ENHANCED VARIABLE SUBSTITUTION - More robust handling
+        console.log("[Notification Email] Starting variable substitution - employeeName:", employeeName);
         
+        // Replace {employee_name} with proper handling
         if (employeeName) {
-          // Replace {employee_name} in both subject and content
+          const originalSubject = emailSubject;
+          const originalContent = emailContent;
+          
           emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
           emailContent = emailContent.replace(/{employee_name}/g, employeeName);
-          console.log("[Notification Email] Replaced {employee_name} with:", employeeName);
+          
+          console.log("[Notification Email] Employee name substitution:");
+          console.log("  Original subject:", originalSubject);
+          console.log("  Final subject:", emailSubject);
+          console.log("  Employee name used:", employeeName);
+        } else {
+          console.log("[Notification Email] No employee name provided for substitution");
         }
         
         // Replace recipient name in content
