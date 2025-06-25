@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -18,7 +19,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName } = body;
+    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail } = body;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -186,6 +187,7 @@ serve(async (req) => {
     let logoSize = adminSetting.global_logo_size || templateData.logo_size || 'medium';
     
     if (!logoUrl) {
+      // Fallback to template logo or default admin logo
       logoUrl = templateData.logo_url;
       if (!logoUrl) {
         const { data: logoData } = await supabase.storage
@@ -299,30 +301,20 @@ serve(async (req) => {
         
         const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
         
+        // Determine if this should show button - notifications and documents should always show button unless explicitly disabled
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // Determine email subject and content based on template
+        // Per documenti e notifiche, usa sempre il contenuto dinamico dal request
         let emailSubject = subject;
         let emailContent = shortText;
         
-        // For employee document templates, use the configured template
-        if (templateType === 'documenti' && templateCategory === 'dipendenti' && emailTemplate) {
-          emailSubject = emailTemplate.subject || subject;
-          emailContent = emailTemplate.content || shortText;
-          
-          // Replace {employee_name} placeholder with actual employee name
-          if (employeeName) {
-            emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
-            emailContent = emailContent.replace(/{employee_name}/g, employeeName);
-          }
-        }
-        
-        // For other template types, use the template content if available
+        // Per i template di permessi, usa il contenuto del template se disponibile
         if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailTemplate) {
           emailSubject = emailTemplate.subject || subject;
           emailContent = emailTemplate.content || shortText;
           
+          // Replace placeholders with actual data for leave templates
           if (recipient.first_name && recipient.last_name) {
             emailContent = emailContent.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
           }
@@ -341,8 +333,8 @@ serve(async (req) => {
         }
         
         const htmlContent = buildHtmlContent({
-          subject: emailSubject,
-          shortText: emailContent,
+          subject: emailTemplate?.subject || 'Default Subject',
+          shortText: emailTemplate?.content || 'Default Content',
           logoUrl,
           attachmentSection,
           senderEmail,
@@ -375,9 +367,9 @@ serve(async (req) => {
           customBlockText: templateData.custom_block_text,
           customBlockBgColor: templateData.custom_block_bg_color,
           customBlockTextColor: templateData.custom_block_text_color,
-          dynamicSubject: (['notifiche', 'documenti'].includes(templateType) && templateCategory !== 'dipendenti') ? emailSubject : '',
-          dynamicContent: (['notifiche', 'documenti'].includes(templateType) && templateCategory !== 'dipendenti') ? emailContent : '',
-          employeeEmail: employeeEmail
+          dynamicSubject: (['notifiche', 'documenti'].includes(templateType)) ? emailSubject : '',
+          dynamicContent: (['notifiche', 'documenti'].includes(templateType)) ? emailContent : '',
+          employeeEmail: employeeEmail // Pass employee email to template for display
         });
 
         // Build Brevo payload with configured sender settings
@@ -389,6 +381,7 @@ serve(async (req) => {
           textContent: `${emailSubject}\n\n${emailContent}\n\nInviato da: ${senderName}`
         };
 
+        // Add replyTo if we have one (either employee email or configured reply-to)
         if (dynamicReplyTo) {
           brevoPayload.replyTo = { email: dynamicReplyTo };
           console.log("[Notification Email] Setting reply-to:", dynamicReplyTo);
