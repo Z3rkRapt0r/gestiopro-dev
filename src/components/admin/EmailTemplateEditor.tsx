@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Save, Eye, Settings, Type, Palette } from "lucide-react";
+import { Save, Eye, Settings, Type, Palette, Lock } from "lucide-react";
 import EmailTemplatePreview from "./EmailTemplatePreview";
 
 interface EmailTemplateEditorProps {
@@ -19,13 +18,17 @@ interface EmailTemplateEditorProps {
   templateCategory?: string;
   defaultContent: string;
   defaultSubject: string;
+  subjectEditable?: boolean;
+  contentEditable?: boolean;
 }
 
 const EmailTemplateEditor = ({ 
   templateType, 
   templateCategory = "generale",
   defaultContent, 
-  defaultSubject 
+  defaultSubject,
+  subjectEditable = true,
+  contentEditable = true
 }: EmailTemplateEditorProps) => {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -162,8 +165,8 @@ const EmailTemplateEditor = ({
         admin_notes_text_color: adminNotesTextColor,
         button_color: buttonColor,
         button_text_color: buttonTextColor,
-        subject_editable: true,
-        content_editable: true,
+        subject_editable: subjectEditable,
+        content_editable: contentEditable,
       };
 
       const { error } = await supabase
@@ -199,6 +202,14 @@ const EmailTemplateEditor = ({
             Categoria: {templateCategory === 'dipendenti' ? 'Per Dipendenti' : 'Per Amministratori'} | 
             Tipo: {templateType}
           </p>
+          {(!subjectEditable || !contentEditable) && (
+            <div className="flex items-center gap-2 mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+              <Lock className="w-4 h-4 text-yellow-600" />
+              <span className="text-sm text-yellow-700">
+                Alcuni campi sono bloccati per questo template
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <Button
@@ -255,28 +266,51 @@ const EmailTemplateEditor = ({
             <CardTitle className="flex items-center gap-2">
               <Type className="w-5 h-5" />
               Contenuto Email
+              {(!subjectEditable || !contentEditable) && (
+                <Lock className="w-4 h-4 text-yellow-600" />
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="subject">Oggetto Email</Label>
+              <Label htmlFor="subject" className="flex items-center gap-2">
+                Oggetto Email
+                {!subjectEditable && <Lock className="w-3 h-3 text-yellow-600" />}
+              </Label>
               <Input
                 id="subject"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Oggetto dell'email"
+                disabled={!subjectEditable}
+                className={!subjectEditable ? "bg-gray-50 cursor-not-allowed" : ""}
               />
+              {!subjectEditable && (
+                <p className="text-xs text-yellow-600 mt-1">
+                  L'oggetto viene personalizzato automaticamente durante l'invio
+                </p>
+              )}
             </div>
 
             <div>
-              <Label htmlFor="content">Contenuto Email</Label>
+              <Label htmlFor="content" className="flex items-center gap-2">
+                Contenuto Email
+                {!contentEditable && <Lock className="w-3 h-3 text-yellow-600" />}
+              </Label>
               <Textarea
                 id="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Contenuto dell'email"
                 rows={8}
+                disabled={!contentEditable}
+                className={!contentEditable ? "bg-gray-50 cursor-not-allowed" : ""}
               />
+              {!contentEditable && (
+                <p className="text-xs text-yellow-600 mt-1">
+                  Il contenuto viene personalizzato automaticamente durante l'invio
+                </p>
+              )}
             </div>
 
             <div>
