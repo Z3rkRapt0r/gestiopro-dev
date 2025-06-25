@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,7 @@ const EmailTemplateEditor = ({
   // State
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null);
 
   // Load existing template
   useEffect(() => {
@@ -85,20 +87,24 @@ const EmailTemplateEditor = ({
 
   const loadTemplate = async () => {
     try {
+      console.log('Loading template:', { templateType, templateCategory, adminId: profile?.id });
+      
       const { data, error } = await supabase
         .from("email_templates")
         .select("*")
         .eq("admin_id", profile?.id)
         .eq("template_type", templateType)
         .eq("template_category", templateCategory)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error("Error loading template:", error);
         return;
       }
 
       if (data) {
+        console.log('Template loaded successfully:', data);
+        setExistingTemplateId(data.id);
         setSubject(data.subject || defaultSubject);
         setContent(data.content || defaultContent);
         setTextAlignment(data.text_alignment || "left");
@@ -124,6 +130,9 @@ const EmailTemplateEditor = ({
         setAdminNotesTextColor(data.admin_notes_text_color || "#495057");
         setButtonColor(data.button_color || "#007bff");
         setButtonTextColor(data.button_text_color || "#ffffff");
+      } else {
+        console.log('No existing template found, using defaults');
+        setExistingTemplateId(null);
       }
     } catch (error) {
       console.error("Error loading template:", error);
@@ -131,10 +140,19 @@ const EmailTemplateEditor = ({
   };
 
   const handleSave = async () => {
-    if (!profile?.id) return;
+    if (!profile?.id) {
+      toast({
+        title: "Errore",
+        description: "Devi essere autenticato per salvare i template.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
+      console.log('Starting save process for template:', { templateType, templateCategory, existingTemplateId });
+
       const templateData = {
         admin_id: profile.id,
         template_type: templateType,
@@ -169,13 +187,34 @@ const EmailTemplateEditor = ({
         content_editable: contentEditable,
       };
 
-      const { error } = await supabase
-        .from("email_templates")
-        .upsert(templateData);
+      // Use DELETE + INSERT approach to avoid conflicts
+      if (existingTemplateId) {
+        console.log('Deleting existing template:', existingTemplateId);
+        const { error: deleteError } = await supabase
+          .from("email_templates")
+          .delete()
+          .eq("id", existingTemplateId);
 
-      if (error) {
-        throw error;
+        if (deleteError) {
+          console.error("Error deleting existing template:", deleteError);
+          throw deleteError;
+        }
       }
+
+      console.log('Inserting new template:', templateData);
+      const { data: newTemplate, error: insertError } = await supabase
+        .from("email_templates")
+        .insert(templateData)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("Error inserting template:", insertError);
+        throw insertError;
+      }
+
+      console.log('Template saved successfully:', newTemplate);
+      setExistingTemplateId(newTemplate.id);
 
       toast({
         title: "Template salvato",
@@ -185,7 +224,7 @@ const EmailTemplateEditor = ({
       console.error("Error saving template:", error);
       toast({
         title: "Errore",
-        description: "Errore nel salvataggio del template: " + error.message,
+        description: "Errore nel salvataggio del template: " + (error.message || "Errore sconosciuto"),
         variant: "destructive",
       });
     } finally {
