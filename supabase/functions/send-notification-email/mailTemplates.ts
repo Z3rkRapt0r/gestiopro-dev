@@ -1,3 +1,4 @@
+
 export interface EmailContentParams {
   subject: string;
   shortText: string;
@@ -93,7 +94,15 @@ export function buildHtmlContent({
 }: EmailContentParams & {
   employeeEmail?: string;
 }) {
-  // Logo Section
+  // Determine font size in pixels
+  const fontSizeMap: { [key: string]: string } = {
+    'small': '14px',
+    'medium': '16px',
+    'large': '18px'
+  };
+  const actualFontSize = fontSizeMap[fontSize] || '16px';
+
+  // Logo Section with global settings
   const logoSection = logoUrl
     ? `<div style="text-align:${logoAlignment};margin-bottom:24px;">
         <img src="${logoUrl}" alt="Logo" style="max-height:${logoSize === 'small' ? '40px' : logoSize === 'large' ? '80px' : '60px'};max-width:180px;" />
@@ -112,7 +121,7 @@ export function buildHtmlContent({
   ` : "";
 
   // Custom Block Section
-  const customBlockSection = showCustomBlock ? `
+  const customBlockSection = showCustomBlock && customBlockText ? `
     <div style="background-color: ${customBlockBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${customBlockTextColor};">
       <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📣 Avviso Importante</h4>
       <p style="margin: 0; font-size: 14px;">
@@ -166,16 +175,16 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // Build the complete HTML
+  // Build the complete HTML with improved text alignment and styling
   return `
-    <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor};">
+    <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; font-size: ${actualFontSize};">
       ${logoSection}
       ${employeeInfoSection}
       ${customBlockSection}
-      <h2 style="color: ${primaryColor}; border-bottom: 2px solid ${primaryColor}; padding-bottom: 10px; text-align: ${headerAlignment};">
+      <h2 style="color: ${primaryColor}; border-bottom: 2px solid ${primaryColor}; padding-bottom: 10px; text-align: ${headerAlignment}; font-size: ${parseInt(actualFontSize) + 4}px;">
         ${finalSubject}
       </h2>
-      <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${textColor}; text-align: ${bodyAlignment};">
+      <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${textColor}; text-align: ${bodyAlignment}; font-size: ${actualFontSize};">
         ${finalContent.replace(/\n/g, '<br>')}
         ${leaveDetailsSection}
         ${adminNotesSection}

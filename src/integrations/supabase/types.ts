@@ -25,6 +25,9 @@ export type Database = {
           enable_leave_notifications: boolean | null
           enable_notifications: boolean | null
           enable_welcome_emails: boolean | null
+          global_logo_alignment: string | null
+          global_logo_size: string | null
+          global_logo_url: string | null
           id: string
           max_retries: number | null
           reply_to: string | null
@@ -49,6 +52,9 @@ export type Database = {
           enable_leave_notifications?: boolean | null
           enable_notifications?: boolean | null
           enable_welcome_emails?: boolean | null
+          global_logo_alignment?: string | null
+          global_logo_size?: string | null
+          global_logo_url?: string | null
           id?: string
           max_retries?: number | null
           reply_to?: string | null
@@ -73,6 +79,9 @@ export type Database = {
           enable_leave_notifications?: boolean | null
           enable_notifications?: boolean | null
           enable_welcome_emails?: boolean | null
+          global_logo_alignment?: string | null
+          global_logo_size?: string | null
+          global_logo_url?: string | null
           id?: string
           max_retries?: number | null
           reply_to?: string | null
@@ -344,6 +353,7 @@ export type Database = {
           button_color: string | null
           button_text_color: string | null
           content: string
+          content_editable: boolean | null
           created_at: string | null
           custom_block_bg_color: string | null
           custom_block_text: string | null
@@ -370,7 +380,10 @@ export type Database = {
           show_details_button: boolean | null
           show_leave_details: boolean | null
           subject: string
+          subject_editable: boolean | null
+          template_category: string | null
           template_type: string
+          text_alignment: string | null
           text_color: string | null
           updated_at: string | null
         }
@@ -384,6 +397,7 @@ export type Database = {
           button_color?: string | null
           button_text_color?: string | null
           content: string
+          content_editable?: boolean | null
           created_at?: string | null
           custom_block_bg_color?: string | null
           custom_block_text?: string | null
@@ -410,7 +424,10 @@ export type Database = {
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
           subject: string
+          subject_editable?: boolean | null
+          template_category?: string | null
           template_type?: string
+          text_alignment?: string | null
           text_color?: string | null
           updated_at?: string | null
         }
@@ -424,6 +441,7 @@ export type Database = {
           button_color?: string | null
           button_text_color?: string | null
           content?: string
+          content_editable?: boolean | null
           created_at?: string | null
           custom_block_bg_color?: string | null
           custom_block_text?: string | null
@@ -450,7 +468,10 @@ export type Database = {
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
           subject?: string
+          subject_editable?: boolean | null
+          template_category?: string | null
           template_type?: string
+          text_alignment?: string | null
           text_color?: string | null
           updated_at?: string | null
         }

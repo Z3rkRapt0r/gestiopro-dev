@@ -1,13 +1,23 @@
 
 import EmailTemplateEditor from "./EmailTemplateEditor";
 
-const DocumentTemplateEditor = () => {
-  const defaultContent = "È disponibile un nuovo documento per la tua revisione. Il documento contiene informazioni importanti che richiedono la tua attenzione.";
-  const defaultSubject = "Nuovo Documento Disponibile";
+interface DocumentTemplateEditorProps {
+  templateType?: string;
+  templateCategory?: string;
+  defaultContent?: string;
+  defaultSubject?: string;
+}
 
+const DocumentTemplateEditor = ({ 
+  templateType = "documenti",
+  templateCategory = "generale",
+  defaultContent = "È disponibile un nuovo documento per la tua revisione. Il documento contiene informazioni importanti che richiedono la tua attenzione.",
+  defaultSubject = "Nuovo Documento Disponibile"
+}: DocumentTemplateEditorProps) => {
   return (
     <EmailTemplateEditor
-      templateType="documenti"
+      templateType={templateType}
+      templateCategory={templateCategory}
       defaultContent={defaultContent}
       defaultSubject={defaultSubject}
     />
