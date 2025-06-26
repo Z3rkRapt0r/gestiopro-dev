@@ -147,19 +147,22 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
 
     if (!error && notifyRecipient) {
       console.log('[DocumentUpload] Document uploaded successfully, preparing notification');
+      console.log('[DocumentUpload] Admin message (body) to send:', body); // FIXED: Log the body content
       
       // Get employee name for template personalization
       const employeeName = profile?.first_name && profile?.last_name 
         ? `${profile.first_name} ${profile.last_name}`
         : profile?.email || 'Dipendente';
 
-      // Prepare notification payload
+      // FIXED: Prepare notification payload with admin message
       const notificationPayload: any = {
         subject: subject.trim(),
         shortText: body.trim() || `Nuovo documento caricato: ${subject}`,
         topic: "document",
         employeeName, // Pass employee name for template personalization
-        body: body.trim(), // Include the body/note content
+        // FIXED: Pass the admin message correctly
+        adminMessage: body.trim(), // This is the admin message that should appear in the email
+        emailBody: body.trim(), // Also pass as emailBody for backwards compatibility
       };
 
       // Determine notification recipients and sender email
@@ -174,11 +177,18 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
       } else if (shouldNotifyEmployee && specificEmployeeToNotify) {
         // Admin uploading document for specific employee
         console.log('[DocumentUpload] Notifying specific employee:', specificEmployeeToNotify);
+        console.log('[DocumentUpload] Admin message to send:', body.trim()); // FIXED: Log admin message
         notificationPayload.recipientId = specificEmployeeToNotify;
+        // FIXED: Ensure admin message is passed for employee notifications
+        notificationPayload.adminMessage = body.trim();
+        notificationPayload.emailBody = body.trim();
       } else if (shouldNotifyAllEmployees) {
         // Admin uploading company document for all employees
         console.log('[DocumentUpload] Notifying all employees - company document');
         notificationPayload.recipientId = null; // Send to all employees
+        // FIXED: Include admin message for company-wide notifications
+        notificationPayload.adminMessage = body.trim();
+        notificationPayload.emailBody = body.trim();
       } else {
         // Admin uploading for themselves - no notification needed
         console.log('[DocumentUpload] Admin uploading for themselves - no notification needed');

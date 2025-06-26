@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +11,10 @@ interface NotificationInput {
   file?: File | null;
   topic?: string;
   employeeEmail?: string;
+  adminMessage?: string;
+  emailBody?: string;
+  employeeName?: string;
+  employeeNote?: string;
 }
 
 export const useNotificationForm = (onCreated?: () => void) => {
@@ -27,12 +30,27 @@ export const useNotificationForm = (onCreated?: () => void) => {
     file,
     topic,
     employeeEmail,
+    adminMessage,
+    emailBody,
+    employeeName,
+    employeeNote,
   }: NotificationInput) => {
     setLoading(true);
 
     try {
       console.log('useNotificationForm: Starting notification send process');
-      console.log('Parameters:', { recipientId, subject, shortText, body, topic, employeeEmail });
+      console.log('Parameters:', { 
+        recipientId, 
+        subject, 
+        shortText, 
+        body, 
+        topic, 
+        employeeEmail,
+        adminMessage, // FIXED: Log admin message
+        emailBody,
+        employeeName,
+        employeeNote
+      });
       
       let attachment_url: string | null = null;
 
@@ -210,6 +228,10 @@ export const useNotificationForm = (onCreated?: () => void) => {
         subject,
         shortText,
         topic: topic || "notification",
+        adminMessage: adminMessage || emailBody || body, // Try multiple sources for admin message
+        emailBody: emailBody || adminMessage || body, // Backwards compatibility
+        employeeName: employeeName,
+        employeeNote: employeeNote,
       };
 
       // Include employee email for reply-to if available
@@ -222,7 +244,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
         console.log('Adding sender employee email to notification payload:', profile.email);
       }
 
-      console.log('Final email payload:', emailPayload);
+      console.log('Final email payload with admin message:', emailPayload);
 
       const { data: emailResult, error: emailError } = await supabase.functions.invoke(
         'send-notification-email',
