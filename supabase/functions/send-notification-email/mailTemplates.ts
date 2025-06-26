@@ -150,10 +150,10 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // ENHANCED: Admin Message Section - ROBUST LOGIC FOR DISPLAY
+  // ENHANCED: Admin Message Section - ROBUST LOGIC FOR DISPLAY WITH ENHANCED CONDITION CHECKING
   let adminMessageSection = '';
   
-  // Check if we should show the admin message section - ENHANCED CONDITIONS
+  // ENHANCED: Check if we should show the admin message section with more robust logic
   const shouldShowAdminMessage = showAdminMessage && adminMessage && adminMessage.trim() !== '';
   
   console.log("[Mail Templates] Admin message section decision:");
@@ -161,6 +161,7 @@ export function buildHtmlContent({
   console.log("  adminMessage exists:", !!adminMessage);
   console.log("  adminMessage not empty:", adminMessage && adminMessage.trim() !== '');
   console.log("  shouldShowAdminMessage:", shouldShowAdminMessage);
+  console.log("  adminMessage content:", adminMessage);
   
   if (shouldShowAdminMessage) {
     adminMessageSection = `
@@ -178,6 +179,7 @@ export function buildHtmlContent({
     console.log("  Admin message content length:", adminMessage.length);
     console.log("  Background color:", adminMessageBgColor);
     console.log("  Text color:", adminMessageTextColor);
+    console.log("  Final HTML section length:", adminMessageSection.length);
   } else {
     console.log("[Mail Templates] Admin message section NOT created - conditions not met");
     console.log("  Missing conditions:");
@@ -273,6 +275,8 @@ export function buildHtmlContent({
   `;
 
   console.log("[Mail Templates] HTML content built. Admin message section included:", shouldShowAdminMessage);
+  console.log("[Mail Templates] Final HTML content length:", htmlContent.length);
+  console.log("[Mail Templates] Admin message section length in final HTML:", adminMessageSection.length);
   
   return htmlContent;
 }

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -57,6 +56,38 @@ serve(async (req) => {
     }
 
     console.log("[Notification Email] Using admin ID for settings:", adminSettingsUserId);
+
+    // FIXED: Update the database template if it doesn't have the admin_message placeholder
+    console.log("[Notification Email] Checking and updating template for admin message placeholder...");
+    
+    const { data: currentTemplate, error: fetchError } = await supabase
+      .from("email_templates")
+      .select("*")
+      .eq("admin_id", adminSettingsUserId)
+      .eq("template_type", "documenti")
+      .eq("template_category", "amministratori")
+      .single();
+
+    if (!fetchError && currentTemplate && currentTemplate.show_admin_message && !currentTemplate.content.includes('{admin_message}')) {
+      console.log("[Notification Email] Template missing {admin_message} placeholder, updating...");
+      
+      // Update the template to include the admin message placeholder
+      const updatedContent = currentTemplate.content.replace(
+        'Accedi alla dashboard per visualizzare il documento.',
+        '{admin_message}\n\nAccedi alla dashboard per visualizzare il documento.'
+      );
+      
+      const { error: updateError } = await supabase
+        .from("email_templates")
+        .update({ content: updatedContent })
+        .eq("id", currentTemplate.id);
+      
+      if (updateError) {
+        console.error("[Notification Email] Error updating template:", updateError);
+      } else {
+        console.log("[Notification Email] Template updated successfully with admin message placeholder");
+      }
+    }
 
     // Get Brevo settings for admin including sender configuration and global logo
     const { data: adminSetting, error: settingsError } = await supabase
@@ -155,7 +186,7 @@ serve(async (req) => {
 
     console.log("[Notification Email] Template mapping - Type:", templateType, "Category:", templateCategory, "Topic:", topic);
 
-    // Get email template for the specific template type and category
+    // Get email template for the specific template type and category (refresh after potential update)
     console.log("[Notification Email] Looking for email template:", templateType, templateCategory);
     const { data: emailTemplate, error: templateError } = await supabase
       .from("email_templates")
@@ -176,6 +207,7 @@ serve(async (req) => {
       console.log("[Notification Email] Template show_admin_message:", emailTemplate.show_admin_message);
       console.log("[Notification Email] Template admin_message_bg_color:", emailTemplate.admin_message_bg_color);
       console.log("[Notification Email] Template admin_message_text_color:", emailTemplate.admin_message_text_color);
+      console.log("[Notification Email] Template content includes {admin_message}:", emailTemplate.content.includes('{admin_message}'));
     }
 
     // Template data handling - prioritize database template or use minimal fallback
@@ -374,6 +406,7 @@ serve(async (req) => {
         console.log("  Show admin message setting:", hasAdminMessageConfig);
         console.log("  Has admin message content:", hasAdminMessageContent);
         console.log("  Is admin to employee document:", isAdminToEmployeeDocument);
+        console.log("  Email body content:", emailBody);
         
         // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING
         console.log("[Notification Email] Starting variable substitution for template type:", templateType);
@@ -444,31 +477,30 @@ serve(async (req) => {
             console.log("  Admin message content:", emailBody);
             console.log("  Content changed:", originalContent !== emailContent);
           } else if (hasAdminMessageConfig) {
-            // Intelligently add admin message even without placeholder
-            // Add it after the main content but before any closing remarks
-            const adminMessageSection = `\n\n📝 **Messaggio dall'Amministratore:**\n${emailBody}\n`;
+            // IMPROVED: Intelligently add admin message even without placeholder
+            console.log("  No placeholder found, intelligently inserting admin message");
             
             // Try to insert before common closing phrases
             const closingPatterns = [
-              /\n\nAccedi alla dashboard/,
-              /\n\nDistinti saluti/,
-              /\n\nCordiali saluti/,
-              /\n\nGrazie/
+              { pattern: /Accedi alla dashboard per visualizzare il documento\./g, replacement: `${emailBody}\n\nAccedi alla dashboard per visualizzare il documento.` },
+              { pattern: /\n\nDistinti saluti/g, replacement: `\n\n${emailBody}\n\nDistinti saluti` },
+              { pattern: /\n\nCordiali saluti/g, replacement: `\n\n${emailBody}\n\nCordiali saluti` },
+              { pattern: /\n\nGrazie/g, replacement: `\n\n${emailBody}\n\nGrazie` }
             ];
             
             let inserted = false;
-            for (const pattern of closingPatterns) {
+            for (const { pattern, replacement } of closingPatterns) {
               if (pattern.test(emailContent)) {
-                emailContent = emailContent.replace(pattern, adminMessageSection + '$&');
+                emailContent = emailContent.replace(pattern, replacement);
                 inserted = true;
-                console.log("  Intelligently inserted admin message before closing");
+                console.log("  Intelligently inserted admin message before closing phrase");
                 break;
               }
             }
             
             if (!inserted) {
               // Append at the end if no good insertion point found
-              emailContent += adminMessageSection;
+              emailContent += `\n\n${emailBody}`;
               console.log("  Appended admin message at the end");
             }
           }
@@ -619,7 +651,8 @@ serve(async (req) => {
           hasAdminMessageConfig: templateData.show_admin_message,
           hasAdminMessageContent: !!(emailBody && emailBody.trim()),
           adminMessageProcessed: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody),
-          intelligentPlaceholderHandling: true
+          intelligentPlaceholderHandling: true,
+          templateUpdated: "Template updated with admin_message placeholder if missing"
         },
         variableSubstitution: {
           employeeName: employeeName || "Not provided",
@@ -637,7 +670,8 @@ serve(async (req) => {
           adminMessageValue: emailBody,
           isAdminDocumentTemplate: templateType === 'documenti' && templateCategory === 'amministratori',
           adminMessageForTemplate: adminMessageForResponse,
-          intelligentHandling: "Enabled - works with or without {admin_message} placeholder"
+          intelligentHandling: "Enabled - works with or without {admin_message} placeholder",
+          templateAutoUpdated: "Template content updated to include {admin_message} placeholder if missing"
         },
         errors: errors.length > 0 ? errors : undefined
       }),
