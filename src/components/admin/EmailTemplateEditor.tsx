@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -353,21 +352,6 @@ const EmailTemplateEditor = ({
                     Puoi usare <code>{'{admin_message}'}</code> per il messaggio dell'amministratore
                   </p>
                 )}
-              </div>
-
-              <div>
-                <Label htmlFor="text-alignment">Allineamento Testo</Label>
-                <Select value={textAlignment} onValueChange={setTextAlignment}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona allineamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="left">Sinistra</SelectItem>
-                    <SelectItem value="center">Centro</SelectItem>
-                    <SelectItem value="right">Destra</SelectItem>
-                    <SelectItem value="justify">Giustificato</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </CardContent>
           </Card>
