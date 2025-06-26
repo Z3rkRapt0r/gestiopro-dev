@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -336,6 +335,9 @@ serve(async (req) => {
     let successCount = 0;
     const errors = [];
 
+    // FIXED: Initialize adminMessage outside the loop to prevent ReferenceError
+    let adminMessage = '';
+
     for (const recipient of recipients) {
       try {
         console.log("[Notification Email] Preparing email for recipient:", recipient.email);
@@ -439,9 +441,6 @@ serve(async (req) => {
           employeeNotes = employeeNote;
         }
 
-        // FIXED: Initialize adminMessage as empty string to prevent ReferenceError
-        let adminMessage = '';
-        
         // Set admin message for admin document templates
         if (templateType === 'documenti' && templateCategory === 'amministratori' && emailBody) {
           adminMessage = emailBody;
@@ -495,7 +494,6 @@ serve(async (req) => {
           dynamicSubject: emailSubject,
           dynamicContent: emailContent,
           employeeEmail: employeeEmail,
-          // FIXED: Pass admin message directly and let template decide when to show it
           showAdminMessage: templateData.show_admin_message,
           adminMessage: adminMessage,
           adminMessageBgColor: templateData.admin_message_bg_color,
@@ -565,7 +563,6 @@ serve(async (req) => {
           adminMessage: emailBody || "Not provided",
           adminMessagePassed: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody)
         },
-        // ENHANCED: Admin message debugging info
         adminMessageDebugging: {
           templateType,
           templateCategory,
