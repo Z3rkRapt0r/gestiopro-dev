@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -18,7 +19,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName, employeeNote } = body;
+    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName, employeeNote, adminMessage } = body;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -336,7 +337,7 @@ serve(async (req) => {
     const errors = [];
 
     // FIXED: Initialize adminMessage outside the loop to prevent ReferenceError
-    let adminMessage = '';
+    let finalAdminMessage = adminMessage || emailBody || '';
 
     for (const recipient of recipients) {
       try {
@@ -347,142 +348,101 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // ENHANCED PRIORITY LOGIC: ALWAYS PRIORITIZE DATABASE TEMPLATE CONTENT
+        // FIXED: ABSOLUTE PRIORITY LOGIC - ALWAYS USE DATABASE TEMPLATE WHEN AVAILABLE
         let emailSubject, emailContent;
         
         if (emailTemplate && emailTemplate.subject && emailTemplate.content) {
-          // ABSOLUTE PRIORITY: Use database template content
+          // ABSOLUTE PRIORITY: Use database template content - NEVER use frontend content
           emailSubject = emailTemplate.subject;
           emailContent = emailTemplate.content;
-          console.log("[Notification Email] Using database template subject and content - ABSOLUTE PRIORITY");
+          console.log("[Notification Email] USING DATABASE TEMPLATE - ABSOLUTE PRIORITY");
+          console.log("[Notification Email] Database template subject:", emailSubject);
+          console.log("[Notification Email] Database template content preview:", emailContent.substring(0, 100) + "...");
         } else {
-          // IMPROVED FALLBACK: Only use frontend content when no database template exists
+          // ONLY FALLBACK: Use frontend content when NO database template exists
           emailSubject = subject || 'Notifica Sistema';
           emailContent = shortText || 'Hai ricevuto una nuova notifica.';
-          console.log("[Notification Email] Using frontend fallback content - no database template found");
+          console.log("[Notification Email] FALLBACK CONTENT - No database template found");
+          console.log("[Notification Email] Using frontend subject:", emailSubject);
+          console.log("[Notification Email] Using frontend content:", emailContent);
         }
         
         // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING - IMPROVED FOR VACATION REQUESTS
         console.log("[Notification Email] Starting variable substitution for template type:", templateType);
         console.log("[Notification Email] Employee name provided:", employeeName);
         console.log("[Notification Email] Employee note provided:", employeeNote);
-        console.log("[Notification Email] Admin message (emailBody) provided:", emailBody);
-        
-        // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
+        console.log("[Notification Email] Admin message provided:", finalAdminMessage);
         console.log("[Notification Email] Template category:", templateCategory);
         console.log("[Notification Email] Is admin document template:", templateType === 'documenti' && templateCategory === 'amministratori');
         console.log("[Notification Email] Show admin message setting:", templateData.show_admin_message);
-        
-        // Replace {employee_name} with enhanced logging - CRITICAL FOR VACATION REQUESTS
-        if (employeeName) {
-          const originalSubject = emailSubject;
-          const originalContent = emailContent;
-          
-          emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
-          emailContent = emailContent.replace(/{employee_name}/g, employeeName);
-          
-          console.log("[Notification Email] Enhanced employee name substitution:");
-          console.log("  Template type:", templateType);
-          console.log("  Original subject:", originalSubject);
-          console.log("  Final subject:", emailSubject);
-          console.log("  Employee name used:", employeeName);
-          console.log("  Subject changed:", originalSubject !== emailSubject);
-          console.log("  Content changed:", originalContent !== emailContent);
-        } else {
-          console.log("[Notification Email] No employee name provided for substitution");
-        }
-        
-        // Replace recipient name in content
-        if (recipient.first_name && recipient.last_name) {
-          const recipientName = `${recipient.first_name} ${recipient.last_name}`;
-          emailContent = emailContent.replace(/Gentile [^,]+,/g, `Gentile ${recipientName},`);
-          emailContent = emailContent.replace(/Gentile Admin Sistema,/g, `Gentile ${recipientName},`);
-          console.log("[Notification Email] Replaced recipient greeting with:", recipientName);
-        }
-        
-        // Replace employee notes for employee request templates
-        if (templateType.includes('richiesta') && employeeNote) {
-          emailContent = emailContent.replace(/{employee_note}/g, employeeNote);
-          console.log("[Notification Email] Replaced employee note for request template");
-        } else if (templateType.includes('richiesta')) {
-          emailContent = emailContent.replace(/{employee_note}/g, 'Nessuna nota aggiuntiva.');
-        }
-        
-        // Replace leave details for leave request templates - ENHANCED FOR VACATION REQUESTS
-        if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
-          emailContent = emailContent.replace(/{leave_details}/g, emailBody);
-          console.log("[Notification Email] Replaced leave details for template type:", templateType);
-        }
-        
-        // Replace admin notes for approval/rejection templates
-        if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
-          emailContent = emailContent.replace(/{admin_note}/g, adminNote);
-          console.log("[Notification Email] Replaced admin note for template type:", templateType);
-        }
 
-        // FIXED: Do NOT replace {admin_message} placeholder here - let the template handle it
-        // This was causing the admin message to be replaced with empty string
+        // Enhanced employee name substitution
+        console.log("[Notification Email] Enhanced employee name substitution:");
+        console.log("  Template type:", templateType);
+        console.log("  Original subject:", emailSubject);
+        console.log("  Original content:", emailContent.substring(0, 100) + "...");
+        console.log("  Employee name used:", employeeName || 'N/A');
+        
+        const recipientName = recipient.first_name && recipient.last_name 
+          ? `${recipient.first_name} ${recipient.last_name}`
+          : recipient.email;
+        
+        // Replace {employee_name} with the actual employee name or sender name
+        const finalEmployeeName = employeeName || recipientName;
+        
+        emailSubject = emailSubject.replace(/{employee_name}/g, finalEmployeeName);
+        emailContent = emailContent.replace(/{employee_name}/g, finalEmployeeName);
+        
+        // Replace recipient greeting
+        emailContent = emailContent.replace(/{employee_name}/g, recipientName);
+        
+        console.log("[Notification Email] Replaced recipient greeting with:", recipientName);
+        
+        const subjectChanged = emailSubject !== (emailTemplate?.subject || subject);
+        const contentChanged = emailContent !== (emailTemplate?.content || shortText);
+        
+        console.log("  Subject changed:", subjectChanged);
+        console.log("  Content changed:", contentChanged);
+        console.log("  Final subject:", emailSubject);
+        console.log("  Final content preview:", emailContent.substring(0, 100) + "...");
+
+        // CRITICAL: Do NOT replace {admin_message} placeholder in content
+        // The admin message will be handled by the template system in the dedicated section
         console.log("[Notification Email] NOT replacing {admin_message} placeholder - template will handle it");
-        
-        // Prepare structured data for HTML template
-        let leaveDetails = '';
-        let adminNotes = '';
-        let employeeNotes = '';
-        
-        if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
-          leaveDetails = emailBody;
-        }
-        
-        if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
-          adminNotes = adminNote;
-        }
-        
-        if (['permessi-richiesta', 'ferie-richiesta'].includes(templateType) && employeeNote) {
-          employeeNotes = employeeNote;
-        }
 
-        // Set admin message for admin document templates
-        if (templateType === 'documenti' && templateCategory === 'amministratori' && emailBody) {
-          adminMessage = emailBody;
-          console.log("[Notification Email] SETTING ADMIN MESSAGE FOR HTML TEMPLATE:");
-          console.log("  Admin message value:", adminMessage);
-          console.log("  Template type:", templateType);
-          console.log("  Template category:", templateCategory);
-        }
-        
         console.log("[Notification Email] Final email subject:", emailSubject);
-        console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 150) + "...");
+        console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 100) + "...");
         console.log("[Notification Email] Template database usage:", !!emailTemplate);
-        console.log("[Notification Email] Admin message to pass:", adminMessage);
-        
+        console.log("[Notification Email] Admin message to pass:", finalAdminMessage);
+
         const htmlContent = buildHtmlContent({
           subject: emailSubject,
           shortText: emailContent,
           logoUrl,
           attachmentSection,
           senderEmail,
-          isDocumentEmail: isDocumentEmail || isNotificationEmail,
+          isDocumentEmail,
           templateType,
           primaryColor: templateData.primary_color,
           backgroundColor: templateData.background_color,
           textColor: templateData.text_color,
-          logoAlignment: logoAlignment,
+          logoAlignment,
           footerText: templateData.footer_text,
           footerColor: templateData.footer_color,
           fontFamily: templateData.font_family,
           buttonColor: templateData.button_color,
           buttonTextColor: templateData.button_text_color,
           borderRadius: templateData.border_radius,
-          logoSize: logoSize,
+          logoSize,
           headerAlignment: templateData.header_alignment,
-          bodyAlignment: templateData.text_alignment || templateData.body_alignment,
+          bodyAlignment: templateData.body_alignment,
           fontSize: templateData.font_size,
           showDetailsButton: templateData.show_details_button,
           showLeaveDetails: templateData.show_leave_details,
           showAdminNotes: templateData.show_admin_notes,
-          leaveDetails,
-          adminNotes,
-          employeeNotes,
+          leaveDetails: '',
+          adminNotes: '',
+          employeeNotes: employeeNote || '',
           leaveDetailsBgColor: templateData.leave_details_bg_color,
           leaveDetailsTextColor: templateData.leave_details_text_color,
           adminNotesBgColor: templateData.admin_notes_bg_color,
@@ -494,48 +454,52 @@ serve(async (req) => {
           dynamicSubject: emailSubject,
           dynamicContent: emailContent,
           employeeEmail: employeeEmail,
+          // FIXED: Pass admin message parameters correctly
           showAdminMessage: templateData.show_admin_message,
-          adminMessage: adminMessage,
+          adminMessage: finalAdminMessage,
           adminMessageBgColor: templateData.admin_message_bg_color,
           adminMessageTextColor: templateData.admin_message_text_color,
         });
 
-        // Build Brevo payload with configured sender settings
-        const brevoPayload: any = {
-          sender: { name: senderName, email: senderEmail },
-          to: [{ email: recipient.email }],
+        // Email sending configuration
+        const emailConfig: any = {
+          sender: { email: senderEmail, name: senderName },
+          to: [{ email: recipient.email, name: recipientName }],
           subject: emailSubject,
-          htmlContent,
-          textContent: `${emailSubject}\n\n${emailContent}\n\nInviato da: ${senderName}`
+          htmlContent: htmlContent,
         };
 
         if (dynamicReplyTo) {
-          brevoPayload.replyTo = { email: dynamicReplyTo };
+          emailConfig.replyTo = { email: dynamicReplyTo };
           console.log("[Notification Email] Setting reply-to:", dynamicReplyTo);
         }
 
         console.log("[Notification Email] Sending email to:", recipient.email, "with sender:", senderEmail);
 
+        // Send email via Brevo
         const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "api-key": adminSetting.brevo_api_key,
           },
-          body: JSON.stringify(brevoPayload),
+          body: JSON.stringify(emailConfig),
         });
 
-        if (brevoResponse.ok) {
-          successCount++;
-          console.log(`[Notification Email] Email sent successfully to ${recipient.email}`);
-        } else {
+        if (!brevoResponse.ok) {
           const errorText = await brevoResponse.text();
-          console.error(`[Notification Email] Failed to send to ${recipient.email}:`, errorText);
-          errors.push(`${recipient.email}: ${errorText}`);
+          console.error(`[Notification Email] Brevo API error for ${recipient.email}:`, errorText);
+          errors.push(`Failed to send to ${recipient.email}: ${errorText}`);
+          continue;
         }
+
+        const brevoResult = await brevoResponse.json();
+        console.log("[Notification Email] Email sent successfully to", recipient.email);
+        successCount++;
+
       } catch (error) {
-        console.error(`[Notification Email] Error sending to ${recipient.email}:`, error);
-        errors.push(`${recipient.email}: ${error.message}`);
+        console.error(`[Notification Email] Error sending email to ${recipient.email}:`, error);
+        errors.push(`Failed to send to ${recipient.email}: ${error.message}`);
       }
     }
 
@@ -544,46 +508,28 @@ serve(async (req) => {
     console.log("[Notification Email] Errors:", errors);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Email sent successfully",
-        recipients: successCount,
-        sender: `${senderName} <${senderEmail}>`,
-        replyTo: dynamicReplyTo,
-        templateType: templateType,
-        templateCategory: templateCategory,
-        templateUsed: !!emailTemplate,
-        templateContent: emailTemplate ? "Custom template from database" : "Fallback template",
-        templatePriority: emailTemplate ? "Database template (ABSOLUTE PRIORITY)" : "Frontend fallback",
-        variableSubstitution: {
-          employeeName: employeeName || "Not provided",
-          employeeNameSubstituted: !!employeeName,
-          employeeNote: employeeNote || "Not provided",
-          employeeNoteSubstituted: !!employeeNote,
-          adminMessage: emailBody || "Not provided",
-          adminMessagePassed: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody)
-        },
-        adminMessageDebugging: {
-          templateType,
-          templateCategory,
-          showAdminMessage: templateData.show_admin_message,
-          adminMessageValue: emailBody,
-          isAdminDocumentTemplate: templateType === 'documenti' && templateCategory === 'amministratori',
-          adminMessagePassedToTemplate: adminMessage || "Not passed"
-        },
-        errors: errors.length > 0 ? errors : undefined
+      JSON.stringify({
+        success: true,
+        message: `Emails sent to ${successCount} recipients`,
+        errors: errors.length > 0 ? errors : undefined,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
     );
 
-  } catch (error) {
-    console.error("[Notification Email] Unexpected error:", error);
+  } catch (error: any) {
+    console.error("[Notification Email] Function error:", error);
     return new Response(
       JSON.stringify({ 
-        error: "Internal server error", 
+        error: "Failed to send notification email", 
         details: error.message 
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
     );
   }
 });
