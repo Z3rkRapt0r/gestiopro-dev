@@ -37,7 +37,7 @@ export interface EmailContentParams {
   customBlockTextColor?: string;
   dynamicSubject?: string;
   dynamicContent?: string;
-  // NEW: Admin message parameters
+  // Admin message parameters
   showAdminMessage?: boolean;
   adminMessage?: string;
   adminMessageBgColor?: string;
@@ -150,17 +150,17 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // ENHANCED: Admin Message Section - IMPROVED LOGIC AND LOGGING
+  // FIXED: Admin Message Section - ALWAYS SHOW when adminMessage exists, regardless of flag
   let adminMessageSection = '';
   
-  // Check if we should show the admin message section
-  const shouldShowAdminMessage = showAdminMessage && adminMessage && adminMessage.trim() !== '';
+  // FIXED: Show admin message section whenever adminMessage is present and not empty
+  const shouldShowAdminMessage = adminMessage && adminMessage.trim() !== '';
   
   console.log("[Mail Templates] Admin message section decision:");
-  console.log("  showAdminMessage setting:", showAdminMessage);
   console.log("  adminMessage exists:", !!adminMessage);
   console.log("  adminMessage not empty:", adminMessage && adminMessage.trim() !== '');
   console.log("  shouldShowAdminMessage:", shouldShowAdminMessage);
+  console.log("  showAdminMessage flag (template setting):", showAdminMessage);
   
   if (shouldShowAdminMessage) {
     adminMessageSection = `
@@ -173,12 +173,21 @@ export function buildHtmlContent({
     `;
     console.log("[Mail Templates] Admin message section created successfully");
   } else {
-    console.log("[Mail Templates] Admin message section NOT created - conditions not met");
+    console.log("[Mail Templates] Admin message section NOT created - no message provided");
   }
 
   // Determine final subject and content
   const finalSubject = dynamicSubject || subject;
-  const finalContent = dynamicContent || shortText;
+  let finalContent = dynamicContent || shortText;
+
+  // FIXED: Replace {admin_message} placeholder in content with the actual message
+  if (adminMessage && finalContent.includes('{admin_message}')) {
+    finalContent = finalContent.replace(/{admin_message}/g, adminMessage);
+    console.log("[Mail Templates] Replaced {admin_message} placeholder in content");
+  } else if (finalContent.includes('{admin_message}')) {
+    finalContent = finalContent.replace(/{admin_message}/g, '');
+    console.log("[Mail Templates] Removed empty {admin_message} placeholder");
+  }
 
   // Leave Details Section
   const leaveDetailsSection = showLeaveDetails && leaveDetails ? `

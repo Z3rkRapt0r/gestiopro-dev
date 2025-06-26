@@ -348,6 +348,8 @@ export type Database = {
           admin_message_bg_color: string | null
           admin_message_text_color: string | null
           admin_notes_bg_color: string | null
+          admin_notes_section_bg_color: string | null
+          admin_notes_section_text_color: string | null
           admin_notes_text_color: string | null
           background_color: string | null
           body_alignment: string | null
@@ -379,6 +381,7 @@ export type Database = {
           sender_name: string | null
           show_admin_message: boolean | null
           show_admin_notes: boolean | null
+          show_admin_notes_section: boolean | null
           show_custom_block: boolean | null
           show_details_button: boolean | null
           show_leave_details: boolean | null
@@ -395,6 +398,8 @@ export type Database = {
           admin_message_bg_color?: string | null
           admin_message_text_color?: string | null
           admin_notes_bg_color?: string | null
+          admin_notes_section_bg_color?: string | null
+          admin_notes_section_text_color?: string | null
           admin_notes_text_color?: string | null
           background_color?: string | null
           body_alignment?: string | null
@@ -426,6 +431,7 @@ export type Database = {
           sender_name?: string | null
           show_admin_message?: boolean | null
           show_admin_notes?: boolean | null
+          show_admin_notes_section?: boolean | null
           show_custom_block?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
@@ -442,6 +448,8 @@ export type Database = {
           admin_message_bg_color?: string | null
           admin_message_text_color?: string | null
           admin_notes_bg_color?: string | null
+          admin_notes_section_bg_color?: string | null
+          admin_notes_section_text_color?: string | null
           admin_notes_text_color?: string | null
           background_color?: string | null
           body_alignment?: string | null
@@ -473,6 +481,7 @@ export type Database = {
           sender_name?: string | null
           show_admin_message?: boolean | null
           show_admin_notes?: boolean | null
+          show_admin_notes_section?: boolean | null
           show_custom_block?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
