@@ -1,4 +1,3 @@
-
 export interface EmailContentParams {
   subject: string;
   shortText: string;
@@ -42,6 +41,8 @@ export interface EmailContentParams {
   adminMessage?: string;
   adminMessageBgColor?: string;
   adminMessageTextColor?: string;
+  // Special parameter for admin message via custom block
+  isAdminMessageViaCustomBlock?: boolean;
 }
 
 export function buildAttachmentSection(attachmentUrl: string | null, primaryColor: string = '#007bff'): string {
@@ -103,8 +104,11 @@ export function buildHtmlContent({
   adminMessage = '',
   adminMessageBgColor = '#e3f2fd',
   adminMessageTextColor = '#1565c0',
+  // Special parameter for admin message via custom block
+  isAdminMessageViaCustomBlock = false,
 }: EmailContentParams & {
   employeeEmail?: string;
+  isAdminMessageViaCustomBlock?: boolean;
 }) {
   // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
   console.log("[Mail Templates] Building HTML content with admin message params:");
@@ -113,6 +117,9 @@ export function buildHtmlContent({
   console.log("  templateType:", templateType);
   console.log("  adminMessageBgColor:", adminMessageBgColor);
   console.log("  adminMessageTextColor:", adminMessageTextColor);
+  console.log("  isAdminMessageViaCustomBlock:", isAdminMessageViaCustomBlock);
+  console.log("  showCustomBlock:", showCustomBlock);
+  console.log("  customBlockText:", customBlockText);
 
   // Determine font size in pixels
   const fontSizeMap: { [key: string]: string } = {
@@ -140,28 +147,49 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // Custom Block Section
-  const customBlockSection = showCustomBlock && customBlockText ? `
-    <div style="background-color: ${customBlockBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${customBlockTextColor};">
-      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📣 Avviso Importante</h4>
-      <p style="margin: 0; font-size: 14px;">
-        ${customBlockText}
-      </p>
-    </div>
-  ` : "";
+  // SMART CUSTOM BLOCK: Enhanced for Admin Messages
+  let customBlockSection = '';
+  
+  if (showCustomBlock && customBlockText) {
+    // Determine if this is an admin message via custom block
+    const isAdminMsg = isAdminMessageViaCustomBlock;
+    const blockTitle = isAdminMsg ? '💬 Messaggio Amministratore' : '📣 Avviso Importante';
+    const blockBgColor = isAdminMsg ? '#e3f2fd' : customBlockBgColor;
+    const blockTextColor = isAdminMsg ? '#1565c0' : customBlockTextColor;
+    
+    console.log("[Mail Templates] CUSTOM BLOCK SECTION CREATION:");
+    console.log("  Is admin message via custom block:", isAdminMsg);
+    console.log("  Block title:", blockTitle);
+    console.log("  Block background color:", blockBgColor);
+    console.log("  Block text color:", blockTextColor);
+    console.log("  Custom block text:", customBlockText);
+    
+    customBlockSection = `
+      <div style="background-color: ${blockBgColor}; padding: 20px; border-left: 4px solid ${primaryColor}; margin: 20px 0; border-radius: 6px; color: ${blockTextColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h4 style="margin: 0 0 12px 0; color: ${primaryColor}; font-size: 18px; font-weight: bold; display: flex; align-items: center;">
+          <span style="margin-right: 8px;">${isAdminMsg ? '💬' : '📣'}</span>
+          ${blockTitle}
+        </h4>
+        <div style="margin: 0; font-size: 15px; line-height: 1.6; border-top: 1px solid rgba(37, 84, 196, 0.2); padding-top: 12px;">
+          ${customBlockText.replace(/\n/g, '<br>')}
+        </div>
+      </div>
+    `;
+    
+    console.log("[Mail Templates] CUSTOM BLOCK SECTION CREATED SUCCESSFULLY");
+    console.log("  Final section length:", customBlockSection.length);
+  }
 
-  // ENHANCED: Admin Message Section - ROBUST LOGIC FOR DISPLAY WITH ENHANCED CONDITION CHECKING
+  // LEGACY Admin Message Section (kept for compatibility but likely won't be used)
   let adminMessageSection = '';
   
-  // ENHANCED: Check if we should show the admin message section with more robust logic
   const shouldShowAdminMessage = showAdminMessage && adminMessage && adminMessage.trim() !== '';
   
-  console.log("[Mail Templates] Admin message section decision:");
+  console.log("[Mail Templates] Legacy admin message section decision:");
   console.log("  showAdminMessage setting:", showAdminMessage);
   console.log("  adminMessage exists:", !!adminMessage);
   console.log("  adminMessage not empty:", adminMessage && adminMessage.trim() !== '');
   console.log("  shouldShowAdminMessage:", shouldShowAdminMessage);
-  console.log("  adminMessage content:", adminMessage);
   
   if (shouldShowAdminMessage) {
     adminMessageSection = `
@@ -175,17 +203,9 @@ export function buildHtmlContent({
         </div>
       </div>
     `;
-    console.log("[Mail Templates] ADMIN MESSAGE SECTION CREATED SUCCESSFULLY");
-    console.log("  Admin message content length:", adminMessage.length);
-    console.log("  Background color:", adminMessageBgColor);
-    console.log("  Text color:", adminMessageTextColor);
-    console.log("  Final HTML section length:", adminMessageSection.length);
+    console.log("[Mail Templates] LEGACY ADMIN MESSAGE SECTION CREATED");
   } else {
-    console.log("[Mail Templates] Admin message section NOT created - conditions not met");
-    console.log("  Missing conditions:");
-    if (!showAdminMessage) console.log("    - showAdminMessage is false");
-    if (!adminMessage) console.log("    - adminMessage is empty/null");
-    if (adminMessage && adminMessage.trim() === '') console.log("    - adminMessage is only whitespace");
+    console.log("[Mail Templates] Legacy admin message section NOT created - using Custom Block strategy instead");
   }
 
   // Determine final subject and content
@@ -247,7 +267,7 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // ENHANCED: Build the complete HTML with admin message section PROMINENTLY POSITIONED
+  // ENHANCED: Build the complete HTML with custom block for admin messages
   const htmlContent = `
     <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; font-size: ${actualFontSize};">
       ${logoSection}
@@ -274,9 +294,9 @@ export function buildHtmlContent({
     </div>
   `;
 
-  console.log("[Mail Templates] HTML content built. Admin message section included:", shouldShowAdminMessage);
+  console.log("[Mail Templates] HTML content built. Custom block strategy used:", showCustomBlock);
   console.log("[Mail Templates] Final HTML content length:", htmlContent.length);
-  console.log("[Mail Templates] Admin message section length in final HTML:", adminMessageSection.length);
+  console.log("[Mail Templates] Custom block section length:", customBlockSection.length);
   
   return htmlContent;
 }

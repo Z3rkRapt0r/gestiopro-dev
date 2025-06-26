@@ -368,9 +368,6 @@ serve(async (req) => {
     let successCount = 0;
     const errors = [];
 
-    // FIXED: Declare adminMessage variable here to make it available in the scope
-    let adminMessageForResponse = '';
-
     for (const recipient of recipients) {
       try {
         console.log("[Notification Email] Preparing email for recipient:", recipient.email);
@@ -395,7 +392,7 @@ serve(async (req) => {
           console.log("[Notification Email] FALLBACK: Using frontend content - no database template found");
         }
         
-        // INTELLIGENT ADMIN MESSAGE HANDLING - Works even without {admin_message} placeholder
+        // ENHANCED: Admin Message Handling via Custom Block for Documents to Employees
         const hasAdminMessageConfig = templateData.show_admin_message;
         const hasAdminMessageContent = emailBody && emailBody.trim() !== '';
         const isAdminToEmployeeDocument = templateType === 'documenti' && templateCategory === 'amministratori';
@@ -407,6 +404,7 @@ serve(async (req) => {
         console.log("  Has admin message content:", hasAdminMessageContent);
         console.log("  Is admin to employee document:", isAdminToEmployeeDocument);
         console.log("  Email body content:", emailBody);
+        console.log("  Will use Custom Block for admin message:", isAdminToEmployeeDocument && hasAdminMessageContent);
         
         // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING
         console.log("[Notification Email] Starting variable substitution for template type:", templateType);
@@ -504,9 +502,6 @@ serve(async (req) => {
               console.log("  Appended admin message at the end");
             }
           }
-          
-          // Set adminMessage for response object
-          adminMessageForResponse = emailBody;
         } else if (isAdminToEmployeeDocument && emailContent.includes('{admin_message}')) {
           emailContent = emailContent.replace(/{admin_message}/g, '');
           console.log("[Notification Email] No admin message provided, removing placeholder");
@@ -516,7 +511,6 @@ serve(async (req) => {
         let leaveDetails = '';
         let adminNotes = '';
         let employeeNotes = '';
-        let adminMessage = ''; // Admin message for documents
         
         if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
           leaveDetails = emailBody;
@@ -530,20 +524,22 @@ serve(async (req) => {
           employeeNotes = employeeNote;
         }
 
-        // ENHANCED: Admin message for document templates - ALWAYS SET FOR HTML TEMPLATE
+        // SMART STRATEGY: Use Custom Block for Admin Message (since it works!)
+        let useCustomBlockForAdminMessage = false;
+        let customBlockTextForAdmin = '';
+        
         if (isAdminToEmployeeDocument && hasAdminMessageContent) {
-          adminMessage = emailBody;
-          console.log("[Notification Email] SETTING ADMIN MESSAGE FOR HTML TEMPLATE:");
-          console.log("  Admin message value:", adminMessage);
-          console.log("  Show admin message setting:", templateData.show_admin_message);
-          console.log("  Template type check:", templateType === 'documenti');
-          console.log("  Template category check:", templateCategory === 'amministratori');
+          useCustomBlockForAdminMessage = true;
+          customBlockTextForAdmin = emailBody;
+          console.log("[Notification Email] USING CUSTOM BLOCK STRATEGY FOR ADMIN MESSAGE:");
+          console.log("  Admin message will appear as Custom Block");
+          console.log("  Custom block text:", customBlockTextForAdmin);
         }
         
         console.log("[Notification Email] Final email subject:", emailSubject);
         console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 150) + "...");
         console.log("[Notification Email] Template database usage:", !!emailTemplate);
-        console.log("[Notification Email] Admin message for HTML template:", adminMessage ? "YES" : "NO");
+        console.log("[Notification Email] Admin message strategy: Custom Block =", useCustomBlockForAdminMessage);
         
         const htmlContent = buildHtmlContent({
           subject: emailSubject,
@@ -577,18 +573,21 @@ serve(async (req) => {
           leaveDetailsTextColor: templateData.leave_details_text_color,
           adminNotesBgColor: templateData.admin_notes_bg_color,
           adminNotesTextColor: templateData.admin_notes_text_color,
-          showCustomBlock: templateData.show_custom_block,
-          customBlockText: templateData.custom_block_text,
+          // SMART STRATEGY: Use Custom Block for Admin Message
+          showCustomBlock: useCustomBlockForAdminMessage || templateData.show_custom_block,
+          customBlockText: useCustomBlockForAdminMessage ? customBlockTextForAdmin : templateData.custom_block_text,
           customBlockBgColor: templateData.custom_block_bg_color,
           customBlockTextColor: templateData.custom_block_text_color,
           dynamicSubject: emailSubject,
           dynamicContent: emailContent,
           employeeEmail: employeeEmail,
-          // ENHANCED: Admin message parameters - FORCE DISPLAY FOR ADMIN TO EMPLOYEE DOCUMENTS
-          showAdminMessage: hasAdminMessageConfig || (isAdminToEmployeeDocument && hasAdminMessageContent),
-          adminMessage: adminMessage,
+          // Keep existing admin message params for compatibility
+          showAdminMessage: false, // Disabled in favor of Custom Block strategy
+          adminMessage: '',
           adminMessageBgColor: templateData.admin_message_bg_color,
           adminMessageTextColor: templateData.admin_message_text_color,
+          // Special flag to customize Custom Block for admin messages
+          isAdminMessageViaCustomBlock: useCustomBlockForAdminMessage,
         });
 
         // Build Brevo payload with configured sender settings
@@ -651,8 +650,8 @@ serve(async (req) => {
           hasAdminMessageConfig: templateData.show_admin_message,
           hasAdminMessageContent: !!(emailBody && emailBody.trim()),
           adminMessageProcessed: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody),
-          intelligentPlaceholderHandling: true,
-          templateUpdated: "Template updated with admin_message placeholder if missing"
+          strategy: "Custom Block (proven working solution)",
+          customBlockUsed: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody),
         },
         variableSubstitution: {
           employeeName: employeeName || "Not provided",
@@ -661,17 +660,6 @@ serve(async (req) => {
           employeeNoteSubstituted: !!employeeNote,
           adminMessage: emailBody || "Not provided",
           adminMessageSubstituted: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody)
-        },
-        // ENHANCED: Admin message debugging info - FIXED: Use scoped variable
-        adminMessageDebugging: {
-          templateType,
-          templateCategory,
-          showAdminMessage: templateData.show_admin_message,
-          adminMessageValue: emailBody,
-          isAdminDocumentTemplate: templateType === 'documenti' && templateCategory === 'amministratori',
-          adminMessageForTemplate: adminMessageForResponse,
-          intelligentHandling: "Enabled - works with or without {admin_message} placeholder",
-          templateAutoUpdated: "Template content updated to include {admin_message} placeholder if missing"
         },
         errors: errors.length > 0 ? errors : undefined
       }),
