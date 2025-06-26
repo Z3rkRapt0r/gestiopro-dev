@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -340,8 +339,17 @@ serve(async (req) => {
     let successCount = 0;
     const errors = [];
 
-    // FIXED: Initialize adminMessage outside the loop to prevent ReferenceError
-    let finalAdminMessage = adminMessage || emailBody || '';
+    // FIXED: Initialize finalAdminMessage correctly for all leave response types
+    let finalAdminMessage = '';
+    const isLeaveResponse = templateType.includes('approvazione') || templateType.includes('rifiuto');
+    
+    if (isLeaveResponse) {
+      // For leave responses, use adminNote if available, otherwise use emailBody
+      finalAdminMessage = adminNote || emailBody || adminMessage || '';
+    } else {
+      // For other types, use adminMessage or emailBody
+      finalAdminMessage = adminMessage || emailBody || '';
+    }
 
     for (const recipient of recipients) {
       try {
@@ -371,13 +379,13 @@ serve(async (req) => {
           console.log("[Notification Email] Using frontend content:", emailContent);
         }
         
-        // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING - IMPROVED FOR VACATION REQUESTS
+        // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING
         console.log("[Notification Email] Starting variable substitution for template type:", templateType);
         console.log("[Notification Email] Employee name provided:", employeeName);
         console.log("[Notification Email] Employee note provided:", employeeNote);
         console.log("[Notification Email] Admin message provided:", finalAdminMessage);
         console.log("[Notification Email] Template category:", templateCategory);
-        console.log("[Notification Email] Is admin document template:", templateType === 'documenti' && templateCategory === 'amministratori');
+        console.log("[Notification Email] Is leave response:", isLeaveResponse);
         console.log("[Notification Email] Show admin message setting:", templateData.show_admin_message);
 
         // FIXED: Enhanced variable substitution with separate employee_name and recipient_name
@@ -419,14 +427,14 @@ serve(async (req) => {
         console.log("[Notification Email] Employee notes to pass:", employeeNote);
         console.log("[Notification Email] Template show_admin_notes setting:", templateData.show_admin_notes);
 
-        // FIXED: Properly format leave details from emailBody for leave requests
+        // FIXED: Properly format leave details for ALL leave request and response types
         let leaveDetails = '';
         const isLeaveRequest = templateType === 'permessi-richiesta' || templateType === 'ferie-richiesta';
         
-        if (isLeaveRequest && emailBody) {
-          // Format the leave details from the email body
+        if ((isLeaveRequest || isLeaveResponse) && emailBody) {
+          // For all leave-related emails, format the leave details from the email body
           leaveDetails = emailBody;
-          console.log("[Notification Email] Leave request detected, formatting details:", leaveDetails);
+          console.log("[Notification Email] Leave-related email detected, formatting details:", leaveDetails);
         }
 
         const htmlContent = buildHtmlContent({
@@ -454,11 +462,12 @@ serve(async (req) => {
           showDetailsButton: templateData.show_details_button,
           showLeaveDetails: templateData.show_leave_details,
           showAdminNotes: templateData.show_admin_notes,
-          // FIXED: Pass properly formatted leave details
+          // FIXED: Pass properly formatted leave details for all leave types
           leaveDetails: leaveDetails,
-          adminNotes: '',
-          // FIXED: Pass employee notes correctly
-          employeeNotes: employeeNote || '',
+          // FIXED: Pass admin notes correctly for leave responses
+          adminNotes: isLeaveResponse ? (adminNote || '') : '',
+          // FIXED: Pass employee notes correctly for leave requests
+          employeeNotes: isLeaveRequest ? (employeeNote || '') : '',
           leaveDetailsBgColor: templateData.leave_details_bg_color,
           leaveDetailsTextColor: templateData.leave_details_text_color,
           adminNotesBgColor: templateData.admin_notes_bg_color,
@@ -470,8 +479,8 @@ serve(async (req) => {
           dynamicSubject: emailSubject,
           dynamicContent: emailContent,
           employeeEmail: employeeEmail,
-          // FIXED: Pass admin message parameters correctly
-          showAdminMessage: templateData.show_admin_message,
+          // FIXED: Pass admin message parameters correctly for leave responses
+          showAdminMessage: templateData.show_admin_message && isLeaveResponse,
           adminMessage: finalAdminMessage,
           adminMessageBgColor: templateData.admin_message_bg_color,
           adminMessageTextColor: templateData.admin_message_text_color,

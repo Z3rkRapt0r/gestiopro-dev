@@ -28,14 +28,32 @@ export const useLeaveRequestNotifications = () => {
         subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} approvata`;
         shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata approvata.`;
         recipientId = leaveRequest.user_id; // Send to the employee
-        body = `Dal: ${leaveRequest.date_from || leaveRequest.day}\nAl: ${leaveRequest.date_to || leaveRequest.day}\n\nLa tua richiesta è stata approvata dall'amministratore.`;
+        
+        // FIXED: Format approval details with enhanced structure for template processing
+        if (leaveRequest.type === 'ferie') {
+          body = `📅 DETTAGLI APPROVAZIONE FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}\n\n${adminNote ? `Note amministratore:\n${adminNote}\n\n` : ''}La tua richiesta è stata approvata dall'amministratore.`;
+        } else {
+          const timeInfo = leaveRequest.time_from && leaveRequest.time_to 
+            ? `dalle ${leaveRequest.time_from} alle ${leaveRequest.time_to}`
+            : 'giornata intera';
+          body = `📅 DETTAGLI APPROVAZIONE PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day || leaveRequest.date_from}\nOrario: ${timeInfo}\n\n${adminNote ? `Note amministratore:\n${adminNote}\n\n` : ''}La tua richiesta è stata approvata dall'amministratore.`;
+        }
       } else if (isRejection) {
         // Rejection notification goes to the employee - use specific template type
         topic = leaveRequest.type === 'ferie' ? 'ferie-rifiuto' : 'permessi-rifiuto';
         subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} rifiutata`;
         shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata rifiutata.`;
         recipientId = leaveRequest.user_id; // Send to the employee
-        body = `Dal: ${leaveRequest.date_from || leaveRequest.day}\nAl: ${leaveRequest.date_to || leaveRequest.day}\n\nLa tua richiesta è stata rifiutata dall'amministratore.`;
+        
+        // FIXED: Format rejection details with enhanced structure for template processing
+        if (leaveRequest.type === 'ferie') {
+          body = `📅 DETTAGLI RIFIUTO FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}\n\n${adminNote ? `Note amministratore:\n${adminNote}\n\n` : ''}La tua richiesta è stata rifiutata dall'amministratore.`;
+        } else {
+          const timeInfo = leaveRequest.time_from && leaveRequest.time_to 
+            ? `dalle ${leaveRequest.time_from} alle ${leaveRequest.time_to}`
+            : 'giornata intera';
+          body = `📅 DETTAGLI RIFIUTO PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day || leaveRequest.date_from}\nOrario: ${timeInfo}\n\n${adminNote ? `Note amministratore:\n${adminNote}\n\n` : ''}La tua richiesta è stata rifiutata dall'amministratore.`;
+        }
       } else {
         // New leave request notification goes to all admins - use specific template type
         topic = leaveRequest.type === 'ferie' ? 'ferie-richiesta' : 'permessi-richiesta';
@@ -54,16 +72,21 @@ export const useLeaveRequestNotifications = () => {
         }
       }
 
-      // CRITICAL FIX: Prepare email payload with proper employeeName
+      // CRITICAL FIX: Prepare email payload with proper parameters for all leave types
       const emailPayload: any = {
         recipientId,
         subject,
         shortText,
         topic,
         body,
-        adminNote,
         employeeName: employeeFullName // FIXED: Pass the constructed full name
       };
+
+      // FIXED: Add adminNote for approvals and rejections
+      if ((isApproval || isRejection) && adminNote) {
+        emailPayload.adminNote = adminNote;
+        console.log('Adding admin note for leave response notification:', adminNote);
+      }
 
       // For new leave requests from employee to admin, include employee email for reply-to
       if (!isApproval && !isRejection && employeeProfile.email) {
