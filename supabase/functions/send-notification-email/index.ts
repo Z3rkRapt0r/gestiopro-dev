@@ -439,8 +439,10 @@ serve(async (req) => {
           employeeNotes = employeeNote;
         }
 
-        // FIXED: Pass emailBody directly as adminMessage - no need to check template type
+        // FIXED: Initialize adminMessage as empty string to prevent ReferenceError
         let adminMessage = '';
+        
+        // Set admin message for admin document templates
         if (templateType === 'documenti' && templateCategory === 'amministratori' && emailBody) {
           adminMessage = emailBody;
           console.log("[Notification Email] SETTING ADMIN MESSAGE FOR HTML TEMPLATE:");
