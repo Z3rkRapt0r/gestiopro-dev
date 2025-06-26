@@ -179,6 +179,9 @@ serve(async (req) => {
       console.log("[Notification Email] Template show_admin_message:", emailTemplate.show_admin_message);
       console.log("[Notification Email] Template admin_message_bg_color:", emailTemplate.admin_message_bg_color);
       console.log("[Notification Email] Template admin_message_text_color:", emailTemplate.admin_message_text_color);
+      console.log("[Notification Email] Template button config - show_button:", emailTemplate.show_button);
+      console.log("[Notification Email] Template button config - button_text:", emailTemplate.button_text);
+      console.log("[Notification Email] Template button config - button_url:", emailTemplate.button_url);
     }
 
     // Template data handling - prioritize database template or use minimal fallback
@@ -218,10 +221,12 @@ serve(async (req) => {
         text_alignment: 'left',
         subject: null,
         content: null,
-        // Admin message defaults
         show_admin_message: false,
         admin_message_bg_color: '#e3f2fd',
         admin_message_text_color: '#1565c0',
+        show_button: true,
+        button_text: 'Accedi alla Dashboard',
+        button_url: 'https://alm-app.lovable.app/',
       };
       console.log("[Notification Email] No custom template found, using minimal fallback styling only");
     }
@@ -510,6 +515,10 @@ serve(async (req) => {
           adminMessageTextColor: templateData.admin_message_text_color,
           // NEW: Pass recipient name to template
           recipientName: recipientName,
+          // NEW: Pass button configuration to template
+          showButton: templateData.show_button,
+          buttonText: templateData.button_text,
+          buttonUrl: templateData.button_url,
         });
 
         // Email sending configuration

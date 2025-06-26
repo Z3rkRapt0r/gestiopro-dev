@@ -1,3 +1,4 @@
+
 export interface EmailContentParams {
   subject: string;
   shortText: string;
@@ -43,6 +44,10 @@ export interface EmailContentParams {
   adminMessageTextColor?: string;
   // NEW: Recipient name parameter
   recipientName?: string;
+  // NEW: Button configuration parameters
+  showButton?: boolean;
+  buttonText?: string;
+  buttonUrl?: string;
 }
 
 export function buildAttachmentSection(attachmentUrl: string | null, primaryColor: string = '#007bff'): string {
@@ -106,6 +111,10 @@ export function buildHtmlContent({
   adminMessageTextColor = '#1565c0',
   // NEW: Recipient name parameter
   recipientName = '',
+  // NEW: Button configuration parameters
+  showButton = true,
+  buttonText = 'Accedi alla Dashboard',
+  buttonUrl = 'https://alm-app.lovable.app/',
 }: EmailContentParams & {
   employeeEmail?: string;
   recipientName?: string;
@@ -118,6 +127,13 @@ export function buildHtmlContent({
   console.log("  adminMessageBgColor:", adminMessageBgColor);
   console.log("  adminMessageTextColor:", adminMessageTextColor);
   console.log("  recipientName:", recipientName);
+
+  // NEW: Enhanced logging for button configuration
+  console.log("[Mail Templates] Button configuration:");
+  console.log("  showButton:", showButton);
+  console.log("  buttonText:", buttonText);
+  console.log("  buttonUrl:", buttonUrl);
+  console.log("  templateType:", templateType);
 
   // ENHANCED: Determine email direction based on template category and employee email
   console.log("[Mail Templates] Email direction debugging:");
@@ -246,8 +262,40 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // Dashboard button for document and notification emails
-  const dashboardButton = (isDocumentEmail && showDetailsButton) ? `
+  // NEW: Updated button generation logic - now for ALL templates (except documents if showButton is false)
+  let customButton = '';
+  const shouldShowCustomButton = showButton && templateType !== 'documenti';
+  
+  console.log("[Mail Templates] Custom button decision:");
+  console.log("  showButton:", showButton);
+  console.log("  templateType:", templateType);
+  console.log("  shouldShowCustomButton:", shouldShowCustomButton);
+  
+  if (shouldShowCustomButton) {
+    customButton = `
+      <div style="width:100%;text-align:center;margin:28px 0 0 0;">
+        <a href="${buttonUrl}" target="_blank" style="
+          background-color:${buttonColor};
+          color:${buttonTextColor};
+          padding:12px 26px;
+          border-radius:${borderRadius};
+          text-decoration:none;
+          font-size:16px;
+          font-weight:bold;
+          letter-spacing:0.5px;
+          display:inline-block;
+          box-shadow:0 1px 6px rgba(40,82,180,.06);
+          margin:auto;
+        ">
+          ${buttonText}
+        </a>
+      </div>
+    `;
+    console.log("[Mail Templates] Custom button created:", buttonText);
+  }
+
+  // Dashboard button for document emails only (legacy support)
+  const dashboardButton = (isDocumentEmail && showDetailsButton && templateType === 'documenti') ? `
     <div style="width:100%;text-align:center;margin:28px 0 0 0;">
       <a href="https://alm-app.lovable.app/" target="_blank" style="
         background-color:${buttonColor};
@@ -262,7 +310,7 @@ export function buildHtmlContent({
         box-shadow:0 1px 6px rgba(40,82,180,.06);
         margin:auto;
       ">
-        ${templateType === 'documenti' ? 'Visualizza documento' : 'Vai alla dashboard'}
+        Visualizza documento
       </a>
     </div>
   ` : "";
@@ -282,6 +330,7 @@ export function buildHtmlContent({
         ${leaveDetailsSection}
         ${employeeNotesSection}
         ${adminNotesSection}
+        ${customButton}
         ${dashboardButton}
         ${attachmentSection}
       </div>
@@ -297,6 +346,7 @@ export function buildHtmlContent({
   console.log("[Mail Templates] HTML content built with separated sections:");
   console.log("  Admin message section included:", shouldShowAdminMessage);
   console.log("  Employee notes section included:", shouldShowEmployeeNotes);
+  console.log("  Custom button included:", shouldShowCustomButton);
   
   return htmlContent;
 }
