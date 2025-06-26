@@ -395,14 +395,15 @@ serve(async (req) => {
         // ENHANCED: Admin Message Handling via Custom Block for Documents to Employees
         const hasAdminMessageConfig = templateData.show_admin_message;
         const hasAdminMessageContent = emailBody && emailBody.trim() !== '';
-        const isAdminToEmployeeDocument = templateType === 'documenti' && templateCategory === 'amministratori';
+        // FIXED: Changed from 'amministratori' to 'dipendenti' - we're sending TO employees FROM admin
+        const isAdminToEmployeeDocument = templateType === 'documenti' && templateCategory === 'dipendenti';
         
-        console.log("[Notification Email] ADMIN MESSAGE ANALYSIS:");
+        console.log("[Notification Email] CORRECTED ADMIN MESSAGE ANALYSIS:");
         console.log("  Template type:", templateType);
         console.log("  Template category:", templateCategory);
         console.log("  Show admin message setting:", hasAdminMessageConfig);
         console.log("  Has admin message content:", hasAdminMessageContent);
-        console.log("  Is admin to employee document:", isAdminToEmployeeDocument);
+        console.log("  Is admin to employee document (CORRECTED):", isAdminToEmployeeDocument);
         console.log("  Email body content:", emailBody);
         console.log("  Will use Custom Block for admin message:", isAdminToEmployeeDocument && hasAdminMessageContent);
         
@@ -524,16 +525,17 @@ serve(async (req) => {
           employeeNotes = employeeNote;
         }
 
-        // SMART STRATEGY: Use Custom Block for Admin Message (since it works!)
+        // SMART STRATEGY: Use Custom Block for Admin Message (with correct condition)
         let useCustomBlockForAdminMessage = false;
         let customBlockTextForAdmin = '';
         
         if (isAdminToEmployeeDocument && hasAdminMessageContent) {
           useCustomBlockForAdminMessage = true;
           customBlockTextForAdmin = emailBody;
-          console.log("[Notification Email] USING CUSTOM BLOCK STRATEGY FOR ADMIN MESSAGE:");
-          console.log("  Admin message will appear as Custom Block");
+          console.log("[Notification Email] CORRECTED: USING CUSTOM BLOCK STRATEGY FOR ADMIN MESSAGE:");
+          console.log("  Admin message will appear as Custom Block with admin styling");
           console.log("  Custom block text:", customBlockTextForAdmin);
+          console.log("  Will use admin message styling (💬 icon, blue colors)");
         }
         
         console.log("[Notification Email] Final email subject:", emailSubject);
@@ -586,7 +588,7 @@ serve(async (req) => {
           adminMessage: '',
           adminMessageBgColor: templateData.admin_message_bg_color,
           adminMessageTextColor: templateData.admin_message_text_color,
-          // Special flag to customize Custom Block for admin messages
+          // CORRECTED: Special flag to customize Custom Block for admin messages
           isAdminMessageViaCustomBlock: useCustomBlockForAdminMessage,
         });
 
@@ -646,12 +648,13 @@ serve(async (req) => {
         templateContent: emailTemplate ? "Database template (ABSOLUTE PRIORITY)" : "Frontend fallback",
         templatePriority: emailTemplate ? "Database template content used exclusively" : "Frontend fallback content used",
         adminMessageHandling: {
-          isAdminToEmployeeDocument: templateType === 'documenti' && templateCategory === 'amministratori',
+          isAdminToEmployeeDocument: templateType === 'documenti' && templateCategory === 'dipendenti',
           hasAdminMessageConfig: templateData.show_admin_message,
           hasAdminMessageContent: !!(emailBody && emailBody.trim()),
-          adminMessageProcessed: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody),
-          strategy: "Custom Block (proven working solution)",
-          customBlockUsed: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody),
+          adminMessageProcessed: !!(templateType === 'documenti' && templateCategory === 'dipendenti' && emailBody),
+          strategy: "Custom Block (corrected condition - sending TO employees FROM admin)",
+          customBlockUsed: !!(templateType === 'documenti' && templateCategory === 'dipendenti' && emailBody),
+          correctedLogic: "Fixed: templateCategory === 'dipendenti' (not 'amministratori')",
         },
         variableSubstitution: {
           employeeName: employeeName || "Not provided",
@@ -659,7 +662,7 @@ serve(async (req) => {
           employeeNote: employeeNote || "Not provided",
           employeeNoteSubstituted: !!employeeNote,
           adminMessage: emailBody || "Not provided",
-          adminMessageSubstituted: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody)
+          adminMessageSubstituted: !!(templateType === 'documenti' && templateCategory === 'dipendenti' && emailBody)
         },
         errors: errors.length > 0 ? errors : undefined
       }),

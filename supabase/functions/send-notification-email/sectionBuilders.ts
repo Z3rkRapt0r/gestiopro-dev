@@ -1,4 +1,3 @@
-
 export function buildLogoSection(logoUrl: string | null, logoAlignment: string, logoSize: string): string {
   if (!logoUrl) return '';
   
@@ -29,24 +28,33 @@ export function buildCustomBlockSection(
   primaryColor: string,
   isAdminMessageViaCustomBlock: boolean = false
 ): string {
-  if (!showCustomBlock || !customBlockText) return '';
+  if (!showCustomBlock || !customBlockText) {
+    console.log("[Section Builders] CUSTOM BLOCK SECTION SKIPPED:");
+    console.log("  Show custom block:", showCustomBlock);
+    console.log("  Has custom block text:", !!customBlockText);
+    console.log("  Is admin message via custom block:", isAdminMessageViaCustomBlock);
+    return '';
+  }
 
   const isAdminMsg = isAdminMessageViaCustomBlock;
-  const blockTitle = isAdminMsg ? '💬 Messaggio Amministratore' : '📣 Avviso Importante';
+  const blockTitle = isAdminMsg ? 'Messaggio Amministratore' : 'Avviso Importante';
+  const blockIcon = isAdminMsg ? '💬' : '📣';
   const blockBgColor = isAdminMsg ? '#e3f2fd' : customBlockBgColor;
   const blockTextColor = isAdminMsg ? '#1565c0' : customBlockTextColor;
   
   console.log("[Section Builders] CUSTOM BLOCK SECTION CREATION:");
   console.log("  Is admin message via custom block:", isAdminMsg);
+  console.log("  Block icon:", blockIcon);
   console.log("  Block title:", blockTitle);
   console.log("  Block background color:", blockBgColor);
   console.log("  Block text color:", blockTextColor);
   console.log("  Custom block text:", customBlockText);
+  console.log("  EXPECTED RESULT: Should show admin-styled block with 💬 icon and blue colors");
   
-  return `
+  const htmlResult = `
     <div style="background-color: ${blockBgColor}; padding: 20px; border-left: 4px solid ${primaryColor}; margin: 20px 0; border-radius: 6px; color: ${blockTextColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
       <h4 style="margin: 0 0 12px 0; color: ${primaryColor}; font-size: 18px; font-weight: bold; display: flex; align-items: center;">
-        <span style="margin-right: 8px;">${isAdminMsg ? '💬' : '📣'}</span>
+        <span style="margin-right: 8px;">${blockIcon}</span>
         ${blockTitle}
       </h4>
       <div style="margin: 0; font-size: 15px; line-height: 1.6; border-top: 1px solid rgba(37, 84, 196, 0.2); padding-top: 12px;">
@@ -54,6 +62,11 @@ export function buildCustomBlockSection(
       </div>
     </div>
   `;
+  
+  console.log("[Section Builders] Generated HTML length:", htmlResult.length);
+  console.log("[Section Builders] HTML preview:", htmlResult.substring(0, 200) + "...");
+  
+  return htmlResult;
 }
 
 export function buildLeaveDetailsSection(
