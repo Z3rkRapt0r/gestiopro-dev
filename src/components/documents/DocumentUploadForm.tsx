@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, Info } from 'lucide-react';
+import { FileText, Info, Mail } from 'lucide-react';
 import DocumentRecipientSelector from './DocumentRecipientSelector';
 import DocumentTypeSelector from './DocumentTypeSelector';
 
@@ -151,18 +151,29 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="body">Messaggio per il destinatario (opzionale)</Label>
+            <Label htmlFor="body" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Messaggio per il destinatario (opzionale)
+            </Label>
             <Textarea
               id="body"
               value={body}
               onChange={(e) => onBodyChange(e.target.value)}
-              placeholder="Scrivi un messaggio che apparirà nella email di notifica..."
+              placeholder="Scrivi un messaggio che apparirà nella sezione dedicata della email di notifica..."
               disabled={!notifyRecipient}
               rows={3}
             />
             <div className="text-xs text-muted-foreground">
               {notifyRecipient ? (
-                <>Questo messaggio apparirà nella sezione dedicata della email di notifica</>
+                <div className="bg-green-50 border border-green-200 rounded p-2">
+                  <div className="flex items-start gap-2">
+                    <Mail className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-green-700">
+                      <p className="font-medium">Questo messaggio apparirà nella email!</p>
+                      <p className="text-xs">Il destinatario vedrà il messaggio in una sezione dedicata con il titolo "Messaggio Amministratore"</p>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <>Attiva la notifica per inserire un messaggio personalizzato</>
               )}

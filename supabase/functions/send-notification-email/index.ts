@@ -170,6 +170,13 @@ serve(async (req) => {
     }
 
     console.log("[Notification Email] Template query result:", emailTemplate ? "Found custom template" : "No custom template found");
+    
+    // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
+    if (emailTemplate) {
+      console.log("[Notification Email] Template show_admin_message:", emailTemplate.show_admin_message);
+      console.log("[Notification Email] Template admin_message_bg_color:", emailTemplate.admin_message_bg_color);
+      console.log("[Notification Email] Template admin_message_text_color:", emailTemplate.admin_message_text_color);
+    }
 
     // Template data handling - prioritize database template or use minimal fallback
     let templateData;
@@ -208,7 +215,7 @@ serve(async (req) => {
         text_alignment: 'left',
         subject: null,
         content: null,
-        // NEW: Admin message defaults
+        // Admin message defaults
         show_admin_message: false,
         admin_message_bg_color: '#e3f2fd',
         admin_message_text_color: '#1565c0',
@@ -359,6 +366,11 @@ serve(async (req) => {
         console.log("[Notification Email] Employee note provided:", employeeNote);
         console.log("[Notification Email] Admin message (emailBody) provided:", emailBody);
         
+        // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
+        console.log("[Notification Email] Template category:", templateCategory);
+        console.log("[Notification Email] Is admin document template:", templateType === 'documenti' && templateCategory === 'amministratori');
+        console.log("[Notification Email] Show admin message setting:", templateData.show_admin_message);
+        
         // Replace {employee_name} with enhanced logging - CRITICAL FOR VACATION REQUESTS
         if (employeeName) {
           const originalSubject = emailSubject;
@@ -406,10 +418,17 @@ serve(async (req) => {
           console.log("[Notification Email] Replaced admin note for template type:", templateType);
         }
 
-        // NEW: Replace admin message for document templates
+        // ENHANCED: Replace admin message for document templates - MORE DETAILED LOGGING
         if (templateType === 'documenti' && templateCategory === 'amministratori' && emailBody) {
+          const originalContent = emailContent;
           emailContent = emailContent.replace(/{admin_message}/g, emailBody);
-          console.log("[Notification Email] Replaced admin message for document template:", emailBody);
+          console.log("[Notification Email] ADMIN MESSAGE REPLACEMENT:");
+          console.log("  Template type:", templateType);
+          console.log("  Template category:", templateCategory);
+          console.log("  Admin message content:", emailBody);
+          console.log("  Content before replacement:", originalContent.substring(0, 200) + "...");
+          console.log("  Content after replacement:", emailContent.substring(0, 200) + "...");
+          console.log("  Replacement occurred:", originalContent !== emailContent);
         } else if (templateType === 'documenti' && templateCategory === 'amministratori') {
           emailContent = emailContent.replace(/{admin_message}/g, '');
           console.log("[Notification Email] No admin message provided, removing placeholder");
@@ -419,7 +438,7 @@ serve(async (req) => {
         let leaveDetails = '';
         let adminNotes = '';
         let employeeNotes = '';
-        let adminMessage = ''; // NEW: Admin message for documents
+        let adminMessage = ''; // Admin message for documents
         
         if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
           leaveDetails = emailBody;
@@ -433,10 +452,14 @@ serve(async (req) => {
           employeeNotes = employeeNote;
         }
 
-        // NEW: Admin message for document templates
+        // ENHANCED: Admin message for document templates - MORE DETAILED LOGGING
         if (templateType === 'documenti' && templateCategory === 'amministratori' && emailBody) {
           adminMessage = emailBody;
-          console.log("[Notification Email] Setting admin message for HTML template:", adminMessage);
+          console.log("[Notification Email] SETTING ADMIN MESSAGE FOR HTML TEMPLATE:");
+          console.log("  Admin message value:", adminMessage);
+          console.log("  Show admin message setting:", templateData.show_admin_message);
+          console.log("  Template type check:", templateType === 'documenti');
+          console.log("  Template category check:", templateCategory === 'amministratori');
         }
         
         console.log("[Notification Email] Final email subject:", emailSubject);
@@ -482,7 +505,7 @@ serve(async (req) => {
           dynamicSubject: emailSubject,
           dynamicContent: emailContent,
           employeeEmail: employeeEmail,
-          // NEW: Admin message parameters
+          // ENHANCED: Admin message parameters with detailed logging
           showAdminMessage: templateData.show_admin_message,
           adminMessage: adminMessage,
           adminMessageBgColor: templateData.admin_message_bg_color,
@@ -551,6 +574,15 @@ serve(async (req) => {
           employeeNoteSubstituted: !!employeeNote,
           adminMessage: emailBody || "Not provided",
           adminMessageSubstituted: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody)
+        },
+        // ENHANCED: Admin message debugging info
+        adminMessageDebugging: {
+          templateType,
+          templateCategory,
+          showAdminMessage: templateData.show_admin_message,
+          adminMessageValue: emailBody,
+          isAdminDocumentTemplate: templateType === 'documenti' && templateCategory === 'amministratori',
+          adminMessageForTemplate: adminMessage
         },
         errors: errors.length > 0 ? errors : undefined
       }),

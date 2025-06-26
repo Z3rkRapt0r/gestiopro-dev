@@ -98,7 +98,7 @@ export function buildHtmlContent({
   dynamicSubject = '',
   dynamicContent = '',
   employeeEmail = '', // New parameter for employee email
-  // NEW: Admin message parameters
+  // Admin message parameters
   showAdminMessage = false,
   adminMessage = '',
   adminMessageBgColor = '#e3f2fd',
@@ -106,6 +106,14 @@ export function buildHtmlContent({
 }: EmailContentParams & {
   employeeEmail?: string;
 }) {
+  // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
+  console.log("[Mail Templates] Building HTML content with admin message params:");
+  console.log("  showAdminMessage:", showAdminMessage);
+  console.log("  adminMessage:", adminMessage);
+  console.log("  templateType:", templateType);
+  console.log("  adminMessageBgColor:", adminMessageBgColor);
+  console.log("  adminMessageTextColor:", adminMessageTextColor);
+
   // Determine font size in pixels
   const fontSizeMap: { [key: string]: string } = {
     'small': '14px',
@@ -142,15 +150,31 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // NEW: Admin Message Section - ONLY for admin document templates
-  const adminMessageSection = showAdminMessage && adminMessage && templateType === 'documenti' ? `
-    <div style="background-color: ${adminMessageBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${adminMessageTextColor};">
-      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">💬 Messaggio Amministratore</h4>
-      <p style="margin: 0; font-size: 14px;">
-        ${adminMessage.replace(/\n/g, '<br>')}
-      </p>
-    </div>
-  ` : "";
+  // ENHANCED: Admin Message Section - IMPROVED LOGIC AND LOGGING
+  let adminMessageSection = '';
+  
+  // Check if we should show the admin message section
+  const shouldShowAdminMessage = showAdminMessage && adminMessage && adminMessage.trim() !== '';
+  
+  console.log("[Mail Templates] Admin message section decision:");
+  console.log("  showAdminMessage setting:", showAdminMessage);
+  console.log("  adminMessage exists:", !!adminMessage);
+  console.log("  adminMessage not empty:", adminMessage && adminMessage.trim() !== '');
+  console.log("  shouldShowAdminMessage:", shouldShowAdminMessage);
+  
+  if (shouldShowAdminMessage) {
+    adminMessageSection = `
+      <div style="background-color: ${adminMessageBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${adminMessageTextColor};">
+        <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">💬 Messaggio Amministratore</h4>
+        <p style="margin: 0; font-size: 14px;">
+          ${adminMessage.replace(/\n/g, '<br>')}
+        </p>
+      </div>
+    `;
+    console.log("[Mail Templates] Admin message section created successfully");
+  } else {
+    console.log("[Mail Templates] Admin message section NOT created - conditions not met");
+  }
 
   // Determine final subject and content
   const finalSubject = dynamicSubject || subject;
@@ -211,8 +235,8 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // Build the complete HTML with improved text alignment and styling
-  return `
+  // ENHANCED: Build the complete HTML with admin message section properly positioned
+  const htmlContent = `
     <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; font-size: ${actualFontSize};">
       ${logoSection}
       ${employeeInfoSection}
@@ -237,4 +261,8 @@ export function buildHtmlContent({
       </div>
     </div>
   `;
+
+  console.log("[Mail Templates] HTML content built. Admin message section included:", shouldShowAdminMessage);
+  
+  return htmlContent;
 }
