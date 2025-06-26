@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
@@ -60,7 +61,8 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     setDocumentType(typeValue);
     const type = documentTypes.find(dt => dt.value === typeValue);
     if (type) {
-      if (!subjectDirty || !subject || documentTypes.some(dt => dt.label === subject)) {
+      // For admins, we'll use the document type as default subject
+      if (isAdmin && (!subjectDirty || !subject || documentTypes.some(dt => dt.label === subject))) {
         setSubject(type.label);
         setSubjectDirty(false);
       }
@@ -92,6 +94,13 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     let shouldNotifyEmployee = false;
     let shouldNotifyAllEmployees = false;
     let specificEmployeeToNotify: string | undefined;
+
+    // Generate subject based on document type if not set
+    let emailSubject = subject;
+    if (!emailSubject || emailSubject.trim() === '') {
+      const type = documentTypes.find(dt => dt.value === documentType);
+      emailSubject = type ? `Nuovo documento: ${type.label}` : 'Nuovo documento disponibile';
+    }
 
     if (!isAdmin) {
       // Employee uploading document - always for themselves, always notify all admins
@@ -138,7 +147,7 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
 
     const { error } = await uploadDocument(
       file,
-      subject,
+      emailSubject,
       "",
       documentType as any,
       targetUserForUpload,
@@ -155,11 +164,11 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
 
       // Prepare notification payload
       const notificationPayload: any = {
-        subject: subject.trim(),
-        shortText: body.trim() || `Nuovo documento caricato: ${subject}`,
+        subject: emailSubject.trim(),
+        shortText: body.trim() || `Nuovo documento caricato: ${emailSubject}`,
         topic: "document",
         employeeName, // Pass employee name for template personalization
-        body: body.trim(), // Include the body/note content
+        body: body.trim(), // Include the note content
       };
 
       // Determine notification recipients and sender email
@@ -175,10 +184,12 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
         // Admin uploading document for specific employee
         console.log('[DocumentUpload] Notifying specific employee:', specificEmployeeToNotify);
         notificationPayload.recipientId = specificEmployeeToNotify;
+        notificationPayload.adminNote = body.trim(); // Include admin note
       } else if (shouldNotifyAllEmployees) {
         // Admin uploading company document for all employees
         console.log('[DocumentUpload] Notifying all employees - company document');
         notificationPayload.recipientId = null; // Send to all employees
+        notificationPayload.adminNote = body.trim(); // Include admin note
       } else {
         // Admin uploading for themselves - no notification needed
         console.log('[DocumentUpload] Admin uploading for themselves - no notification needed');
