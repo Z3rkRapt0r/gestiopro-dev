@@ -76,6 +76,11 @@ const EmailTemplateEditor = ({
   const [loading, setLoading] = useState(false);
   const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null);
 
+  // New state for admin message section
+  const [showAdminMessage, setShowAdminMessage] = useState(false);
+  const [adminMessageBgColor, setAdminMessageBgColor] = useState("#e3f2fd");
+  const [adminMessageTextColor, setAdminMessageTextColor] = useState("#1565c0");
+  
   // Helper functions to determine template characteristics
   const isEmployeeRequestTemplate = () => {
     return templateCategory === 'dipendenti' && (templateType.includes('richiesta') || templateType === 'documenti');
@@ -87,6 +92,11 @@ const EmailTemplateEditor = ({
 
   const isLeaveTemplate = () => {
     return templateType.includes('permessi') || templateType.includes('ferie');
+  };
+
+  // NEW: Check if this is admin-to-employee document template
+  const isAdminDocumentTemplate = () => {
+    return templateType === 'documenti' && templateCategory === 'amministratori';
   };
 
   // Load existing template
@@ -141,6 +151,10 @@ const EmailTemplateEditor = ({
         setAdminNotesTextColor(data.admin_notes_text_color || "#495057");
         setButtonColor(data.button_color || "#007bff");
         setButtonTextColor(data.button_text_color || "#ffffff");
+        // NEW: Load admin message settings
+        setShowAdminMessage(data.show_admin_message || false);
+        setAdminMessageBgColor(data.admin_message_bg_color || "#e3f2fd");
+        setAdminMessageTextColor(data.admin_message_text_color || "#1565c0");
       } else {
         console.log('No existing template found, using defaults');
         setExistingTemplateId(null);
@@ -196,6 +210,10 @@ const EmailTemplateEditor = ({
         button_text_color: buttonTextColor,
         subject_editable: subjectEditable,
         content_editable: contentEditable,
+        // NEW: Save admin message settings
+        show_admin_message: showAdminMessage,
+        admin_message_bg_color: adminMessageBgColor,
+        admin_message_text_color: adminMessageTextColor,
       };
 
       if (existingTemplateId) {
@@ -317,6 +335,12 @@ const EmailTemplateEditor = ({
               {isAdminResponseTemplate() && (
                 <p className="text-xs text-gray-500 mt-1">
                   Puoi usare <code>{'{admin_note}'}</code> per le note dell'amministratore
+                </p>
+              )}
+              {/* NEW: Admin message variable help */}
+              {isAdminDocumentTemplate() && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Puoi usare <code>{'{admin_message}'}</code> per il messaggio dell'amministratore
                 </p>
               )}
             </div>
@@ -477,6 +501,49 @@ const EmailTemplateEditor = ({
                       onCheckedChange={setShowAdminNotes}
                     />
                   </div>
+                </>
+              )}
+
+              {/* NEW: Admin Message Section - ONLY for admin document templates */}
+              {isAdminDocumentTemplate() && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <Label>Mostra Messaggio Amministratore</Label>
+                    <Switch
+                      checked={showAdminMessage}
+                      onCheckedChange={setShowAdminMessage}
+                    />
+                  </div>
+
+                  {showAdminMessage && (
+                    <div className="space-y-2 mt-2 pl-4 border-l-2 border-blue-200">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label htmlFor="admin-message-bg-color" className="text-xs">Colore Sfondo Messaggio</Label>
+                          <Input
+                            id="admin-message-bg-color"
+                            type="color"
+                            value={adminMessageBgColor}
+                            onChange={(e) => setAdminMessageBgColor(e.target.value)}
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="admin-message-text-color" className="text-xs">Colore Testo Messaggio</Label>
+                          <Input
+                            id="admin-message-text-color"
+                            type="color"
+                            value={adminMessageTextColor}
+                            onChange={(e) => setAdminMessageTextColor(e.target.value)}
+                            className="h-8"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Il messaggio dell'amministratore apparirà in questa sezione quando presente
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 

@@ -146,24 +146,26 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
               value={subject}
               onChange={(e) => onSubjectChange(e.target.value)}
               placeholder="Oggetto della mail"
-              required={notifyRecipient}
               disabled={!notifyRecipient}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="body">Messaggio per il destinatario</Label>
+            <Label htmlFor="body">Messaggio per il destinatario (opzionale)</Label>
             <Textarea
               id="body"
               value={body}
               onChange={(e) => onBodyChange(e.target.value)}
-              placeholder="Messaggio per il destinatario"
-              required={notifyRecipient}
+              placeholder="Scrivi un messaggio che apparirà nella email di notifica..."
               disabled={!notifyRecipient}
               rows={3}
             />
             <div className="text-xs text-muted-foreground">
-              Puoi usare HTML per link (esempio: {'<a href="/">Vai alla dashboard</a>'})
+              {notifyRecipient ? (
+                <>Questo messaggio apparirà nella sezione dedicata della email di notifica</>
+              ) : (
+                <>Attiva la notifica per inserire un messaggio personalizzato</>
+              )}
             </div>
           </div>
         </>

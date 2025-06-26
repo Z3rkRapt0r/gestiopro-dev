@@ -37,6 +37,11 @@ export interface EmailContentParams {
   customBlockTextColor?: string;
   dynamicSubject?: string;
   dynamicContent?: string;
+  // NEW: Admin message parameters
+  showAdminMessage?: boolean;
+  adminMessage?: string;
+  adminMessageBgColor?: string;
+  adminMessageTextColor?: string;
 }
 
 export function buildAttachmentSection(attachmentUrl: string | null, primaryColor: string = '#007bff'): string {
@@ -92,7 +97,12 @@ export function buildHtmlContent({
   customBlockTextColor = '#856404',
   dynamicSubject = '',
   dynamicContent = '',
-  employeeEmail = '' // New parameter for employee email
+  employeeEmail = '', // New parameter for employee email
+  // NEW: Admin message parameters
+  showAdminMessage = false,
+  adminMessage = '',
+  adminMessageBgColor = '#e3f2fd',
+  adminMessageTextColor = '#1565c0',
 }: EmailContentParams & {
   employeeEmail?: string;
 }) {
@@ -128,6 +138,16 @@ export function buildHtmlContent({
       <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📣 Avviso Importante</h4>
       <p style="margin: 0; font-size: 14px;">
         ${customBlockText}
+      </p>
+    </div>
+  ` : "";
+
+  // NEW: Admin Message Section - ONLY for admin document templates
+  const adminMessageSection = showAdminMessage && adminMessage && templateType === 'documenti' ? `
+    <div style="background-color: ${adminMessageBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${adminMessageTextColor};">
+      <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">💬 Messaggio Amministratore</h4>
+      <p style="margin: 0; font-size: 14px;">
+        ${adminMessage.replace(/\n/g, '<br>')}
       </p>
     </div>
   ` : "";
@@ -202,6 +222,7 @@ export function buildHtmlContent({
       </h2>
       <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${textColor}; text-align: ${bodyAlignment}; font-size: ${actualFontSize};">
         ${finalContent.replace(/\n/g, '<br>')}
+        ${adminMessageSection}
         ${leaveDetailsSection}
         ${employeeNotesSection}
         ${adminNotesSection}

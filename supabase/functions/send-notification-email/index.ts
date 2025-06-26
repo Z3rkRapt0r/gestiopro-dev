@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -206,7 +207,11 @@ serve(async (req) => {
         custom_block_text_color: '#856404',
         text_alignment: 'left',
         subject: null,
-        content: null
+        content: null,
+        // NEW: Admin message defaults
+        show_admin_message: false,
+        admin_message_bg_color: '#e3f2fd',
+        admin_message_text_color: '#1565c0',
       };
       console.log("[Notification Email] No custom template found, using minimal fallback styling only");
     }
@@ -352,6 +357,7 @@ serve(async (req) => {
         console.log("[Notification Email] Starting variable substitution for template type:", templateType);
         console.log("[Notification Email] Employee name provided:", employeeName);
         console.log("[Notification Email] Employee note provided:", employeeNote);
+        console.log("[Notification Email] Admin message (emailBody) provided:", emailBody);
         
         // Replace {employee_name} with enhanced logging - CRITICAL FOR VACATION REQUESTS
         if (employeeName) {
@@ -399,11 +405,21 @@ serve(async (req) => {
           emailContent = emailContent.replace(/{admin_note}/g, adminNote);
           console.log("[Notification Email] Replaced admin note for template type:", templateType);
         }
+
+        // NEW: Replace admin message for document templates
+        if (templateType === 'documenti' && templateCategory === 'amministratori' && emailBody) {
+          emailContent = emailContent.replace(/{admin_message}/g, emailBody);
+          console.log("[Notification Email] Replaced admin message for document template:", emailBody);
+        } else if (templateType === 'documenti' && templateCategory === 'amministratori') {
+          emailContent = emailContent.replace(/{admin_message}/g, '');
+          console.log("[Notification Email] No admin message provided, removing placeholder");
+        }
         
         // Prepare structured data for HTML template
         let leaveDetails = '';
         let adminNotes = '';
         let employeeNotes = '';
+        let adminMessage = ''; // NEW: Admin message for documents
         
         if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
           leaveDetails = emailBody;
@@ -415,6 +431,12 @@ serve(async (req) => {
         
         if (['permessi-richiesta', 'ferie-richiesta'].includes(templateType) && employeeNote) {
           employeeNotes = employeeNote;
+        }
+
+        // NEW: Admin message for document templates
+        if (templateType === 'documenti' && templateCategory === 'amministratori' && emailBody) {
+          adminMessage = emailBody;
+          console.log("[Notification Email] Setting admin message for HTML template:", adminMessage);
         }
         
         console.log("[Notification Email] Final email subject:", emailSubject);
@@ -459,7 +481,12 @@ serve(async (req) => {
           customBlockTextColor: templateData.custom_block_text_color,
           dynamicSubject: emailSubject,
           dynamicContent: emailContent,
-          employeeEmail: employeeEmail
+          employeeEmail: employeeEmail,
+          // NEW: Admin message parameters
+          showAdminMessage: templateData.show_admin_message,
+          adminMessage: adminMessage,
+          adminMessageBgColor: templateData.admin_message_bg_color,
+          adminMessageTextColor: templateData.admin_message_text_color,
         });
 
         // Build Brevo payload with configured sender settings
@@ -521,7 +548,9 @@ serve(async (req) => {
           employeeName: employeeName || "Not provided",
           employeeNameSubstituted: !!employeeName,
           employeeNote: employeeNote || "Not provided",
-          employeeNoteSubstituted: !!employeeNote
+          employeeNoteSubstituted: !!employeeNote,
+          adminMessage: emailBody || "Not provided",
+          adminMessageSubstituted: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody)
         },
         errors: errors.length > 0 ? errors : undefined
       }),
