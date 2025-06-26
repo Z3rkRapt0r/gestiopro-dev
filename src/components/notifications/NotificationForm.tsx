@@ -31,12 +31,11 @@ const NotificationForm = ({ onCreated }: Props) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Use custom subject if provided, otherwise use topic
-    const finalSubject = subject.trim() || topic;
     
+    // NEW: Use subject as provided by user (if any) - no longer use topic as fallback
     await sendNotification({
       recipientId: recipientId === "ALL" ? null : recipientId,
-      subject: finalSubject,
+      subject: subject.trim(), // Use subject as-is (can be empty)
       shortText,
       body: undefined,
       file: null,
@@ -111,12 +110,15 @@ const NotificationForm = ({ onCreated }: Props) => {
               Oggetto Email (opzionale)
             </label>
             <Input
-              placeholder="Lascia vuoto per usare l'argomento come oggetto"
+              placeholder="Inserisci l'oggetto dell'email (se vuoto verrà usato quello del template)"
               value={subject}
               onChange={e => setSubject(e.target.value)}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Oggetto finale: "{subject.trim() || topic || 'Non specificato'}"
+              {subject.trim() 
+                ? `Oggetto personalizzato: "${subject.trim()}"` 
+                : "Verrà usato l'oggetto configurato nel template email"
+              }
             </p>
           </div>
 

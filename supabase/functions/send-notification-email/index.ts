@@ -166,6 +166,9 @@ serve(async (req) => {
     console.log("[Notification Email] FIXED Template mapping - Type:", templateType, "Category:", templateCategory, "Topic:", topic);
     console.log("[Notification Email] EmployeeEmail present:", !!employeeEmail, "- This determines notification category");
 
+    // FIXED: Check if this is an admin notification template (should use dynamic content)
+    const isAdminNotificationTemplate = templateType === 'notifiche' && templateCategory === 'amministratori';
+
     // Get email template for the specific template type and category
     console.log("[Notification Email] Looking for email template:", templateType, templateCategory);
     const { data: emailTemplate, error: templateError } = await supabase
@@ -181,6 +184,7 @@ serve(async (req) => {
     }
 
     console.log("[Notification Email] Template query result:", emailTemplate ? "Found custom template" : "No custom template found");
+    console.log("[Notification Email] Is admin notification template (uses dynamic content):", isAdminNotificationTemplate);
     
     // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
     if (emailTemplate) {
@@ -373,11 +377,30 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // ABSOLUTE PRIORITY LOGIC - ALWAYS USE DATABASE TEMPLATE WHEN AVAILABLE
+        // NEW: DYNAMIC CONTENT LOGIC FOR ADMIN NOTIFICATION TEMPLATES
         let emailSubject, emailContent;
         
-        if (emailTemplate && emailTemplate.subject && emailTemplate.content) {
-          // ABSOLUTE PRIORITY: Use database template content - NEVER use frontend content
+        if (isAdminNotificationTemplate) {
+          // ADMIN NOTIFICATION TEMPLATE: Always use dynamic content from form
+          console.log("[Notification Email] ADMIN NOTIFICATION TEMPLATE - Using dynamic content from form");
+          
+          // Subject: Use template subject if form subject is empty, otherwise use form subject
+          if (subject && subject.trim()) {
+            emailSubject = subject.trim();
+            console.log("[Notification Email] Using form subject:", emailSubject);
+          } else if (emailTemplate && emailTemplate.subject && emailTemplate.subject.trim()) {
+            emailSubject = emailTemplate.subject.trim();
+            console.log("[Notification Email] Using template subject:", emailSubject);
+          } else {
+            emailSubject = 'Notifica Sistema';
+            console.log("[Notification Email] Using default subject:", emailSubject);
+          }
+          
+          // Content: Always use form content for admin notifications
+          emailContent = shortText || 'Hai ricevuto una nuova notifica.';
+          console.log("[Notification Email] Using form content:", emailContent);
+        } else if (emailTemplate && emailTemplate.subject && emailTemplate.content) {
+          // OTHER TEMPLATES: Use database template content - NEVER use frontend content
           emailSubject = emailTemplate.subject;
           emailContent = emailTemplate.content;
           console.log("[Notification Email] USING DATABASE TEMPLATE - ABSOLUTE PRIORITY");

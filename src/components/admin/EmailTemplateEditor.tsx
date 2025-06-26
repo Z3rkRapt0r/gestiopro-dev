@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Save, Settings, Type, Palette, MousePointer } from "lucide-react";
+import { Save, Settings, Type, Palette, MousePointer, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface EmailTemplateEditorProps {
   templateType: string;
@@ -96,9 +98,19 @@ const EmailTemplateEditor = ({
     return templateType === 'documenti' && templateCategory === 'amministratori';
   };
 
+  // NEW: Check if this is an admin notification template (content should be dynamic)
+  const isAdminNotificationTemplate = () => {
+    return templateType === 'notifiche' && templateCategory === 'amministratori';
+  };
+
   // NEW: Check if this template should show button configuration (exclude document templates)
   const shouldShowButtonConfig = () => {
     return templateType !== 'documenti';
+  };
+
+  // NEW: Check if content section should be shown (hide for admin notifications)
+  const shouldShowContentSection = () => {
+    return !isAdminNotificationTemplate();
   };
 
   // Load existing template
@@ -285,79 +297,116 @@ const EmailTemplateEditor = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Content Section - Sempre visibile */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Type className="w-5 h-5" />
-              Contenuto Email
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="subject">Oggetto Email</Label>
-              <Input
-                id="subject"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Oggetto dell'email"
-                disabled={!subjectEditable}
-                className={!subjectEditable ? "bg-gray-50 cursor-not-allowed" : ""}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Puoi usare <code>{'{employee_name}'}</code> per inserire il nome del dipendente
-              </p>
-            </div>
+        {/* Content Section - Show only if not admin notification template */}
+        {shouldShowContentSection() && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Type className="w-5 h-5" />
+                Contenuto Email
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="subject">Oggetto Email</Label>
+                <Input
+                  id="subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Oggetto dell'email"
+                  disabled={!subjectEditable}
+                  className={!subjectEditable ? "bg-gray-50 cursor-not-allowed" : ""}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Puoi usare <code>{'{employee_name}'}</code> per inserire il nome del dipendente
+                </p>
+              </div>
 
-            <div>
-              <Label htmlFor="content">Contenuto Email</Label>
-              <Textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Contenuto dell'email"
-                rows={8}
-                disabled={!contentEditable}
-                className={!contentEditable ? "bg-gray-50 cursor-not-allowed" : ""}
-              />
-              {isEmployeeRequestTemplate() && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Puoi usare <code>{'{employee_note}'}</code> per le note del dipendente
-                </p>
-              )}
-              {isLeaveTemplate() && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Puoi usare <code>{'{leave_details}'}</code> per i dettagli della richiesta
-                </p>
-              )}
-              {isAdminResponseTemplate() && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Puoi usare <code>{'{admin_note}'}</code> per le note dell'amministratore
-                </p>
-              )}
-              {isAdminDocumentTemplate() && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Puoi usare <code>{'{admin_message}'}</code> per il messaggio dell'amministratore
-                </p>
-              )}
-            </div>
+              <div>
+                <Label htmlFor="content">Contenuto Email</Label>
+                <Textarea
+                  id="content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Contenuto dell'email"
+                  rows={8}
+                  disabled={!contentEditable}
+                  className={!contentEditable ? "bg-gray-50 cursor-not-allowed" : ""}
+                />
+                {isEmployeeRequestTemplate() && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Puoi usare <code>{'{employee_note}'}</code> per le note del dipendente
+                  </p>
+                )}
+                {isLeaveTemplate() && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Puoi usare <code>{'{leave_details}'}</code> per i dettagli della richiesta
+                  </p>
+                )}
+                {isAdminResponseTemplate() && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Puoi usare <code>{'{admin_note}'}</code> per le note dell'amministratore
+                  </p>
+                )}
+                {isAdminDocumentTemplate() && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Puoi usare <code>{'{admin_message}'}</code> per il messaggio dell'amministratore
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <Label htmlFor="text-alignment">Allineamento Testo</Label>
-              <Select value={textAlignment} onValueChange={setTextAlignment}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona allineamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="left">Sinistra</SelectItem>
-                  <SelectItem value="center">Centro</SelectItem>
-                  <SelectItem value="right">Destra</SelectItem>
-                  <SelectItem value="justify">Giustificato</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+              <div>
+                <Label htmlFor="text-alignment">Allineamento Testo</Label>
+                <Select value={textAlignment} onValueChange={setTextAlignment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona allineamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="left">Sinistra</SelectItem>
+                    <SelectItem value="center">Centro</SelectItem>
+                    <SelectItem value="right">Destra</SelectItem>
+                    <SelectItem value="justify">Giustificato</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* NEW: Info message for admin notification templates */}
+        {isAdminNotificationTemplate() && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="w-5 h-5" />
+                Contenuto Dinamico
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Contenuto dinamico:</strong> Per le notifiche inviate dall'amministratore ai dipendenti, 
+                  il contenuto dell'email viene preso direttamente dal modulo di invio notifica. 
+                  Qui puoi configurare solo il design, i colori e il pulsante.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="mt-4">
+                <Label htmlFor="subject">Oggetto Email (Opzionale)</Label>
+                <Input
+                  id="subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Lascia vuoto per usare l'oggetto dalla form di invio"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Se lasci vuoto, verrà usato l'oggetto inserito nel modulo di invio notifica
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Design Section */}
         <Card>
