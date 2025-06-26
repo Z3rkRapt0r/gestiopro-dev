@@ -46,9 +46,9 @@ export default function ManualAttendancesList() {
     attendance.date === selectedDate
   ) || [];
 
-  // Separate normal attendances from sick leaves
-  const normalAttendances = filteredAttendances.filter(att => !att.notes?.includes('malattia'));
-  const sickLeaves = filteredAttendances.filter(att => att.notes?.includes('malattia') || att.notes?.toLowerCase().includes('sick'));
+  // Separate normal attendances from sick leaves using is_sick_leave field
+  const normalAttendances = filteredAttendances.filter(att => !att.is_sick_leave);
+  const sickLeaves = filteredAttendances.filter(att => att.is_sick_leave);
 
   if (isLoading) {
     return (

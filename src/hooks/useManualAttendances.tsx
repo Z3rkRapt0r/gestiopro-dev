@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +11,7 @@ export interface ManualAttendance {
   check_in_time: string | null;
   check_out_time: string | null;
   notes: string | null;
+  is_sick_leave: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -28,9 +30,12 @@ export const useManualAttendances = () => {
   const { data: manualAttendances, isLoading } = useQuery({
     queryKey: ['manual-attendances'],
     queryFn: async () => {
+      console.log('Caricamento presenze manuali da unified_attendances...');
+      
       const { data: attendanceData, error } = await supabase
-        .from('manual_attendances')
+        .from('unified_attendances')
         .select('*')
+        .eq('is_manual', true)
         .order('date', { ascending: false });
 
       if (error) {
@@ -55,6 +60,7 @@ export const useManualAttendances = () => {
           profiles: profilesData?.find(profile => profile.id === attendance.user_id) || null
         }));
 
+        console.log('Presenze manuali caricate:', attendancesWithProfiles);
         return attendancesWithProfiles as ManualAttendance[];
       }
 
@@ -70,14 +76,17 @@ export const useManualAttendances = () => {
       check_in_time: string | null;
       check_out_time: string | null;
       notes: string | null;
+      is_sick_leave?: boolean;
     }) => {
-      console.log('Creazione presenza manuale con dati (timestamp locali):', attendanceData);
+      console.log('Creazione presenza manuale con dati:', attendanceData);
       
-      // Usa upsert invece di insert per gestire duplicati - aggiorna se esiste già
-      const { data: manualData, error: manualError } = await supabase
-        .from('manual_attendances')
+      const { data: unifiedData, error: unifiedError } = await supabase
+        .from('unified_attendances')
         .upsert({
           ...attendanceData,
+          is_manual: true,
+          is_business_trip: false,
+          is_sick_leave: attendanceData.is_sick_leave || false,
           created_by: user?.id,
         }, {
           onConflict: 'user_id,date'
@@ -85,40 +94,17 @@ export const useManualAttendances = () => {
         .select()
         .single();
 
-      if (manualError) {
-        console.error('Errore inserimento/aggiornamento manual_attendances:', manualError);
-        throw manualError;
+      if (unifiedError) {
+        console.error('Errore inserimento/aggiornamento unified_attendances:', unifiedError);
+        throw unifiedError;
       }
 
-      // Sincronizza anche nella tabella attendances mantenendo gli stessi timestamp
-      const { data: attendanceRecord, error: attendanceError } = await supabase
-        .from('attendances')
-        .upsert({
-          user_id: attendanceData.user_id,
-          date: attendanceData.date,
-          check_in_time: attendanceData.check_in_time,
-          check_out_time: attendanceData.check_out_time,
-          check_in_latitude: null,
-          check_in_longitude: null,
-          check_out_latitude: null,
-          check_out_longitude: null,
-          is_business_trip: false,
-        }, {
-          onConflict: 'user_id,date'
-        })
-        .select()
-        .single();
-
-      if (attendanceError) {
-        console.warn('Warning: Could not sync to attendances table:', attendanceError);
-      } else {
-        console.log('Presenza sincronizzata nella tabella attendances con timestamp locali:', attendanceRecord);
-      }
-
-      return manualData;
+      console.log('Presenza manuale salvata:', unifiedData);
+      return unifiedData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza salvata",
@@ -138,7 +124,7 @@ export const useManualAttendances = () => {
   const updateManualAttendance = useMutation({
     mutationFn: async ({ id, ...updateData }: Partial<ManualAttendance> & { id: string }) => {
       const { data, error } = await supabase
-        .from('manual_attendances')
+        .from('unified_attendances')
         .update(updateData)
         .eq('id', id)
         .select()
@@ -149,6 +135,7 @@ export const useManualAttendances = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza aggiornata",
@@ -167,15 +154,23 @@ export const useManualAttendances = () => {
 
   const deleteManualAttendance = useMutation({
     mutationFn: async (id: string) => {
+      console.log('Eliminazione presenza manuale con ID:', id);
+      
       const { error } = await supabase
-        .from('manual_attendances')
+        .from('unified_attendances')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Errore eliminazione presenza:', error);
+        throw error;
+      }
+      
+      console.log('Presenza manuale eliminata con successo');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza eliminata",
