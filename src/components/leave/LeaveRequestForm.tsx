@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,13 @@ import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useAuth } from "@/hooks/useAuth";
 import { LeaveRequestFormValidation } from './LeaveRequestFormValidation';
 
-export default function LeaveRequestForm() {
-  const [type, setType] = useState<"permesso" | "ferie">("ferie");
+interface LeaveRequestFormProps {
+  type?: "permesso" | "ferie";
+  onSuccess?: () => void;
+}
+
+export default function LeaveRequestForm({ type: initialType = "ferie", onSuccess }: LeaveRequestFormProps) {
+  const [type, setType] = useState<"permesso" | "ferie">(initialType);
   const [day, setDay] = useState<Date>();
   const [time_from, setTimeFrom] = useState<string>("");
   const [time_to, setTimeTo] = useState<string>("");
@@ -43,7 +49,26 @@ export default function LeaveRequestForm() {
       date_from: date_from ? format(date_from, "yyyy-MM-dd") : null,
       date_to: date_to ? format(date_to, "yyyy-MM-dd") : null,
       note: note || null,
+    }, {
+      onSuccess: () => {
+        // Reset form
+        setDay(undefined);
+        setTimeFrom("");
+        setTimeTo("");
+        setDateFrom(undefined);
+        setDateTo(undefined);
+        setNote("");
+        
+        // Call onSuccess callback if provided
+        if (onSuccess) {
+          onSuccess();
+        }
+      }
     });
+  };
+
+  const handleTypeChange = (value: string) => {
+    setType(value as "permesso" | "ferie");
   };
 
   return (
@@ -60,7 +85,7 @@ export default function LeaveRequestForm() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="type">Tipo di richiesta</Label>
-              <Select value={type} onValueChange={setType}>
+              <Select value={type} onValueChange={handleTypeChange}>
                 <SelectTrigger id="type">
                   <SelectValue placeholder="Seleziona un tipo" />
                 </SelectTrigger>
