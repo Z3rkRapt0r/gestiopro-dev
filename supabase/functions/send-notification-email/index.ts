@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -179,6 +180,10 @@ serve(async (req) => {
       console.log("[Notification Email] Template show_admin_message:", emailTemplate.show_admin_message);
       console.log("[Notification Email] Template admin_message_bg_color:", emailTemplate.admin_message_bg_color);
       console.log("[Notification Email] Template admin_message_text_color:", emailTemplate.admin_message_text_color);
+      // NEW: Log button configuration
+      console.log("[Notification Email] Template show_button:", emailTemplate.show_button);
+      console.log("[Notification Email] Template button_text:", emailTemplate.button_text);
+      console.log("[Notification Email] Template button_url:", emailTemplate.button_url);
     }
 
     // Template data handling - prioritize database template or use minimal fallback
@@ -222,6 +227,10 @@ serve(async (req) => {
         show_admin_message: false,
         admin_message_bg_color: '#e3f2fd',
         admin_message_text_color: '#1565c0',
+        // NEW: Button defaults
+        show_button: true,
+        button_text: 'Accedi alla Dashboard',
+        button_url: 'https://your-app-url.com',
       };
       console.log("[Notification Email] No custom template found, using minimal fallback styling only");
     }
@@ -510,6 +519,10 @@ serve(async (req) => {
           adminMessageTextColor: templateData.admin_message_text_color,
           // NEW: Pass recipient name to template
           recipientName: recipientName,
+          // NEW: Pass button configuration to template
+          showButton: templateData.show_button,
+          buttonText: templateData.button_text,
+          buttonUrl: templateData.button_url,
         });
 
         // Email sending configuration
