@@ -37,7 +37,7 @@ export interface EmailContentParams {
   customBlockTextColor?: string;
   dynamicSubject?: string;
   dynamicContent?: string;
-  // NEW: Admin message parameters
+  // Admin message parameters
   showAdminMessage?: boolean;
   adminMessage?: string;
   adminMessageBgColor?: string;
@@ -150,10 +150,10 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // ENHANCED: Admin Message Section - IMPROVED LOGIC AND LOGGING
+  // ENHANCED: Admin Message Section - ROBUST LOGIC FOR DISPLAY
   let adminMessageSection = '';
   
-  // Check if we should show the admin message section
+  // Check if we should show the admin message section - ENHANCED CONDITIONS
   const shouldShowAdminMessage = showAdminMessage && adminMessage && adminMessage.trim() !== '';
   
   console.log("[Mail Templates] Admin message section decision:");
@@ -164,16 +164,26 @@ export function buildHtmlContent({
   
   if (shouldShowAdminMessage) {
     adminMessageSection = `
-      <div style="background-color: ${adminMessageBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${adminMessageTextColor};">
-        <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">💬 Messaggio Amministratore</h4>
-        <p style="margin: 0; font-size: 14px;">
+      <div style="background-color: ${adminMessageBgColor}; padding: 20px; border-left: 4px solid ${primaryColor}; margin: 20px 0; border-radius: 6px; color: ${adminMessageTextColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h4 style="margin: 0 0 12px 0; color: ${primaryColor}; font-size: 18px; font-weight: bold; display: flex; align-items: center;">
+          <span style="margin-right: 8px;">💬</span>
+          Messaggio Amministratore
+        </h4>
+        <div style="margin: 0; font-size: 15px; line-height: 1.6; border-top: 1px solid rgba(37, 84, 196, 0.2); padding-top: 12px;">
           ${adminMessage.replace(/\n/g, '<br>')}
-        </p>
+        </div>
       </div>
     `;
-    console.log("[Mail Templates] Admin message section created successfully");
+    console.log("[Mail Templates] ADMIN MESSAGE SECTION CREATED SUCCESSFULLY");
+    console.log("  Admin message content length:", adminMessage.length);
+    console.log("  Background color:", adminMessageBgColor);
+    console.log("  Text color:", adminMessageTextColor);
   } else {
     console.log("[Mail Templates] Admin message section NOT created - conditions not met");
+    console.log("  Missing conditions:");
+    if (!showAdminMessage) console.log("    - showAdminMessage is false");
+    if (!adminMessage) console.log("    - adminMessage is empty/null");
+    if (adminMessage && adminMessage.trim() === '') console.log("    - adminMessage is only whitespace");
   }
 
   // Determine final subject and content
@@ -235,7 +245,7 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // ENHANCED: Build the complete HTML with admin message section properly positioned
+  // ENHANCED: Build the complete HTML with admin message section PROMINENTLY POSITIONED
   const htmlContent = `
     <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; font-size: ${actualFontSize};">
       ${logoSection}
@@ -246,13 +256,13 @@ export function buildHtmlContent({
       </h2>
       <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${textColor}; text-align: ${bodyAlignment}; font-size: ${actualFontSize};">
         ${finalContent.replace(/\n/g, '<br>')}
-        ${adminMessageSection}
-        ${leaveDetailsSection}
-        ${employeeNotesSection}
-        ${adminNotesSection}
-        ${dashboardButton}
-        ${attachmentSection}
       </div>
+      ${adminMessageSection}
+      ${leaveDetailsSection}
+      ${employeeNotesSection}
+      ${adminNotesSection}
+      ${dashboardButton}
+      ${attachmentSection}
       <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
       <div style="width:100%;text-align:center;margin-top:18px;">
         <span style="color:${footerColor}; font-size:13px;">
