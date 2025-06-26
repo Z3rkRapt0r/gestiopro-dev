@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const useLeaveRequestNotifications = () => {
@@ -29,14 +28,14 @@ export const useLeaveRequestNotifications = () => {
         shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata approvata.`;
         recipientId = leaveRequest.user_id; // Send to the employee
         
-        // FIXED: Format approval details with enhanced structure for template processing
+        // CLEANED: Only pure request details - no admin notes or confirmation messages
         if (leaveRequest.type === 'ferie') {
-          body = `📅 DETTAGLI APPROVAZIONE FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}\n\n${adminNote ? `Note amministratore:\n${adminNote}\n\n` : ''}La tua richiesta è stata approvata dall'amministratore.`;
+          body = `📅 DETTAGLI RICHIESTA FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}`;
         } else {
           const timeInfo = leaveRequest.time_from && leaveRequest.time_to 
             ? `dalle ${leaveRequest.time_from} alle ${leaveRequest.time_to}`
             : 'giornata intera';
-          body = `📅 DETTAGLI APPROVAZIONE PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day || leaveRequest.date_from}\nOrario: ${timeInfo}\n\n${adminNote ? `Note amministratore:\n${adminNote}\n\n` : ''}La tua richiesta è stata approvata dall'amministratore.`;
+          body = `📅 DETTAGLI RICHIESTA PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day || leaveRequest.date_from}\nOrario: ${timeInfo}`;
         }
       } else if (isRejection) {
         // Rejection notification goes to the employee - use specific template type
@@ -45,14 +44,14 @@ export const useLeaveRequestNotifications = () => {
         shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata rifiutata.`;
         recipientId = leaveRequest.user_id; // Send to the employee
         
-        // FIXED: Format rejection details with enhanced structure for template processing
+        // CLEANED: Only pure request details - no admin notes or confirmation messages
         if (leaveRequest.type === 'ferie') {
-          body = `📅 DETTAGLI RIFIUTO FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}\n\n${adminNote ? `Note amministratore:\n${adminNote}\n\n` : ''}La tua richiesta è stata rifiutata dall'amministratore.`;
+          body = `📅 DETTAGLI RICHIESTA FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}`;
         } else {
           const timeInfo = leaveRequest.time_from && leaveRequest.time_to 
             ? `dalle ${leaveRequest.time_from} alle ${leaveRequest.time_to}`
             : 'giornata intera';
-          body = `📅 DETTAGLI RIFIUTO PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day || leaveRequest.date_from}\nOrario: ${timeInfo}\n\n${adminNote ? `Note amministratore:\n${adminNote}\n\n` : ''}La tua richiesta è stata rifiutata dall'amministratore.`;
+          body = `📅 DETTAGLI RICHIESTA PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day || leaveRequest.date_from}\nOrario: ${timeInfo}`;
         }
       } else {
         // New leave request notification goes to all admins - use specific template type
@@ -61,14 +60,14 @@ export const useLeaveRequestNotifications = () => {
         shortText = `${employeeFullName} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
         recipientId = null; // Send to all admins
         
-        // FIXED: Format leave details properly for display in email
+        // CLEANED: Only pure request details with employee note if present
         if (leaveRequest.type === 'ferie') {
-          body = `📅 DETTAGLI RICHIESTA FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}\n\n${leaveRequest.note ? `Note del dipendente:\n${leaveRequest.note}\n\n` : ''}Accedi alla dashboard per approvare o rifiutare la richiesta.`;
+          body = `📅 DETTAGLI RICHIESTA FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}${leaveRequest.note ? `\n\nNote del dipendente:\n${leaveRequest.note}` : ''}`;
         } else {
           const timeInfo = leaveRequest.time_from && leaveRequest.time_to 
             ? `dalle ${leaveRequest.time_from} alle ${leaveRequest.time_to}`
             : 'giornata intera';
-          body = `📅 DETTAGLI RICHIESTA PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day}\nOrario: ${timeInfo}\n\n${leaveRequest.note ? `Note del dipendente:\n${leaveRequest.note}\n\n` : ''}Accedi alla dashboard per approvare o rifiutare la richiesta.`;
+          body = `📅 DETTAGLI RICHIESTA PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day}\nOrario: ${timeInfo}${leaveRequest.note ? `\n\nNote del dipendente:\n${leaveRequest.note}` : ''}`;
         }
       }
 
@@ -82,7 +81,7 @@ export const useLeaveRequestNotifications = () => {
         employeeName: employeeFullName // FIXED: Pass the constructed full name
       };
 
-      // FIXED: Add adminNote for approvals and rejections
+      // FIXED: Add adminNote for approvals and rejections - this will be handled separately by the template
       if ((isApproval || isRejection) && adminNote) {
         emailPayload.adminNote = adminNote;
         console.log('Adding admin note for leave response notification:', adminNote);
@@ -94,7 +93,7 @@ export const useLeaveRequestNotifications = () => {
         console.log('Adding employee email for leave request notification:', employeeProfile.email);
       }
 
-      // FIXED: Add employee note for leave requests
+      // FIXED: Add employee note for leave requests - this is already included in body for new requests
       if (!isApproval && !isRejection && leaveRequest.note) {
         emailPayload.employeeNote = leaveRequest.note;
         console.log('Adding employee note for leave request:', leaveRequest.note);
