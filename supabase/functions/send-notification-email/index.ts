@@ -336,6 +336,9 @@ serve(async (req) => {
     let successCount = 0;
     const errors = [];
 
+    // FIXED: Declare adminMessage variable here to make it available in the scope
+    let adminMessageForResponse = '';
+
     for (const recipient of recipients) {
       try {
         console.log("[Notification Email] Preparing email for recipient:", recipient.email);
@@ -429,6 +432,9 @@ serve(async (req) => {
           console.log("  Content before replacement:", originalContent.substring(0, 200) + "...");
           console.log("  Content after replacement:", emailContent.substring(0, 200) + "...");
           console.log("  Replacement occurred:", originalContent !== emailContent);
+          
+          // Set adminMessage for response object - FIXED
+          adminMessageForResponse = emailBody;
         } else if (templateType === 'documenti' && templateCategory === 'amministratori') {
           emailContent = emailContent.replace(/{admin_message}/g, '');
           console.log("[Notification Email] No admin message provided, removing placeholder");
@@ -575,14 +581,14 @@ serve(async (req) => {
           adminMessage: emailBody || "Not provided",
           adminMessageSubstituted: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody)
         },
-        // ENHANCED: Admin message debugging info
+        // ENHANCED: Admin message debugging info - FIXED: Use scoped variable
         adminMessageDebugging: {
           templateType,
           templateCategory,
           showAdminMessage: templateData.show_admin_message,
           adminMessageValue: emailBody,
           isAdminDocumentTemplate: templateType === 'documenti' && templateCategory === 'amministratori',
-          adminMessageForTemplate: adminMessage
+          adminMessageForTemplate: adminMessageForResponse
         },
         errors: errors.length > 0 ? errors : undefined
       }),
