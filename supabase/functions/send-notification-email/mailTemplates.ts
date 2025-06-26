@@ -113,12 +113,24 @@ export function buildHtmlContent({
   console.log("  adminMessageBgColor:", adminMessageBgColor);
   console.log("  adminMessageTextColor:", adminMessageTextColor);
 
-  // FIXED: Enhanced logging for employee notes debugging
-  console.log("[Mail Templates] Employee notes debugging:");
+  // ENHANCED: Determine email direction based on template category and employee email
+  console.log("[Mail Templates] Email direction debugging:");
   console.log("  templateType:", templateType);
-  console.log("  employeeEmail:", employeeEmail);
+  console.log("  employeeEmail present:", !!employeeEmail);
   console.log("  employeeNotes:", employeeNotes);
-  console.log("  showAdminNotes:", showAdminNotes);
+  console.log("  adminMessage:", adminMessage);
+
+  // FIXED: Properly distinguish between employee-to-admin and admin-to-employee emails
+  const isEmployeeToAdmin = templateType === 'documenti' && employeeEmail && employeeNotes;
+  const isAdminToEmployee = templateType === 'documenti' && !employeeEmail && adminMessage;
+  const isLeaveRequest = templateType.includes('richiesta');
+  const isLeaveResponse = templateType.includes('approvazione') || templateType.includes('rifiuto');
+
+  console.log("[Mail Templates] Email context determination:");
+  console.log("  isEmployeeToAdmin:", isEmployeeToAdmin);
+  console.log("  isAdminToEmployee:", isAdminToEmployee);
+  console.log("  isLeaveRequest:", isLeaveRequest);
+  console.log("  isLeaveResponse:", isLeaveResponse);
 
   // Determine font size in pixels
   const fontSizeMap: { [key: string]: string } = {
@@ -135,8 +147,8 @@ export function buildHtmlContent({
       </div>`
     : "";
 
-  // Employee info section for admin notifications
-  const employeeInfoSection = employeeEmail ? `
+  // Employee info section for admin notifications (when employee contacts admin)
+  const employeeInfoSection = isEmployeeToAdmin ? `
     <div style="background-color: #e8f4fd; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px;">
       <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📧 Comunicazione da dipendente</h4>
       <p style="margin: 0; font-size: 14px; color: #2c5282;">
@@ -156,17 +168,17 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // FIXED: Admin Message Section - ALWAYS SHOW when adminMessage exists, regardless of flag
+  // FIXED: Admin Message Section - Only for admin-to-employee communications
   let adminMessageSection = '';
   
-  // FIXED: Show admin message section whenever adminMessage is present and not empty
-  const shouldShowAdminMessage = adminMessage && adminMessage.trim() !== '';
+  // Show admin message only when admin is sending to employee (not when employee sends to admin)
+  const shouldShowAdminMessage = adminMessage && adminMessage.trim() !== '' && isAdminToEmployee;
   
   console.log("[Mail Templates] Admin message section decision:");
   console.log("  adminMessage exists:", !!adminMessage);
   console.log("  adminMessage not empty:", adminMessage && adminMessage.trim() !== '');
+  console.log("  isAdminToEmployee:", isAdminToEmployee);
   console.log("  shouldShowAdminMessage:", shouldShowAdminMessage);
-  console.log("  showAdminMessage flag (template setting):", showAdminMessage);
   
   if (shouldShowAdminMessage) {
     adminMessageSection = `
@@ -177,17 +189,15 @@ export function buildHtmlContent({
         </p>
       </div>
     `;
-    console.log("[Mail Templates] Admin message section created successfully");
+    console.log("[Mail Templates] Admin message section created for admin-to-employee email");
   } else {
-    console.log("[Mail Templates] Admin message section NOT created - no message provided");
+    console.log("[Mail Templates] Admin message section NOT created - not an admin-to-employee email");
   }
 
   // Determine final subject and content
   const finalSubject = dynamicSubject || subject;
   let finalContent = dynamicContent || shortText;
 
-  // REMOVED: No longer replace {admin_message} placeholder in content
-  // The admin message will only appear in the dedicated section
   console.log("[Mail Templates] NOT replacing {admin_message} placeholder - using dedicated section only");
 
   // Leave Details Section
@@ -200,22 +210,10 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // FIXED: Corrected logic to identify employee requests
-  // An employee request can be:
-  // 1. Template types that include 'richiesta' (permissions/vacation requests)
-  // 2. Document templates where employeeEmail is present (employee uploading document)
-  const isEmployeeRequest = templateType.includes('richiesta') || 
-                           (templateType === 'documenti' && employeeEmail);
-  const isAdminResponse = templateType.includes('approvazione') || templateType.includes('rifiuto');
-
-  console.log("[Mail Templates] Request type determination:");
-  console.log("  isEmployeeRequest:", isEmployeeRequest);
-  console.log("  isAdminResponse:", isAdminResponse);
-  console.log("  Logic: templateType.includes('richiesta') ||", templateType.includes('richiesta'));
-  console.log("  Logic: (templateType === 'documenti' && employeeEmail):", (templateType === 'documenti' && employeeEmail));
-
-  // Employee Notes Section (for employee requests)
-  const employeeNotesSection = showAdminNotes && isEmployeeRequest && employeeNotes ? `
+  // FIXED: Employee Notes Section - Only for employee-to-admin communications or leave requests
+  const shouldShowEmployeeNotes = showAdminNotes && employeeNotes && (isEmployeeToAdmin || isLeaveRequest);
+  
+  const employeeNotesSection = shouldShowEmployeeNotes ? `
     <div style="background-color: #e8f4fd; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: #2c5282;">
       <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">💬 Note del Dipendente</h4>
       <p style="margin: 0; font-size: 14px;">
@@ -226,12 +224,14 @@ export function buildHtmlContent({
 
   console.log("[Mail Templates] Employee notes section decision:");
   console.log("  showAdminNotes:", showAdminNotes);
-  console.log("  isEmployeeRequest:", isEmployeeRequest);
   console.log("  employeeNotes exists:", !!employeeNotes);
+  console.log("  isEmployeeToAdmin:", isEmployeeToAdmin);
+  console.log("  isLeaveRequest:", isLeaveRequest);
+  console.log("  shouldShowEmployeeNotes:", shouldShowEmployeeNotes);
   console.log("  employeeNotesSection created:", !!employeeNotesSection);
 
-  // Admin Notes Section (for admin responses)
-  const adminNotesSection = showAdminNotes && isAdminResponse && adminNotes ? `
+  // FIXED: Admin Notes Section - Only for admin leave responses
+  const adminNotesSection = showAdminNotes && isLeaveResponse && adminNotes ? `
     <div style="background-color: ${adminNotesBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${adminNotesTextColor};">
       <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📋 Note Amministratore</h4>
       <p style="margin: 0; font-size: 14px;">
@@ -261,7 +261,7 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // ENHANCED: Build the complete HTML with admin message section properly positioned
+  // ENHANCED: Build the complete HTML with properly separated sections
   const htmlContent = `
     <div style="font-family: ${fontFamily}; max-width: 600px; margin: 0 auto; background-color: ${backgroundColor}; color: ${textColor}; font-size: ${actualFontSize};">
       ${logoSection}
@@ -288,8 +288,9 @@ export function buildHtmlContent({
     </div>
   `;
 
-  console.log("[Mail Templates] HTML content built. Admin message section included:", shouldShowAdminMessage);
-  console.log("[Mail Templates] Employee notes section included:", !!employeeNotesSection);
+  console.log("[Mail Templates] HTML content built with separated sections:");
+  console.log("  Admin message section included:", shouldShowAdminMessage);
+  console.log("  Employee notes section included:", shouldShowEmployeeNotes);
   
   return htmlContent;
 }
