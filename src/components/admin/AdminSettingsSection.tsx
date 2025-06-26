@@ -76,13 +76,13 @@ const AdminSettingsSection = () => {
           <div>
             <h2 className="text-xl font-semibold mb-4">Configurazione Email - Brevo</h2>
             <p className="text-sm text-gray-600 mb-6">
-              Configura tutte le impostazioni per l'invio e la ricezione di email tramite l'API Brevo
+              Configura le impostazioni base per l'invio di email tramite l'API Brevo
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Configurazione Base */}
-            <Card>
+          {/* Configurazione Base - Centrato */}
+          <div className="flex justify-center">
+            <Card className="w-full max-w-md">
               <CardHeader>
                 <CardTitle className="text-lg">Configurazione Base</CardTitle>
               </CardHeader>
@@ -135,161 +135,19 @@ const AdminSettingsSection = () => {
                     onChange={e => setBrevoSettings(prev => ({ ...prev, replyTo: e.target.value }))}
                   />
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Impostazioni Notifiche */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Notifiche Email</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="enable-notifications">Abilita Notifiche</Label>
-                    <p className="text-xs text-gray-500">Invio generale di notifiche email</p>
-                  </div>
-                  <Switch
-                    id="enable-notifications"
-                    checked={brevoSettings.enableNotifications}
-                    onCheckedChange={checked => setBrevoSettings(prev => ({ ...prev, enableNotifications: checked }))}
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Notifiche Documenti</Label>
-                    <p className="text-xs text-gray-500">Email per caricamento documenti</p>
-                  </div>
-                  <Switch
-                    checked={brevoSettings.enableDocumentNotifications}
-                    onCheckedChange={checked => setBrevoSettings(prev => ({ ...prev, enableDocumentNotifications: checked }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Notifiche Presenze</Label>
-                    <p className="text-xs text-gray-500">Email per registrazione presenze</p>
-                  </div>
-                  <Switch
-                    checked={brevoSettings.enableAttendanceNotifications}
-                    onCheckedChange={checked => setBrevoSettings(prev => ({ ...prev, enableAttendanceNotifications: checked }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Notifiche Permessi</Label>
-                    <p className="text-xs text-gray-500">Email per richieste permessi/ferie</p>
-                  </div>
-                  <Switch
-                    checked={brevoSettings.enableLeaveNotifications}
-                    onCheckedChange={checked => setBrevoSettings(prev => ({ ...prev, enableLeaveNotifications: checked }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Email di Benvenuto</Label>
-                    <p className="text-xs text-gray-500">Email per nuovi dipendenti</p>
-                  </div>
-                  <Switch
-                    checked={brevoSettings.enableWelcomeEmails}
-                    onCheckedChange={checked => setBrevoSettings(prev => ({ ...prev, enableWelcomeEmails: checked }))}
-                  />
+                <div className="pt-4">
+                  <Button
+                    onClick={handleSaveBrevoSettings}
+                    disabled={loading || !brevoSettings.apiKey}
+                    size="lg"
+                    className="w-full"
+                  >
+                    {loading ? 'Salvataggio...' : 'Salva Configurazione'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Personalizzazione Email */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Personalizzazione</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="email-signature">Firma Email</Label>
-                  <Textarea
-                    id="email-signature"
-                    placeholder="Inserisci la firma standard per le email..."
-                    rows={4}
-                    value={brevoSettings.emailSignature}
-                    onChange={e => setBrevoSettings(prev => ({ ...prev, emailSignature: e.target.value }))}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Questa firma verrà aggiunta automaticamente a tutte le email
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Impostazioni Avanzate */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Impostazioni Avanzate</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Tracciamento Aperture</Label>
-                    <p className="text-xs text-gray-500">Monitora quando le email vengono aperte</p>
-                  </div>
-                  <Switch
-                    checked={brevoSettings.trackOpens}
-                    onCheckedChange={checked => setBrevoSettings(prev => ({ ...prev, trackOpens: checked }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Tracciamento Click</Label>
-                    <p className="text-xs text-gray-500">Monitora i click sui link nelle email</p>
-                  </div>
-                  <Switch
-                    checked={brevoSettings.trackClicks}
-                    onCheckedChange={checked => setBrevoSettings(prev => ({ ...prev, trackClicks: checked }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Riprova Automatica</Label>
-                    <p className="text-xs text-gray-500">Riprova invio email fallite</p>
-                  </div>
-                  <Switch
-                    checked={brevoSettings.autoRetry}
-                    onCheckedChange={checked => setBrevoSettings(prev => ({ ...prev, autoRetry: checked }))}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="max-retries">Tentativi Massimi</Label>
-                  <Input
-                    id="max-retries"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={brevoSettings.maxRetries}
-                    onChange={e => setBrevoSettings(prev => ({ ...prev, maxRetries: parseInt(e.target.value) || 3 }))}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              onClick={handleSaveBrevoSettings}
-              disabled={loading || !brevoSettings.apiKey}
-              size="lg"
-            >
-              {loading ? 'Salvataggio...' : 'Salva Configurazione'}
-            </Button>
           </div>
         </TabsContent>
 
