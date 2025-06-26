@@ -91,7 +91,7 @@ serve(async (req) => {
 
     console.log("[Notification Email] Found Brevo settings for admin");
 
-    // ENHANCED TEMPLATE TYPE MAPPING - Now includes all template types
+    // FIXED: ENHANCED TEMPLATE TYPE MAPPING - Corrected logic for notification categories
     let templateType = 'notifiche'; // default
     let templateCategory = 'generale'; // default
     
@@ -103,6 +103,9 @@ serve(async (req) => {
       templateCategory = 'amministratori';
     } else if (topic === 'notifications' || topic === 'notification') {
       templateType = 'notifiche';
+      // FIXED: Correct logic for notifications
+      // When employeeEmail is present: employee is sending to admin → use 'dipendenti' template
+      // When employeeEmail is NOT present: admin is sending to employees → use 'amministratori' template
       templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
     } else if (topic === 'permessi-richiesta') {
       templateType = 'permessi-richiesta';
@@ -153,10 +156,15 @@ serve(async (req) => {
           templateType = 'ferie-richiesta';
           templateCategory = 'dipendenti';
         }
+      } else {
+        // FIXED: For generic notifications, use correct logic
+        templateType = 'notifiche';
+        templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
       }
     }
 
-    console.log("[Notification Email] Template mapping - Type:", templateType, "Category:", templateCategory, "Topic:", topic);
+    console.log("[Notification Email] FIXED Template mapping - Type:", templateType, "Category:", templateCategory, "Topic:", topic);
+    console.log("[Notification Email] EmployeeEmail present:", !!employeeEmail, "- This determines notification category");
 
     // Get email template for the specific template type and category
     console.log("[Notification Email] Looking for email template:", templateType, templateCategory);
