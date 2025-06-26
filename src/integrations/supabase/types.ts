@@ -345,6 +345,8 @@ export type Database = {
       email_templates: {
         Row: {
           admin_id: string
+          admin_message_bg_color: string | null
+          admin_message_text_color: string | null
           admin_notes_bg_color: string | null
           admin_notes_text_color: string | null
           background_color: string | null
@@ -375,6 +377,7 @@ export type Database = {
           primary_color: string | null
           secondary_color: string | null
           sender_name: string | null
+          show_admin_message: boolean | null
           show_admin_notes: boolean | null
           show_custom_block: boolean | null
           show_details_button: boolean | null
@@ -389,6 +392,8 @@ export type Database = {
         }
         Insert: {
           admin_id: string
+          admin_message_bg_color?: string | null
+          admin_message_text_color?: string | null
           admin_notes_bg_color?: string | null
           admin_notes_text_color?: string | null
           background_color?: string | null
@@ -419,6 +424,7 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           sender_name?: string | null
+          show_admin_message?: boolean | null
           show_admin_notes?: boolean | null
           show_custom_block?: boolean | null
           show_details_button?: boolean | null
@@ -433,6 +439,8 @@ export type Database = {
         }
         Update: {
           admin_id?: string
+          admin_message_bg_color?: string | null
+          admin_message_text_color?: string | null
           admin_notes_bg_color?: string | null
           admin_notes_text_color?: string | null
           background_color?: string | null
@@ -463,6 +471,7 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           sender_name?: string | null
+          show_admin_message?: boolean | null
           show_admin_notes?: boolean | null
           show_custom_block?: boolean | null
           show_details_button?: boolean | null
