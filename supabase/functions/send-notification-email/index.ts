@@ -124,7 +124,7 @@ serve(async (req) => {
       templateCategory = 'amministratori';
     } else {
       // Enhanced fallback to subject analysis if topic is not clear
-      const lowerSubject = subject.toLowerCase();
+      const lowerSubject = subject?.toLowerCase() || '';
       if (lowerSubject.includes('documento') || lowerSubject.includes('document')) {
         templateType = 'documenti';
         templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
@@ -360,7 +360,7 @@ serve(async (req) => {
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // FIXED: ABSOLUTE PRIORITY LOGIC - ALWAYS USE DATABASE TEMPLATE WHEN AVAILABLE
+        // ABSOLUTE PRIORITY LOGIC - ALWAYS USE DATABASE TEMPLATE WHEN AVAILABLE
         let emailSubject, emailContent;
         
         if (emailTemplate && emailTemplate.subject && emailTemplate.content) {
@@ -372,11 +372,35 @@ serve(async (req) => {
           console.log("[Notification Email] Database template content preview:", emailContent.substring(0, 100) + "...");
         } else {
           // ONLY FALLBACK: Use frontend content when NO database template exists
-          emailSubject = subject || 'Notifica Sistema';
-          emailContent = shortText || 'Hai ricevuto una nuova notifica.';
+          // CRITICAL: For leave responses without database template, provide minimal fallback
+          if (isLeaveResponse) {
+            console.log("[Notification Email] CRITICAL: Leave response without database template detected");
+            // Provide minimal fallback for leave responses
+            if (templateType === 'permessi-approvazione') {
+              emailSubject = 'Richiesta Permesso Approvata';
+              emailContent = 'La tua richiesta di permesso è stata approvata.';
+            } else if (templateType === 'ferie-approvazione') {
+              emailSubject = 'Richiesta Ferie Approvata';
+              emailContent = 'La tua richiesta di ferie è stata approvata.';
+            } else if (templateType === 'permessi-rifiuto') {
+              emailSubject = 'Richiesta Permesso Rifiutata';
+              emailContent = 'La tua richiesta di permesso è stata rifiutata.';
+            } else if (templateType === 'ferie-rifiuto') {
+              emailSubject = 'Richiesta Ferie Rifiutata';
+              emailContent = 'La tua richiesta di ferie è stata rifiutata.';
+            } else {
+              emailSubject = subject || 'Notifica Leave Request';
+              emailContent = shortText || 'Hai ricevuto una notifica.';
+            }
+            console.log("[Notification Email] Using minimal leave response fallback");
+          } else {
+            // For other types, use frontend provided content
+            emailSubject = subject || 'Notifica Sistema';
+            emailContent = shortText || 'Hai ricevuto una nuova notifica.';
+          }
           console.log("[Notification Email] FALLBACK CONTENT - No database template found");
-          console.log("[Notification Email] Using frontend subject:", emailSubject);
-          console.log("[Notification Email] Using frontend content:", emailContent);
+          console.log("[Notification Email] Using subject:", emailSubject);
+          console.log("[Notification Email] Using content:", emailContent);
         }
         
         // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING

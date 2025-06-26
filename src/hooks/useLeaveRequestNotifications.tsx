@@ -22,10 +22,10 @@ export const useLeaveRequestNotifications = () => {
       console.log('Using employee full name:', employeeFullName);
 
       if (isApproval) {
-        // Approval notification goes to the employee - use specific template type
+        // ABSOLUTE PRIORITY: Database template takes precedence - NO hardcoded content
         topic = leaveRequest.type === 'ferie' ? 'ferie-approvazione' : 'permessi-approvazione';
-        subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} approvata`;
-        shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata approvata.`;
+        subject = null; // Let database template decide
+        shortText = null; // Let database template decide
         recipientId = leaveRequest.user_id; // Send to the employee
         
         // CLEANED: Only pure request details - no admin notes or confirmation messages
@@ -38,10 +38,10 @@ export const useLeaveRequestNotifications = () => {
           body = `📅 DETTAGLI RICHIESTA PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day || leaveRequest.date_from}\nOrario: ${timeInfo}`;
         }
       } else if (isRejection) {
-        // Rejection notification goes to the employee - use specific template type
+        // ABSOLUTE PRIORITY: Database template takes precedence - NO hardcoded content
         topic = leaveRequest.type === 'ferie' ? 'ferie-rifiuto' : 'permessi-rifiuto';
-        subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} rifiutata`;
-        shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata rifiutata.`;
+        subject = null; // Let database template decide
+        shortText = null; // Let database template decide
         recipientId = leaveRequest.user_id; // Send to the employee
         
         // CLEANED: Only pure request details - no admin notes or confirmation messages
@@ -74,8 +74,8 @@ export const useLeaveRequestNotifications = () => {
       // CRITICAL FIX: Prepare email payload with proper parameters for all leave types
       const emailPayload: any = {
         recipientId,
-        subject,
-        shortText,
+        subject, // Can be null for database template priority
+        shortText, // Can be null for database template priority
         topic,
         body,
         employeeName: employeeFullName // FIXED: Pass the constructed full name
