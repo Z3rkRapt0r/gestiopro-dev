@@ -17,14 +17,10 @@ interface Employee {
 
 interface LeaveEmployeesSectionProps {
   employees: Employee[];
-  onDeleteAttendance: (attendance: any) => void;
-  isDeleting: boolean;
 }
 
 export default function LeaveEmployeesSection({ 
-  employees, 
-  onDeleteAttendance, 
-  isDeleting 
+  employees
 }: LeaveEmployeesSectionProps) {
   return (
     <div className="space-y-3">

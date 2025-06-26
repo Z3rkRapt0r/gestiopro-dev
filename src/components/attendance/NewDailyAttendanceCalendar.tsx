@@ -11,7 +11,6 @@ import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
-import { useLeaveBalanceSync } from '@/hooks/useLeaveBalanceSync';
 import { formatTime, isWorkingDay } from '@/utils/attendanceUtils';
 import AttendanceCalendarSidebar from './calendar/AttendanceCalendarSidebar';
 import PresentEmployeesSection from './sections/PresentEmployeesSection';
@@ -25,13 +24,12 @@ export default function NewDailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
   
-  const { attendances, isLoading, deleteAttendance, isDeleting } = useUnifiedAttendances();
+  const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { workSchedule } = useWorkSchedules();
-  const { leaveRequests, deleteRequestMutation } = useLeaveRequests();
+  const { leaveRequests } = useLeaveRequests();
   const { businessTrips } = useBusinessTrips();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
-  const { invalidateBalanceQueries } = useLeaveBalanceSync();
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
 
@@ -311,31 +309,6 @@ export default function NewDailyAttendanceCalendar() {
     });
   }
 
-  const handleDeleteAttendance = (attendance: any) => {
-    if (confirm('Sei sicuro di voler eliminare questa presenza?')) {
-      console.log('Eliminando presenza, i bilanci saranno sincronizzati automaticamente');
-      deleteAttendance(attendance);
-      invalidateBalanceQueries();
-    }
-  };
-
-  const handleDeletePermissionRequest = async (leaveRequest: any) => {
-    if (confirm('Sei sicuro di voler eliminare questa richiesta di permesso?')) {
-      console.log('Eliminando richiesta di permesso:', leaveRequest);
-      console.log('I bilanci saranno aggiornati automaticamente dai trigger del database');
-      
-      try {
-        await deleteRequestMutation.mutateAsync({
-          id: leaveRequest.id,
-          leaveRequest: leaveRequest
-        });
-        console.log('Richiesta di permesso eliminata con successo');
-      } catch (error) {
-        console.error('Errore nell\'eliminazione della richiesta di permesso:', error);
-      }
-    }
-  };
-
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <AttendanceCalendarSidebar
@@ -368,29 +341,19 @@ export default function NewDailyAttendanceCalendar() {
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-6 gap-4">
               <PresentEmployeesSection
                 employees={presentEmployees}
-                onDeleteAttendance={handleDeleteAttendance}
-                isDeleting={isDeleting}
                 formatTime={formatTime}
               />
 
               <SickEmployeesSection
                 employees={sickEmployees}
-                onDeleteAttendance={handleDeleteAttendance}
-                isDeleting={isDeleting}
               />
 
               <LeaveEmployeesSection
                 employees={onLeaveEmployees}
-                onDeleteAttendance={handleDeleteAttendance}
-                isDeleting={isDeleting}
               />
 
               <PermissionEmployeesSection
                 employees={onPermissionEmployees}
-                onDeleteAttendance={handleDeleteAttendance}
-                onDeletePermissionRequest={handleDeletePermissionRequest}
-                isDeleting={isDeleting}
-                deleteRequestMutation={deleteRequestMutation}
                 formatTime={formatTime}
               />
 

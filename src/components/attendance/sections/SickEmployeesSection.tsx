@@ -1,8 +1,6 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -15,14 +13,10 @@ interface Employee {
 
 interface SickEmployeesSectionProps {
   employees: Employee[];
-  onDeleteAttendance: (attendance: any) => void;
-  isDeleting: boolean;
 }
 
 export default function SickEmployeesSection({ 
-  employees, 
-  onDeleteAttendance, 
-  isDeleting 
+  employees
 }: SickEmployeesSectionProps) {
   return (
     <div className="space-y-3">
@@ -48,15 +42,6 @@ export default function SickEmployeesSection({
                     <p className="text-xs text-gray-600">{employee.attendance.notes}</p>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDeleteAttendance(employee.attendance)}
-                  disabled={isDeleting}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2 h-7 w-7 p-0"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
               </div>
             </div>
           ))

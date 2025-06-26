@@ -1,8 +1,6 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -17,19 +15,11 @@ interface Employee {
 
 interface PermissionEmployeesSectionProps {
   employees: Employee[];
-  onDeleteAttendance: (attendance: any) => void;
-  onDeletePermissionRequest: (leave: any) => Promise<void>;
-  isDeleting: boolean;
-  deleteRequestMutation: { isPending: boolean };
   formatTime: (timeString: string | null) => string;
 }
 
 export default function PermissionEmployeesSection({ 
-  employees, 
-  onDeleteAttendance, 
-  onDeletePermissionRequest,
-  isDeleting,
-  deleteRequestMutation,
+  employees,
   formatTime 
 }: PermissionEmployeesSectionProps) {
   return (
@@ -72,34 +62,6 @@ export default function PermissionEmployeesSection({
                   )}
                   {employee.attendance?.notes && !employee.leave?.note && employee.attendance.notes !== 'Permesso' && (
                     <p className="text-xs text-gray-600">{employee.attendance.notes}</p>
-                  )}
-                </div>
-                
-                <div className="flex gap-1 ml-2">
-                  {employee.attendance && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDeleteAttendance(employee.attendance)}
-                      disabled={isDeleting}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
-                      title="Elimina presenza"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                  
-                  {employee.leave && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDeletePermissionRequest(employee.leave)}
-                      disabled={deleteRequestMutation.isPending}
-                      className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 h-7 w-7 p-0"
-                      title="Elimina richiesta permesso"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
                   )}
                 </div>
               </div>
