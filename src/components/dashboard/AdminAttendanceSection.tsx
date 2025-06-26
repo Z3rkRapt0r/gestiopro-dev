@@ -36,7 +36,7 @@ export default function AdminAttendanceSection() {
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="calendar">Calendario Generale</TabsTrigger>
           <TabsTrigger value="operator">Calendario Operatore</TabsTrigger>
-          <TabsTrigger value="manual">Inserimento Manuale</TabsTrigger>
+          <TabsTrigger value="manual">Inserimento Manuale Presenza/Malattia</TabsTrigger>
           <TabsTrigger value="business-trips">Trasferte</TabsTrigger>
           <TabsTrigger value="export">Esportazioni</TabsTrigger>
         </TabsList>
