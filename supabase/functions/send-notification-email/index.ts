@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -20,6 +19,10 @@ serve(async (req) => {
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
     const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName, employeeNote, adminMessage } = body;
+
+    // ENHANCED: Log employee note specifically
+    console.log("[Notification Email] Employee note received:", employeeNote);
+    console.log("[Notification Email] Employee email received:", employeeEmail);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -414,6 +417,10 @@ serve(async (req) => {
         console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 100) + "...");
         console.log("[Notification Email] Template database usage:", !!emailTemplate);
         console.log("[Notification Email] Admin message to pass:", finalAdminMessage);
+        
+        // FIXED: Enhanced logging for employee notes
+        console.log("[Notification Email] Employee notes to pass:", employeeNote);
+        console.log("[Notification Email] Template show_admin_notes setting:", templateData.show_admin_notes);
 
         const htmlContent = buildHtmlContent({
           subject: emailSubject,
@@ -442,6 +449,7 @@ serve(async (req) => {
           showAdminNotes: templateData.show_admin_notes,
           leaveDetails: '',
           adminNotes: '',
+          // FIXED: Pass employee notes correctly
           employeeNotes: employeeNote || '',
           leaveDetailsBgColor: templateData.leave_details_bg_color,
           leaveDetailsTextColor: templateData.leave_details_text_color,

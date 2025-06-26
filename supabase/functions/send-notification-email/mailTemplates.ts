@@ -1,4 +1,3 @@
-
 export interface EmailContentParams {
   subject: string;
   shortText: string;
@@ -114,6 +113,13 @@ export function buildHtmlContent({
   console.log("  adminMessageBgColor:", adminMessageBgColor);
   console.log("  adminMessageTextColor:", adminMessageTextColor);
 
+  // FIXED: Enhanced logging for employee notes debugging
+  console.log("[Mail Templates] Employee notes debugging:");
+  console.log("  templateType:", templateType);
+  console.log("  employeeEmail:", employeeEmail);
+  console.log("  employeeNotes:", employeeNotes);
+  console.log("  showAdminNotes:", showAdminNotes);
+
   // Determine font size in pixels
   const fontSizeMap: { [key: string]: string } = {
     'small': '14px',
@@ -194,9 +200,19 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // Determine if this is an employee request (from employee to admin) or admin response (from admin to employee)
-  const isEmployeeRequest = templateType.includes('richiesta');
+  // FIXED: Corrected logic to identify employee requests
+  // An employee request can be:
+  // 1. Template types that include 'richiesta' (permissions/vacation requests)
+  // 2. Document templates where employeeEmail is present (employee uploading document)
+  const isEmployeeRequest = templateType.includes('richiesta') || 
+                           (templateType === 'documenti' && employeeEmail);
   const isAdminResponse = templateType.includes('approvazione') || templateType.includes('rifiuto');
+
+  console.log("[Mail Templates] Request type determination:");
+  console.log("  isEmployeeRequest:", isEmployeeRequest);
+  console.log("  isAdminResponse:", isAdminResponse);
+  console.log("  Logic: templateType.includes('richiesta') ||", templateType.includes('richiesta'));
+  console.log("  Logic: (templateType === 'documenti' && employeeEmail):", (templateType === 'documenti' && employeeEmail));
 
   // Employee Notes Section (for employee requests)
   const employeeNotesSection = showAdminNotes && isEmployeeRequest && employeeNotes ? `
@@ -207,6 +223,12 @@ export function buildHtmlContent({
       </p>
     </div>
   ` : "";
+
+  console.log("[Mail Templates] Employee notes section decision:");
+  console.log("  showAdminNotes:", showAdminNotes);
+  console.log("  isEmployeeRequest:", isEmployeeRequest);
+  console.log("  employeeNotes exists:", !!employeeNotes);
+  console.log("  employeeNotesSection created:", !!employeeNotesSection);
 
   // Admin Notes Section (for admin responses)
   const adminNotesSection = showAdminNotes && isAdminResponse && adminNotes ? `
@@ -267,6 +289,7 @@ export function buildHtmlContent({
   `;
 
   console.log("[Mail Templates] HTML content built. Admin message section included:", shouldShowAdminMessage);
+  console.log("[Mail Templates] Employee notes section included:", !!employeeNotesSection);
   
   return htmlContent;
 }
