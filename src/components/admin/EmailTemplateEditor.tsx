@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -148,10 +149,10 @@ const EmailTemplateEditor = ({
         setAdminNotesTextColor(data.admin_notes_text_color || "#495057");
         setButtonColor(data.button_color || "#007bff");
         setButtonTextColor(data.button_text_color || "#ffffff");
-        // Load admin notes section settings
-        setShowAdminNotesSection(data.show_admin_notes_section ?? true);
-        setAdminNotesSectionBgColor(data.admin_notes_section_bg_color || "#e8f4fd");
-        setAdminNotesSectionTextColor(data.admin_notes_section_text_color || "#2c5282");
+        // Load admin notes section settings - with proper null checking
+        setShowAdminNotesSection((data as any).show_admin_notes_section ?? true);
+        setAdminNotesSectionBgColor((data as any).admin_notes_section_bg_color || "#e8f4fd");
+        setAdminNotesSectionTextColor((data as any).admin_notes_section_text_color || "#2c5282");
       } else {
         console.log('No existing template found, using defaults');
         setExistingTemplateId(null);
