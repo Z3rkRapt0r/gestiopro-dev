@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Save, Settings, Type, Palette } from "lucide-react";
-import TestEmailDialog from "./TestEmailDialog";
 
 interface EmailTemplateEditorProps {
   templateType: string;
@@ -51,13 +51,8 @@ const EmailTemplateEditor = ({
   const [footerText, setFooterText] = useState("© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820");
   const [footerColor, setFooterColor] = useState("#888888");
   
-  // Feature toggles
-  const [showDetailsButton, setShowDetailsButton] = useState(true);
-  const [showLeaveDetails, setShowLeaveDetails] = useState(true);
-  const [showAdminNotes, setShowAdminNotes] = useState(true);
-  const [showCustomBlock, setShowCustomBlock] = useState(false);
-  
   // Custom block
+  const [showCustomBlock, setShowCustomBlock] = useState(false);
   const [customBlockText, setCustomBlockText] = useState("");
   const [customBlockBgColor, setCustomBlockBgColor] = useState("#fff3cd");
   const [customBlockTextColor, setCustomBlockTextColor] = useState("#856404");
@@ -76,8 +71,7 @@ const EmailTemplateEditor = ({
   const [loading, setLoading] = useState(false);
   const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null);
 
-  // New state for admin message section
-  const [showAdminMessage, setShowAdminMessage] = useState(false);
+  // Admin message section styling
   const [adminMessageBgColor, setAdminMessageBgColor] = useState("#e3f2fd");
   const [adminMessageTextColor, setAdminMessageTextColor] = useState("#1565c0");
   
@@ -94,7 +88,6 @@ const EmailTemplateEditor = ({
     return templateType.includes('permessi') || templateType.includes('ferie');
   };
 
-  // NEW: Check if this is admin-to-employee document template
   const isAdminDocumentTemplate = () => {
     return templateType === 'documenti' && templateCategory === 'amministratori';
   };
@@ -138,9 +131,6 @@ const EmailTemplateEditor = ({
         setBorderRadius(data.border_radius || "6px");
         setFooterText(data.footer_text || "© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820");
         setFooterColor(data.footer_color || "#888888");
-        setShowDetailsButton(data.show_details_button ?? true);
-        setShowLeaveDetails(data.show_leave_details ?? true);
-        setShowAdminNotes(data.show_admin_notes ?? true);
         setShowCustomBlock(data.show_custom_block || false);
         setCustomBlockText(data.custom_block_text || "");
         setCustomBlockBgColor(data.custom_block_bg_color || "#fff3cd");
@@ -151,8 +141,6 @@ const EmailTemplateEditor = ({
         setAdminNotesTextColor(data.admin_notes_text_color || "#495057");
         setButtonColor(data.button_color || "#007bff");
         setButtonTextColor(data.button_text_color || "#ffffff");
-        // NEW: Load admin message settings
-        setShowAdminMessage(data.show_admin_message || false);
         setAdminMessageBgColor(data.admin_message_bg_color || "#e3f2fd");
         setAdminMessageTextColor(data.admin_message_text_color || "#1565c0");
       } else {
@@ -195,9 +183,9 @@ const EmailTemplateEditor = ({
         border_radius: borderRadius,
         footer_text: footerText,
         footer_color: footerColor,
-        show_details_button: showDetailsButton,
-        show_leave_details: showLeaveDetails,
-        show_admin_notes: showAdminNotes,
+        show_details_button: true, // Always true, no longer configurable
+        show_leave_details: true, // Always true, no longer configurable
+        show_admin_notes: true, // Always true, no longer configurable
         show_custom_block: showCustomBlock,
         custom_block_text: customBlockText,
         custom_block_bg_color: customBlockBgColor,
@@ -210,8 +198,7 @@ const EmailTemplateEditor = ({
         button_text_color: buttonTextColor,
         subject_editable: subjectEditable,
         content_editable: contentEditable,
-        // NEW: Save admin message settings
-        show_admin_message: showAdminMessage,
+        show_admin_message: true, // Always true, no longer configurable
         admin_message_bg_color: adminMessageBgColor,
         admin_message_text_color: adminMessageTextColor,
       };
@@ -271,13 +258,6 @@ const EmailTemplateEditor = ({
           </p>
         </div>
         <div className="flex gap-2">
-          <TestEmailDialog
-            templateType={templateType as any}
-            templateCategory={templateCategory}
-            subject={subject}
-            content={content}
-            disabled={loading}
-          />
           <Button onClick={handleSave} disabled={loading}>
             <Save className="w-4 h-4 mr-2" />
             {loading ? "Salvataggio..." : "Salva Template"}
@@ -337,7 +317,6 @@ const EmailTemplateEditor = ({
                   Puoi usare <code>{'{admin_note}'}</code> per le note dell'amministratore
                 </p>
               )}
-              {/* NEW: Admin message variable help */}
               {isAdminDocumentTemplate() && (
                 <p className="text-xs text-gray-500 mt-1">
                   Puoi usare <code>{'{admin_message}'}</code> per il messaggio dell'amministratore
@@ -474,79 +453,6 @@ const EmailTemplateEditor = ({
             <Separator />
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Mostra Pulsante Dettagli</Label>
-                <Switch
-                  checked={showDetailsButton}
-                  onCheckedChange={setShowDetailsButton}
-                />
-              </div>
-
-              {isLeaveTemplate() && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <Label>Mostra Dettagli Permessi/Ferie</Label>
-                    <Switch
-                      checked={showLeaveDetails}
-                      onCheckedChange={setShowLeaveDetails}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label>
-                      {isEmployeeRequestTemplate() ? 'Mostra Note Dipendente' : 'Mostra Note Admin'}
-                    </Label>
-                    <Switch
-                      checked={showAdminNotes}
-                      onCheckedChange={setShowAdminNotes}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* NEW: Admin Message Section - ONLY for admin document templates */}
-              {isAdminDocumentTemplate() && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <Label>Mostra Messaggio Amministratore</Label>
-                    <Switch
-                      checked={showAdminMessage}
-                      onCheckedChange={setShowAdminMessage}
-                    />
-                  </div>
-
-                  {showAdminMessage && (
-                    <div className="space-y-2 mt-2 pl-4 border-l-2 border-blue-200">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label htmlFor="admin-message-bg-color" className="text-xs">Colore Sfondo Messaggio</Label>
-                          <Input
-                            id="admin-message-bg-color"
-                            type="color"
-                            value={adminMessageBgColor}
-                            onChange={(e) => setAdminMessageBgColor(e.target.value)}
-                            className="h-8"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="admin-message-text-color" className="text-xs">Colore Testo Messaggio</Label>
-                          <Input
-                            id="admin-message-text-color"
-                            type="color"
-                            value={adminMessageTextColor}
-                            onChange={(e) => setAdminMessageTextColor(e.target.value)}
-                            className="h-8"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Il messaggio dell'amministratore apparirà in questa sezione quando presente
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-
               <div className="flex items-center justify-between">
                 <Label>Mostra Blocco Personalizzato</Label>
                 <Switch
