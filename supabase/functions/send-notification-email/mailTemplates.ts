@@ -180,14 +180,9 @@ export function buildHtmlContent({
   const finalSubject = dynamicSubject || subject;
   let finalContent = dynamicContent || shortText;
 
-  // FIXED: Replace {admin_message} placeholder in content with the actual message
-  if (adminMessage && finalContent.includes('{admin_message}')) {
-    finalContent = finalContent.replace(/{admin_message}/g, adminMessage);
-    console.log("[Mail Templates] Replaced {admin_message} placeholder in content");
-  } else if (finalContent.includes('{admin_message}')) {
-    finalContent = finalContent.replace(/{admin_message}/g, '');
-    console.log("[Mail Templates] Removed empty {admin_message} placeholder");
-  }
+  // REMOVED: No longer replace {admin_message} placeholder in content
+  // The admin message will only appear in the dedicated section
+  console.log("[Mail Templates] NOT replacing {admin_message} placeholder - using dedicated section only");
 
   // Leave Details Section
   const leaveDetailsSection = showLeaveDetails && leaveDetails ? `
