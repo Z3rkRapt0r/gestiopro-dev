@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -18,7 +19,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail } = body;
+    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName, employeeNote } = body;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -57,10 +58,10 @@ serve(async (req) => {
 
     console.log("[Notification Email] Using admin ID for settings:", adminSettingsUserId);
 
-    // Get Brevo settings for admin including sender configuration
+    // Get Brevo settings for admin including sender configuration and global logo
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
-      .select("brevo_api_key, sender_name, sender_email, reply_to")
+      .select("brevo_api_key, sender_name, sender_email, reply_to, global_logo_url, global_logo_alignment, global_logo_size")
       .eq("admin_id", adminSettingsUserId)
       .single();
 
@@ -87,102 +88,167 @@ serve(async (req) => {
 
     console.log("[Notification Email] Found Brevo settings for admin");
 
-    // Determine template type based on topic first, then fallback to subject analysis
+    // ENHANCED TEMPLATE TYPE MAPPING - Now includes all template types
     let templateType = 'notifiche'; // default
+    let templateCategory = 'generale'; // default
+    
     if (topic === 'document' || topic === 'documents') {
       templateType = 'documenti';
+      templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
     } else if (topic === 'approvals' || topic === 'approval') {
       templateType = 'approvazioni';
+      templateCategory = 'amministratori';
     } else if (topic === 'notifications' || topic === 'notification') {
       templateType = 'notifiche';
+      templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
     } else if (topic === 'permessi-richiesta') {
       templateType = 'permessi-richiesta';
+      templateCategory = 'dipendenti';
+    } else if (topic === 'ferie-richiesta') {
+      templateType = 'ferie-richiesta';
+      templateCategory = 'dipendenti';
     } else if (topic === 'permessi-approvazione') {
       templateType = 'permessi-approvazione';
+      templateCategory = 'amministratori';
+    } else if (topic === 'ferie-approvazione') {
+      templateType = 'ferie-approvazione';
+      templateCategory = 'amministratori';
     } else if (topic === 'permessi-rifiuto') {
       templateType = 'permessi-rifiuto';
+      templateCategory = 'amministratori';
+    } else if (topic === 'ferie-rifiuto') {
+      templateType = 'ferie-rifiuto';
+      templateCategory = 'amministratori';
     } else {
-      // Fallback to subject analysis if topic is not clear
+      // Enhanced fallback to subject analysis if topic is not clear
       const lowerSubject = subject.toLowerCase();
       if (lowerSubject.includes('documento') || lowerSubject.includes('document')) {
         templateType = 'documenti';
+        templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
       } else if (lowerSubject.includes('approv')) {
         templateType = 'approvazioni';
-      } else if (lowerSubject.includes('permesso') || lowerSubject.includes('ferie')) {
-        if (lowerSubject.includes('approvata')) {
+        templateCategory = 'amministratori';
+      } else if (lowerSubject.includes('permesso')) {
+        if (lowerSubject.includes('approvata') || lowerSubject.includes('approvato')) {
           templateType = 'permessi-approvazione';
-        } else if (lowerSubject.includes('rifiutata')) {
+          templateCategory = 'amministratori';
+        } else if (lowerSubject.includes('rifiutata') || lowerSubject.includes('rifiutato')) {
           templateType = 'permessi-rifiuto';
+          templateCategory = 'amministratori';
         } else {
           templateType = 'permessi-richiesta';
+          templateCategory = 'dipendenti';
+        }
+      } else if (lowerSubject.includes('ferie')) {
+        if (lowerSubject.includes('approvata') || lowerSubject.includes('approvato')) {
+          templateType = 'ferie-approvazione';
+          templateCategory = 'amministratori';
+        } else if (lowerSubject.includes('rifiutata') || lowerSubject.includes('rifiutato')) {
+          templateType = 'ferie-rifiuto';
+          templateCategory = 'amministratori';
+        } else {
+          templateType = 'ferie-richiesta';
+          templateCategory = 'dipendenti';
         }
       }
     }
 
-    // Get email template for the specific template type
-    console.log("[Notification Email] Looking for email template:", templateType);
+    console.log("[Notification Email] Template mapping - Type:", templateType, "Category:", templateCategory, "Topic:", topic);
+
+    // Get email template for the specific template type and category
+    console.log("[Notification Email] Looking for email template:", templateType, templateCategory);
     const { data: emailTemplate, error: templateError } = await supabase
       .from("email_templates")
       .select("*")
       .eq("admin_id", adminSettingsUserId)
       .eq("template_type", templateType)
+      .eq("template_category", templateCategory)
       .maybeSingle();
 
     if (templateError) {
       console.error("[Notification Email] Error fetching email template:", templateError);
     }
 
-    console.log("[Notification Email] Found email template:", emailTemplate);
+    console.log("[Notification Email] Template query result:", emailTemplate ? "Found custom template" : "No custom template found");
+    
+    // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
+    if (emailTemplate) {
+      console.log("[Notification Email] Template show_admin_message:", emailTemplate.show_admin_message);
+      console.log("[Notification Email] Template admin_message_bg_color:", emailTemplate.admin_message_bg_color);
+      console.log("[Notification Email] Template admin_message_text_color:", emailTemplate.admin_message_text_color);
+    }
 
-    // Use template data with fallback to defaults
-    const templateData = emailTemplate || {
-      primary_color: '#007bff',
-      secondary_color: '#6c757d',
-      background_color: '#ffffff',
-      text_color: '#333333',
-      logo_alignment: 'center',
-      logo_size: 'medium',
-      footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
-      footer_color: '#888888',
-      header_alignment: 'center',
-      body_alignment: 'left',
-      font_family: 'Arial, sans-serif',
-      font_size: 'medium',
-      button_color: '#007bff',
-      button_text_color: '#ffffff',
-      border_radius: '6px',
-      show_details_button: true,
-      show_leave_details: true,
-      show_admin_notes: true,
-      admin_notes_bg_color: '#f8f9fa',
-      admin_notes_text_color: '#495057',
-      leave_details_bg_color: '#e3f2fd',
-      leave_details_text_color: '#1565c0',
-      show_custom_block: false,
-      custom_block_text: '',
-      custom_block_bg_color: '#fff3cd',
-      custom_block_text_color: '#856404'
-    };
+    // Template data handling - prioritize database template or use minimal fallback
+    let templateData;
+    if (emailTemplate) {
+      templateData = emailTemplate;
+      console.log("[Notification Email] Using custom template from database");
+    } else {
+      // Minimal fallback template with basic styling only
+      templateData = {
+        primary_color: '#007bff',
+        secondary_color: '#6c757d',
+        background_color: '#ffffff',
+        text_color: '#333333',
+        logo_alignment: 'center',
+        logo_size: 'medium',
+        footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+        footer_color: '#888888',
+        header_alignment: 'center',
+        body_alignment: 'left',
+        font_family: 'Arial, sans-serif',
+        font_size: 'medium',
+        button_color: '#007bff',
+        button_text_color: '#ffffff',
+        border_radius: '6px',
+        show_details_button: true,
+        show_leave_details: true,
+        show_admin_notes: true,
+        admin_notes_bg_color: '#f8f9fa',
+        admin_notes_text_color: '#495057',
+        leave_details_bg_color: '#e3f2fd',
+        leave_details_text_color: '#1565c0',
+        show_custom_block: false,
+        custom_block_text: '',
+        custom_block_bg_color: '#fff3cd',
+        custom_block_text_color: '#856404',
+        text_alignment: 'left',
+        subject: null,
+        content: null,
+        // Admin message defaults
+        show_admin_message: false,
+        admin_message_bg_color: '#e3f2fd',
+        admin_message_text_color: '#1565c0',
+      };
+      console.log("[Notification Email] No custom template found, using minimal fallback styling only");
+    }
 
-    // Use template logo if available, otherwise fallback to admin logo
-    let logoUrl = templateData.logo_url;
+    // Use global logo settings if available, otherwise fallback to template or default
+    let logoUrl = adminSetting.global_logo_url;
+    let logoAlignment = adminSetting.global_logo_alignment || templateData.logo_alignment || 'center';
+    let logoSize = adminSetting.global_logo_size || templateData.logo_size || 'medium';
+    
     if (!logoUrl) {
-      const { data: logoData } = await supabase.storage
-        .from('company-assets')
-        .getPublicUrl(`${userId}/email-logo.png?v=${Date.now()}`);
-      logoUrl = logoData?.publicUrl;
+      logoUrl = templateData.logo_url;
+      if (!logoUrl) {
+        const { data: logoData } = await supabase.storage
+          .from('company-assets')
+          .getPublicUrl(`${adminSettingsUserId}/email-logo.png?v=${Date.now()}`);
+        logoUrl = logoData?.publicUrl;
+      }
     }
 
     console.log("[Notification Email] Using logoUrl:", logoUrl);
+    console.log("[Notification Email] Logo settings - alignment:", logoAlignment, "size:", logoSize);
 
-    // Get recipients list with improved logic
+    // Get recipients list - FIXED: Only admin for employee requests
     let recipients = [];
     console.log("[Notification Email] Determining recipients for recipientId:", recipientId, "templateType:", templateType);
     
     if (!recipientId) {
-      // For leave requests to admin, send to all admins
-      if (templateType === 'permessi-richiesta' || (employeeEmail && templateType === 'documenti')) {
-        console.log("[Notification Email] Sending to all admins");
+      // CORRECTED: For ALL employee requests (permessi/ferie/documents), send ONLY to administrators
+      if (templateType === 'permessi-richiesta' || templateType === 'ferie-richiesta' || (employeeEmail && templateType === 'documenti')) {
+        console.log("[Notification Email] Sending to all admins for employee request");
         const { data: adminProfiles, error: adminProfilesError } = await supabase
           .from("profiles")
           .select("id, email, first_name, last_name")
@@ -196,8 +262,8 @@ serve(async (req) => {
         recipients = adminProfiles || [];
         console.log("[Notification Email] Found admin recipients:", recipients.length);
       } else {
-        // Send to all active employees for other notifications
-        console.log("[Notification Email] Sending to all employees");
+        // Send to all active employees for admin notifications
+        console.log("[Notification Email] Sending to all employees for admin notification");
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, email, first_name, last_name")
@@ -256,16 +322,10 @@ serve(async (req) => {
     console.log("[Notification Email] Using sender:", senderName, "<" + senderEmail + ">");
 
     // Determine if we should use employee email as reply-to
-    // This happens when:
-    // 1. An employee sends a leave request to admin (templateType === 'permessi-richiesta')
-    // 2. An employee uploads a document for admin
-    // 3. employeeEmail is explicitly provided in the request
     let dynamicReplyTo = null;
-    const isEmployeeToAdminNotification = templateType === 'permessi-richiesta' || 
-                                        (templateType === 'documenti' && employeeEmail) ||
-                                        employeeEmail;
+    const isEmployeeToAdminNotification = templateCategory === 'dipendenti' && employeeEmail;
     
-    if (isEmployeeToAdminNotification && employeeEmail) {
+    if (isEmployeeToAdminNotification) {
       dynamicReplyTo = employeeEmail;
       console.log("[Notification Email] Using employee email as reply-to:", employeeEmail);
     } else if (adminSetting.reply_to && adminSetting.reply_to.trim()) {
@@ -282,40 +342,133 @@ serve(async (req) => {
         
         const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
         
-        // Determine if this should show button - notifications and documents should always show button unless explicitly disabled
         const isDocumentEmail = templateType === 'documenti';
         const isNotificationEmail = templateType === 'notifiche';
         
-        // Per documenti e notifiche, usa sempre il contenuto dinamico dal request
-        let emailSubject = subject;
-        let emailContent = shortText;
+        // ENHANCED PRIORITY LOGIC: ALWAYS PRIORITIZE DATABASE TEMPLATE CONTENT
+        let emailSubject, emailContent;
         
-        // Per i template di permessi, usa il contenuto del template se disponibile
-        if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailTemplate) {
-          emailSubject = emailTemplate.subject || subject;
-          emailContent = emailTemplate.content || shortText;
-          
-          // Replace placeholders with actual data for leave templates
-          if (recipient.first_name && recipient.last_name) {
-            emailContent = emailContent.replace(/Mario Rossi/g, `${recipient.first_name} ${recipient.last_name}`);
-          }
+        if (emailTemplate && emailTemplate.subject && emailTemplate.content) {
+          // ABSOLUTE PRIORITY: Use database template content
+          emailSubject = emailTemplate.subject;
+          emailContent = emailTemplate.content;
+          console.log("[Notification Email] Using database template subject and content - ABSOLUTE PRIORITY");
+        } else {
+          // IMPROVED FALLBACK: Only use frontend content when no database template exists
+          emailSubject = subject || 'Notifica Sistema';
+          emailContent = shortText || 'Hai ricevuto una nuova notifica.';
+          console.log("[Notification Email] Using frontend fallback content - no database template found");
         }
         
-        // Prepare leave details and admin notes for templates that support them
+        // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING - IMPROVED FOR VACATION REQUESTS
+        console.log("[Notification Email] Starting variable substitution for template type:", templateType);
+        console.log("[Notification Email] Employee name provided:", employeeName);
+        console.log("[Notification Email] Employee note provided:", employeeNote);
+        console.log("[Notification Email] Admin message (emailBody) provided:", emailBody);
+        
+        // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
+        console.log("[Notification Email] Template category:", templateCategory);
+        console.log("[Notification Email] Is admin document template:", templateType === 'documenti' && templateCategory === 'amministratori');
+        console.log("[Notification Email] Show admin message setting:", templateData.show_admin_message);
+        
+        // Replace {employee_name} with enhanced logging - CRITICAL FOR VACATION REQUESTS
+        if (employeeName) {
+          const originalSubject = emailSubject;
+          const originalContent = emailContent;
+          
+          emailSubject = emailSubject.replace(/{employee_name}/g, employeeName);
+          emailContent = emailContent.replace(/{employee_name}/g, employeeName);
+          
+          console.log("[Notification Email] Enhanced employee name substitution:");
+          console.log("  Template type:", templateType);
+          console.log("  Original subject:", originalSubject);
+          console.log("  Final subject:", emailSubject);
+          console.log("  Employee name used:", employeeName);
+          console.log("  Subject changed:", originalSubject !== emailSubject);
+          console.log("  Content changed:", originalContent !== emailContent);
+        } else {
+          console.log("[Notification Email] No employee name provided for substitution");
+        }
+        
+        // Replace recipient name in content
+        if (recipient.first_name && recipient.last_name) {
+          const recipientName = `${recipient.first_name} ${recipient.last_name}`;
+          emailContent = emailContent.replace(/Gentile [^,]+,/g, `Gentile ${recipientName},`);
+          emailContent = emailContent.replace(/Gentile Admin Sistema,/g, `Gentile ${recipientName},`);
+          console.log("[Notification Email] Replaced recipient greeting with:", recipientName);
+        }
+        
+        // Replace employee notes for employee request templates
+        if (templateType.includes('richiesta') && employeeNote) {
+          emailContent = emailContent.replace(/{employee_note}/g, employeeNote);
+          console.log("[Notification Email] Replaced employee note for request template");
+        } else if (templateType.includes('richiesta')) {
+          emailContent = emailContent.replace(/{employee_note}/g, 'Nessuna nota aggiuntiva.');
+        }
+        
+        // Replace leave details for leave request templates - ENHANCED FOR VACATION REQUESTS
+        if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
+          emailContent = emailContent.replace(/{leave_details}/g, emailBody);
+          console.log("[Notification Email] Replaced leave details for template type:", templateType);
+        }
+        
+        // Replace admin notes for approval/rejection templates
+        if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
+          emailContent = emailContent.replace(/{admin_note}/g, adminNote);
+          console.log("[Notification Email] Replaced admin note for template type:", templateType);
+        }
+
+        // ENHANCED: Replace admin message for document templates - MORE DETAILED LOGGING
+        if (templateType === 'documenti' && templateCategory === 'amministratori' && emailBody) {
+          const originalContent = emailContent;
+          emailContent = emailContent.replace(/{admin_message}/g, emailBody);
+          console.log("[Notification Email] ADMIN MESSAGE REPLACEMENT:");
+          console.log("  Template type:", templateType);
+          console.log("  Template category:", templateCategory);
+          console.log("  Admin message content:", emailBody);
+          console.log("  Content before replacement:", originalContent.substring(0, 200) + "...");
+          console.log("  Content after replacement:", emailContent.substring(0, 200) + "...");
+          console.log("  Replacement occurred:", originalContent !== emailContent);
+        } else if (templateType === 'documenti' && templateCategory === 'amministratori') {
+          emailContent = emailContent.replace(/{admin_message}/g, '');
+          console.log("[Notification Email] No admin message provided, removing placeholder");
+        }
+        
+        // Prepare structured data for HTML template
         let leaveDetails = '';
         let adminNotes = '';
+        let employeeNotes = '';
+        let adminMessage = ''; // Admin message for documents
         
-        if (['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && emailBody) {
+        if (['permessi-richiesta', 'ferie-richiesta', 'permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && emailBody) {
           leaveDetails = emailBody;
         }
         
-        if (['permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && adminNote) {
+        if (['permessi-approvazione', 'ferie-approvazione', 'permessi-rifiuto', 'ferie-rifiuto'].includes(templateType) && adminNote) {
           adminNotes = adminNote;
         }
         
+        if (['permessi-richiesta', 'ferie-richiesta'].includes(templateType) && employeeNote) {
+          employeeNotes = employeeNote;
+        }
+
+        // ENHANCED: Admin message for document templates - MORE DETAILED LOGGING
+        if (templateType === 'documenti' && templateCategory === 'amministratori' && emailBody) {
+          adminMessage = emailBody;
+          console.log("[Notification Email] SETTING ADMIN MESSAGE FOR HTML TEMPLATE:");
+          console.log("  Admin message value:", adminMessage);
+          console.log("  Show admin message setting:", templateData.show_admin_message);
+          console.log("  Template type check:", templateType === 'documenti');
+          console.log("  Template category check:", templateCategory === 'amministratori');
+        }
+        
+        console.log("[Notification Email] Final email subject:", emailSubject);
+        console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 150) + "...");
+        console.log("[Notification Email] Template database usage:", !!emailTemplate);
+        
         const htmlContent = buildHtmlContent({
-          subject: emailTemplate?.subject || 'Default Subject',
-          shortText: emailTemplate?.content || 'Default Content',
+          subject: emailSubject,
+          shortText: emailContent,
           logoUrl,
           attachmentSection,
           senderEmail,
@@ -324,22 +477,23 @@ serve(async (req) => {
           primaryColor: templateData.primary_color,
           backgroundColor: templateData.background_color,
           textColor: templateData.text_color,
-          logoAlignment: templateData.logo_alignment,
+          logoAlignment: logoAlignment,
           footerText: templateData.footer_text,
           footerColor: templateData.footer_color,
           fontFamily: templateData.font_family,
           buttonColor: templateData.button_color,
           buttonTextColor: templateData.button_text_color,
           borderRadius: templateData.border_radius,
-          logoSize: templateData.logo_size,
+          logoSize: logoSize,
           headerAlignment: templateData.header_alignment,
-          bodyAlignment: templateData.body_alignment,
+          bodyAlignment: templateData.text_alignment || templateData.body_alignment,
           fontSize: templateData.font_size,
           showDetailsButton: templateData.show_details_button,
           showLeaveDetails: templateData.show_leave_details,
           showAdminNotes: templateData.show_admin_notes,
           leaveDetails,
           adminNotes,
+          employeeNotes,
           leaveDetailsBgColor: templateData.leave_details_bg_color,
           leaveDetailsTextColor: templateData.leave_details_text_color,
           adminNotesBgColor: templateData.admin_notes_bg_color,
@@ -348,9 +502,14 @@ serve(async (req) => {
           customBlockText: templateData.custom_block_text,
           customBlockBgColor: templateData.custom_block_bg_color,
           customBlockTextColor: templateData.custom_block_text_color,
-          dynamicSubject: (['notifiche', 'documenti'].includes(templateType)) ? emailSubject : '',
-          dynamicContent: (['notifiche', 'documenti'].includes(templateType)) ? emailContent : '',
-          employeeEmail: employeeEmail // Pass employee email to template for display
+          dynamicSubject: emailSubject,
+          dynamicContent: emailContent,
+          employeeEmail: employeeEmail,
+          // ENHANCED: Admin message parameters with detailed logging
+          showAdminMessage: templateData.show_admin_message,
+          adminMessage: adminMessage,
+          adminMessageBgColor: templateData.admin_message_bg_color,
+          adminMessageTextColor: templateData.admin_message_text_color,
         });
 
         // Build Brevo payload with configured sender settings
@@ -362,7 +521,6 @@ serve(async (req) => {
           textContent: `${emailSubject}\n\n${emailContent}\n\nInviato da: ${senderName}`
         };
 
-        // Add replyTo if we have one (either employee email or configured reply-to)
         if (dynamicReplyTo) {
           brevoPayload.replyTo = { email: dynamicReplyTo };
           console.log("[Notification Email] Setting reply-to:", dynamicReplyTo);
@@ -404,6 +562,28 @@ serve(async (req) => {
         recipients: successCount,
         sender: `${senderName} <${senderEmail}>`,
         replyTo: dynamicReplyTo,
+        templateType: templateType,
+        templateCategory: templateCategory,
+        templateUsed: !!emailTemplate,
+        templateContent: emailTemplate ? "Custom template from database" : "Fallback template",
+        templatePriority: emailTemplate ? "Database template (ABSOLUTE PRIORITY)" : "Frontend fallback",
+        variableSubstitution: {
+          employeeName: employeeName || "Not provided",
+          employeeNameSubstituted: !!employeeName,
+          employeeNote: employeeNote || "Not provided",
+          employeeNoteSubstituted: !!employeeNote,
+          adminMessage: emailBody || "Not provided",
+          adminMessageSubstituted: !!(templateType === 'documenti' && templateCategory === 'amministratori' && emailBody)
+        },
+        // ENHANCED: Admin message debugging info
+        adminMessageDebugging: {
+          templateType,
+          templateCategory,
+          showAdminMessage: templateData.show_admin_message,
+          adminMessageValue: emailBody,
+          isAdminDocumentTemplate: templateType === 'documenti' && templateCategory === 'amministratori',
+          adminMessageForTemplate: adminMessage
+        },
         errors: errors.length > 0 ? errors : undefined
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -1,9 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotificationForm } from "@/hooks/useNotificationForm";
-import { defaultNotificationBody } from '@/components/documents/documentNotificationDefaults';
 
 interface UseDocumentUploadProps {
   onSuccess?: () => void;
@@ -26,12 +24,6 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
   const { user, profile } = useAuth();
   const { sendNotification, loading: notificationLoading } = useNotificationForm();
   const isAdmin = profile?.role === 'admin';
-
-  useEffect(() => {
-    if (file && !body) {
-      setBody(defaultNotificationBody);
-    }
-  }, [file, body]);
 
   useEffect(() => {
     if (targetUserId) {
@@ -62,9 +54,6 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
   const handleFileChange = (selectedFile: File | null) => {
     setFile(selectedFile);
     setSubjectDirty(false);
-    if (!body) {
-      setBody(defaultNotificationBody);
-    }
   };
 
   const handleDocumentTypeChange = (typeValue: string, documentTypes: { value: string; label: string }[]) => {
@@ -82,10 +71,6 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     if (!file || !documentType || !user) return;
     if (isAdmin && uploadTarget === 'specific_user' && !selectedUserId) {
       alert("Seleziona un utente specifico.");
-      return;
-    }
-    if (notifyRecipient && (!subject.trim() || !body.trim())) {
-      alert("Compila oggetto e messaggio della mail.");
       return;
     }
 
@@ -163,11 +148,18 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     if (!error && notifyRecipient) {
       console.log('[DocumentUpload] Document uploaded successfully, preparing notification');
       
+      // Get employee name for template personalization
+      const employeeName = profile?.first_name && profile?.last_name 
+        ? `${profile.first_name} ${profile.last_name}`
+        : profile?.email || 'Dipendente';
+
       // Prepare notification payload
       const notificationPayload: any = {
         subject: subject.trim(),
-        shortText: body.trim(),
+        shortText: body.trim() || `Nuovo documento caricato: ${subject}`,
         topic: "document",
+        employeeName, // Pass employee name for template personalization
+        body: body.trim(), // Include the body/note content
       };
 
       // Determine notification recipients and sender email
@@ -176,7 +168,9 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
         console.log('[DocumentUpload] Notifying all admins - employee document upload');
         notificationPayload.recipientId = null; // Send to all admins
         notificationPayload.employeeEmail = profile?.email; // Include employee email for reply-to
+        notificationPayload.employeeNote = body.trim(); // Include employee note for template
         console.log('[DocumentUpload] Including employee email for admin notification:', profile?.email);
+        console.log('[DocumentUpload] Including employee note:', body.trim());
       } else if (shouldNotifyEmployee && specificEmployeeToNotify) {
         // Admin uploading document for specific employee
         console.log('[DocumentUpload] Notifying specific employee:', specificEmployeeToNotify);

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const useLeaveRequestNotifications = () => {
@@ -15,25 +14,32 @@ export const useLeaveRequestNotifications = () => {
       let topic, subject, shortText, body;
       let recipientId = null; // Default to all admins
 
+      // FIXED: Construct proper employee name from profile
+      const employeeFullName = employeeProfile?.first_name && employeeProfile?.last_name 
+        ? `${employeeProfile.first_name} ${employeeProfile.last_name}`
+        : (employeeProfile?.first_name || 'Dipendente');
+      
+      console.log('Using employee full name:', employeeFullName);
+
       if (isApproval) {
-        // Approval notification goes to the employee
-        topic = 'permessi-approvazione';
+        // Approval notification goes to the employee - use specific template type
+        topic = leaveRequest.type === 'ferie' ? 'ferie-approvazione' : 'permessi-approvazione';
         subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} approvata`;
         shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata approvata.`;
         recipientId = leaveRequest.user_id; // Send to the employee
         body = `Dal: ${leaveRequest.date_from || leaveRequest.day}\nAl: ${leaveRequest.date_to || leaveRequest.day}\n\nLa tua richiesta è stata approvata dall'amministratore.`;
       } else if (isRejection) {
-        // Rejection notification goes to the employee
-        topic = 'permessi-rifiuto';
+        // Rejection notification goes to the employee - use specific template type
+        topic = leaveRequest.type === 'ferie' ? 'ferie-rifiuto' : 'permessi-rifiuto';
         subject = `Richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} rifiutata`;
         shortText = `La tua richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} è stata rifiutata.`;
         recipientId = leaveRequest.user_id; // Send to the employee
         body = `Dal: ${leaveRequest.date_from || leaveRequest.day}\nAl: ${leaveRequest.date_to || leaveRequest.day}\n\nLa tua richiesta è stata rifiutata dall'amministratore.`;
       } else {
-        // New leave request notification goes to all admins
-        topic = 'permessi-richiesta';
-        subject = `Nuova richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} da ${employeeProfile.first_name} ${employeeProfile.last_name}`;
-        shortText = `${employeeProfile.first_name} ${employeeProfile.last_name} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
+        // New leave request notification goes to all admins - use specific template type
+        topic = leaveRequest.type === 'ferie' ? 'ferie-richiesta' : 'permessi-richiesta';
+        subject = `Nuova richiesta ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'} da ${employeeFullName}`;
+        shortText = `${employeeFullName} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
         recipientId = null; // Send to all admins
         
         if (leaveRequest.type === 'ferie') {
@@ -46,14 +52,15 @@ export const useLeaveRequestNotifications = () => {
         }
       }
 
-      // Prepare email payload
+      // CRITICAL FIX: Prepare email payload with proper employeeName
       const emailPayload: any = {
         recipientId,
         subject,
         shortText,
         topic,
         body,
-        adminNote
+        adminNote,
+        employeeName: employeeFullName // FIXED: Pass the constructed full name
       };
 
       // For new leave requests from employee to admin, include employee email for reply-to
@@ -149,7 +156,7 @@ export const useLeaveRequestNotifications = () => {
     employeeId?: string;
   }) => {
     try {
-      // Get employee profile with email if employeeId is provided
+      // FIXED: Get employee profile with email if employeeId is provided
       let employeeProfile = {
         first_name: employeeName.split(' ')[0] || '',
         last_name: employeeName.split(' ').slice(1).join(' ') || '',
@@ -169,6 +176,7 @@ export const useLeaveRequestNotifications = () => {
           console.log('Found employee profile:', employeeProfile);
         } else {
           console.warn('Could not fetch employee profile:', profileError);
+          // Keep the constructed profile from employeeName as fallback
         }
       }
 
