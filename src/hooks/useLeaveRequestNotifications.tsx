@@ -28,7 +28,7 @@ export const useLeaveRequestNotifications = () => {
         shortText = null; // Let database template decide
         recipientId = leaveRequest.user_id; // Send to the employee
         
-        // CLEANED: Only pure request details - NO "Accedi alla dashboard" text
+        // CLEANED: Only pure request details - no admin notes or confirmation messages
         if (leaveRequest.type === 'ferie') {
           body = `📅 DETTAGLI RICHIESTA FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}`;
         } else {
@@ -44,7 +44,7 @@ export const useLeaveRequestNotifications = () => {
         shortText = null; // Let database template decide
         recipientId = leaveRequest.user_id; // Send to the employee
         
-        // CLEANED: Only pure request details - NO "Accedi alla dashboard" text
+        // CLEANED: Only pure request details - no admin notes or confirmation messages
         if (leaveRequest.type === 'ferie') {
           body = `📅 DETTAGLI RICHIESTA FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}`;
         } else {
@@ -60,7 +60,7 @@ export const useLeaveRequestNotifications = () => {
         shortText = `${employeeFullName} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
         recipientId = null; // Send to all admins
         
-        // CLEANED: Only pure request details with employee note if present - NO "Accedi alla dashboard" text
+        // CLEANED: Only pure request details with employee note if present
         if (leaveRequest.type === 'ferie') {
           body = `📅 DETTAGLI RICHIESTA FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}${leaveRequest.note ? `\n\nNote del dipendente:\n${leaveRequest.note}` : ''}`;
         } else {

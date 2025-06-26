@@ -67,11 +67,6 @@ const EmailTemplateEditor = ({
   const [buttonColor, setButtonColor] = useState("#007bff");
   const [buttonTextColor, setButtonTextColor] = useState("#ffffff");
   
-  // NEW: Button configuration
-  const [showButton, setShowButton] = useState(true);
-  const [buttonText, setButtonText] = useState("Accedi alla Dashboard");
-  const [buttonUrl, setButtonUrl] = useState("https://your-app-url.com");
-  
   // State
   const [loading, setLoading] = useState(false);
   const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null);
@@ -148,10 +143,6 @@ const EmailTemplateEditor = ({
         setButtonTextColor(data.button_text_color || "#ffffff");
         setAdminMessageBgColor(data.admin_message_bg_color || "#e3f2fd");
         setAdminMessageTextColor(data.admin_message_text_color || "#1565c0");
-        // NEW: Load button configuration
-        setShowButton(data.show_button ?? true);
-        setButtonText(data.button_text || "Accedi alla Dashboard");
-        setButtonUrl(data.button_url || "https://your-app-url.com");
       } else {
         console.log('No existing template found, using defaults');
         setExistingTemplateId(null);
@@ -210,10 +201,6 @@ const EmailTemplateEditor = ({
         show_admin_message: true, // Always true, no longer configurable
         admin_message_bg_color: adminMessageBgColor,
         admin_message_text_color: adminMessageTextColor,
-        // NEW: Save button configuration
-        show_button: showButton,
-        button_text: buttonText,
-        button_url: buttonUrl,
       };
 
       if (existingTemplateId) {
@@ -433,79 +420,6 @@ const EmailTemplateEditor = ({
           </CardContent>
         </Card>
 
-        {/* Button Configuration - NEW */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Configurazione Pulsante</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Mostra Pulsante</Label>
-              <Switch
-                checked={showButton}
-                onCheckedChange={setShowButton}
-              />
-            </div>
-
-            {showButton && (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="button-text">Testo Pulsante</Label>
-                  <Input
-                    id="button-text"
-                    value={buttonText}
-                    onChange={(e) => setButtonText(e.target.value)}
-                    placeholder="Testo del pulsante"
-                    maxLength={100}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="button-url">URL Pulsante</Label>
-                  <Input
-                    id="button-url"
-                    value={buttonUrl}
-                    onChange={(e) => setButtonUrl(e.target.value)}
-                    placeholder="https://your-app-url.com"
-                    maxLength={500}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="button-color">Colore Pulsante</Label>
-                    <Input
-                      id="button-color"
-                      type="color"
-                      value={buttonColor}
-                      onChange={(e) => setButtonColor(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="button-text-color">Colore Testo Pulsante</Label>
-                    <Input
-                      id="button-text-color"
-                      type="color"
-                      value={buttonTextColor}
-                      onChange={(e) => setButtonTextColor(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="border-radius">Raggio Bordi</Label>
-                  <Input
-                    id="border-radius"
-                    value={borderRadius}
-                    onChange={(e) => setBorderRadius(e.target.value)}
-                    placeholder="es. 6px"
-                  />
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Footer Section */}
         <Card>
           <CardHeader>
@@ -559,6 +473,45 @@ const EmailTemplateEditor = ({
                   />
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Button Styling */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Stile Pulsanti</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="button-color">Colore Pulsante</Label>
+                <Input
+                  id="button-color"
+                  type="color"
+                  value={buttonColor}
+                  onChange={(e) => setButtonColor(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="button-text-color">Colore Testo Pulsante</Label>
+                <Input
+                  id="button-text-color"
+                  type="color"
+                  value={buttonTextColor}
+                  onChange={(e) => setButtonTextColor(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="border-radius">Raggio Bordi</Label>
+              <Input
+                id="border-radius"
+                value={borderRadius}
+                onChange={(e) => setBorderRadius(e.target.value)}
+                placeholder="es. 6px"
+              />
             </div>
           </CardContent>
         </Card>

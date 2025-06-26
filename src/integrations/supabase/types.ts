@@ -355,9 +355,7 @@ export type Database = {
           body_alignment: string | null
           border_radius: string | null
           button_color: string | null
-          button_text: string | null
           button_text_color: string | null
-          button_url: string | null
           content: string
           content_editable: boolean | null
           created_at: string | null
@@ -384,7 +382,6 @@ export type Database = {
           show_admin_message: boolean | null
           show_admin_notes: boolean | null
           show_admin_notes_section: boolean | null
-          show_button: boolean | null
           show_custom_block: boolean | null
           show_details_button: boolean | null
           show_leave_details: boolean | null
@@ -408,9 +405,7 @@ export type Database = {
           body_alignment?: string | null
           border_radius?: string | null
           button_color?: string | null
-          button_text?: string | null
           button_text_color?: string | null
-          button_url?: string | null
           content: string
           content_editable?: boolean | null
           created_at?: string | null
@@ -437,7 +432,6 @@ export type Database = {
           show_admin_message?: boolean | null
           show_admin_notes?: boolean | null
           show_admin_notes_section?: boolean | null
-          show_button?: boolean | null
           show_custom_block?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
@@ -461,9 +455,7 @@ export type Database = {
           body_alignment?: string | null
           border_radius?: string | null
           button_color?: string | null
-          button_text?: string | null
           button_text_color?: string | null
-          button_url?: string | null
           content?: string
           content_editable?: boolean | null
           created_at?: string | null
@@ -490,7 +482,6 @@ export type Database = {
           show_admin_message?: boolean | null
           show_admin_notes?: boolean | null
           show_admin_notes_section?: boolean | null
-          show_button?: boolean | null
           show_custom_block?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
