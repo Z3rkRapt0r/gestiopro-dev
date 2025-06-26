@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
@@ -418,6 +419,16 @@ serve(async (req) => {
         console.log("[Notification Email] Employee notes to pass:", employeeNote);
         console.log("[Notification Email] Template show_admin_notes setting:", templateData.show_admin_notes);
 
+        // FIXED: Properly format leave details from emailBody for leave requests
+        let leaveDetails = '';
+        const isLeaveRequest = templateType === 'permessi-richiesta' || templateType === 'ferie-richiesta';
+        
+        if (isLeaveRequest && emailBody) {
+          // Format the leave details from the email body
+          leaveDetails = emailBody;
+          console.log("[Notification Email] Leave request detected, formatting details:", leaveDetails);
+        }
+
         const htmlContent = buildHtmlContent({
           subject: emailSubject,
           shortText: emailContent,
@@ -443,7 +454,8 @@ serve(async (req) => {
           showDetailsButton: templateData.show_details_button,
           showLeaveDetails: templateData.show_leave_details,
           showAdminNotes: templateData.show_admin_notes,
-          leaveDetails: '',
+          // FIXED: Pass properly formatted leave details
+          leaveDetails: leaveDetails,
           adminNotes: '',
           // FIXED: Pass employee notes correctly
           employeeNotes: employeeNote || '',

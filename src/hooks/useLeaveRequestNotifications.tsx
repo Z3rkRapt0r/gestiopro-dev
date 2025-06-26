@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export const useLeaveRequestNotifications = () => {
@@ -42,13 +43,14 @@ export const useLeaveRequestNotifications = () => {
         shortText = `${employeeFullName} ha inviato una nuova richiesta di ${leaveRequest.type === 'ferie' ? 'ferie' : 'permesso'}.`;
         recipientId = null; // Send to all admins
         
+        // FIXED: Format leave details properly for display in email
         if (leaveRequest.type === 'ferie') {
-          body = `Dal: ${leaveRequest.date_from}\nAl: ${leaveRequest.date_to}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
+          body = `📅 DETTAGLI RICHIESTA FERIE\n\nDipendente: ${employeeFullName}\nData inizio: ${leaveRequest.date_from}\nData fine: ${leaveRequest.date_to}\n\n${leaveRequest.note ? `Note del dipendente:\n${leaveRequest.note}\n\n` : ''}Accedi alla dashboard per approvare o rifiutare la richiesta.`;
         } else {
           const timeInfo = leaveRequest.time_from && leaveRequest.time_to 
             ? `dalle ${leaveRequest.time_from} alle ${leaveRequest.time_to}`
             : 'giornata intera';
-          body = `Data: ${leaveRequest.day}\nOrario: ${timeInfo}\n\nAccedi alla dashboard per approvare o rifiutare la richiesta.`;
+          body = `📅 DETTAGLI RICHIESTA PERMESSO\n\nDipendente: ${employeeFullName}\nData: ${leaveRequest.day}\nOrario: ${timeInfo}\n\n${leaveRequest.note ? `Note del dipendente:\n${leaveRequest.note}\n\n` : ''}Accedi alla dashboard per approvare o rifiutare la richiesta.`;
         }
       }
 
@@ -67,6 +69,12 @@ export const useLeaveRequestNotifications = () => {
       if (!isApproval && !isRejection && employeeProfile.email) {
         emailPayload.employeeEmail = employeeProfile.email;
         console.log('Adding employee email for leave request notification:', employeeProfile.email);
+      }
+
+      // FIXED: Add employee note for leave requests
+      if (!isApproval && !isRejection && leaveRequest.note) {
+        emailPayload.employeeNote = leaveRequest.note;
+        console.log('Adding employee note for leave request:', leaveRequest.note);
       }
 
       console.log('Sending leave request notification payload:', emailPayload);
