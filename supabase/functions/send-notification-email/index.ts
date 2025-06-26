@@ -379,33 +379,29 @@ serve(async (req) => {
         console.log("[Notification Email] Is admin document template:", templateType === 'documenti' && templateCategory === 'amministratori');
         console.log("[Notification Email] Show admin message setting:", templateData.show_admin_message);
 
-        // Enhanced employee name substitution
-        console.log("[Notification Email] Enhanced employee name substitution:");
+        // FIXED: Enhanced variable substitution with separate employee_name and recipient_name
+        console.log("[Notification Email] Enhanced variable substitution:");
         console.log("  Template type:", templateType);
         console.log("  Original subject:", emailSubject);
         console.log("  Original content:", emailContent.substring(0, 100) + "...");
-        console.log("  Employee name used:", employeeName || 'N/A');
+        console.log("  Employee name (sender):", employeeName || 'N/A');
         
         const recipientName = recipient.first_name && recipient.last_name 
           ? `${recipient.first_name} ${recipient.last_name}`
           : recipient.email;
         
-        // Replace {employee_name} with the actual employee name or sender name
-        const finalEmployeeName = employeeName || recipientName;
+        console.log("  Recipient name:", recipientName);
         
+        // FIXED: Separate substitution for employee_name (sender) and recipient_name (recipient)
+        // Replace {employee_name} with the actual employee name (sender)
+        const finalEmployeeName = employeeName || 'Dipendente';
         emailSubject = emailSubject.replace(/{employee_name}/g, finalEmployeeName);
         emailContent = emailContent.replace(/{employee_name}/g, finalEmployeeName);
         
-        // Replace recipient greeting
-        emailContent = emailContent.replace(/{employee_name}/g, recipientName);
+        // Replace {recipient_name} with the actual recipient name
+        emailSubject = emailSubject.replace(/{recipient_name}/g, recipientName);
+        emailContent = emailContent.replace(/{recipient_name}/g, recipientName);
         
-        console.log("[Notification Email] Replaced recipient greeting with:", recipientName);
-        
-        const subjectChanged = emailSubject !== (emailTemplate?.subject || subject);
-        const contentChanged = emailContent !== (emailTemplate?.content || shortText);
-        
-        console.log("  Subject changed:", subjectChanged);
-        console.log("  Content changed:", contentChanged);
         console.log("  Final subject:", emailSubject);
         console.log("  Final content preview:", emailContent.substring(0, 100) + "...");
 
@@ -467,6 +463,8 @@ serve(async (req) => {
           adminMessage: finalAdminMessage,
           adminMessageBgColor: templateData.admin_message_bg_color,
           adminMessageTextColor: templateData.admin_message_text_color,
+          // NEW: Pass recipient name to template
+          recipientName: recipientName,
         });
 
         // Email sending configuration

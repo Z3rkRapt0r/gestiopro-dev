@@ -41,6 +41,8 @@ export interface EmailContentParams {
   adminMessage?: string;
   adminMessageBgColor?: string;
   adminMessageTextColor?: string;
+  // NEW: Recipient name parameter
+  recipientName?: string;
 }
 
 export function buildAttachmentSection(attachmentUrl: string | null, primaryColor: string = '#007bff'): string {
@@ -102,8 +104,11 @@ export function buildHtmlContent({
   adminMessage = '',
   adminMessageBgColor = '#e3f2fd',
   adminMessageTextColor = '#1565c0',
+  // NEW: Recipient name parameter
+  recipientName = '',
 }: EmailContentParams & {
   employeeEmail?: string;
+  recipientName?: string;
 }) {
   // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
   console.log("[Mail Templates] Building HTML content with admin message params:");
@@ -112,6 +117,7 @@ export function buildHtmlContent({
   console.log("  templateType:", templateType);
   console.log("  adminMessageBgColor:", adminMessageBgColor);
   console.log("  adminMessageTextColor:", adminMessageTextColor);
+  console.log("  recipientName:", recipientName);
 
   // ENHANCED: Determine email direction based on template category and employee email
   console.log("[Mail Templates] Email direction debugging:");
