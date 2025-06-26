@@ -19,19 +19,12 @@ import { Mail } from "lucide-react";
 
 interface TestEmailDialogProps {
   templateType: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
-  templateCategory?: string;
   subject: string;
   content: string;
   disabled?: boolean;
 }
 
-const TestEmailDialog = ({ 
-  templateType, 
-  templateCategory = "generale",
-  subject, 
-  content, 
-  disabled 
-}: TestEmailDialogProps) => {
+const TestEmailDialog = ({ templateType, subject, content, disabled }: TestEmailDialogProps) => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -41,36 +34,15 @@ const TestEmailDialog = ({
   const handleSendTest = async () => {
     if (!testEmail || !profile?.id) return;
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(testEmail)) {
-      toast({
-        title: "Errore",
-        description: "Inserisci un indirizzo email valido",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
     try {
-      console.log('Sending test email with params:', {
-        testEmail,
-        subject,
-        content,
-        userId: profile.id,
-        templateType,
-        templateCategory
-      });
-
       const { data, error } = await supabase.functions.invoke('send-test-email', {
         body: {
           testEmail,
           subject,
           content,
           userId: profile.id,
-          templateType,
-          templateCategory
+          templateType // Pass the template type to use correct template
         }
       });
 
@@ -82,7 +54,7 @@ const TestEmailDialog = ({
           variant: "destructive",
         });
       } else {
-        console.log('Test email sent successfully:', data);
+        console.log('Test email sent:', data);
         toast({
           title: "Email di test inviata",
           description: `L'email di test è stata inviata a ${testEmail}`,
@@ -105,7 +77,7 @@ const TestEmailDialog = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" disabled={disabled}>
+        <Button variant="outline" size="sm" disabled={disabled}>
           <Mail className="w-4 h-4 mr-2" />
           Invia Test
         </Button>
@@ -114,8 +86,7 @@ const TestEmailDialog = ({
         <DialogHeader>
           <DialogTitle>Invia Email di Test</DialogTitle>
           <DialogDescription>
-            Invia un'email di prova per verificare il template "{templateType}" 
-            {templateCategory && ` (${templateCategory})`}.
+            Invia un'email di prova per verificare il template {templateType}.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -151,7 +122,7 @@ const TestEmailDialog = ({
             onClick={handleSendTest}
             disabled={loading || !testEmail}
           >
-            {loading ? "Invio in corso..." : "Invia Test"}
+            {loading ? "Invio..." : "Invia Test"}
           </Button>
         </DialogFooter>
       </DialogContent>

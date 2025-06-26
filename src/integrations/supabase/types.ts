@@ -25,9 +25,6 @@ export type Database = {
           enable_leave_notifications: boolean | null
           enable_notifications: boolean | null
           enable_welcome_emails: boolean | null
-          global_logo_alignment: string | null
-          global_logo_size: string | null
-          global_logo_url: string | null
           id: string
           max_retries: number | null
           reply_to: string | null
@@ -52,9 +49,6 @@ export type Database = {
           enable_leave_notifications?: boolean | null
           enable_notifications?: boolean | null
           enable_welcome_emails?: boolean | null
-          global_logo_alignment?: string | null
-          global_logo_size?: string | null
-          global_logo_url?: string | null
           id?: string
           max_retries?: number | null
           reply_to?: string | null
@@ -79,9 +73,6 @@ export type Database = {
           enable_leave_notifications?: boolean | null
           enable_notifications?: boolean | null
           enable_welcome_emails?: boolean | null
-          global_logo_alignment?: string | null
-          global_logo_size?: string | null
-          global_logo_url?: string | null
           id?: string
           max_retries?: number | null
           reply_to?: string | null
@@ -345,11 +336,7 @@ export type Database = {
       email_templates: {
         Row: {
           admin_id: string
-          admin_message_bg_color: string | null
-          admin_message_text_color: string | null
           admin_notes_bg_color: string | null
-          admin_notes_section_bg_color: string | null
-          admin_notes_section_text_color: string | null
           admin_notes_text_color: string | null
           background_color: string | null
           body_alignment: string | null
@@ -357,7 +344,6 @@ export type Database = {
           button_color: string | null
           button_text_color: string | null
           content: string
-          content_editable: boolean | null
           created_at: string | null
           custom_block_bg_color: string | null
           custom_block_text: string | null
@@ -379,27 +365,18 @@ export type Database = {
           primary_color: string | null
           secondary_color: string | null
           sender_name: string | null
-          show_admin_message: boolean | null
           show_admin_notes: boolean | null
-          show_admin_notes_section: boolean | null
           show_custom_block: boolean | null
           show_details_button: boolean | null
           show_leave_details: boolean | null
           subject: string
-          subject_editable: boolean | null
-          template_category: string | null
           template_type: string
-          text_alignment: string | null
           text_color: string | null
           updated_at: string | null
         }
         Insert: {
           admin_id: string
-          admin_message_bg_color?: string | null
-          admin_message_text_color?: string | null
           admin_notes_bg_color?: string | null
-          admin_notes_section_bg_color?: string | null
-          admin_notes_section_text_color?: string | null
           admin_notes_text_color?: string | null
           background_color?: string | null
           body_alignment?: string | null
@@ -407,7 +384,6 @@ export type Database = {
           button_color?: string | null
           button_text_color?: string | null
           content: string
-          content_editable?: boolean | null
           created_at?: string | null
           custom_block_bg_color?: string | null
           custom_block_text?: string | null
@@ -429,27 +405,18 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           sender_name?: string | null
-          show_admin_message?: boolean | null
           show_admin_notes?: boolean | null
-          show_admin_notes_section?: boolean | null
           show_custom_block?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
           subject: string
-          subject_editable?: boolean | null
-          template_category?: string | null
           template_type?: string
-          text_alignment?: string | null
           text_color?: string | null
           updated_at?: string | null
         }
         Update: {
           admin_id?: string
-          admin_message_bg_color?: string | null
-          admin_message_text_color?: string | null
           admin_notes_bg_color?: string | null
-          admin_notes_section_bg_color?: string | null
-          admin_notes_section_text_color?: string | null
           admin_notes_text_color?: string | null
           background_color?: string | null
           body_alignment?: string | null
@@ -457,7 +424,6 @@ export type Database = {
           button_color?: string | null
           button_text_color?: string | null
           content?: string
-          content_editable?: boolean | null
           created_at?: string | null
           custom_block_bg_color?: string | null
           custom_block_text?: string | null
@@ -479,17 +445,12 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           sender_name?: string | null
-          show_admin_message?: boolean | null
           show_admin_notes?: boolean | null
-          show_admin_notes_section?: boolean | null
           show_custom_block?: boolean | null
           show_details_button?: boolean | null
           show_leave_details?: boolean | null
           subject?: string
-          subject_editable?: boolean | null
-          template_category?: string | null
           template_type?: string
-          text_alignment?: string | null
           text_color?: string | null
           updated_at?: string | null
         }

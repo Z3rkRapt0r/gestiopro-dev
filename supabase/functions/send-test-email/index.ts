@@ -44,13 +44,13 @@ function buildTestHtmlContent(template: any, subject: string, content: string) {
       <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid ${template.primary_color || '#007bff'}; margin-bottom: 20px;">
         <h3 style="margin: 0; color: ${template.primary_color || '#007bff'};">🧪 Questa è un'email di prova</h3>
         <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">
-          Template: ${template.name || template.template_type} (${template.template_category || 'generale'})
+          Template: ${template.name || template.template_type}
         </p>
       </div>
-      <h2 style="color: ${template.primary_color || '#007bff'}; border-bottom: 2px solid ${template.primary_color || '#007bff'}; padding-bottom: 10px; text-align: ${template.text_alignment || 'center'};">
+      <h2 style="color: ${template.primary_color || '#007bff'}; border-bottom: 2px solid ${template.primary_color || '#007bff'}; padding-bottom: 10px; text-align: ${template.header_alignment || 'center'};">
         ${subject}
       </h2>
-      <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${template.text_color || '#333333'}; text-align: ${template.text_alignment || 'left'};">
+      <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${template.text_color || '#333333'}; text-align: ${template.body_alignment || 'left'};">
         ${content.replace(/\n/g, '<br>')}
         ${dashboardButton}
       </div>
@@ -76,7 +76,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Test Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { templateType, templateCategory = "generale", testEmail, userId, subject, content } = body;
+    const { templateType, testEmail, userId, subject, content } = body;
 
     if (!userId) {
       console.error("[Test Email] Missing userId in request");
@@ -99,7 +99,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get Brevo settings for admin
+    // Get Brevo settings for admin including sender configuration
     console.log("[Test Email] Looking for admin settings for user:", userId);
     
     const { data: adminSetting, error: settingsError } = await supabase
@@ -131,14 +131,13 @@ serve(async (req) => {
 
     console.log("[Test Email] Found Brevo settings for admin");
 
-    // Get email template for the specific template type and category
-    console.log("[Test Email] Looking for email template:", templateType, templateCategory);
+    // Get email template for the specific template type
+    console.log("[Test Email] Looking for email template:", templateType);
     const { data: emailTemplate, error: templateError } = await supabase
       .from("email_templates")
       .select("*")
       .eq("admin_id", userId)
       .eq("template_type", templateType)
-      .eq("template_category", templateCategory)
       .maybeSingle();
 
     if (templateError) {
@@ -150,15 +149,17 @@ serve(async (req) => {
     // Use template data or defaults
     const template = emailTemplate || {
       template_type: templateType,
-      template_category: templateCategory,
       name: `Template ${templateType}`,
       primary_color: '#007bff',
       secondary_color: '#6c757d',
       background_color: '#ffffff',
       text_color: '#333333',
+      logo_alignment: 'center',
+      logo_size: 'medium',
       footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
       footer_color: '#888888',
-      text_alignment: 'left',
+      header_alignment: 'center',
+      body_alignment: 'left',
       font_family: 'Arial, sans-serif',
       button_color: '#007bff',
       button_text_color: '#ffffff',
@@ -176,7 +177,7 @@ serve(async (req) => {
       console.error("[Test Email] Error fetching admin profile:", profileError);
     }
 
-    // Use configured sender settings with fallbacks
+    // Use configured sender settings with intelligent fallbacks
     let senderName, senderEmail;
     
     if (adminSetting.sender_name && adminSetting.sender_name.trim()) {
@@ -198,7 +199,7 @@ serve(async (req) => {
     // Generate HTML content using template settings
     const htmlContent = buildTestHtmlContent(template, subject, content);
 
-    // Build Brevo payload
+    // Build Brevo payload with configured sender settings
     const brevoPayload: any = {
       sender: { 
         name: senderName, 
@@ -207,7 +208,7 @@ serve(async (req) => {
       to: [{ email: testEmail }],
       subject: `[TEST] ${subject}`,
       htmlContent,
-      textContent: `[TEST] ${subject}\n\n${content}\n\n--- Questa è un'email di prova ---\nTemplate: ${templateType} (${templateCategory})\nInviata da: ${senderEmail}`
+      textContent: `[TEST] ${subject}\n\n${content}\n\n--- Questa è un'email di prova ---\nInviata da: ${senderEmail}`
     };
 
     // Add replyTo if configured
@@ -215,7 +216,7 @@ serve(async (req) => {
       brevoPayload.replyTo = { email: adminSetting.reply_to.trim() };
     }
 
-    console.log("[Test Email] Calling Brevo API");
+    console.log("[Test Email] Calling Brevo API with configured sender:", senderEmail);
 
     const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -258,8 +259,7 @@ serve(async (req) => {
         success: true, 
         message: "Test email sent successfully",
         recipient: testEmail,
-        sender: `${senderName} <${senderEmail}>`,
-        template: `${templateType} (${templateCategory})`
+        sender: `${senderName} <${senderEmail}>`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

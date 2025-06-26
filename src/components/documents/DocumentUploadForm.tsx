@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FileText, Info } from 'lucide-react';
 import DocumentRecipientSelector from './DocumentRecipientSelector';
 import DocumentTypeSelector from './DocumentTypeSelector';
+import { defaultNotificationBody } from './documentNotificationDefaults';
 
 interface Profile {
   id: string;
@@ -89,6 +90,7 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
     notificationLoading ||
     !file ||
     !documentType ||
+    (notifyRecipient && (!subject.trim() || !body.trim())) ||
     (isAdmin && uploadTarget === 'specific_user' && !selectedUserId);
 
   return (
@@ -136,32 +138,44 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
         />
       </div>
 
-      {/* Notes field for both admin and employee */}
       <div className="space-y-2">
-        <Label htmlFor="notes">
-          {isAdmin ? 'Note (opzionale)' : 'Nota (opzionale)'}
+        <Label htmlFor="subject">
+          {isAdmin 
+            ? "Oggetto della mail" 
+            : "Oggetto della mail per gli amministratori"
+          }
+        </Label>
+        <Input
+          id="subject"
+          value={subject}
+          onChange={(e) => onSubjectChange(e.target.value)}
+          placeholder={isAdmin 
+            ? "Oggetto della mail" 
+            : "Oggetto della mail per gli amministratori"
+          }
+          required={notifyRecipient}
+          disabled={!notifyRecipient}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="body">
+          {isAdmin 
+            ? "Messaggio per il destinatario" 
+            : "Messaggio per gli amministratori"
+          }
         </Label>
         <Textarea
-          id="notes"
+          id="body"
           value={body}
           onChange={(e) => onBodyChange(e.target.value)}
-          placeholder={isAdmin 
-            ? "Aggiungi una nota per il destinatario..." 
-            : "Aggiungi una nota per gli amministratori..."
-          }
+          placeholder={defaultNotificationBody}
+          required={notifyRecipient}
           disabled={!notifyRecipient}
           rows={3}
         />
         <div className="text-xs text-muted-foreground">
-          {notifyRecipient ? (
-            isAdmin ? (
-              "Questa nota sarà inclusa nella notifica al destinatario"
-            ) : (
-              "Questa nota sarà inclusa nella notifica agli amministratori"
-            )
-          ) : (
-            "Attiva la notifica per includere una nota"
-          )}
+          Puoi usare HTML per link (esempio: {'<a href="/">Vai alla dashboard</a>'})
         </div>
       </div>
 

@@ -1,256 +1,178 @@
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Save, Settings, Type, Palette } from "lucide-react";
-import TestEmailDialog from "./TestEmailDialog";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Image } from "lucide-react";
+import EmailTemplatePreview from "./EmailTemplatePreview";
+import type { Database } from "@/integrations/supabase/types";
+
+type EmailTemplate = Database['public']['Tables']['email_templates']['Row'] & {
+  details?: string;
+  show_details_button?: boolean;
+  show_leave_details?: boolean;
+  show_admin_notes?: boolean;
+  admin_notes_bg_color?: string;
+  admin_notes_text_color?: string;
+  leave_details_bg_color?: string;
+  leave_details_text_color?: string;
+  show_custom_block?: boolean;
+  custom_block_text?: string;
+  custom_block_bg_color?: string;
+  custom_block_text_color?: string;
+};
+
+type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Insert'] & {
+  details?: string;
+  show_details_button?: boolean;
+  show_leave_details?: boolean;
+  show_admin_notes?: boolean;
+  admin_notes_bg_color?: string;
+  admin_notes_text_color?: string;
+  leave_details_bg_color?: string;
+  leave_details_text_color?: string;
+  show_custom_block?: boolean;
+  custom_block_text?: string;
+  custom_block_bg_color?: string;
+  custom_block_text_color?: string;
+};
 
 interface EmailTemplateEditorProps {
-  templateType: string;
-  templateCategory?: string;
+  templateType: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
   defaultContent: string;
   defaultSubject: string;
-  subjectEditable?: boolean;
-  contentEditable?: boolean;
 }
 
-const EmailTemplateEditor = ({ 
-  templateType, 
-  templateCategory = "generale",
-  defaultContent, 
-  defaultSubject,
-  subjectEditable = true,
-  contentEditable = true
-}: EmailTemplateEditorProps) => {
+const EmailTemplateEditor = ({ templateType, defaultContent, defaultSubject }: EmailTemplateEditorProps) => {
   const { profile } = useAuth();
   const { toast } = useToast();
-  
-  // Template content
-  const [subject, setSubject] = useState(defaultSubject);
-  const [content, setContent] = useState(defaultContent);
-  const [textAlignment, setTextAlignment] = useState("left");
-  
-  // Design settings
-  const [primaryColor, setPrimaryColor] = useState("#007bff");
-  const [secondaryColor, setSecondaryColor] = useState("#6c757d");
-  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
-  const [textColor, setTextColor] = useState("#333333");
-  const [fontFamily, setFontFamily] = useState("Arial, sans-serif");
-  const [fontSize, setFontSize] = useState("medium");
-  const [borderRadius, setBorderRadius] = useState("6px");
-  
-  // Footer and branding
-  const [footerText, setFooterText] = useState("© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820");
-  const [footerColor, setFooterColor] = useState("#888888");
-  
-  // Feature toggles
-  const [showLeaveDetails, setShowLeaveDetails] = useState(true);
-  const [showAdminNotes, setShowAdminNotes] = useState(true);
-  const [showCustomBlock, setShowCustomBlock] = useState(false);
-  
-  // Custom block
-  const [customBlockText, setCustomBlockText] = useState("");
-  const [customBlockBgColor, setCustomBlockBgColor] = useState("#fff3cd");
-  const [customBlockTextColor, setCustomBlockTextColor] = useState("#856404");
-  
-  // Leave details styling
-  const [leaveDetailsBgColor, setLeaveDetailsBgColor] = useState("#e3f2fd");
-  const [leaveDetailsTextColor, setLeaveDetailsTextColor] = useState("#1565c0");
-  const [adminNotesBgColor, setAdminNotesBgColor] = useState("#f8f9fa");
-  const [adminNotesTextColor, setAdminNotesTextColor] = useState("#495057");
-  
-  // Button styling
-  const [buttonColor, setButtonColor] = useState("#007bff");
-  const [buttonTextColor, setButtonTextColor] = useState("#ffffff");
-  
-  // State
   const [loading, setLoading] = useState(false);
-  const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null);
+  const [logoUploadFile, setLogoUploadFile] = useState<File | null>(null);
+  const inputLogoRef = useRef<HTMLInputElement>(null);
+  const [template, setTemplate] = useState<Partial<EmailTemplate>>({
+    name: `Template ${templateType}`,
+    template_type: templateType,
+    subject: defaultSubject,
+    content: defaultContent,
+    details: '',
+    primary_color: '#007bff',
+    secondary_color: '#6c757d',
+    background_color: '#ffffff',
+    text_color: '#333333',
+    logo_alignment: 'center',
+    logo_size: 'medium',
+    footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+    footer_color: '#888888',
+    header_alignment: 'center',
+    body_alignment: 'left',
+    font_family: 'Arial, sans-serif',
+    font_size: 'medium',
+    button_color: '#007bff',
+    button_text_color: '#ffffff',
+    border_radius: '6px',
+    show_details_button: true,
+    show_leave_details: true,
+    show_admin_notes: true,
+    admin_notes_bg_color: '#f8f9fa',
+    admin_notes_text_color: '#495057',
+    leave_details_bg_color: '#e3f2fd',
+    leave_details_text_color: '#1565c0',
+    show_custom_block: false,
+    custom_block_text: 'Informazioni importanti',
+    custom_block_bg_color: '#fff3cd',
+    custom_block_text_color: '#856404'
+  });
 
-  // Admin notes section for document templates
-  const [showAdminNotesSection, setShowAdminNotesSection] = useState(true);
-  const [adminNotesSectionBgColor, setAdminNotesSectionBgColor] = useState("#e8f4fd");
-  const [adminNotesSectionTextColor, setAdminNotesSectionTextColor] = useState("#2c5282");
-  
-  // Helper functions to determine template characteristics
-  const isEmployeeRequestTemplate = () => {
-    return templateCategory === 'dipendenti' && (templateType.includes('richiesta') || templateType === 'documenti');
-  };
+  // Check if this is a leave-related template
+  const isLeaveTemplate = ['permessi-richiesta', 'permessi-approvazione', 'permessi-rifiuto'].includes(templateType);
+  // Check if this is a notification template
+  const isNotificationTemplate = templateType === 'notifiche';
+  // Check if this is a document template
+  const isDocumentTemplate = templateType === 'documenti';
 
-  const isAdminResponseTemplate = () => {
-    return templateCategory === 'amministratori' && (templateType.includes('approvazione') || templateType.includes('rifiuto'));
-  };
-
-  const isLeaveTemplate = () => {
-    return templateType.includes('permessi') || templateType.includes('ferie');
-  };
-
-  const isDocumentTemplate = () => {
-    return templateType === 'documenti';
-  };
-
-  // Load existing template
   useEffect(() => {
-    if (profile?.id) {
-      loadTemplate();
-    }
-  }, [profile?.id, templateType, templateCategory]);
+    loadTemplate();
+  }, [profile?.id, templateType]);
 
   const loadTemplate = async () => {
+    if (!profile?.id) return;
+
     try {
-      console.log('Loading template:', { templateType, templateCategory, adminId: profile?.id });
-      
       const { data, error } = await supabase
-        .from("email_templates")
-        .select("*")
-        .eq("admin_id", profile?.id)
-        .eq("template_type", templateType)
-        .eq("template_category", templateCategory)
+        .from('email_templates')
+        .select('*')
+        .eq('admin_id', profile.id)
+        .eq('template_type', templateType)
         .maybeSingle();
 
       if (error) {
-        console.error("Error loading template:", error);
+        console.error('Error loading template:', error);
         return;
       }
 
       if (data) {
-        console.log('Template loaded successfully:', data);
-        setExistingTemplateId(data.id);
-        setSubject(data.subject || defaultSubject);
-        setContent(data.content || defaultContent);
-        setTextAlignment(data.text_alignment || "left");
-        setPrimaryColor(data.primary_color || "#007bff");
-        setSecondaryColor(data.secondary_color || "#6c757d");
-        setBackgroundColor(data.background_color || "#ffffff");
-        setTextColor(data.text_color || "#333333");
-        setFontFamily(data.font_family || "Arial, sans-serif");
-        setFontSize(data.font_size || "medium");
-        setBorderRadius(data.border_radius || "6px");
-        setFooterText(data.footer_text || "© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820");
-        setFooterColor(data.footer_color || "#888888");
-        setShowLeaveDetails(data.show_leave_details ?? true);
-        setShowAdminNotes(data.show_admin_notes ?? true);
-        setShowCustomBlock(data.show_custom_block || false);
-        setCustomBlockText(data.custom_block_text || "");
-        setCustomBlockBgColor(data.custom_block_bg_color || "#fff3cd");
-        setCustomBlockTextColor(data.custom_block_text_color || "#856404");
-        setLeaveDetailsBgColor(data.leave_details_bg_color || "#e3f2fd");
-        setLeaveDetailsTextColor(data.leave_details_text_color || "#1565c0");
-        setAdminNotesBgColor(data.admin_notes_bg_color || "#f8f9fa");
-        setAdminNotesTextColor(data.admin_notes_text_color || "#495057");
-        setButtonColor(data.button_color || "#007bff");
-        setButtonTextColor(data.button_text_color || "#ffffff");
-        // Load admin notes section settings - with proper null checking
-        setShowAdminNotesSection((data as any).show_admin_notes_section ?? true);
-        setAdminNotesSectionBgColor((data as any).admin_notes_section_bg_color || "#e8f4fd");
-        setAdminNotesSectionTextColor((data as any).admin_notes_section_text_color || "#2c5282");
-      } else {
-        console.log('No existing template found, using defaults');
-        setExistingTemplateId(null);
+        // Ensure boolean values are properly set with defaults
+        const templateData = {
+          ...data,
+          show_details_button: data.show_details_button !== null ? data.show_details_button : true,
+          show_leave_details: data.show_leave_details !== null ? data.show_leave_details : true,
+          show_admin_notes: data.show_admin_notes !== null ? data.show_admin_notes : true,
+          admin_notes_bg_color: data.admin_notes_bg_color || '#f8f9fa',
+          admin_notes_text_color: data.admin_notes_text_color || '#495057',
+          leave_details_bg_color: data.leave_details_bg_color || '#e3f2fd',
+          leave_details_text_color: data.leave_details_text_color || '#1565c0',
+          show_custom_block: data.show_custom_block !== null ? data.show_custom_block : false,
+          custom_block_text: data.custom_block_text || 'Informazioni importanti',
+          custom_block_bg_color: data.custom_block_bg_color || '#fff3cd',
+          custom_block_text_color: data.custom_block_text_color || '#856404'
+        };
+        setTemplate(templateData);
       }
     } catch (error) {
-      console.error("Error loading template:", error);
+      console.error('Error in loadTemplate:', error);
     }
   };
 
-  const handleSave = async () => {
-    if (!profile?.id) {
-      toast({
-        title: "Errore",
-        description: "Devi essere autenticato per salvare i template.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleLogoUpload = async () => {
+    if (!logoUploadFile || !profile?.id) return;
+    
     setLoading(true);
+    const logoPath = `email-templates/${profile.id}/${templateType}/logo.${logoUploadFile.name.split('.').pop()}`;
+    
     try {
-      console.log('Starting save process for template:', { templateType, templateCategory, existingTemplateId });
+      const { error: uploadError } = await supabase.storage
+        .from('company-assets')
+        .upload(logoPath, logoUploadFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: logoUploadFile.type,
+        });
 
-      const templateData = {
-        admin_id: profile.id,
-        template_type: templateType,
-        template_category: templateCategory,
-        name: `${templateType} - ${templateCategory}`,
-        subject,
-        content,
-        text_alignment: textAlignment,
-        primary_color: primaryColor,
-        secondary_color: secondaryColor,
-        background_color: backgroundColor,
-        text_color: textColor,
-        font_family: fontFamily,
-        font_size: fontSize,
-        border_radius: borderRadius,
-        footer_text: footerText,
-        footer_color: footerColor,
-        show_details_button: false, // Always false for document templates
-        show_leave_details: showLeaveDetails,
-        show_admin_notes: showAdminNotes,
-        show_custom_block: showCustomBlock,
-        custom_block_text: customBlockText,
-        custom_block_bg_color: customBlockBgColor,
-        custom_block_text_color: customBlockTextColor,
-        leave_details_bg_color: leaveDetailsBgColor,
-        leave_details_text_color: leaveDetailsTextColor,
-        admin_notes_bg_color: adminNotesBgColor,
-        admin_notes_text_color: adminNotesTextColor,
-        button_color: buttonColor,
-        button_text_color: buttonTextColor,
-        subject_editable: subjectEditable,
-        content_editable: contentEditable,
-        // Admin notes section for documents
-        show_admin_notes_section: showAdminNotesSection,
-        admin_notes_section_bg_color: adminNotesSectionBgColor,
-        admin_notes_section_text_color: adminNotesSectionTextColor,
-      };
-
-      if (existingTemplateId) {
-        console.log('Deleting existing template:', existingTemplateId);
-        const { error: deleteError } = await supabase
-          .from("email_templates")
-          .delete()
-          .eq("id", existingTemplateId);
-
-        if (deleteError) {
-          console.error("Error deleting existing template:", deleteError);
-          throw deleteError;
-        }
+      if (uploadError) {
+        throw uploadError;
       }
 
-      console.log('Inserting new template:', templateData);
-      const { data: newTemplate, error: insertError } = await supabase
-        .from("email_templates")
-        .insert(templateData)
-        .select()
-        .single();
+      const { data: logoData } = await supabase.storage
+        .from('company-assets')
+        .getPublicUrl(logoPath);
 
-      if (insertError) {
-        console.error("Error inserting template:", insertError);
-        throw insertError;
-      }
-
-      console.log('Template saved successfully:', newTemplate);
-      setExistingTemplateId(newTemplate.id);
-
+      setTemplate(prev => ({ ...prev, logo_url: logoData?.publicUrl || '' }));
+      
       toast({
-        title: "Template salvato",
-        description: "Il template email è stato salvato con successo.",
+        title: "Logo caricato",
+        description: "Il logo è stato caricato con successo.",
       });
     } catch (error: any) {
-      console.error("Error saving template:", error);
+      console.error('Error uploading logo:', error);
       toast({
         title: "Errore",
-        description: "Errore nel salvataggio del template: " + (error.message || "Errore sconosciuto"),
+        description: error.message || "Errore nel caricamento del logo.",
         variant: "destructive",
       });
     } finally {
@@ -258,175 +180,287 @@ const EmailTemplateEditor = ({
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold">Editor Template Email</h3>
-          <p className="text-sm text-gray-600">
-            Categoria: {templateCategory === 'dipendenti' ? 'Per Dipendenti' : 'Per Amministratori'} | 
-            Tipo: {templateType}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <TestEmailDialog
-            templateType={templateType as any}
-            templateCategory={templateCategory}
-            subject={subject}
-            content={content}
-            disabled={loading}
-          />
-          <Button onClick={handleSave} disabled={loading}>
-            <Save className="w-4 h-4 mr-2" />
-            {loading ? "Salvataggio..." : "Salva Template"}
-          </Button>
-        </div>
-      </div>
+  const handleSave = async () => {
+    if (!profile?.id) return;
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Content Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Type className="w-5 h-5" />
-              Contenuto Email
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="subject">Oggetto Email</Label>
-              <Input
-                id="subject"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Oggetto dell'email"
-                disabled={!subjectEditable}
-                className={!subjectEditable ? "bg-gray-50 cursor-not-allowed" : ""}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Puoi usare <code>{'{employee_name}'}</code> per inserire il nome del dipendente
+    setLoading(true);
+    try {
+      const templateData: EmailTemplateInsert = {
+        ...template,
+        admin_id: profile.id,
+        updated_at: new Date().toISOString()
+      } as EmailTemplateInsert;
+
+      const { error } = await supabase
+        .from('email_templates')
+        .upsert(templateData, {
+          onConflict: 'admin_id,template_type',
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Template salvato",
+        description: "Il modello email è stato salvato con successo.",
+      });
+    } catch (error: any) {
+      console.error('Error saving template:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nel salvataggio del template.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateTemplate = (field: keyof EmailTemplate, value: any) => {
+    setTemplate(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Configurazione Template</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Avviso per le notifiche - Solo per template notifiche */}
+          {isNotificationTemplate && (
+            <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
+              <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                <strong>Nota:</strong> Per le notifiche, oggetto e messaggio saranno dinamici in base ai dati inseriti. 
+                Questi campi sono solo per l'anteprima.
               </p>
             </div>
+          )}
 
-            <div>
-              <Label htmlFor="content">Contenuto Email</Label>
-              <Textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Contenuto dell'email"
-                rows={8}
-                disabled={!contentEditable}
-                className={!contentEditable ? "bg-gray-50 cursor-not-allowed" : ""}
-              />
-              {isEmployeeRequestTemplate() && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Puoi usare <code>{'{employee_note}'}</code> per le note del dipendente
-                </p>
-              )}
-              {isLeaveTemplate() && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Puoi usare <code>{'{leave_details}'}</code> per i dettagli della richiesta
-                </p>
-              )}
-              {isAdminResponseTemplate() && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Puoi usare <code>{'{admin_note}'}</code> per le note dell'amministratore
-                </p>
-              )}
-              {isDocumentTemplate() && templateCategory === 'dipendenti' && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Puoi usare <code>{'{admin_note}'}</code> per le note dell'amministratore
-                </p>
+          {/* Avviso per i documenti - Solo per template documenti */}
+          {isDocumentTemplate && (
+            <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
+              <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                <strong>Nota:</strong> Per i documenti, oggetto e messaggio saranno dinamici in base ai dati inseriti. 
+                Questi campi sono solo per l'anteprima.
+              </p>
+            </div>
+          )}
+
+          {/* Sezione Blocco Personalizzabile - Solo per notifiche */}
+          {isNotificationTemplate && (
+            <div className="space-y-4 p-4 border rounded-lg bg-yellow-50">
+              <h4 className="font-medium">Blocco Informativo Personalizzabile</h4>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="show_custom_block">Mostra Blocco Personalizzato</Label>
+                  <p className="text-sm text-gray-500">Visualizza un blocco informativo sopra il messaggio principale</p>
+                </div>
+                <Switch
+                  id="show_custom_block"
+                  checked={template.show_custom_block === true}
+                  onCheckedChange={(checked) => updateTemplate('show_custom_block', checked)}
+                />
+              </div>
+
+              {template.show_custom_block && (
+                <>
+                  <div>
+                    <Label htmlFor="custom_block_text">Testo Blocco Personalizzato</Label>
+                    <textarea
+                      id="custom_block_text"
+                      value={template.custom_block_text || ''}
+                      onChange={(e) => updateTemplate('custom_block_text', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                      placeholder="Informazioni aggiuntive da mostrare sempre nelle notifiche..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="custom_block_bg_color">Colore Sfondo Blocco</Label>
+                      <Input
+                        id="custom_block_bg_color"
+                        type="color"
+                        value={template.custom_block_bg_color || '#fff3cd'}
+                        onChange={(e) => updateTemplate('custom_block_bg_color', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="custom_block_text_color">Colore Testo Blocco</Label>
+                      <Input
+                        id="custom_block_text_color"
+                        type="color"
+                        value={template.custom_block_text_color || '#856404'}
+                        onChange={(e) => updateTemplate('custom_block_text_color', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
               )}
             </div>
+          )}
 
+          {/* Sezione Controlli Visibilità */}
+          <div className="space-y-3 p-4 border rounded-lg bg-blue-50">
+            <h4 className="font-medium">Controlli Visibilità</h4>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="show_details_button">Mostra Pulsante Dettagli</Label>
+                <p className="text-sm text-gray-500">Visualizza il pulsante per accedere ai dettagli</p>
+              </div>
+              <Switch
+                id="show_details_button"
+                checked={template.show_details_button === true}
+                onCheckedChange={(checked) => updateTemplate('show_details_button', checked)}
+              />
+            </div>
+
+            {/* Controllo note amministratore solo per template approvazione/rifiuto */}
+            {['permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && (
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="show_admin_notes">Mostra Note Amministratore</Label>
+                  <p className="text-sm text-gray-500">Visualizza le note dell'amministratore nell'email</p>
+                </div>
+                <Switch
+                  id="show_admin_notes"
+                  checked={template.show_admin_notes === true}
+                  onCheckedChange={(checked) => updateTemplate('show_admin_notes', checked)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Sezione Colori Note Amministratore */}
+          {['permessi-approvazione', 'permessi-rifiuto'].includes(templateType) && (
+            <div className="space-y-4 p-4 border rounded-lg bg-orange-50">
+              <h4 className="font-medium">Colori Sezione Note Amministratore</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="admin_notes_bg_color">Colore Sfondo Note</Label>
+                  <Input
+                    id="admin_notes_bg_color"
+                    type="color"
+                    value={template.admin_notes_bg_color || '#f8f9fa'}
+                    onChange={(e) => updateTemplate('admin_notes_bg_color', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="admin_notes_text_color">Colore Testo Note</Label>
+                  <Input
+                    id="admin_notes_text_color"
+                    type="color"
+                    value={template.admin_notes_text_color || '#495057'}
+                    onChange={(e) => updateTemplate('admin_notes_text_color', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="text-alignment">Allineamento Testo</Label>
-              <Select value={textAlignment} onValueChange={setTextAlignment}>
+              <Label htmlFor="primary_color">Colore Primario</Label>
+              <Input
+                id="primary_color"
+                type="color"
+                value={template.primary_color || '#007bff'}
+                onChange={(e) => updateTemplate('primary_color', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="secondary_color">Colore Secondario</Label>
+              <Input
+                id="secondary_color"
+                type="color"
+                value={template.secondary_color || '#6c757d'}
+                onChange={(e) => updateTemplate('secondary_color', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="background_color">Colore Sfondo</Label>
+              <Input
+                id="background_color"
+                type="color"
+                value={template.background_color || '#ffffff'}
+                onChange={(e) => updateTemplate('background_color', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="text_color">Colore Testo</Label>
+              <Input
+                id="text_color"
+                type="color"
+                value={template.text_color || '#333333'}
+                onChange={(e) => updateTemplate('text_color', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Logo Template</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => inputLogoRef.current?.click()}
+                type="button"
+                title="Carica logo"
+                disabled={loading}
+              >
+                <Image />
+              </Button>
+              <input
+                ref={inputLogoRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  if (e.target.files?.[0]) setLogoUploadFile(e.target.files[0]);
+                }}
+                disabled={loading}
+              />
+              <Button
+                onClick={handleLogoUpload}
+                variant="secondary"
+                disabled={loading || !logoUploadFile}
+                type="button"
+              >
+                Carica Logo
+              </Button>
+              {template.logo_url && (
+                <img src={template.logo_url} alt="logo template" className="h-8 ml-2 rounded shadow" />
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="logo_alignment">Allineamento Logo</Label>
+              <Select value={template.logo_alignment || 'center'} onValueChange={(value) => updateTemplate('logo_alignment', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleziona allineamento" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="left">Sinistra</SelectItem>
                   <SelectItem value="center">Centro</SelectItem>
                   <SelectItem value="right">Destra</SelectItem>
-                  <SelectItem value="justify">Giustificato</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Design Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Palette className="w-5 h-5" />
-              Design e Colori
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="primary-color">Colore Primario</Label>
-                <Input
-                  id="primary-color"
-                  type="color"
-                  value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="secondary-color">Colore Secondario</Label>
-                <Input
-                  id="secondary-color"
-                  type="color"
-                  value={secondaryColor}
-                  onChange={(e) => setSecondaryColor(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="background-color">Colore Sfondo</Label>
-                <Input
-                  id="background-color"
-                  type="color"
-                  value={backgroundColor}
-                  onChange={(e) => setBackgroundColor(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="text-color">Colore Testo</Label>
-                <Input
-                  id="text-color"
-                  type="color"
-                  value={textColor}
-                  onChange={(e) => setTextColor(e.target.value)}
-                />
-              </div>
-            </div>
-
             <div>
-              <Label htmlFor="font-family">Font</Label>
-              <Select value={fontFamily} onValueChange={setFontFamily}>
+              <Label htmlFor="logo_size">Dimensione Logo</Label>
+              <Select value={template.logo_size || 'medium'} onValueChange={(value) => updateTemplate('logo_size', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleziona font" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Arial, sans-serif">Arial</SelectItem>
-                  <SelectItem value="Georgia, serif">Georgia</SelectItem>
-                  <SelectItem value="'Times New Roman', serif">Times New Roman</SelectItem>
-                  <SelectItem value="Verdana, sans-serif">Verdana</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="font-size">Dimensione Font</Label>
-              <Select value={fontSize} onValueChange={setFontSize}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona dimensione" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="small">Piccolo</SelectItem>
@@ -435,170 +469,54 @@ const EmailTemplateEditor = ({
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Footer Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Footer e Impostazioni
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="footer-text">Testo Footer</Label>
-              <Textarea
-                id="footer-text"
-                value={footerText}
-                onChange={(e) => setFooterText(e.target.value)}
-                placeholder="Testo del footer"
-                rows={3}
-              />
-            </div>
+          <div>
+            <Label htmlFor="footer_text">Testo Footer</Label>
+            <textarea
+              id="footer_text"
+              value={template.footer_text || ''}
+              onChange={(e) => updateTemplate('footer_text', e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 border border-input rounded-md text-sm"
+            />
+          </div>
 
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="footer-color">Colore Footer</Label>
+              <Label htmlFor="button_color">Colore Pulsanti</Label>
               <Input
-                id="footer-color"
+                id="button_color"
                 type="color"
-                value={footerColor}
-                onChange={(e) => setFooterColor(e.target.value)}
+                value={template.button_color || '#007bff'}
+                onChange={(e) => updateTemplate('button_color', e.target.value)}
               />
             </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-              {isLeaveTemplate() && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <Label>Mostra Dettagli Permessi/Ferie</Label>
-                    <Switch
-                      checked={showLeaveDetails}
-                      onCheckedChange={setShowLeaveDetails}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label>
-                      {isEmployeeRequestTemplate() ? 'Mostra Note Dipendente' : 'Mostra Note Admin'}
-                    </Label>
-                    <Switch
-                      checked={showAdminNotes}
-                      onCheckedChange={setShowAdminNotes}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Admin Notes Section - ONLY for document templates */}
-              {isDocumentTemplate() && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <Label>Mostra Note Amministratore</Label>
-                    <Switch
-                      checked={showAdminNotesSection}
-                      onCheckedChange={setShowAdminNotesSection}
-                    />
-                  </div>
-
-                  {showAdminNotesSection && (
-                    <div className="space-y-2 mt-2 pl-4 border-l-2 border-blue-200">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label htmlFor="admin-notes-section-bg-color" className="text-xs">Colore Sfondo Note</Label>
-                          <Input
-                            id="admin-notes-section-bg-color"
-                            type="color"
-                            value={adminNotesSectionBgColor}
-                            onChange={(e) => setAdminNotesSectionBgColor(e.target.value)}
-                            className="h-8"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="admin-notes-section-text-color" className="text-xs">Colore Testo Note</Label>
-                          <Input
-                            id="admin-notes-section-text-color"
-                            type="color"
-                            value={adminNotesSectionTextColor}
-                            onChange={(e) => setAdminNotesSectionTextColor(e.target.value)}
-                            className="h-8"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Le note dell'amministratore appariranno in questa sezione quando presenti
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div className="flex items-center justify-between">
-                <Label>Mostra Blocco Personalizzato</Label>
-                <Switch
-                  checked={showCustomBlock}
-                  onCheckedChange={setShowCustomBlock}
-                />
-              </div>
-
-              {showCustomBlock && (
-                <div className="space-y-2 mt-2">
-                  <Label htmlFor="custom-block-text">Testo Blocco Personalizzato</Label>
-                  <Textarea
-                    id="custom-block-text"
-                    value={customBlockText}
-                    onChange={(e) => setCustomBlockText(e.target.value)}
-                    placeholder="Testo del blocco personalizzato"
-                    rows={3}
-                  />
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Button Styling */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Stile Pulsanti</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="button-color">Colore Pulsante</Label>
-                <Input
-                  id="button-color"
-                  type="color"
-                  value={buttonColor}
-                  onChange={(e) => setButtonColor(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="button-text-color">Colore Testo Pulsante</Label>
-                <Input
-                  id="button-text-color"
-                  type="color"
-                  value={buttonTextColor}
-                  onChange={(e) => setButtonTextColor(e.target.value)}
-                />
-              </div>
-            </div>
-
             <div>
-              <Label htmlFor="border-radius">Raggio Bordi</Label>
+              <Label htmlFor="button_text_color">Colore Testo Pulsanti</Label>
               <Input
-                id="border-radius"
-                value={borderRadius}
-                onChange={(e) => setBorderRadius(e.target.value)}
-                placeholder="es. 6px"
+                id="button_text_color"
+                type="color"
+                value={template.button_text_color || '#ffffff'}
+                onChange={(e) => updateTemplate('button_text_color', e.target.value)}
               />
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          <Button onClick={handleSave} disabled={loading} className="w-full">
+            {loading ? "Salvando..." : "Salva Template"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Anteprima</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EmailTemplatePreview template={template as any} />
+        </CardContent>
+      </Card>
     </div>
   );
 };
