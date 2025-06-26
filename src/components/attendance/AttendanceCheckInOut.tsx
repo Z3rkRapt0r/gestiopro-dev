@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useAuth } from '@/hooks/useAuth';
 import { useAttendanceOperations } from '@/hooks/useAttendanceOperations';
 import GPSStatusIndicator from './GPSStatusIndicator';
+import { useEmployeeStatus } from '@/hooks/useEmployeeStatus';
 
 export default function AttendanceCheckInOut() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -23,6 +23,7 @@ export default function AttendanceCheckInOut() {
   } = useAttendanceOperations();
   const { attendances } = useUnifiedAttendances();
   const { workSchedule } = useWorkSchedules();
+  const { employeeStatus, isLoading: statusLoading } = useEmployeeStatus();
 
   // Trova la presenza di oggi dalla tabella unificata
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -163,6 +164,38 @@ export default function AttendanceCheckInOut() {
         </Card>
       )}
 
+      {/* Avvisi di blocco per stati speciali */}
+      {employeeStatus && employeeStatus.blockingReasons.length > 0 && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-red-700">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  Non puoi registrare la presenza
+                </span>
+              </div>
+              <div className="text-sm text-red-600">
+                {employeeStatus.blockingReasons.map((reason, index) => (
+                  <p key={index}>• {reason}</p>
+                ))}
+              </div>
+              {employeeStatus.statusDetails && (
+                <div className="mt-2 p-2 bg-red-100 rounded text-xs text-red-700">
+                  <strong>Stato attuale:</strong> {employeeStatus.statusDetails.type}
+                  {employeeStatus.statusDetails.startDate && employeeStatus.statusDetails.endDate && (
+                    <span> ({employeeStatus.statusDetails.startDate} - {employeeStatus.statusDetails.endDate})</span>
+                  )}
+                  {employeeStatus.statusDetails.notes && (
+                    <div>Note: {employeeStatus.statusDetails.notes}</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Orologio */}
       <Card>
         <CardContent className="text-center py-8">
@@ -209,7 +242,7 @@ export default function AttendanceCheckInOut() {
               ) : (
                 <Button 
                   onClick={handleCheckOut} 
-                  disabled={isCheckingOut} 
+                  disabled={isCheckingOut || !employeeStatus?.canCheckOut} 
                   className="w-full"
                   variant="outline"
                 >
@@ -229,7 +262,7 @@ export default function AttendanceCheckInOut() {
           ) : (
             <Button 
               onClick={handleCheckIn} 
-              disabled={isCheckingIn} 
+              disabled={isCheckingIn || !employeeStatus?.canCheckIn || statusLoading} 
               className="w-full"
             >
               {isCheckingIn ? 'Registrando entrata...' : 'Registra Entrata'}

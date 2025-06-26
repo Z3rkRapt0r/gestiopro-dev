@@ -1,95 +1,91 @@
 
-import { useState } from "react";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
-interface TimeValidation {
-  isValid: boolean;
-  error?: string;
+interface LeaveRequestValidationProps {
+  children: React.ReactNode;
+  onValidationChange?: (isValid: boolean, message?: string) => void;
 }
 
-interface DateValidation {
-  isValid: boolean;
-  error?: string;
+export function LeaveRequestFormValidation({ 
+  children, 
+  onValidationChange 
+}: LeaveRequestValidationProps) {
+  const { user } = useAuth();
+
+  const { data: pendingRequests, isLoading } = useQuery({
+    queryKey: ['pending-leave-requests', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'pending');
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const hasPendingRequest = pendingRequests && pendingRequests.length > 0;
+  const pendingRequest = hasPendingRequest ? pendingRequests[0] : null;
+
+  // Notifica il componente padre dello stato di validazione
+  React.useEffect(() => {
+    if (onValidationChange) {
+      onValidationChange(
+        !hasPendingRequest, 
+        hasPendingRequest ? 'Hai già una richiesta in attesa di approvazione' : undefined
+      );
+    }
+  }, [hasPendingRequest, onValidationChange]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="animate-pulse bg-gray-200 h-20 rounded"></div>
+        {children}
+      </div>
+    );
+  }
+
+  if (hasPendingRequest) {
+    return (
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-2">
+              <p className="font-medium">
+                Non puoi inviare una nuova richiesta
+              </p>
+              <p>
+                Hai già una richiesta di <strong>{pendingRequest?.type}</strong> in attesa di approvazione
+                {pendingRequest?.date_from && pendingRequest?.date_to && (
+                  <span> dal {pendingRequest.date_from} al {pendingRequest.date_to}</span>
+                )}
+                {pendingRequest?.day && (
+                  <span> per il giorno {pendingRequest.day}</span>
+                )}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Attendi che l'amministratore approvi o rifiuti la tua richiesta prima di inviarne una nuova.
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
+        <div className="opacity-50 pointer-events-none">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 }
-
-export const useLeaveRequestValidation = () => {
-  const validateTimeRange = (timeFrom: string, timeTo: string): TimeValidation => {
-    if (!timeFrom || !timeTo) {
-      return { isValid: false, error: "Entrambi gli orari sono obbligatori" };
-    }
-
-    const fromTime = new Date(`2000-01-01T${timeFrom}`);
-    const toTime = new Date(`2000-01-01T${timeTo}`);
-
-    if (fromTime >= toTime) {
-      return { isValid: false, error: "L'orario di inizio deve essere precedente a quello di fine" };
-    }
-
-    const minDuration = 30; // minuti minimi
-    const diffMinutes = (toTime.getTime() - fromTime.getTime()) / (1000 * 60);
-    
-    if (diffMinutes < minDuration) {
-      return { isValid: false, error: `La durata minima del permesso è di ${minDuration} minuti` };
-    }
-
-    const maxDuration = 8 * 60; // 8 ore massime
-    if (diffMinutes > maxDuration) {
-      return { isValid: false, error: "La durata massima del permesso è di 8 ore" };
-    }
-
-    return { isValid: true };
-  };
-
-  const validateDateRange = (dateFrom: Date | null, dateTo: Date | null): DateValidation => {
-    if (!dateFrom || !dateTo) {
-      return { isValid: false, error: "Entrambe le date sono obbligatorie" };
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (dateFrom < today) {
-      return { isValid: false, error: "Non puoi richiedere ferie per date passate" };
-    }
-
-    if (dateFrom > dateTo) {
-      return { isValid: false, error: "La data di inizio deve essere precedente o uguale a quella di fine" };
-    }
-
-    const maxDays = 30; // massimo 30 giorni consecutivi
-    const diffTime = dateTo.getTime() - dateFrom.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-    if (diffDays > maxDays) {
-      return { isValid: false, error: `Non puoi richiedere più di ${maxDays} giorni consecutivi di ferie` };
-    }
-
-    return { isValid: true };
-  };
-
-  const validatePermessoDay = (day: Date | null): DateValidation => {
-    if (!day) {
-      return { isValid: false, error: "Seleziona il giorno del permesso" };
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (day < today) {
-      return { isValid: false, error: "Non puoi richiedere permessi per date passate" };
-    }
-
-    // Verifica che non sia un weekend (opzionale)
-    const dayOfWeek = day.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      return { isValid: false, error: "Non puoi richiedere permessi durante il weekend" };
-    }
-
-    return { isValid: true };
-  };
-
-  return {
-    validateTimeRange,
-    validateDateRange,
-    validatePermessoDay,
-  };
-};
