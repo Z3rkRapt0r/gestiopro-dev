@@ -12,6 +12,7 @@ import { useAttendanceOperations } from '@/hooks/useAttendanceOperations';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import GPSStatusIndicator from './GPSStatusIndicator';
 import { useEmployeeStatus } from '@/hooks/useEmployeeStatus';
+import AttendanceDelayBadge from './AttendanceDelayBadge';
 
 export default function AttendanceCheckInOut() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -239,9 +240,17 @@ export default function AttendanceCheckInOut() {
                   <Clock className="w-4 h-4 text-green-600" />
                   <span className="text-sm font-medium text-green-700">Entrata</span>
                 </div>
-                <span className="text-green-700 font-bold">
-                  {todayAttendance.check_in_time || '--:--'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-700 font-bold">
+                    {todayAttendance.check_in_time || '--:--'}
+                  </span>
+                  {todayAttendance.check_in_time && (
+                    <AttendanceDelayBadge 
+                      isLate={todayAttendance.is_late || false}
+                      lateMinutes={todayAttendance.late_minutes || 0}
+                    />
+                  )}
+                </div>
               </div>
 
               {todayAttendance.check_out_time ? <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">

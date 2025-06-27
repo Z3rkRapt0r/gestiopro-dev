@@ -14,6 +14,8 @@ export interface UnifiedAttendance {
   is_business_trip: boolean;
   is_manual: boolean;
   is_sick_leave: boolean;
+  is_late: boolean;
+  late_minutes: number;
   notes?: string | null;
   created_at: string;
   // Nuovi campi per l'organizzazione italiana

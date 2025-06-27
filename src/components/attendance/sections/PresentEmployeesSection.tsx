@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import AttendanceDelayBadge from '../AttendanceDelayBadge';
 
 interface Employee {
   id: string;
@@ -10,6 +11,8 @@ interface Employee {
   attendance: {
     is_manual?: boolean;
     is_business_trip?: boolean;
+    is_late?: boolean;
+    late_minutes?: number;
     notes?: string;
     check_in_time: string | null;
     check_out_time: string | null;
@@ -50,6 +53,13 @@ export default function PresentEmployeesSection({
                       <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs px-1.5 py-0.5">
                         Trasferta
                       </Badge>
+                    )}
+                    {employee.attendance.check_in_time && (
+                      <AttendanceDelayBadge 
+                        isLate={employee.attendance.is_late || false}
+                        lateMinutes={employee.attendance.late_minutes || 0}
+                        className="text-xs px-1.5 py-0.5"
+                      />
                     )}
                   </div>
                   {employee.attendance.notes && employee.attendance.notes !== 'Ferie' && (

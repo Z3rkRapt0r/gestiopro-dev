@@ -930,8 +930,10 @@ export type Database = {
           date: string
           id: string
           is_business_trip: boolean
+          is_late: boolean | null
           is_manual: boolean
           is_sick_leave: boolean
+          late_minutes: number | null
           notes: string | null
           updated_at: string
           user_id: string
@@ -944,8 +946,10 @@ export type Database = {
           date: string
           id?: string
           is_business_trip?: boolean
+          is_late?: boolean | null
           is_manual?: boolean
           is_sick_leave?: boolean
+          late_minutes?: number | null
           notes?: string | null
           updated_at?: string
           user_id: string
@@ -958,8 +962,10 @@ export type Database = {
           date?: string
           id?: string
           is_business_trip?: boolean
+          is_late?: boolean | null
           is_manual?: boolean
           is_sick_leave?: boolean
+          late_minutes?: number | null
           notes?: string | null
           updated_at?: string
           user_id?: string

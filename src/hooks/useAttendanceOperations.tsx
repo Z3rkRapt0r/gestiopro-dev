@@ -1,9 +1,9 @@
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useGPSValidation } from './useGPSValidation';
+import { useWorkSchedules } from './useWorkSchedules';
 import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
 
 export const useAttendanceOperations = () => {
@@ -11,6 +11,47 @@ export const useAttendanceOperations = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { validateLocation } = useGPSValidation();
+  const { workSchedule } = useWorkSchedules();
+
+  // Funzione per calcolare i ritardi
+  const calculateLateness = (checkInTime: Date, workSchedule: any) => {
+    if (!workSchedule || !workSchedule.start_time || !workSchedule.tolerance_minutes) {
+      return { isLate: false, lateMinutes: 0 };
+    }
+
+    const dayOfWeek = checkInTime.getDay();
+    const isWorkingDay = (() => {
+      switch (dayOfWeek) {
+        case 0: return workSchedule.sunday;
+        case 1: return workSchedule.monday;
+        case 2: return workSchedule.tuesday;
+        case 3: return workSchedule.wednesday;
+        case 4: return workSchedule.thursday;
+        case 5: return workSchedule.friday;
+        case 6: return workSchedule.saturday;
+        default: return false;
+      }
+    })();
+
+    if (!isWorkingDay) {
+      return { isLate: false, lateMinutes: 0 };
+    }
+
+    // Calcola l'orario di inizio previsto + tolleranza
+    const [startHours, startMinutes] = workSchedule.start_time.split(':').map(Number);
+    const expectedStartTime = new Date(checkInTime);
+    expectedStartTime.setHours(startHours, startMinutes, 0, 0);
+    
+    const toleranceTime = new Date(expectedStartTime);
+    toleranceTime.setMinutes(toleranceTime.getMinutes() + workSchedule.tolerance_minutes);
+
+    if (checkInTime > toleranceTime) {
+      const lateMinutes = Math.floor((checkInTime.getTime() - toleranceTime.getTime()) / (1000 * 60));
+      return { isLate: true, lateMinutes };
+    }
+
+    return { isLate: false, lateMinutes: 0 };
+  };
 
   // Funzione per validare lo stato del dipendente prima di procedere
   const validateEmployeeStatus = async (userId: string, date: string) => {
@@ -109,6 +150,9 @@ export const useAttendanceOperations = () => {
       const now = new Date();
       const checkInTime = now.toTimeString().slice(0, 5);
       
+      // Calcola ritardo
+      const { isLate, lateMinutes } = calculateLateness(now, workSchedule);
+      
       // Genera il path organizzativo italiano
       const operationType = isBusinessTrip ? 'viaggio_lavoro' : 'presenza_normale';
       const operationPath = await generateOperationPath(operationType, user?.id!, now);
@@ -117,7 +161,9 @@ export const useAttendanceOperations = () => {
       console.log('📋 Path organizzativo italiano per check-in:', {
         operationPath,
         readableId,
-        operationType
+        operationType,
+        isLate,
+        lateMinutes
       });
       
       const { data: attendanceData, error: attendanceError } = await supabase
@@ -146,6 +192,8 @@ export const useAttendanceOperations = () => {
           check_in_time: checkInTime,
           is_manual: false,
           is_business_trip: isBusinessTrip,
+          is_late: isLate,
+          late_minutes: lateMinutes,
           notes: readableId,
           created_by: user?.id,
         }, {
@@ -159,14 +207,24 @@ export const useAttendanceOperations = () => {
       console.log('✅ Check-in completato con validazione anti-conflitto');
       return { attendanceData, unifiedData };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['employee-status'] });
-      toast({
-        title: "Check-in effettuato",
-        description: "Il tuo check-in è stato registrato con successo",
-      });
+      
+      const { unifiedData } = data;
+      if (unifiedData.is_late) {
+        toast({
+          title: "Check-in effettuato (IN RITARDO)",
+          description: `Sei arrivato con ${unifiedData.late_minutes} minuti di ritardo`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Check-in effettuato",
+          description: "Il tuo check-in è stato registrato con successo",
+        });
+      }
     },
     onError: (error: any) => {
       console.error('❌ Check-in error:', error);
