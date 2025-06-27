@@ -1,0 +1,257 @@
+
+import { useState, useMemo } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useLeaveRequests } from '@/hooks/useLeaveRequests';
+import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { Users, Calendar, Activity, Trash2, Clock, FileText, AlertCircle } from 'lucide-react';
+
+interface LeaveArchiveTabProps {
+  type: 'permessi' | 'ferie';
+}
+
+export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
+  const { leaveRequests, isLoading, deleteLeaveRequest, isDeletingLeaveRequest } = useLeaveRequests();
+  const { employees } = useActiveEmployees();
+  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+
+  // Filtra le richieste in base al tipo
+  const filteredRequests = useMemo(() => {
+    if (!leaveRequests) return [];
+    return leaveRequests.filter(request => request.type === type);
+  }, [leaveRequests, type]);
+
+  // Raggruppa per dipendente
+  const employeeGroups = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    
+    filteredRequests.forEach(request => {
+      const userId = request.user_id;
+      if (!groups[userId]) {
+        groups[userId] = [];
+      }
+      groups[userId].push(request);
+    });
+    
+    return groups;
+  }, [filteredRequests]);
+
+  // Calcola statistiche
+  const stats = useMemo(() => {
+    const totalRecords = filteredRequests.length;
+    const employeeCount = Object.keys(employeeGroups).length;
+    const approvedCount = filteredRequests.filter(req => req.status === 'approved').length;
+
+    return { totalRecords, employeeCount, approvedCount };
+  }, [filteredRequests, employeeGroups]);
+
+  const handleDelete = (requestId: string) => {
+    deleteLeaveRequest(requestId);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Approvata</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive">Rifiutata</Badge>;
+      case 'pending':
+        return <Badge variant="secondary">In attesa</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="text-muted-foreground">Caricamento archivio...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const title = type === 'ferie' ? 'Archivio Ferie' : 'Archivio Permessi';
+  const icon = type === 'ferie' ? <Calendar className="w-5 h-5" /> : <Clock className="w-5 h-5" />;
+
+  return (
+    <div className="space-y-6">
+      {/* Statistiche */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Totale Richieste</p>
+                <p className="text-2xl font-bold">{stats.totalRecords}</p>
+              </div>
+              <Activity className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Dipendenti</p>
+                <p className="text-2xl font-bold">{stats.employeeCount}</p>
+              </div>
+              <Users className="w-8 h-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Approvate</p>
+                <p className="text-2xl font-bold">{stats.approvedCount}</p>
+              </div>
+              <Calendar className="w-8 h-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Lista Dipendenti */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {icon}
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {Object.keys(employeeGroups).length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>Nessuna richiesta trovata per {type}</p>
+            </div>
+          ) : (
+            <Tabs value={selectedEmployee || Object.keys(employeeGroups)[0]} onValueChange={setSelectedEmployee}>
+              <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2 h-auto p-1">
+                {Object.keys(employeeGroups).map(userId => {
+                  const employee = employees?.find(emp => emp.id === userId);
+                  const recordCount = employeeGroups[userId].length;
+                  
+                  return (
+                    <TabsTrigger 
+                      key={userId} 
+                      value={userId}
+                      className="flex items-center justify-between p-3 h-auto"
+                    >
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">
+                          {employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente'}
+                        </span>
+                        <Badge variant="secondary" className="mt-1">
+                          {recordCount} richieste
+                        </Badge>
+                      </div>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {Object.keys(employeeGroups).map(userId => {
+                const employee = employees?.find(emp => emp.id === userId);
+                const requests = employeeGroups[userId].sort((a, b) => 
+                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                );
+
+                return (
+                  <TabsContent key={userId} value={userId} className="mt-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">
+                          {employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente'}
+                        </h3>
+                        <Badge variant="outline">
+                          {requests.length} richieste
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-3">
+                        {requests.map(request => (
+                          <div key={request.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className="font-medium">
+                                  {type === 'ferie' ? (
+                                    `${format(new Date(request.date_from!), 'dd/MM/yyyy')} - ${format(new Date(request.date_to!), 'dd/MM/yyyy')}`
+                                  ) : (
+                                    request.day ? format(new Date(request.day), 'dd/MM/yyyy') : 'Data non specificata'
+                                  )}
+                                </span>
+                                {getStatusBadge(request.status)}
+                              </div>
+                              
+                              {type === 'permessi' && request.time_from && request.time_to && (
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
+                                  <Clock className="w-3 h-3" />
+                                  {request.time_from} - {request.time_to}
+                                </div>
+                              )}
+                              
+                              {request.note && (
+                                <div className="flex items-center gap-1 text-sm text-gray-600">
+                                  <FileText className="w-3 h-3" />
+                                  {request.note}
+                                </div>
+                              )}
+                            </div>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  disabled={isDeletingLeaveRequest}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Sei sicuro di voler eliminare questa richiesta di {type}?
+                                    <br />
+                                    <strong>Questa azione non può essere annullata.</strong>
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDelete(request.id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Elimina
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
