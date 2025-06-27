@@ -1,8 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAttendanceHistoryVisibility } from '@/hooks/useAttendanceHistoryVisibility';
 import EmployeeDashboardContent from './EmployeeDashboardContent';
 import EmployeeDashboardHeader from './EmployeeDashboardHeader';
 import EmployeeLeavePage from '@/components/leave/EmployeeLeavePage';
@@ -28,7 +26,6 @@ export default function EmployeeDashboard() {
   const [activeSection, setActiveSection] = useState<'overview' | 'leaves' | 'attendances' | 'documents' | 'messages'>('overview');
   const { profile } = useAuth();
   const queryClient = useQueryClient();
-  const { isHistoryVisible } = useAttendanceHistoryVisibility();
 
   // Aggiorna i dati quando si cambia sezione
   useEffect(() => {
@@ -74,7 +71,7 @@ export default function EmployeeDashboard() {
       title: 'Presenze',
       icon: Clock,
       key: 'attendances' as const,
-      description: isHistoryVisible ? 'Orari e check-in' : 'Check-in presenza'
+      description: 'Orari e check-in'
     },
     {
       title: 'Documenti',

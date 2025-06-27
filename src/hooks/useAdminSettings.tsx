@@ -19,7 +19,6 @@ interface BrevoSettings {
   trackClicks: boolean;
   autoRetry: boolean;
   maxRetries: number;
-  hideAttendanceHistoryForEmployees: boolean;
 }
 
 export function useAdminSettings() {
@@ -40,8 +39,7 @@ export function useAdminSettings() {
     trackOpens: true,
     trackClicks: true,
     autoRetry: true,
-    maxRetries: 3,
-    hideAttendanceHistoryForEmployees: false
+    maxRetries: 3
   });
   const [loading, setLoading] = useState(false);
 
@@ -72,8 +70,7 @@ export function useAdminSettings() {
               trackOpens: data.track_opens ?? true,
               trackClicks: data.track_clicks ?? true,
               autoRetry: data.auto_retry ?? true,
-              maxRetries: data.max_retries ?? 3,
-              hideAttendanceHistoryForEmployees: data.hide_attendance_history_for_employees ?? false
+              maxRetries: data.max_retries ?? 3
             });
           }
         } finally {
@@ -183,8 +180,7 @@ export function useAdminSettings() {
             track_opens: settings.trackOpens,
             track_clicks: settings.trackClicks,
             auto_retry: settings.autoRetry,
-            max_retries: settings.maxRetries,
-            hide_attendance_history_for_employees: settings.hideAttendanceHistoryForEmployees
+            max_retries: settings.maxRetries
           },
           { 
             onConflict: "admin_id",
