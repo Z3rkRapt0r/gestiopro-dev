@@ -136,6 +136,27 @@ const AdminSettingsSection = () => {
                   />
                 </div>
 
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="hide-history" className="text-sm font-medium">
+                    Nascondi storico presenze ai dipendenti
+                  </Label>
+                  <Switch
+                    id="hide-history"
+                    checked={brevoSettings.hideAttendanceHistoryForEmployees}
+                    onCheckedChange={(checked) => 
+                      setBrevoSettings(prev => ({ 
+                        ...prev, 
+                        hideAttendanceHistoryForEmployees: checked 
+                      }))
+                    }
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Se attivato, i dipendenti non potranno vedere lo storico delle proprie presenze
+                </p>
+
                 <div className="pt-4">
                   <Button
                     onClick={handleSaveBrevoSettings}
