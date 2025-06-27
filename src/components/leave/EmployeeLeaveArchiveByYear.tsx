@@ -1,24 +1,12 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle, 
-  AlertDialogTrigger 
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { User2, Calendar, Clock, Trash2, CalendarDays } from "lucide-react";
 import { LeaveRequest, useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
-
 interface EmployeeLeaveArchiveByYearProps {
   employee: {
     id: string;
@@ -29,39 +17,42 @@ interface EmployeeLeaveArchiveByYearProps {
   leaveRequests: LeaveRequest[];
   type: "permesso" | "ferie";
 }
-
-export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, type }: EmployeeLeaveArchiveByYearProps) {
-  const { profile } = useAuth();
-  const { deleteRequestMutation } = useLeaveRequests();
+export default function EmployeeLeaveArchiveByYear({
+  employee,
+  leaveRequests,
+  type
+}: EmployeeLeaveArchiveByYearProps) {
+  const {
+    profile
+  } = useAuth();
+  const {
+    deleteRequestMutation
+  } = useLeaveRequests();
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const isAdmin = profile?.role === "admin";
-
-  const employeeName = employee.first_name && employee.last_name 
-    ? `${employee.first_name} ${employee.last_name}` 
-    : employee.email || "Dipendente sconosciuto";
-
+  const employeeName = employee.first_name && employee.last_name ? `${employee.first_name} ${employee.last_name}` : employee.email || "Dipendente sconosciuto";
   const handleDelete = (request: LeaveRequest) => {
     const confirmMessage = `Sei sicuro di voler eliminare questa richiesta approvata? Verranno rimosse anche le presenze associate.`;
-      
     if (confirm(confirmMessage)) {
-      deleteRequestMutation.mutate({ id: request.id, leaveRequest: request });
+      deleteRequestMutation.mutate({
+        id: request.id,
+        leaveRequest: request
+      });
     }
   };
-
   const handleBulkDelete = async (requests: LeaveRequest[], period: string) => {
     setBulkDeleteLoading(true);
-    
     try {
       // Elimina tutte le richieste una per una
       for (const request of requests) {
         await new Promise<void>((resolve, reject) => {
-          deleteRequestMutation.mutate(
-            { id: request.id, leaveRequest: request },
-            {
-              onSuccess: () => resolve(),
-              onError: (error) => reject(error)
-            }
-          );
+          deleteRequestMutation.mutate({
+            id: request.id,
+            leaveRequest: request
+          }, {
+            onSuccess: () => resolve(),
+            onError: error => reject(error)
+          });
         });
       }
     } catch (error) {
@@ -70,23 +61,18 @@ export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, ty
       setBulkDeleteLoading(false);
     }
   };
-
   const getDateDisplay = (req: LeaveRequest) => {
     if (req.type === "permesso" && req.day) {
       const timeRange = [req.time_from, req.time_to].filter(Boolean).join(" - ");
-      return (
-        <div className="text-sm">
+      return <div className="text-sm">
           <div>{req.day}</div>
           {timeRange && <div className="text-xs text-muted-foreground">({timeRange})</div>}
-        </div>
-      );
+        </div>;
     }
     if (req.type === "ferie" && req.date_from && req.date_to) {
-      return (
-        <div className="text-sm">
+      return <div className="text-sm">
           {req.date_from} - {req.date_to}
-        </div>
-      );
+        </div>;
     }
     return <span className="text-sm text-muted-foreground">-</span>;
   };
@@ -115,10 +101,7 @@ export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, ty
 
   // Funzione per convertire numero mese in nome italiano
   const getMonthName = (monthNumber: number): string => {
-    const months = [
-      'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-      'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
-    ];
+    const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
     return months[monthNumber - 1] || 'Mese sconosciuto';
   };
 
@@ -145,34 +128,22 @@ export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, ty
   };
 
   // Ordina gli anni dal più recente al più vecchio
-  const sortedYears = Object.keys(requestsByYear)
-    .map(Number)
-    .sort((a, b) => b - a);
-
-  const BulkDeleteButton = ({ 
-    requests, 
-    period, 
-    variant = "outline" 
-  }: { 
-    requests: LeaveRequest[]; 
-    period: string; 
-    variant?: "outline" | "destructive" 
+  const sortedYears = Object.keys(requestsByYear).map(Number).sort((a, b) => b - a);
+  const BulkDeleteButton = ({
+    requests,
+    period,
+    variant = "outline"
+  }: {
+    requests: LeaveRequest[];
+    period: string;
+    variant?: "outline" | "destructive";
   }) => {
     if (!isAdmin || requests.length === 0) return null;
-
     const requestTypeText = type === "permesso" ? "permessi" : "ferie";
     const confirmText = `Sei sicuro di voler eliminare tutti i ${requests.length} ${requestTypeText} di ${period} per ${employeeName}? Questa azione è irreversibile e verranno rimosse anche le presenze associate.`;
-
-    return (
-      <AlertDialog>
+    return <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button
-            size="sm"
-            variant={variant}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 h-6 px-2 ml-2"
-            title={`Elimina tutti i ${requestTypeText} di ${period}`}
-            disabled={bulkDeleteLoading}
-          >
+          <Button size="sm" variant={variant} title={`Elimina tutti i ${requestTypeText} di ${period}`} disabled={bulkDeleteLoading} className="text-red-600 hover:text-red-700 h-6 px-2 ml-2 bg-white">
             <Trash2 className="w-3 h-3" />
           </Button>
         </AlertDialogTrigger>
@@ -185,20 +156,14 @@ export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, ty
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => handleBulkDelete(requests, period)}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={() => handleBulkDelete(requests, period)} className="bg-red-600 hover:bg-red-700">
               Elimina tutto
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
-    );
+      </AlertDialog>;
   };
-
-  return (
-    <Card className="mb-4">
+  return <Card className="mb-4">
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value={`employee-${employee.id}`} className="border-none">
           <AccordionTrigger className="hover:no-underline px-6 py-4">
@@ -214,11 +179,9 @@ export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, ty
           </AccordionTrigger>
           <AccordionContent className="px-6 pb-6">
             <div className="space-y-4">
-              {sortedYears.map((year) => {
-                const yearRequests = requestsByYear[year];
-                
-                return (
-                  <div key={year} className="border rounded-lg">
+              {sortedYears.map(year => {
+              const yearRequests = requestsByYear[year];
+              return <div key={year} className="border rounded-lg">
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value={`year-${year}`} className="border-none">
                         <AccordionTrigger className="hover:no-underline px-4 py-3">
@@ -230,28 +193,20 @@ export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, ty
                             <Badge variant="outline" className="ml-2">
                               {yearRequests.length} {type === "permesso" ? "permessi" : "ferie"}
                             </Badge>
-                            <BulkDeleteButton 
-                              requests={yearRequests} 
-                              period={`${year}`}
-                            />
+                            <BulkDeleteButton requests={yearRequests} period={`${year}`} />
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-4 pb-4">
-                          {type === "permesso" ? (
-                            // Per i permessi, raggruppa per mese
-                            <div className="space-y-3">
+                          {type === "permesso" ?
+                      // Per i permessi, raggruppa per mese
+                      <div className="space-y-3">
                               {(() => {
-                                const requestsByMonth = groupRequestsByMonth(yearRequests);
-                                const sortedMonths = Object.keys(requestsByMonth)
-                                  .map(Number)
-                                  .sort((a, b) => b - a);
-
-                                return sortedMonths.map((month) => {
-                                  const monthRequests = requestsByMonth[month];
-                                  const monthName = getMonthName(month);
-                                  
-                                  return (
-                                    <div key={month} className="border rounded-md bg-gray-50">
+                          const requestsByMonth = groupRequestsByMonth(yearRequests);
+                          const sortedMonths = Object.keys(requestsByMonth).map(Number).sort((a, b) => b - a);
+                          return sortedMonths.map(month => {
+                            const monthRequests = requestsByMonth[month];
+                            const monthName = getMonthName(month);
+                            return <div key={month} className="border rounded-md bg-gray-50">
                                       <div className="flex items-center justify-between p-3 bg-gray-100 rounded-t-md">
                                         <div className="flex items-center gap-2 text-sm font-medium">
                                           <Calendar className="w-4 h-4 text-purple-600" />
@@ -259,19 +214,11 @@ export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, ty
                                           <Badge variant="outline" className="ml-2">
                                             {monthRequests.length} permessi
                                           </Badge>
-                                          <BulkDeleteButton 
-                                            requests={monthRequests} 
-                                            period={`${monthName} ${year}`}
-                                            variant="destructive"
-                                          />
+                                          <BulkDeleteButton requests={monthRequests} period={`${monthName} ${year}`} variant="destructive" />
                                         </div>
                                       </div>
                                       <div className="p-3 space-y-2">
-                                        {monthRequests.map((req) => (
-                                          <div 
-                                            key={req.id} 
-                                            className="flex items-center justify-between p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors"
-                                          >
+                                        {monthRequests.map(req => <div key={req.id} className="flex items-center justify-between p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors">
                                             <div className="flex items-center gap-3">
                                               <div className="flex flex-col">
                                                 <div className="flex items-center gap-2">
@@ -282,49 +229,29 @@ export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, ty
                                             </div>
                                             
                                             <div className="flex items-center gap-2">
-                                              {req.note && (
-                                                <div className="text-xs text-muted-foreground max-w-48 truncate" title={req.note}>
+                                              {req.note && <div className="text-xs text-muted-foreground max-w-48 truncate" title={req.note}>
                                                   "{req.note}"
-                                                </div>
-                                              )}
-                                              <Badge 
-                                                variant="outline" 
-                                                className="bg-green-50 text-green-700 border-green-200"
-                                              >
+                                                </div>}
+                                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                                 Approvato
                                               </Badge>
                                               <div className="text-xs text-muted-foreground">
                                                 {new Date(req.created_at).toLocaleDateString('it-IT')}
                                               </div>
                                               
-                                              {isAdmin && (
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  onClick={() => handleDelete(req)}
-                                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 ml-2"
-                                                  title="Elimina richiesta approvata"
-                                                >
+                                              {isAdmin && <Button size="sm" variant="outline" onClick={() => handleDelete(req)} className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 ml-2" title="Elimina richiesta approvata">
                                                   <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                              )}
+                                                </Button>}
                                             </div>
-                                          </div>
-                                        ))}
+                                          </div>)}
                                       </div>
-                                    </div>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          ) : (
-                            // Per le ferie, mostra direttamente le richieste
-                            <div className="space-y-2">
-                              {yearRequests.map((req) => (
-                                <div 
-                                  key={req.id} 
-                                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                                >
+                                    </div>;
+                          });
+                        })()}
+                            </div> :
+                      // Per le ferie, mostra direttamente le richieste
+                      <div className="space-y-2">
+                              {yearRequests.map(req => <div key={req.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                                   <div className="flex items-center gap-3">
                                     <div className="flex flex-col">
                                       <div className="flex items-center gap-2">
@@ -335,53 +262,34 @@ export default function EmployeeLeaveArchiveByYear({ employee, leaveRequests, ty
                                   </div>
                                   
                                   <div className="flex items-center gap-2">
-                                    {req.note && (
-                                      <div className="text-xs text-muted-foreground max-w-48 truncate" title={req.note}>
+                                    {req.note && <div className="text-xs text-muted-foreground max-w-48 truncate" title={req.note}>
                                         "{req.note}"
-                                      </div>
-                                    )}
-                                    <Badge 
-                                      variant="outline" 
-                                      className="bg-green-50 text-green-700 border-green-200"
-                                    >
+                                      </div>}
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                       Approvato
                                     </Badge>
                                     <div className="text-xs text-muted-foreground">
                                       {new Date(req.created_at).toLocaleDateString('it-IT')}
                                     </div>
                                     
-                                    {isAdmin && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleDelete(req)}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 ml-2"
-                                        title="Elimina richiesta approvata"
-                                      >
+                                    {isAdmin && <Button size="sm" variant="outline" onClick={() => handleDelete(req)} className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 ml-2" title="Elimina richiesta approvata">
                                         <Trash2 className="w-3 h-3" />
-                                      </Button>
-                                    )}
+                                      </Button>}
                                   </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                                </div>)}
+                            </div>}
                         </AccordionContent>
                       </AccordionItem>
                     </Accordion>
-                  </div>
-                );
-              })}
+                  </div>;
+            })}
               
-              {sortedYears.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
+              {sortedYears.length === 0 && <div className="text-center py-8 text-gray-500">
                   <p>Nessuna richiesta di {type} trovata per questo dipendente</p>
-                </div>
-              )}
+                </div>}
             </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-    </Card>
-  );
+    </Card>;
 }
