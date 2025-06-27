@@ -38,25 +38,69 @@ export const useAttendanceArchive = () => {
     return acc;
   }, {} as Record<string, { employee: any; attendances: UnifiedAttendance[] }>);
 
+  // Funzione per sincronizzare l'eliminazione con la tabella attendances
+  const syncAttendanceDeletion = async (deletedAttendances: UnifiedAttendance[], operation: 'single' | 'bulk') => {
+    try {
+      console.log('🔄 Sincronizzando eliminazione con attendances...', deletedAttendances.length);
+      
+      const { data, error } = await supabase.functions.invoke('sync-attendance-deletion', {
+        body: {
+          attendances: deletedAttendances.map(att => ({
+            id: att.id,
+            user_id: att.user_id,
+            date: att.date,
+            check_in_time: att.check_in_time,
+            check_out_time: att.check_out_time
+          })),
+          operation
+        }
+      });
+
+      if (error) {
+        console.error('❌ Errore nella sincronizzazione:', error);
+        throw error;
+      }
+
+      console.log('✅ Sincronizzazione completata:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Errore nella chiamata alla Edge Function:', error);
+      throw error;
+    }
+  };
+
   // Elimina singola presenza
   const deleteAttendance = useMutation({
     mutationFn: async (attendanceId: string) => {
       console.log('🗑️ Eliminando presenza dall\'archivio:', attendanceId);
       
+      // Prima ottieni i dati della presenza da eliminare
+      const attendanceToDelete = attendances?.find(att => att.id === attendanceId);
+      if (!attendanceToDelete) {
+        throw new Error('Presenza non trovata');
+      }
+
+      // Elimina dalla tabella unified_attendances
       const { error } = await supabase
         .from('unified_attendances')
         .delete()
         .eq('id', attendanceId);
 
       if (error) throw error;
+
+      // Sincronizza con la tabella attendances solo se non è manuale
+      if (!attendanceToDelete.is_manual) {
+        await syncAttendanceDeletion([attendanceToDelete], 'single');
+      }
       
       return attendanceId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza eliminata",
-        description: "La presenza è stata rimossa dall'archivio",
+        description: "La presenza è stata rimossa dall'archivio e dallo storico del dipendente",
       });
     },
     onError: (error: any) => {
@@ -70,12 +114,14 @@ export const useAttendanceArchive = () => {
   });
 
   // Eliminazione massiva
-  const handleBulkDelete = async (attendances: UnifiedAttendance[], period: string) => {
+  const handleBulkDelete = async (attendancesToDelete: UnifiedAttendance[], period: string) => {
     setBulkDeleteLoading(true);
     try {
-      console.log('🗑️ Eliminazione massiva presenze:', attendances.length, 'per periodo:', period);
+      console.log('🗑️ Eliminazione massiva presenze:', attendancesToDelete.length, 'per periodo:', period);
       
-      const ids = attendances.map(att => att.id);
+      const ids = attendancesToDelete.map(att => att.id);
+      
+      // Elimina dalla tabella unified_attendances
       const { error } = await supabase
         .from('unified_attendances')
         .delete()
@@ -83,10 +129,18 @@ export const useAttendanceArchive = () => {
 
       if (error) throw error;
 
+      // Sincronizza con la tabella attendances solo per le presenze non manuali
+      const nonManualAttendances = attendancesToDelete.filter(att => !att.is_manual);
+      if (nonManualAttendances.length > 0) {
+        await syncAttendanceDeletion(nonManualAttendances, 'bulk');
+      }
+
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['attendances'] });
+      
       toast({
         title: "Presenze eliminate",
-        description: `${attendances.length} presenze del ${period} sono state eliminate dall'archivio`,
+        description: `${attendancesToDelete.length} presenze del ${period} sono state eliminate dall'archivio e dallo storico`,
       });
     } catch (error: any) {
       console.error('❌ Errore eliminazione massiva presenze:', error);
