@@ -1,16 +1,8 @@
 
+import { DOCUMENT_TYPE_LABEL_MAP } from './documentPathUtils';
+
 export const getDocumentTypeLabel = (type: string) => {
-  const types: Record<string, string> = {
-    'payslip': 'Busta Paga',
-    'transfer': 'Bonifico',
-    'communication': 'Comunicazione',
-    'medical_certificate': 'Certificato Medico',
-    'leave_request': 'Richiesta Ferie',
-    'expense_report': 'Nota Spese',
-    'contract': 'Contratto',
-    'other': 'Altro'
-  };
-  return types[type] || type;
+  return DOCUMENT_TYPE_LABEL_MAP[type] || type;
 };
 
 export const formatFileSize = (bytes: number | null) => {
