@@ -18,6 +18,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysValidation } from '@/hooks/useWorkingDaysValidation';
+import { useAuth } from '@/hooks/useAuth';
 import WorkingDaysPreview from './WorkingDaysPreview';
 
 const leaveRequestSchema = z.object({
@@ -42,15 +43,21 @@ const leaveRequestSchema = z.object({
 
 type LeaveRequestFormData = z.infer<typeof leaveRequestSchema>;
 
-export default function LeaveRequestForm() {
-  const { createLeaveRequest, isCreating } = useLeaveRequests();
+interface LeaveRequestFormProps {
+  type?: string;
+  onSuccess?: () => void;
+}
+
+export default function LeaveRequestForm({ type: defaultType, onSuccess }: LeaveRequestFormProps) {
+  const { profile } = useAuth();
+  const { insertMutation } = useLeaveRequests();
   const { isWorkingDay, countWorkingDays, getWorkingDaysLabels } = useWorkingDaysValidation();
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
     defaultValues: {
-      type: 'ferie',
+      type: (defaultType as 'ferie' | 'permesso' | 'malattia') || 'ferie',
     },
   });
 
@@ -85,6 +92,8 @@ export default function LeaveRequestForm() {
   };
 
   const onSubmit = (data: LeaveRequestFormData) => {
+    if (!profile?.id) return;
+    
     setShowValidationErrors(false);
     
     // Validazione aggiuntiva per giorni lavorativi
@@ -103,7 +112,20 @@ export default function LeaveRequestForm() {
       return;
     }
 
-    createLeaveRequest(data);
+    const payload = {
+      ...data,
+      user_id: profile.id,
+      date_from: data.date_from ? format(data.date_from, 'yyyy-MM-dd') : undefined,
+      date_to: data.date_to ? format(data.date_to, 'yyyy-MM-dd') : undefined,
+      day: data.day ? format(data.day, 'yyyy-MM-dd') : undefined,
+    };
+
+    insertMutation.mutate(payload, {
+      onSuccess: () => {
+        form.reset();
+        if (onSuccess) onSuccess();
+      }
+    });
   };
 
   const workingDaysLabels = getWorkingDaysLabels();
@@ -374,9 +396,9 @@ export default function LeaveRequestForm() {
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isCreating}
+              disabled={insertMutation.isPending}
             >
-              {isCreating ? 'Invio in corso...' : 'Invia Richiesta'}
+              {insertMutation.isPending ? 'Invio in corso...' : 'Invia Richiesta'}
             </Button>
           </form>
         </Form>
