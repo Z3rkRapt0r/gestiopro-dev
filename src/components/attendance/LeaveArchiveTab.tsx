@@ -16,7 +16,7 @@ interface LeaveArchiveTabProps {
 }
 
 export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
-  const { leaveRequests, isLoading, deleteLeaveRequest, isDeletingLeaveRequest } = useLeaveRequests();
+  const { leaveRequests, isLoading, deleteRequestMutation } = useLeaveRequests();
   const { employees } = useActiveEmployees();
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
 
@@ -51,7 +51,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
   }, [filteredRequests, employeeGroups]);
 
   const handleDelete = (requestId: string) => {
-    deleteLeaveRequest(requestId);
+    deleteRequestMutation.mutate(requestId);
   };
 
   const getStatusBadge = (status: string) => {
@@ -216,7 +216,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
                                 <Button 
                                   variant="destructive" 
                                   size="sm"
-                                  disabled={isDeletingLeaveRequest}
+                                  disabled={deleteRequestMutation.isPending}
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
