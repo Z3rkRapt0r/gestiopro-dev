@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { generateDocumentPath } from '@/utils/documentPathUtils';
 
 interface Document {
   id: string;
@@ -18,83 +20,6 @@ interface Document {
   created_at: string;
   updated_at: string;
 }
-
-// Mappatura dei tipi di documento in italiano per le cartelle
-const DOCUMENT_TYPE_FOLDER_MAP: Record<string, string> = {
-  'payslip': 'Buste_Paga',
-  'transfer': 'Bonifici',
-  'communication': 'Comunicazioni',
-  'medical_certificate': 'Certificati_Medici',
-  'leave_request': 'Richieste_Ferie',
-  'expense_report': 'Note_Spese',
-  'contract': 'Contratti',
-  'other': 'Altri_Documenti',
-};
-
-// Funzione per sanitizzare i nomi per il filesystem
-const sanitizeForFilesystem = (text: string): string => {
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Rimuove accenti
-    .replace(/[^a-zA-Z0-9]/g, '_') // Sostituisce caratteri speciali con underscore
-    .replace(/_+/g, '_') // Rimuove underscore multipli
-    .replace(/^_|_$/g, ''); // Rimuove underscore all'inizio e alla fine
-};
-
-// Funzione per generare il path del file
-const generateFilePath = async (
-  file: File,
-  documentType: Document['document_type'],
-  targetUserId: string,
-  isPersonalDocument: boolean,
-  uploadedBy: string
-): Promise<string> => {
-  const now = new Date();
-  const year = now.getFullYear().toString();
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const fileName = `${Date.now()}_${file.name}`;
-  
-  // Ottieni il tipo di documento in italiano
-  const documentTypeFolder = DOCUMENT_TYPE_FOLDER_MAP[documentType] || 'Altri_Documenti';
-  
-  if (!isPersonalDocument) {
-    // Documenti aziendali
-    return `Documenti_Aziendali/${documentTypeFolder}/${year}/${month}/${fileName}`;
-  }
-  
-  // Documenti personali - ottieni i dati del dipendente
-  try {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('first_name, last_name, email')
-      .eq('id', targetUserId)
-      .single();
-    
-    if (error || !profile) {
-      console.warn('Impossibile ottenere il profilo del dipendente, uso fallback UUID');
-      return `Dipendente_${targetUserId.substring(0, 8)}/${documentTypeFolder}/${year}/${month}/${fileName}`;
-    }
-    
-    // Crea il nome della cartella dipendente
-    let employeeFolder = '';
-    if (profile.first_name && profile.last_name) {
-      const sanitizedFirstName = sanitizeForFilesystem(profile.first_name);
-      const sanitizedLastName = sanitizeForFilesystem(profile.last_name);
-      employeeFolder = `${sanitizedFirstName}_${sanitizedLastName}`;
-    } else if (profile.email) {
-      const emailName = profile.email.split('@')[0];
-      employeeFolder = sanitizeForFilesystem(emailName);
-    } else {
-      employeeFolder = `Dipendente_${targetUserId.substring(0, 8)}`;
-    }
-    
-    return `${employeeFolder}/${documentTypeFolder}/${year}/${month}/${fileName}`;
-    
-  } catch (error) {
-    console.error('Errore durante la generazione del path:', error);
-    return `Dipendente_${targetUserId.substring(0, 8)}/${documentTypeFolder}/${year}/${month}/${fileName}`;
-  }
-};
 
 export const useDocuments = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -127,6 +52,7 @@ export const useDocuments = () => {
         document_type: doc.document_type as Document['document_type']
       }));
 
+      console.log('Documenti caricati con struttura italiana esistente:', typedDocuments.length);
       setDocuments(typedDocuments);
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -148,16 +74,15 @@ export const useDocuments = () => {
     const finalTargetUserId = targetUserId || user.id;
 
     try {
-      // Genera il path del file con la nuova struttura
-      const filePath = await generateFilePath(
+      // Usa la struttura italiana esistente per i documenti
+      const filePath = await generateDocumentPath(
         file,
         documentType,
         finalTargetUserId,
-        isPersonalDocument,
-        user.id
+        isPersonalDocument
       );
 
-      console.log('Nuovo path del file:', filePath);
+      console.log('Upload documento con path italiano esistente:', filePath);
 
       const { error: uploadError } = await supabase.storage
         .from('documents')
@@ -190,7 +115,7 @@ export const useDocuments = () => {
 
       toast({
         title: "Successo",
-        description: "Documento caricato correttamente",
+        description: "Documento caricato nella struttura organizzativa italiana",
       });
 
       await fetchDocuments();
@@ -212,7 +137,6 @@ export const useDocuments = () => {
     try {
       setLoading(true);
 
-      // Usa la edge function per eliminare il documento
       const { error } = await supabase.functions.invoke('delete-document', {
         body: { documentId: document.id }
       });
@@ -223,7 +147,7 @@ export const useDocuments = () => {
 
       toast({
         title: "Successo",
-        description: "Documento eliminato correttamente",
+        description: "Documento eliminato dalla struttura organizzativa italiana",
       });
 
       await fetchDocuments();
