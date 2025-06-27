@@ -12,6 +12,7 @@ import { useAttendanceOperations } from '@/hooks/useAttendanceOperations';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import GPSStatusIndicator from './GPSStatusIndicator';
 import { useEmployeeStatus } from '@/hooks/useEmployeeStatus';
+
 export default function AttendanceCheckInOut() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const {
@@ -40,6 +41,7 @@ export default function AttendanceCheckInOut() {
   // Trova la presenza di oggi dalla tabella unificata
   const today = format(new Date(), 'yyyy-MM-dd');
   const todayAttendance = attendances?.find(att => att.user_id === user?.id && att.date === today);
+  
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -253,11 +255,7 @@ export default function AttendanceCheckInOut() {
                 </div> : <>
                   {isCheckoutEnabled ? <Button onClick={handleCheckOut} disabled={isCheckingOut || !employeeStatus?.canCheckOut} className="w-full" variant="outline">
                       {isCheckingOut ? 'Registrando uscita...' : 'Registra Uscita'}
-                    </Button> : <div className="text-center p-3 bg-gray-50 rounded-lg border">
-                      <p className="text-sm text-gray-600">
-                        Check-out disabilitato dall'amministratore
-                      </p>
-                    </div>}
+                    </Button> : null}
                 </>}
 
               {/* Mostra se è stata registrata manualmente */}
