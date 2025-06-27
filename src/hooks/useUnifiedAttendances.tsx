@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
 
 export interface UnifiedAttendance {
   id: string;
@@ -15,6 +16,9 @@ export interface UnifiedAttendance {
   is_sick_leave: boolean;
   notes?: string | null;
   created_at: string;
+  // Nuovi campi per l'organizzazione italiana
+  operation_path?: string;
+  readable_id?: string;
   profiles?: {
     id: string;
     first_name: string | null;
@@ -31,14 +35,13 @@ export const useUnifiedAttendances = () => {
   const { data: attendances, isLoading } = useQuery({
     queryKey: ['unified-attendances'],
     queryFn: async () => {
-      console.log('Caricamento presenze unificate dalla tabella unified_attendances...');
+      console.log('Caricamento presenze unificate con struttura italiana...');
       
       let query = supabase
         .from('unified_attendances')
         .select('*')
         .order('date', { ascending: false });
 
-      // Se non è admin, filtra per utente corrente
       if (profile?.role !== 'admin') {
         query = query.eq('user_id', user?.id);
       }
@@ -52,7 +55,6 @@ export const useUnifiedAttendances = () => {
 
       let allAttendances = attendanceData || [];
 
-      // Se è admin, ottieni i profili degli utenti
       if (profile?.role === 'admin' && allAttendances.length > 0) {
         const userIds = [...new Set(allAttendances.map(att => att.user_id))];
         
@@ -65,14 +67,13 @@ export const useUnifiedAttendances = () => {
           console.error('Errore caricamento profili:', profilesError);
         }
 
-        // Mappa i profili agli attendance records
         allAttendances = allAttendances.map(attendance => ({
           ...attendance,
           profiles: profilesData?.find(profile => profile.id === attendance.user_id) || null
         }));
       }
 
-      console.log('Presenze unificate caricate:', allAttendances);
+      console.log('Presenze unificate caricate con struttura italiana:', allAttendances.length);
       return allAttendances as UnifiedAttendance[];
     },
     enabled: !!user && !!profile,
@@ -87,23 +88,33 @@ export const useUnifiedAttendances = () => {
       notes: string | null;
       is_sick_leave?: boolean;
     }) => {
-      console.log('SALVATAGGIO PRESENZA - Dati ricevuti:', attendanceData);
-      console.log('Data da salvare (DEVE rimanere invariata):', attendanceData.date);
+      console.log('SALVATAGGIO PRESENZA con struttura italiana - Dati ricevuti:', attendanceData);
       
-      // Inseriamo i dati ESATTAMENTE come ricevuti - ZERO conversioni
+      // Genera il path organizzativo italiano
+      const attendanceDate = new Date(attendanceData.date);
+      const operationType = attendanceData.is_sick_leave ? 'malattia' : 'presenza_manuale';
+      const operationPath = await generateOperationPath(operationType, attendanceData.user_id, attendanceDate);
+      const readableId = generateReadableId(operationType, attendanceDate, attendanceData.user_id);
+
+      console.log('Path organizzativo italiano generato:', {
+        operationPath,
+        readableId,
+        operationType
+      });
+
       const dataToInsert = {
         user_id: attendanceData.user_id,
-        date: attendanceData.date, // STRINGA ESATTA: YYYY-MM-DD
-        check_in_time: attendanceData.check_in_time, // STRINGA ESATTA: HH:MM
-        check_out_time: attendanceData.check_out_time, // STRINGA ESATTA: HH:MM
-        notes: attendanceData.notes,
+        date: attendanceData.date,
+        check_in_time: attendanceData.check_in_time,
+        check_out_time: attendanceData.check_out_time,
+        notes: attendanceData.notes ? `${attendanceData.notes} - ${readableId}` : readableId,
         is_manual: true,
         is_business_trip: false,
         is_sick_leave: attendanceData.is_sick_leave || false,
         created_by: user?.id,
       };
 
-      console.log('Dati che verranno inseriti nel database:', dataToInsert);
+      console.log('Dati che verranno inseriti nel database con struttura italiana:', dataToInsert);
 
       const { data, error } = await supabase
         .from('unified_attendances')
@@ -118,17 +129,16 @@ export const useUnifiedAttendances = () => {
         throw error;
       }
 
-      console.log('SUCCESSO - Presenza salvata nel database:', data);
-      console.log('Data salvata nel database:', data.date);
+      console.log('SUCCESSO - Presenza salvata nella struttura italiana:', data);
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
-      console.log('SUCCESS CALLBACK - Presenza salvata con data:', data.date);
+      console.log('SUCCESS CALLBACK - Presenza salvata nella struttura italiana');
       toast({
         title: "Presenza salvata",
-        description: data.is_sick_leave ? "La malattia è stata registrata con successo" : "La presenza manuale è stata registrata con successo",
+        description: data.is_sick_leave ? "La malattia è stata registrata nella struttura organizzativa italiana" : "La presenza manuale è stata registrata nella struttura organizzativa italiana",
       });
     },
     onError: (error: any) => {
@@ -143,9 +153,8 @@ export const useUnifiedAttendances = () => {
 
   const deleteAttendance = useMutation({
     mutationFn: async (attendance: UnifiedAttendance) => {
-      console.log('Eliminando presenza:', attendance);
+      console.log('Eliminando presenza dalla struttura italiana:', attendance);
       
-      // Elimina dalla tabella unificata
       const { error: unifiedError } = await supabase
         .from('unified_attendances')
         .delete()
@@ -153,7 +162,6 @@ export const useUnifiedAttendances = () => {
 
       if (unifiedError) throw unifiedError;
 
-      // Se non è manuale, elimina anche dalla tabella attendances per mantenere la sincronizzazione
       if (!attendance.is_manual) {
         const { error: attendanceError } = await supabase
           .from('attendances')
@@ -161,7 +169,6 @@ export const useUnifiedAttendances = () => {
           .eq('user_id', attendance.user_id)
           .eq('date', attendance.date);
 
-        // Non bloccare se non trova record nella tabella attendances
         if (attendanceError) {
           console.warn('Errore eliminazione da attendances (non bloccante):', attendanceError);
         }
@@ -172,7 +179,7 @@ export const useUnifiedAttendances = () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza eliminata",
-        description: "La presenza è stata eliminata con successo",
+        description: "La presenza è stata eliminata dalla struttura organizzativa italiana",
       });
     },
     onError: (error: any) => {

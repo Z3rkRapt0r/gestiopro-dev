@@ -35,10 +35,11 @@ export default function LeaveRequestForm({ type: initialType = "ferie", onSucces
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Blocca se ci sono problemi di validazione
     if (validationBlocked) {
       return;
     }
+
+    console.log('Invio richiesta con struttura organizzativa italiana');
 
     insertMutation.mutate({
       user_id: user?.id,
@@ -51,7 +52,6 @@ export default function LeaveRequestForm({ type: initialType = "ferie", onSucces
       note: note || null,
     }, {
       onSuccess: () => {
-        // Reset form
         setDay(undefined);
         setTimeFrom("");
         setTimeTo("");
@@ -59,7 +59,6 @@ export default function LeaveRequestForm({ type: initialType = "ferie", onSucces
         setDateTo(undefined);
         setNote("");
         
-        // Call onSuccess callback if provided
         if (onSuccess) {
           onSuccess();
         }
@@ -79,7 +78,7 @@ export default function LeaveRequestForm({ type: initialType = "ferie", onSucces
     >
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Richiesta Ferie/Permesso</CardTitle>
+          <CardTitle>Richiesta Ferie/Permesso - Struttura Organizzativa Italiana</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -197,7 +196,7 @@ export default function LeaveRequestForm({ type: initialType = "ferie", onSucces
               <Label htmlFor="note">Note</Label>
               <Textarea
                 id="note"
-                placeholder="Aggiungi una nota"
+                placeholder="Aggiungi una nota (opzionale)"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
@@ -208,7 +207,7 @@ export default function LeaveRequestForm({ type: initialType = "ferie", onSucces
               className="w-full"
               disabled={insertMutation.isPending || validationBlocked}
             >
-              {insertMutation.isPending ? "Inviando richiesta..." : "Invia Richiesta"}
+              {insertMutation.isPending ? "Inviando richiesta..." : "Invia Richiesta con Struttura Italiana"}
             </Button>
           </form>
         </CardContent>
