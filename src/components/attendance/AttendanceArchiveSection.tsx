@@ -16,7 +16,7 @@ export default function AttendanceArchiveSection() {
   if (attendancesByEmployee.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-muted-foreground">Nessuna presenza manuale trovata nell'archivio</p>
+        <p className="text-muted-foreground">Nessuna presenza trovata nell'archivio</p>
       </div>
     );
   }
@@ -24,9 +24,9 @@ export default function AttendanceArchiveSection() {
   return (
     <div className="space-y-4">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2">Archivio Presenze Manuali</h2>
+        <h2 className="text-2xl font-bold mb-2">Archivio Presenze</h2>
         <p className="text-muted-foreground">
-          Visualizza e gestisci tutte le presenze manuali registrate per ogni dipendente
+          Visualizza e gestisci tutte le presenze (manuali e automatiche) registrate per ogni dipendente
         </p>
       </div>
 

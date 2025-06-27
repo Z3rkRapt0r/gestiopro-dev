@@ -15,13 +15,13 @@ export const useAttendanceArchive = () => {
 
   const isAdmin = profile?.role === 'admin';
 
-  // Filtra solo le presenze manuali normali (non malattie)
-  const manualAttendances = attendances?.filter(
-    att => att.is_manual && !att.is_sick_leave
+  // Filtra tutte le presenze normali (manuali e automatiche), escludendo malattie e trasferte
+  const normalAttendances = attendances?.filter(
+    att => !att.is_sick_leave && !att.is_business_trip
   ) || [];
 
   // Raggruppa le presenze per dipendente
-  const attendancesByEmployee = manualAttendances.reduce((acc, attendance) => {
+  const attendancesByEmployee = normalAttendances.reduce((acc, attendance) => {
     const employeeKey = attendance.user_id;
     if (!acc[employeeKey]) {
       acc[employeeKey] = {
