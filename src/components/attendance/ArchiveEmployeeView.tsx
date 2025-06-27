@@ -49,22 +49,6 @@ export default function ArchiveEmployeeView({ employeeId, attendances, type }: A
     return sortedGroups;
   }, [attendances]);
 
-  // Raggruppa per mese nell'anno selezionato
-  const monthGroups = useMemo(() => {
-    const yearAttendances = yearGroups[selectedYear] || [];
-    const groups: Record<string, UnifiedAttendance[]> = {};
-    
-    yearAttendances.forEach(attendance => {
-      const month = format(new Date(attendance.date), 'yyyy-MM');
-      if (!groups[month]) {
-        groups[month] = [];
-      }
-      groups[month].push(attendance);
-    });
-    
-    return groups;
-  }, [yearGroups, selectedYear]);
-
   const handleDelete = (attendance: UnifiedAttendance) => {
     deleteAttendance(attendance);
   };
@@ -82,6 +66,22 @@ export default function ArchiveEmployeeView({ employeeId, attendances, type }: A
     return <Badge variant="default">Normale</Badge>;
   };
 
+  const formatPeriod = (attendance: UnifiedAttendance) => {
+    const dateStr = format(new Date(attendance.date), 'dd/MM/yyyy', { locale: it });
+    
+    if (attendance.is_sick_leave) {
+      return `${dateStr} - Malattia`;
+    }
+    
+    if (attendance.check_in_time && attendance.check_out_time) {
+      return `${dateStr} - ${attendance.check_in_time}/${attendance.check_out_time}`;
+    } else if (attendance.check_in_time) {
+      return `${dateStr} - ${attendance.check_in_time}/--:--`;
+    } else {
+      return dateStr;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -89,7 +89,7 @@ export default function ArchiveEmployeeView({ employeeId, attendances, type }: A
           {employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente'}
         </h3>
         <Badge variant="outline">
-          {attendances.length} record{attendances.length !== 1 ? 's' : ''}
+          {yearGroups[selectedYear]?.length || 0}
         </Badge>
       </div>
 
@@ -110,96 +110,79 @@ export default function ArchiveEmployeeView({ employeeId, attendances, type }: A
         {Object.keys(yearGroups).map(year => (
           <TabsContent key={year} value={year} className="mt-6">
             <div className="grid gap-4">
-              {Object.keys(monthGroups).length === 0 ? (
+              {yearGroups[year].length === 0 ? (
                 <Card>
                   <CardContent className="p-6 text-center">
                     <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p className="text-muted-foreground">Nessun record per l'anno {year}</p>
+                    <p className="text-muted-foreground">Nessuna operazione per l'anno {year}</p>
                   </CardContent>
                 </Card>
               ) : (
-                Object.keys(monthGroups).sort().reverse().map(month => (
-                  <Card key={month}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        {format(new Date(month + '-01'), 'MMMM yyyy', { locale: it })}
-                        <Badge variant="outline">
-                          {monthGroups[month].length} record{monthGroups[month].length !== 1 ? 's' : ''}
-                        </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {monthGroups[month].map(attendance => (
-                          <div key={attendance.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className="font-medium">
-                                  {format(new Date(attendance.date), 'dd/MM/yyyy', { locale: it })}
-                                </span>
-                                {getStatusBadge(attendance)}
-                              </div>
-                              
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                {attendance.check_in_time && (
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    Entrata: {attendance.check_in_time}
-                                  </div>
-                                )}
-                                {attendance.check_out_time && (
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    Uscita: {attendance.check_out_time}
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {attendance.notes && (
-                                <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
-                                  <FileText className="w-3 h-3" />
-                                  {attendance.notes}
-                                </div>
-                              )}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Anno {year}
+                      <Badge variant="outline">
+                        {yearGroups[year].length}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {yearGroups[year].map(attendance => (
+                        <div key={attendance.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="font-medium">
+                                {formatPeriod(attendance)}
+                              </span>
+                              {getStatusBadge(attendance)}
                             </div>
                             
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="destructive" 
-                                  size="sm"
-                                  disabled={isDeleting}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Sei sicuro di voler eliminare questa {type === 'malattie' ? 'malattia' : 'presenza'} del {format(new Date(attendance.date), 'dd/MM/yyyy', { locale: it })}?
-                                    <br />
-                                    <strong>Questa azione non può essere annullata.</strong>
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleDelete(attendance)}
-                                    className="bg-red-600 hover:bg-red-700"
-                                  >
-                                    Elimina
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            {attendance.notes && (
+                              <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
+                                <FileText className="w-3 h-3" />
+                                {attendance.notes}
+                              </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                disabled={isDeleting}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Sei sicuro di voler eliminare questa {type === 'malattie' ? 'malattia' : 'presenza'} del {format(new Date(attendance.date), 'dd/MM/yyyy', { locale: it })}?
+                                  <br />
+                                  <strong>Questa azione non può essere annullata.</strong>
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDelete(attendance)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Elimina
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           </TabsContent>

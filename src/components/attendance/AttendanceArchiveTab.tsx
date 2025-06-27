@@ -16,6 +16,10 @@ export default function AttendanceArchiveTab({ type }: AttendanceArchiveTabProps
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string>(() => {
+    const currentYear = new Date().getFullYear().toString();
+    return currentYear;
+  });
 
   // Filtra le presenze in base al tipo
   const filteredAttendances = useMemo(() => {
@@ -43,9 +47,27 @@ export default function AttendanceArchiveTab({ type }: AttendanceArchiveTabProps
     return groups;
   }, [filteredAttendances]);
 
+  // Raggruppa per anno
+  const employeeYearGroups = useMemo(() => {
+    const groups: Record<string, Record<string, any[]>> = {};
+    
+    Object.keys(employeeGroups).forEach(userId => {
+      groups[userId] = {};
+      employeeGroups[userId].forEach(attendance => {
+        const year = new Date(attendance.date).getFullYear().toString();
+        if (!groups[userId][year]) {
+          groups[userId][year] = [];
+        }
+        groups[userId][year].push(attendance);
+      });
+    });
+    
+    return groups;
+  }, [employeeGroups]);
+
   // Calcola statistiche
   const stats = useMemo(() => {
-    const totalRecords = filteredAttendances.length;
+    const totalOperations = filteredAttendances.length;
     const employeeCount = Object.keys(employeeGroups).length;
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -55,7 +77,7 @@ export default function AttendanceArchiveTab({ type }: AttendanceArchiveTabProps
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     }).length;
 
-    return { totalRecords, employeeCount, thisMonth };
+    return { totalOperations, employeeCount, thisMonth };
   }, [filteredAttendances, employeeGroups]);
 
   if (isLoading) {
@@ -81,8 +103,8 @@ export default function AttendanceArchiveTab({ type }: AttendanceArchiveTabProps
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Totale Record</p>
-                <p className="text-2xl font-bold">{stats.totalRecords}</p>
+                <p className="text-sm font-medium text-muted-foreground">Totale</p>
+                <p className="text-2xl font-bold">{stats.totalOperations}</p>
               </div>
               <Activity className="w-8 h-8 text-blue-500" />
             </div>
@@ -93,7 +115,7 @@ export default function AttendanceArchiveTab({ type }: AttendanceArchiveTabProps
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Dipendenti Coinvolti</p>
+                <p className="text-sm font-medium text-muted-foreground">Dipendenti</p>
                 <p className="text-2xl font-bold">{stats.employeeCount}</p>
               </div>
               <Users className="w-8 h-8 text-green-500" />
@@ -126,14 +148,15 @@ export default function AttendanceArchiveTab({ type }: AttendanceArchiveTabProps
           {Object.keys(employeeGroups).length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>Nessun record trovato per {type}</p>
+              <p>Nessuna operazione trovata per {type}</p>
             </div>
           ) : (
             <Tabs value={selectedEmployee || Object.keys(employeeGroups)[0]} onValueChange={setSelectedEmployee}>
               <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2 h-auto p-1">
                 {Object.keys(employeeGroups).map(userId => {
                   const employee = employees?.find(emp => emp.id === userId);
-                  const recordCount = employeeGroups[userId].length;
+                  const yearData = employeeYearGroups[userId] || {};
+                  const currentYearCount = yearData[selectedYear]?.length || 0;
                   
                   return (
                     <TabsTrigger 
@@ -146,7 +169,7 @@ export default function AttendanceArchiveTab({ type }: AttendanceArchiveTabProps
                           {employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente'}
                         </span>
                         <Badge variant="secondary" className="mt-1">
-                          {recordCount} record{recordCount !== 1 ? 's' : ''}
+                          {currentYearCount}
                         </Badge>
                       </div>
                     </TabsTrigger>

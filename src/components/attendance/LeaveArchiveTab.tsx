@@ -9,7 +9,7 @@ import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Users, Calendar, Activity, Trash2, Clock, FileText, AlertCircle } from 'lucide-react';
+import { Users, Calendar, Activity, Trash2, Clock, FileText } from 'lucide-react';
 
 interface LeaveArchiveTabProps {
   type: 'permessi' | 'ferie';
@@ -19,6 +19,10 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
   const { leaveRequests, isLoading, deleteRequestMutation } = useLeaveRequests();
   const { employees } = useActiveEmployees();
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string>(() => {
+    const currentYear = new Date().getFullYear().toString();
+    return currentYear;
+  });
 
   // Filtra le richieste in base al tipo
   const filteredRequests = useMemo(() => {
@@ -41,13 +45,34 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
     return groups;
   }, [filteredRequests]);
 
+  // Raggruppa per anno
+  const employeeYearGroups = useMemo(() => {
+    const groups: Record<string, Record<string, any[]>> = {};
+    
+    Object.keys(employeeGroups).forEach(userId => {
+      groups[userId] = {};
+      employeeGroups[userId].forEach(request => {
+        const requestDate = type === 'ferie' ? request.date_from : request.day;
+        if (requestDate) {
+          const year = new Date(requestDate).getFullYear().toString();
+          if (!groups[userId][year]) {
+            groups[userId][year] = [];
+          }
+          groups[userId][year].push(request);
+        }
+      });
+    });
+    
+    return groups;
+  }, [employeeGroups, type]);
+
   // Calcola statistiche
   const stats = useMemo(() => {
-    const totalRecords = filteredRequests.length;
+    const totalOperations = filteredRequests.length;
     const employeeCount = Object.keys(employeeGroups).length;
     const approvedCount = filteredRequests.filter(req => req.status === 'approved').length;
 
-    return { totalRecords, employeeCount, approvedCount };
+    return { totalOperations, employeeCount, approvedCount };
   }, [filteredRequests, employeeGroups]);
 
   const handleDelete = (requestId: string) => {
@@ -65,6 +90,23 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const formatPeriod = (request: any) => {
+    if (type === 'ferie') {
+      if (request.date_from && request.date_to) {
+        return `Dal ${format(new Date(request.date_from), 'dd/MM/yyyy')} al ${format(new Date(request.date_to), 'dd/MM/yyyy')}`;
+      }
+    } else {
+      if (request.day) {
+        const dateStr = format(new Date(request.day), 'dd/MM/yyyy');
+        if (request.time_from && request.time_to) {
+          return `${dateStr} dalle ${request.time_from} alle ${request.time_to}`;
+        }
+        return dateStr;
+      }
+    }
+    return 'Data non specificata';
   };
 
   if (isLoading) {
@@ -90,8 +132,8 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Totale Richieste</p>
-                <p className="text-2xl font-bold">{stats.totalRecords}</p>
+                <p className="text-sm font-medium text-muted-foreground">Totale</p>
+                <p className="text-2xl font-bold">{stats.totalOperations}</p>
               </div>
               <Activity className="w-8 h-8 text-blue-500" />
             </div>
@@ -135,14 +177,15 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
           {Object.keys(employeeGroups).length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>Nessuna richiesta trovata per {type}</p>
+              <p>Nessuna operazione trovata per {type}</p>
             </div>
           ) : (
             <Tabs value={selectedEmployee || Object.keys(employeeGroups)[0]} onValueChange={setSelectedEmployee}>
               <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2 h-auto p-1">
                 {Object.keys(employeeGroups).map(userId => {
                   const employee = employees?.find(emp => emp.id === userId);
-                  const recordCount = employeeGroups[userId].length;
+                  const yearData = employeeYearGroups[userId] || {};
+                  const currentYearCount = yearData[selectedYear]?.length || 0;
                   
                   return (
                     <TabsTrigger 
@@ -155,7 +198,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
                           {employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente'}
                         </span>
                         <Badge variant="secondary" className="mt-1">
-                          {recordCount} richieste
+                          {currentYearCount}
                         </Badge>
                       </div>
                     </TabsTrigger>
@@ -165,9 +208,8 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
 
               {Object.keys(employeeGroups).map(userId => {
                 const employee = employees?.find(emp => emp.id === userId);
-                const requests = employeeGroups[userId].sort((a, b) => 
-                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                );
+                const yearData = employeeYearGroups[userId] || {};
+                const availableYears = Object.keys(yearData).sort((a, b) => parseInt(b) - parseInt(a));
 
                 return (
                   <TabsContent key={userId} value={userId} className="mt-6">
@@ -176,74 +218,95 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
                         <h3 className="text-lg font-semibold">
                           {employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente'}
                         </h3>
-                        <Badge variant="outline">
-                          {requests.length} richieste
-                        </Badge>
                       </div>
 
-                      <div className="space-y-3">
-                        {requests.map(request => (
-                          <div key={request.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className="font-medium">
-                                  {type === 'ferie' ? (
-                                    `${format(new Date(request.date_from!), 'dd/MM/yyyy')} - ${format(new Date(request.date_to!), 'dd/MM/yyyy')}`
-                                  ) : (
-                                    request.day ? format(new Date(request.day), 'dd/MM/yyyy') : 'Data non specificata'
-                                  )}
-                                </span>
-                                {getStatusBadge(request.status)}
+                      {/* Selezione Anno */}
+                      <Tabs value={selectedYear} onValueChange={setSelectedYear}>
+                        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-6">
+                          {availableYears.map(year => (
+                            <TabsTrigger key={year} value={year} className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4" />
+                              {year}
+                              <Badge variant="secondary" className="ml-1">
+                                {yearData[year]?.length || 0}
+                              </Badge>
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+
+                        {availableYears.map(year => {
+                          const yearRequests = yearData[year] || [];
+                          const sortedRequests = yearRequests.sort((a, b) => {
+                            const dateA = new Date(type === 'ferie' ? (a.date_from || a.day) : a.day);
+                            const dateB = new Date(type === 'ferie' ? (b.date_from || b.day) : b.day);
+                            return dateB.getTime() - dateA.getTime();
+                          });
+
+                          return (
+                            <TabsContent key={year} value={year} className="mt-6">
+                              <div className="space-y-3">
+                                {sortedRequests.length === 0 ? (
+                                  <div className="text-center py-8 text-muted-foreground">
+                                    <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                                    <p>Nessuna operazione per l'anno {year}</p>
+                                  </div>
+                                ) : (
+                                  sortedRequests.map(request => (
+                                    <div key={request.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                          <span className="font-medium">
+                                            {formatPeriod(request)}
+                                          </span>
+                                          {getStatusBadge(request.status)}
+                                        </div>
+                                        
+                                        {request.note && (
+                                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                                            <FileText className="w-3 h-3" />
+                                            {request.note}
+                                          </div>
+                                        )}
+                                      </div>
+                                      
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button 
+                                            variant="destructive" 
+                                            size="sm"
+                                            disabled={deleteRequestMutation.isPending}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Sei sicuro di voler eliminare questa richiesta di {type}?
+                                              <br />
+                                              <strong>Questa azione non può essere annullata.</strong>
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                            <AlertDialogAction 
+                                              onClick={() => handleDelete(request.id)}
+                                              className="bg-red-600 hover:bg-red-700"
+                                            >
+                                              Elimina
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </div>
+                                  ))
+                                )}
                               </div>
-                              
-                              {type === 'permessi' && request.time_from && request.time_to && (
-                                <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
-                                  <Clock className="w-3 h-3" />
-                                  {request.time_from} - {request.time_to}
-                                </div>
-                              )}
-                              
-                              {request.note && (
-                                <div className="flex items-center gap-1 text-sm text-gray-600">
-                                  <FileText className="w-3 h-3" />
-                                  {request.note}
-                                </div>
-                              )}
-                            </div>
-                            
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="destructive" 
-                                  size="sm"
-                                  disabled={deleteRequestMutation.isPending}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Sei sicuro di voler eliminare questa richiesta di {type}?
-                                    <br />
-                                    <strong>Questa azione non può essere annullata.</strong>
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleDelete(request.id)}
-                                    className="bg-red-600 hover:bg-red-700"
-                                  >
-                                    Elimina
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        ))}
-                      </div>
+                            </TabsContent>
+                          );
+                        })}
+                      </Tabs>
                     </div>
                   </TabsContent>
                 );
