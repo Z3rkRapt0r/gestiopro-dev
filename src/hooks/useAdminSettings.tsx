@@ -219,67 +219,6 @@ export function useAdminSettings() {
     }
   };
 
-  const saveApiKey = async (key: string) => {
-    if (!profile?.id) {
-      toast({
-        title: "Errore",
-        description: "Profilo utente non caricato. Riprova.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!key.trim()) {
-      toast({
-        title: "Errore",
-        description: "La chiave API non può essere vuota.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from("admin_settings")
-        .upsert(
-          { 
-            admin_id: profile.id, 
-            brevo_api_key: key.trim() 
-          },
-          { 
-            onConflict: "admin_id",
-            ignoreDuplicates: false 
-          }
-        );
-
-      if (error) {
-        console.error("Error saving API key:", error);
-        toast({
-          title: "Errore",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        setApiKey(key.trim());
-        setBrevoSettings(prev => ({ ...prev, apiKey: key.trim() }));
-        toast({
-          title: "Chiave salvata",
-          description: "Chiave Brevo aggiornata con successo.",
-        });
-      }
-    } catch (error: any) {
-      console.error("Unexpected error:", error);
-      toast({
-        title: "Errore",
-        description: "Si è verificato un errore imprevisto.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return { 
     apiKey, 
     brevoSettings, 
