@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,7 +5,6 @@ import { useWorkSchedules } from "@/hooks/useWorkSchedules";
 import { useToast } from "@/hooks/use-toast";
 import { useLeaveBalanceSync } from "@/hooks/useLeaveBalanceSync";
 import { format, eachDayOfInterval } from 'date-fns';
-import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
 
 export type LeaveRequest = {
   id: string;
@@ -24,9 +22,6 @@ export type LeaveRequest = {
   reviewed_at?: string | null;
   created_at: string;
   updated_at: string;
-  // Nuovi campi per l'organizzazione italiana
-  operation_path?: string;
-  readable_id?: string;
   profiles?: {
     first_name: string | null;
     last_name: string | null;
@@ -75,23 +70,22 @@ export function useLeaveRequests() {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Filtro/trasformo profiles e aggiungo path organizzativo
+      // Filtro/trasformo profiles: può essere {error: true} se manca!
       const mapped = (data as any[]).map((item) => ({
         ...item,
         profiles: item.profiles && item.profiles.first_name !== undefined
           ? item.profiles
           : undefined,
       })) as LeaveRequest[];
-      
-      console.log('Richieste ferie caricate con nuova struttura italiana:', mapped.length);
       return mapped;
     },
     enabled: !!profile,
   });
 
-  // Add new leave request with Italian organization
+  // Add new leave request
   const insertMutation = useMutation({
     mutationFn: async (payload: Partial<LeaveRequest>) => {
+      // Clean the payload: only send relevant fields!
       const {
         user_id,
         type,
@@ -103,13 +97,7 @@ export function useLeaveRequests() {
         note,
         status,
       } = payload;
-
-      // Genera il path organizzativo italiano
-      const requestDate = day ? new Date(day) : (date_from ? new Date(date_from) : new Date());
-      const operationType = type === 'ferie' ? 'ferie' : 'permesso';
-      const operationPath = await generateOperationPath(operationType, user_id!, requestDate);
-      const readableId = generateReadableId(operationType, requestDate, user_id!);
-
+      // Frontend might pass null/undefined, but SQL expects undefined for missing (not null)
       const cleanPayload = {
         user_id: user_id!,
         type: type!,
@@ -119,14 +107,8 @@ export function useLeaveRequests() {
         date_from: date_from ?? null,
         date_to: date_to ?? null,
         note: note ?? null,
-        status: status ?? "pending",
+        status: status ?? "pending", // Default to pending
       };
-      
-      console.log('Creazione richiesta con path italiano:', {
-        operationPath,
-        readableId,
-        type: operationType
-      });
       
       const { error, data } = await supabase
         .from("leave_requests")
@@ -137,15 +119,18 @@ export function useLeaveRequests() {
 
       // Solo se la richiesta è approvata, creiamo le presenze automatiche
       if (status === "approved") {
+        // CORREZIONE: Se la richiesta è per ferie, creiamo presenze speciali per i giorni lavorativi
         if (type === "ferie" && date_from && date_to && data) {
           const startDate = new Date(date_from);
           const endDate = new Date(date_to);
           const allDays = eachDayOfInterval({ start: startDate, end: endDate });
           
+          // Filtra solo i giorni lavorativi basandosi sulla configurazione
           const workingDays = allDays.filter(day => isWorkingDay(day));
 
           console.log('Giorni lavorativi per ferie:', workingDays.length, 'su', allDays.length, 'giorni totali');
 
+          // Crea le presenze per tutti i giorni lavorativi delle ferie - MARCATE COME FERIE
           if (workingDays.length > 0) {
             const attendancesToCreate = workingDays.map(day => ({
               user_id: user_id!,
@@ -155,7 +140,7 @@ export function useLeaveRequests() {
               is_manual: true,
               is_business_trip: false,
               is_sick_leave: false,
-              notes: `Ferie - ${readableId}`,
+              notes: `Ferie`, // CORREZIONE: Sempre "Ferie" per le ferie
             }));
 
             const { error: attendanceError } = await supabase
@@ -170,6 +155,7 @@ export function useLeaveRequests() {
           }
         }
 
+        // CORREZIONE: Se la richiesta è per permesso GIORNALIERO (senza orari), creiamo presenza solo se è un giorno lavorativo
         if (type === "permesso" && day && !time_from && !time_to && data) {
           const permissionDate = new Date(day);
           
@@ -183,7 +169,7 @@ export function useLeaveRequests() {
               check_out_time: workSchedule?.end_time || '17:00',
               is_manual: true,
               is_business_trip: false,
-              notes: `Permesso - ${readableId}`,
+              notes: `Permesso`, // CORREZIONE: "Permesso" solo per i permessi
             };
 
             const { error: attendanceError } = await supabase
@@ -202,14 +188,14 @@ export function useLeaveRequests() {
       return data as LeaveRequest;
     },
     onSuccess: () => {
-      console.log('Richiesta inserita con successo nella struttura italiana, invalidando query...');
+      console.log('Richiesta inserita con successo, invalidando query...');
       queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
-      invalidateBalanceQueries();
+      invalidateBalanceQueries(); // AGGIUNTO: Sincronizza i bilanci
     },
   });
 
-  // Approve/reject request (admin) with Italian structure
+  // Approve/reject request (admin)
   const updateStatusMutation = useMutation({
     mutationFn: async ({
       id,
@@ -231,12 +217,9 @@ export function useLeaveRequests() {
         .maybeSingle();
       if (error) throw error;
 
-      // Se viene approvata, creiamo le presenze automatiche con ID leggibile
+      // Se viene approvata, creiamo le presenze automatiche
       if (status === "approved" && data) {
-        const requestDate = data.day ? new Date(data.day) : (data.date_from ? new Date(data.date_from) : new Date());
-        const operationType = data.type === 'ferie' ? 'ferie' : 'permesso';
-        const readableId = generateReadableId(operationType, requestDate, data.user_id);
-
+        // CORREZIONE: Per le ferie, marca sempre come "Ferie"
         if (data.type === "ferie" && data.date_from && data.date_to) {
           const startDate = new Date(data.date_from);
           const endDate = new Date(data.date_to);
@@ -253,7 +236,7 @@ export function useLeaveRequests() {
               is_manual: true,
               is_business_trip: false,
               is_sick_leave: false,
-              notes: `Ferie - ${readableId}`,
+              notes: `Ferie`, // CORREZIONE: Sempre "Ferie" per le ferie
             }));
 
             await supabase
@@ -264,6 +247,7 @@ export function useLeaveRequests() {
           }
         }
 
+        // CORREZIONE: Per i permessi giornalieri, marca come "Permesso"
         if (data.type === "permesso" && data.day && !data.time_from && !data.time_to) {
           const permissionDate = new Date(data.day);
           
@@ -275,7 +259,7 @@ export function useLeaveRequests() {
               check_out_time: workSchedule?.end_time || '17:00',
               is_manual: true,
               is_business_trip: false,
-              notes: `Permesso - ${readableId}`,
+              notes: `Permesso`, // CORREZIONE: "Permesso" solo per i permessi
             };
 
             await supabase
@@ -290,18 +274,18 @@ export function useLeaveRequests() {
       return data as LeaveRequest;
     },
     onSuccess: () => {
-      console.log('Stato richiesta aggiornato nella struttura italiana, invalidando query...');
+      console.log('Stato richiesta aggiornato, invalidando query...');
       queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
-      invalidateBalanceQueries();
+      invalidateBalanceQueries(); // AGGIUNTO: Sincronizza i bilanci
     },
   });
 
-  // Update richiesta permesso/ferie completo
+  // Nuovo: update richiesta permesso/ferie completo
   const updateRequestMutation = useMutation({
     mutationFn: async (payload: Partial<LeaveRequest> & { id: string }) => {
-      console.log('Aggiornando richiesta con struttura italiana:', payload.id);
-      
+      console.log('Aggiornando richiesta:', payload.id);
+      // Pulizia payload solo colonne editabili
       const editableFields = {
         day: payload.day ?? null,
         time_from: payload.time_from ?? null,
@@ -312,11 +296,10 @@ export function useLeaveRequests() {
         admin_note: payload.admin_note ?? null,
         status: payload.status,
       } as any;
-      
+      // Non inviare field vuoti se edit non admin
       Object.keys(editableFields).forEach(key => {
         if (editableFields[key] === undefined) delete editableFields[key];
       });
-      
       const { error, data } = await supabase
         .from("leave_requests")
         .update(editableFields)
@@ -327,18 +310,19 @@ export function useLeaveRequests() {
       return data as LeaveRequest;
     },
     onSuccess: () => {
-      console.log('Richiesta aggiornata nella struttura italiana, invalidando query...');
+      console.log('Richiesta aggiornata, invalidando query...');
       queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
-      invalidateBalanceQueries();
+      invalidateBalanceQueries(); // AGGIUNTO: Sincronizza i bilanci
     },
   });
 
-  // Delete richiesta con pulizia presenze associate
+  // Nuovo: delete richiesta (ora disponibile anche per ferie approvate se admin)
   const deleteRequestMutation = useMutation({
     mutationFn: async (payload: string | { id: string; leaveRequest?: LeaveRequest }) => {
       let id: string;
       let leaveRequest: LeaveRequest | undefined;
       
+      // Gestisci sia il formato vecchio (solo string) che quello nuovo (oggetto)
       if (typeof payload === 'string') {
         id = payload;
       } else {
@@ -346,14 +330,12 @@ export function useLeaveRequests() {
         leaveRequest = payload.leaveRequest;
       }
 
-      console.log('Eliminando richiesta dalla struttura italiana con ID:', id);
+      console.log('Eliminando richiesta con ID:', id);
+      console.log('Dati richiesta per pulizia presenze:', leaveRequest);
 
+      // MIGLIORATO: Se è una richiesta approvata, rimuovi anche le presenze associate
       if (leaveRequest && leaveRequest.status === 'approved') {
         console.log('Richiesta approvata trovata, rimuovo presenze associate...');
-        
-        const requestDate = leaveRequest.day ? new Date(leaveRequest.day) : (leaveRequest.date_from ? new Date(leaveRequest.date_from) : new Date());
-        const operationType = leaveRequest.type === 'ferie' ? 'ferie' : 'permesso';
-        const readableId = generateReadableId(operationType, requestDate, leaveRequest.user_id);
         
         if (leaveRequest.type === 'ferie' && leaveRequest.date_from && leaveRequest.date_to) {
           const startDate = new Date(leaveRequest.date_from);
@@ -364,53 +346,58 @@ export function useLeaveRequests() {
           const datesToDelete = workingDays.map(day => format(day, 'yyyy-MM-dd'));
           
           if (datesToDelete.length > 0) {
-            console.log('Eliminando presenze per ferie con ID:', readableId);
+            console.log('Eliminando presenze per ferie:', datesToDelete);
             const { error: attendanceError } = await supabase
               .from('unified_attendances')
               .delete()
               .eq('user_id', leaveRequest.user_id)
               .in('date', datesToDelete)
-              .like('notes', `%${readableId}%`);
+              .eq('notes', 'Ferie');
             
             if (attendanceError) {
               console.error('Errore eliminazione presenze ferie:', attendanceError);
+            } else {
+              console.log('Presenze ferie eliminate con successo');
             }
           }
         }
         
         if (leaveRequest.type === 'permesso' && leaveRequest.day && !leaveRequest.time_from && !leaveRequest.time_to) {
-          console.log('Eliminando presenza per permesso giornaliero con ID:', readableId);
+          console.log('Eliminando presenza per permesso giornaliero:', leaveRequest.day);
           const { error: attendanceError } = await supabase
             .from('unified_attendances')
             .delete()
             .eq('user_id', leaveRequest.user_id)
             .eq('date', leaveRequest.day)
-            .like('notes', `%${readableId}%`);
+            .eq('notes', 'Permesso');
           
           if (attendanceError) {
             console.error('Errore eliminazione presenza permesso:', attendanceError);
+          } else {
+            console.log('Presenza permesso eliminata con successo');
           }
         }
       }
 
+      // Elimina la richiesta - I trigger del database gestiranno l'aggiornamento dei bilanci
       const { error } = await supabase
         .from("leave_requests")
         .delete()
         .eq("id", id);
       if (error) throw error;
       
-      console.log('Richiesta eliminata dalla struttura italiana con successo');
+      console.log('Richiesta eliminata con successo, i bilanci saranno aggiornati automaticamente dai trigger');
       return id;
     },
     onSuccess: () => {
-      console.log('Eliminazione completata nella struttura italiana, invalidando query...');
+      console.log('Eliminazione completata, invalidando tutte le query correlate...');
       queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
-      invalidateBalanceQueries();
+      invalidateBalanceQueries(); // CRITICO: Assicura che i bilanci siano sincronizzati
       
       toast({
         title: "Richiesta eliminata",
-        description: "La richiesta di ferie/permesso è stata eliminata dalla struttura organizzativa italiana",
+        description: "La richiesta di ferie/permesso è stata eliminata e i bilanci sono stati aggiornati automaticamente",
       });
     },
     onError: (error: any) => {
@@ -431,6 +418,6 @@ export function useLeaveRequests() {
     updateStatusMutation,
     updateRequestMutation,
     deleteRequestMutation,
-    isWorkingDay,
+    isWorkingDay, // Esportiamo la funzione per uso nei componenti
   };
 }

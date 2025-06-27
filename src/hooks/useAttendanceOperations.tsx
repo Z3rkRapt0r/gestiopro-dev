@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useGPSValidation } from './useGPSValidation';
-import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
 
 export const useAttendanceOperations = () => {
   const { toast } = useToast();
@@ -19,8 +18,9 @@ export const useAttendanceOperations = () => {
       isBusinessTrip?: boolean;
       businessTripId?: string;
     }) => {
-      console.log('Check-in con struttura italiana e coordinate:', { latitude, longitude, isBusinessTrip });
+      console.log('Check-in tentativo con coordinate:', { latitude, longitude, isBusinessTrip });
 
+      // Validazione GPS
       const gpsValidation = validateLocation(latitude, longitude, isBusinessTrip);
       if (!gpsValidation.isValid) {
         throw new Error(gpsValidation.message || 'Posizione non valida');
@@ -28,19 +28,9 @@ export const useAttendanceOperations = () => {
 
       const today = new Date().toISOString().split('T')[0];
       const now = new Date();
-      const checkInTime = now.toTimeString().slice(0, 5);
+      const checkInTime = now.toTimeString().slice(0, 5); // HH:MM format
       
-      // Genera il path organizzativo italiano
-      const operationType = isBusinessTrip ? 'viaggio_lavoro' : 'presenza_normale';
-      const operationPath = await generateOperationPath(operationType, user?.id!, now);
-      const readableId = generateReadableId(operationType, now, user?.id!);
-
-      console.log('Path organizzativo italiano per check-in:', {
-        operationPath,
-        readableId,
-        operationType
-      });
-      
+      // Controlla se esiste già una presenza per oggi
       const { data: existingAttendance } = await supabase
         .from('unified_attendances')
         .select('*')
@@ -52,6 +42,7 @@ export const useAttendanceOperations = () => {
         throw new Error('Hai già registrato la presenza per oggi');
       }
 
+      // Inserisci nella tabella attendances (per compatibilità)
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendances')
         .upsert({
@@ -70,6 +61,7 @@ export const useAttendanceOperations = () => {
 
       if (attendanceError) throw attendanceError;
 
+      // Inserisci nella tabella unificata
       const { data: unifiedData, error: unifiedError } = await supabase
         .from('unified_attendances')
         .upsert({
@@ -78,7 +70,6 @@ export const useAttendanceOperations = () => {
           check_in_time: checkInTime,
           is_manual: false,
           is_business_trip: isBusinessTrip,
-          notes: readableId,
           created_by: user?.id,
         }, {
           onConflict: 'user_id,date'
@@ -88,7 +79,6 @@ export const useAttendanceOperations = () => {
 
       if (unifiedError) throw unifiedError;
 
-      console.log('Check-in completato nella struttura italiana');
       return { attendanceData, unifiedData };
     },
     onSuccess: () => {
@@ -96,7 +86,7 @@ export const useAttendanceOperations = () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
         title: "Check-in effettuato",
-        description: "Il tuo check-in è stato registrato nella struttura organizzativa italiana",
+        description: "Il tuo check-in è stato registrato con successo",
       });
     },
     onError: (error: any) => {
@@ -113,10 +103,9 @@ export const useAttendanceOperations = () => {
     mutationFn: async ({ latitude, longitude }: { latitude: number; longitude: number }) => {
       const today = new Date().toISOString().split('T')[0];
       const now = new Date();
-      const checkOutTime = now.toTimeString().slice(0, 5);
+      const checkOutTime = now.toTimeString().slice(0, 5); // HH:MM format
       
-      console.log('Check-out con struttura italiana');
-      
+      // Aggiorna la tabella attendances
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendances')
         .update({
@@ -131,6 +120,7 @@ export const useAttendanceOperations = () => {
 
       if (attendanceError) throw attendanceError;
 
+      // Aggiorna la tabella unificata
       const { data: unifiedData, error: unifiedError } = await supabase
         .from('unified_attendances')
         .update({
@@ -143,7 +133,6 @@ export const useAttendanceOperations = () => {
 
       if (unifiedError) throw unifiedError;
 
-      console.log('Check-out completato nella struttura italiana');
       return { attendanceData, unifiedData };
     },
     onSuccess: () => {
@@ -151,7 +140,7 @@ export const useAttendanceOperations = () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
         title: "Check-out effettuato",
-        description: "Il tuo check-out è stato registrato nella struttura organizzativa italiana",
+        description: "Il tuo check-out è stato registrato con successo",
       });
     },
     onError: (error: any) => {
