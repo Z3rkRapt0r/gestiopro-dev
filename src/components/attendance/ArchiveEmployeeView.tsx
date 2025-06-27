@@ -18,6 +18,7 @@ interface ArchiveEmployeeViewProps {
 }
 
 interface AttendancePeriod {
+  id: string;
   startDate: string;
   endDate: string;
   type: string;
@@ -66,6 +67,7 @@ export default function ArchiveEmployeeView({ employeeId, attendances, type }: A
       } else {
         // Create period from current group
         periods.push({
+          id: `period-${currentPeriod[0].id}`,
           startDate: currentPeriod[0].date,
           endDate: currentPeriod[currentPeriod.length - 1].date,
           type: currentPeriod[0].is_sick_leave ? 'malattia' : 'presenza',
@@ -78,6 +80,7 @@ export default function ArchiveEmployeeView({ employeeId, attendances, type }: A
 
     // Add the last period
     periods.push({
+      id: `period-${currentPeriod[0].id}`,
       startDate: currentPeriod[0].date,
       endDate: currentPeriod[currentPeriod.length - 1].date,
       type: currentPeriod[0].is_sick_leave ? 'malattia' : 'presenza',
@@ -220,8 +223,8 @@ export default function ArchiveEmployeeView({ employeeId, attendances, type }: A
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {yearGroups[year].map((period, index) => (
-                        <div key={`period-${year}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      {yearGroups[year].map(period => (
+                        <div key={period.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <span className="font-medium">
