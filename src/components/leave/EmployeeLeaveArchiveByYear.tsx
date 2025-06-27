@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -127,16 +127,8 @@ export default function EmployeeLeaveArchiveByYear({
     }, {} as Record<number, LeaveRequest[]>);
   };
 
-  // Ordina gli anni dal più recente al più vecchio (anno corrente prima)
-  const currentYear = new Date().getFullYear();
-  const sortedYears = Object.keys(requestsByYear).map(Number).sort((a, b) => {
-    // Anno corrente sempre primo
-    if (a === currentYear && b !== currentYear) return -1;
-    if (b === currentYear && a !== currentYear) return 1;
-    // Poi ordina per anno decrescente
-    return b - a;
-  });
-
+  // Ordina gli anni dal più recente al più vecchio
+  const sortedYears = Object.keys(requestsByYear).map(Number).sort((a, b) => b - a);
   const BulkDeleteButton = ({
     requests,
     period,
@@ -201,11 +193,6 @@ export default function EmployeeLeaveArchiveByYear({
                             <Badge variant="outline" className="ml-2">
                               {yearRequests.length} {type === "permesso" ? "permessi" : "ferie"}
                             </Badge>
-                            {year === currentYear && (
-                              <Badge variant="default" className="ml-2 bg-green-600">
-                                Anno corrente
-                              </Badge>
-                            )}
                             <BulkDeleteButton requests={yearRequests} period={`${year}`} />
                           </div>
                         </AccordionTrigger>
@@ -215,17 +202,7 @@ export default function EmployeeLeaveArchiveByYear({
                       <div className="space-y-3">
                               {(() => {
                           const requestsByMonth = groupRequestsByMonth(yearRequests);
-                          // Ordina i mesi dal più recente al più vecchio (mese corrente prima se stesso anno)
-                          const currentMonth = new Date().getMonth() + 1;
-                          const sortedMonths = Object.keys(requestsByMonth).map(Number).sort((a, b) => {
-                            if (year === currentYear) {
-                              // Se è l'anno corrente, mese corrente prima
-                              if (a === currentMonth && b !== currentMonth) return -1;
-                              if (b === currentMonth && a !== currentMonth) return 1;
-                            }
-                            return b - a;
-                          });
-                          
+                          const sortedMonths = Object.keys(requestsByMonth).map(Number).sort((a, b) => b - a);
                           return sortedMonths.map(month => {
                             const monthRequests = requestsByMonth[month];
                             const monthName = getMonthName(month);
@@ -237,19 +214,11 @@ export default function EmployeeLeaveArchiveByYear({
                                           <Badge variant="outline" className="ml-2">
                                             {monthRequests.length} permessi
                                           </Badge>
-                                          {year === currentYear && month === currentMonth && (
-                                            <Badge variant="default" className="ml-2 bg-purple-600">
-                                              Mese corrente
-                                            </Badge>
-                                          )}
                                           <BulkDeleteButton requests={monthRequests} period={`${monthName} ${year}`} variant="destructive" />
                                         </div>
                                       </div>
                                       <div className="p-3 space-y-2">
-                                        {monthRequests
-                                          .sort((a, b) => new Date(b.day || b.created_at).getTime() - new Date(a.day || a.created_at).getTime())
-                                          .map(req => <div key={req.id} className="flex items-center justify-between p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors">
-                                            
+                                        {monthRequests.map(req => <div key={req.id} className="flex items-center justify-between p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors">
                                             <div className="flex items-center gap-3">
                                               <div className="flex flex-col">
                                                 <div className="flex items-center gap-2">
@@ -280,12 +249,9 @@ export default function EmployeeLeaveArchiveByYear({
                           });
                         })()}
                             </div> :
-                      // Per le ferie, mostra direttamente le richieste ordinate per data
+                      // Per le ferie, mostra direttamente le richieste
                       <div className="space-y-2">
-                              {yearRequests
-                                .sort((a, b) => new Date(b.date_from || b.created_at).getTime() - new Date(a.date_from || a.created_at).getTime())
-                                .map(req => <div key={req.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                  
+                              {yearRequests.map(req => <div key={req.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                                   <div className="flex items-center gap-3">
                                     <div className="flex flex-col">
                                       <div className="flex items-center gap-2">
