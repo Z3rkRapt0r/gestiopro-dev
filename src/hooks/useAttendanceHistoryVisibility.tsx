@@ -19,12 +19,16 @@ export function useAttendanceHistoryVisibility() {
 
       // Per i dipendenti, controlla l'impostazione admin
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('admin_settings')
           .select('hide_attendance_history_for_employees')
-          .single();
+          .maybeSingle();
 
-        if (data) {
+        if (error) {
+          console.error('Errore nel controllo visibilità storico:', error);
+          // In caso di errore, mostra lo storico (sicurezza)
+          setIsHistoryVisible(true);
+        } else if (data) {
           // Se hide_attendance_history_for_employees è true, nascondi lo storico
           setIsHistoryVisible(!data.hide_attendance_history_for_employees);
         } else {
