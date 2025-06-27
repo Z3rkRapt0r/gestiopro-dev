@@ -1,11 +1,10 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkSchedules } from "@/hooks/useWorkSchedules";
 import { useToast } from "@/hooks/use-toast";
 import { useLeaveBalanceSync } from "@/hooks/useLeaveBalanceSync";
-import { format, eachDayOfInterval } from 'date-fns';
+import { format, eachDayOfInterval, parseISO, isWithinInterval } from 'date-fns';
 import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
 
 export type LeaveRequest = {
@@ -59,6 +58,93 @@ export function useLeaveRequests() {
     }
   };
 
+  // Funzione per validare sovrapposizioni ferie/permessi
+  const validateLeaveOverlap = async (
+    userId: string, 
+    leaveType: 'ferie' | 'permesso',
+    startDate?: string,
+    endDate?: string,
+    singleDay?: string
+  ) => {
+    console.log('🔍 Validazione sovrapposizione ferie/permessi:', {
+      userId,
+      leaveType,
+      startDate,
+      endDate,
+      singleDay
+    });
+
+    const { data: existingRequests, error } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .neq('type', leaveType); // Cerca conflitti con l'altro tipo
+
+    if (error) throw error;
+
+    if (!existingRequests || existingRequests.length === 0) {
+      console.log('✅ Nessuna sovrapposizione trovata');
+      return;
+    }
+
+    // Filtra solo le richieste che si sovrappongono
+    const overlappingRequests = existingRequests.filter(request => {
+      // Data singola (permesso o ferie di un giorno)
+      if (singleDay) {
+        const checkDate = parseISO(singleDay);
+        
+        // Se la richiesta esistente è per ferie multi-giorno
+        if (request.type === 'ferie' && request.date_from && request.date_to) {
+          const existingStart = parseISO(request.date_from);
+          const existingEnd = parseISO(request.date_to);
+          return isWithinInterval(checkDate, { start: existingStart, end: existingEnd });
+        }
+        
+        // Se la richiesta esistente è per un giorno singolo
+        if (request.day) {
+          return request.day === singleDay;
+        }
+      }
+      
+      // Range di date (ferie multi-giorno)
+      if (startDate && endDate) {
+        const newStart = parseISO(startDate);
+        const newEnd = parseISO(endDate);
+        
+        // Se la richiesta esistente è per ferie multi-giorno
+        if (request.date_from && request.date_to) {
+          const existingStart = parseISO(request.date_from);
+          const existingEnd = parseISO(request.date_to);
+          
+          // Controlla sovrapposizione tra intervalli
+          return (newStart <= existingEnd && newEnd >= existingStart);
+        }
+        
+        // Se la richiesta esistente è per un giorno singolo
+        if (request.day) {
+          const existingDate = parseISO(request.day);
+          return isWithinInterval(existingDate, { start: newStart, end: newEnd });
+        }
+      }
+      
+      return false;
+    });
+
+    if (overlappingRequests.length > 0) {
+      const conflict = overlappingRequests[0];
+      const conflictPeriod = conflict.date_from && conflict.date_to 
+        ? `dal ${conflict.date_from} al ${conflict.date_to}`
+        : conflict.day 
+        ? `il giorno ${conflict.day}`
+        : 'nello stesso periodo';
+      
+      throw new Error(`Sovrapposizione non consentita: esiste già una richiesta di ${conflict.type} approvata ${conflictPeriod}. Non è possibile assegnare ferie e permessi nello stesso giorno.`);
+    }
+
+    console.log('✅ Validazione sovrapposizione completata con successo');
+  };
+
   // For admin: get all, for employee/user: get own
   const { data, isLoading, error } = useQuery({
     queryKey: ["leave_requests", isAdmin ? "admin" : "user"],
@@ -89,7 +175,7 @@ export function useLeaveRequests() {
     enabled: !!profile,
   });
 
-  // Add new leave request with Italian organization
+  // Add new leave request with Italian organization and overlap validation
   const insertMutation = useMutation({
     mutationFn: async (payload: Partial<LeaveRequest>) => {
       const {
@@ -103,6 +189,16 @@ export function useLeaveRequests() {
         note,
         status,
       } = payload;
+
+      // VALIDAZIONE ANTI-SOVRAPPOSIZIONE PRIORITARIA
+      console.log('🔐 VALIDAZIONE ANTI-SOVRAPPOSIZIONE prima della creazione richiesta');
+      await validateLeaveOverlap(
+        user_id!,
+        type!,
+        date_from || undefined,
+        date_to || undefined,
+        day || undefined
+      );
 
       // Genera il path organizzativo italiano
       const requestDate = day ? new Date(day) : (date_from ? new Date(date_from) : new Date());
@@ -199,6 +295,7 @@ export function useLeaveRequests() {
         }
       }
 
+      console.log('✅ Richiesta creata con successo con validazione anti-sovrapposizione');
       return data as LeaveRequest;
     },
     onSuccess: () => {
@@ -207,16 +304,43 @@ export function useLeaveRequests() {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       invalidateBalanceQueries();
     },
+    onError: (error: any) => {
+      console.error('❌ Errore creazione richiesta con validazione anti-sovrapposizione:', error);
+      toast({
+        title: "Richiesta non consentita",
+        description: error.message || "Errore nella creazione della richiesta",
+        variant: "destructive",
+      });
+    },
   });
 
-  // Approve/reject request (admin) with Italian structure
+  // Approve/reject request (admin) with Italian structure and overlap validation
   const updateStatusMutation = useMutation({
     mutationFn: async ({
       id,
       status,
       admin_note
     }: { id: string; status: "approved" | "rejected" | "pending"; admin_note?: string }) => {
-      console.log(`Aggiornando stato richiesta ${id} a: ${status}`);
+      console.log(`🔐 VALIDAZIONE ANTI-SOVRAPPOSIZIONE per approvazione richiesta ${id} a: ${status}`);
+      
+      // Se stiamo approvando, controlliamo le sovrapposizioni
+      if (status === "approved") {
+        const { data: requestToApprove } = await supabase
+          .from("leave_requests")
+          .select('*')
+          .eq("id", id)
+          .single();
+
+        if (requestToApprove) {
+          await validateLeaveOverlap(
+            requestToApprove.user_id,
+            requestToApprove.type,
+            requestToApprove.date_from || undefined,
+            requestToApprove.date_to || undefined,
+            requestToApprove.day || undefined
+          );
+        }
+      }
       
       const { error, data } = await supabase
         .from("leave_requests")
@@ -287,6 +411,7 @@ export function useLeaveRequests() {
         }
       }
 
+      console.log(`✅ Stato richiesta aggiornato con validazione anti-sovrapposizione: ${status}`);
       return data as LeaveRequest;
     },
     onSuccess: () => {
@@ -294,6 +419,14 @@ export function useLeaveRequests() {
       queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       invalidateBalanceQueries();
+    },
+    onError: (error: any) => {
+      console.error('❌ Errore aggiornamento stato con validazione anti-sovrapposizione:', error);
+      toast({
+        title: "Operazione non consentita",
+        description: error.message || "Errore nell'aggiornamento dello stato della richiesta",
+        variant: "destructive",
+      });
     },
   });
 
@@ -432,5 +565,6 @@ export function useLeaveRequests() {
     updateRequestMutation,
     deleteRequestMutation,
     isWorkingDay,
+    validateLeaveOverlap,
   };
 }

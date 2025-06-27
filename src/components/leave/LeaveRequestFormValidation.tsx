@@ -5,14 +5,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { LeaveOverlapValidation } from './LeaveOverlapValidation';
 
 interface LeaveRequestValidationProps {
   children: React.ReactNode;
+  leaveType?: 'ferie' | 'permesso';
+  startDate?: string;
+  endDate?: string;
+  singleDay?: string;
   onValidationChange?: (isValid: boolean, message?: string) => void;
 }
 
 export function LeaveRequestFormValidation({ 
   children, 
+  leaveType,
+  startDate,
+  endDate,
+  singleDay,
   onValidationChange 
 }: LeaveRequestValidationProps) {
   const { user } = useAuth();
@@ -37,15 +46,35 @@ export function LeaveRequestFormValidation({
   const hasPendingRequest = pendingRequests && pendingRequests.length > 0;
   const pendingRequest = hasPendingRequest ? pendingRequests[0] : null;
 
-  // Notifica il componente padre dello stato di validazione
+  // Gestisce i risultati delle validazioni
+  const [pendingValidation, setPendingValidation] = React.useState({ isValid: true, message: '' });
+  const [overlapValidation, setOverlapValidation] = React.useState({ isValid: true, message: '' });
+
+  // Combina i risultati delle validazioni
+  const overallValidation = React.useMemo(() => {
+    const isValid = pendingValidation.isValid && overlapValidation.isValid;
+    const messages = [pendingValidation.message, overlapValidation.message].filter(Boolean);
+    return { isValid, message: messages.join(' ') };
+  }, [pendingValidation, overlapValidation]);
+
+  // Notifica il componente padre dello stato di validazione combinato
   React.useEffect(() => {
     if (onValidationChange) {
-      onValidationChange(
-        !hasPendingRequest, 
-        hasPendingRequest ? 'Hai già una richiesta in attesa di approvazione' : undefined
-      );
+      onValidationChange(overallValidation.isValid, overallValidation.message);
     }
-  }, [hasPendingRequest, onValidationChange]);
+  }, [overallValidation, onValidationChange]);
+
+  // Gestisce la validazione delle richieste pending
+  React.useEffect(() => {
+    if (hasPendingRequest) {
+      setPendingValidation({
+        isValid: false,
+        message: 'Hai già una richiesta in attesa di approvazione'
+      });
+    } else {
+      setPendingValidation({ isValid: true, message: '' });
+    }
+  }, [hasPendingRequest]);
 
   if (isLoading) {
     return (
@@ -56,37 +85,65 @@ export function LeaveRequestFormValidation({
     );
   }
 
-  if (hasPendingRequest) {
-    return (
-      <div className="space-y-4">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <div className="space-y-2">
-              <p className="font-medium">
-                Non puoi inviare una nuova richiesta
-              </p>
-              <p>
-                Hai già una richiesta di <strong>{pendingRequest?.type}</strong> in attesa di approvazione
-                {pendingRequest?.date_from && pendingRequest?.date_to && (
-                  <span> dal {pendingRequest.date_from} al {pendingRequest.date_to}</span>
-                )}
-                {pendingRequest?.day && (
-                  <span> per il giorno {pendingRequest.day}</span>
-                )}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Attendi che l'amministratore approvi o rifiuti la tua richiesta prima di inviarne una nuova.
-              </p>
-            </div>
-          </AlertDescription>
-        </Alert>
-        <div className="opacity-50 pointer-events-none">
-          {children}
+  // Wrapper con validazione richieste pending
+  const PendingValidationWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (hasPendingRequest) {
+      return (
+        <div className="space-y-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-2">
+                <p className="font-medium">
+                  Non puoi inviare una nuova richiesta
+                </p>
+                <p>
+                  Hai già una richiesta di <strong>{pendingRequest?.type}</strong> in attesa di approvazione
+                  {pendingRequest?.date_from && pendingRequest?.date_to && (
+                    <span> dal {pendingRequest.date_from} al {pendingRequest.date_to}</span>
+                  )}
+                  {pendingRequest?.day && (
+                    <span> per il giorno {pendingRequest.day}</span>
+                  )}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Attendi che l'amministratore approvi o rifiuti la tua richiesta prima di inviarne una nuova.
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+          <div className="opacity-50 pointer-events-none">
+            {children}
+          </div>
         </div>
-      </div>
+      );
+    }
+    return <>{children}</>;
+  };
+
+  // Se abbiamo le informazioni necessarie per la validazione sovrapposizioni, applichiamola
+  if (leaveType && (startDate || singleDay)) {
+    return (
+      <PendingValidationWrapper>
+        <LeaveOverlapValidation
+          leaveType={leaveType}
+          startDate={startDate}
+          endDate={endDate}
+          singleDay={singleDay}
+          onValidationChange={(isValid, message) => {
+            setOverlapValidation({ isValid, message: message || '' });
+          }}
+        >
+          {children}
+        </LeaveOverlapValidation>
+      </PendingValidationWrapper>
     );
   }
 
-  return <>{children}</>;
+  // Altrimenti, solo validazione pending
+  return (
+    <PendingValidationWrapper>
+      {children}
+    </PendingValidationWrapper>
+  );
 }

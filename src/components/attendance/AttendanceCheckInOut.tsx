@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, AlertCircle, XCircle } from 'lucide-react';
+import { Clock, MapPin, AlertCircle, XCircle, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useAuth } from '@/hooks/useAuth';
 import { useAttendanceOperations } from '@/hooks/useAttendanceOperations';
+import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import GPSStatusIndicator from './GPSStatusIndicator';
 import { useEmployeeStatus } from '@/hooks/useEmployeeStatus';
 
@@ -24,6 +25,7 @@ export default function AttendanceCheckInOut() {
   } = useAttendanceOperations();
   const { attendances } = useUnifiedAttendances();
   const { workSchedule } = useWorkSchedules();
+  const { settings: attendanceSettings } = useAttendanceSettings();
   const { employeeStatus, isLoading: statusLoading } = useEmployeeStatus();
 
   // Trova la presenza di oggi dalla tabella unificata
@@ -117,6 +119,9 @@ export default function AttendanceCheckInOut() {
   const currentTimeString = format(currentTime, 'HH:mm:ss', { locale: it });
   const currentDateString = format(currentTime, 'EEEE, dd MMMM yyyy', { locale: it });
 
+  // Verifica se il check-out è abilitato dalle impostazioni
+  const isCheckoutEnabled = attendanceSettings?.checkout_enabled ?? true;
+
   // Determina il tipo di alert in base alla priorità del conflitto
   const getConflictAlertVariant = (priority: number) => {
     if (priority >= 4) return 'destructive'; // Malattia, Ferie
@@ -154,6 +159,20 @@ export default function AttendanceCheckInOut() {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Tolleranza:</span>
               <span className="font-medium">{workSchedule.tolerance_minutes} minuti</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Avviso per checkout disabilitato */}
+      {!isCheckoutEnabled && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-blue-700">
+              <Info className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                Il check-out è stato disabilitato dall'amministratore
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -295,14 +314,24 @@ export default function AttendanceCheckInOut() {
                   </span>
                 </div>
               ) : (
-                <Button 
-                  onClick={handleCheckOut} 
-                  disabled={isCheckingOut || !employeeStatus?.canCheckOut} 
-                  className="w-full"
-                  variant="outline"
-                >
-                  {isCheckingOut ? 'Registrando uscita...' : 'Registra Uscita'}
-                </Button>
+                <>
+                  {isCheckoutEnabled ? (
+                    <Button 
+                      onClick={handleCheckOut} 
+                      disabled={isCheckingOut || !employeeStatus?.canCheckOut} 
+                      className="w-full"
+                      variant="outline"
+                    >
+                      {isCheckingOut ? 'Registrando uscita...' : 'Registra Uscita'}
+                    </Button>
+                  ) : (
+                    <div className="text-center p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-sm text-gray-600">
+                        Check-out disabilitato dall'amministratore
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Mostra se è stata registrata manualmente */}
