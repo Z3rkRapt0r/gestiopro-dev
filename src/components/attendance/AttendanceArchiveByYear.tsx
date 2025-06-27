@@ -6,6 +6,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { User2, Calendar, CheckCircle, Trash2, CalendarDays } from "lucide-react";
 import { UnifiedAttendance } from "@/hooks/useUnifiedAttendances";
 import { useAttendanceArchive } from "@/hooks/useAttendanceArchive";
+import AttendanceDelayBadge from "./AttendanceDelayBadge";
 
 interface AttendanceArchiveByYearProps {
   employee: {
@@ -203,6 +204,14 @@ export default function AttendanceArchiveByYear({
                                                   "{att.notes}"
                                                 </div>
                                               )}
+                                              
+                                              {/* Badge del ritardo */}
+                                              <AttendanceDelayBadge 
+                                                isLate={att.is_late || false}
+                                                lateMinutes={att.late_minutes || 0}
+                                                className="mr-2"
+                                              />
+                                              
                                               <Badge variant="outline" className={
                                                 att.is_manual 
                                                   ? "bg-orange-50 text-orange-700 border-orange-200"
