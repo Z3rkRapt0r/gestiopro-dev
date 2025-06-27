@@ -21,6 +21,11 @@ export interface LeaveRequest {
   reviewed_by?: string;
   notify_employee?: boolean;
   leave_balance_id?: string;
+  profiles?: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+  };
 }
 
 export const useLeaveRequests = () => {
@@ -32,7 +37,14 @@ export const useLeaveRequests = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leave_requests')
-        .select('*')
+        .select(`
+          *,
+          profiles:user_id (
+            first_name,
+            last_name,
+            email
+          )
+        `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -44,7 +56,7 @@ export const useLeaveRequests = () => {
     mutationFn: async (payload: Partial<LeaveRequest>) => {
       const { data, error } = await supabase
         .from('leave_requests')
-        .insert([payload as any]) // Type assertion to bypass temporary type mismatch
+        .insert([payload as any])
         .select()
         .single();
       
@@ -72,7 +84,7 @@ export const useLeaveRequests = () => {
     mutationFn: async ({ id, ...payload }: Partial<LeaveRequest> & { id: string }) => {
       const { data, error } = await supabase
         .from('leave_requests')
-        .update(payload as any) // Type assertion to bypass temporary type mismatch
+        .update(payload as any)
         .eq('id', id)
         .select()
         .single();
@@ -92,6 +104,40 @@ export const useLeaveRequests = () => {
       toast({
         title: "Errore",
         description: "Si è verificato un errore durante l'aggiornamento della richiesta.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status, admin_note }: { id: string; status: 'approved' | 'rejected'; admin_note?: string }) => {
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .update({ 
+          status, 
+          admin_note,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      toast({
+        title: "Stato aggiornato",
+        description: "Lo stato della richiesta è stato aggiornato con successo.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating leave request status:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'aggiornamento dello stato.",
         variant: "destructive",
       });
     },
@@ -123,11 +169,18 @@ export const useLeaveRequests = () => {
     },
   });
 
+  // Alias for backward compatibility
+  const deleteRequestMutation = deleteMutation;
+  const updateRequestMutation = updateMutation;
+
   return {
     leaveRequests,
     isLoading,
     insertMutation,
     updateMutation,
+    updateStatusMutation,
     deleteMutation,
+    deleteRequestMutation,
+    updateRequestMutation,
   };
 };
