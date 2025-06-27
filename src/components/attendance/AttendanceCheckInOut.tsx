@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, AlertCircle } from 'lucide-react';
+import { Clock, MapPin, AlertCircle, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
@@ -59,9 +60,9 @@ export default function AttendanceCheckInOut() {
   };
 
   const handleCheckIn = async () => {
-    // Controlla se è già stata registrata una presenza
-    if (todayAttendance) {
-      return; // Il pulsante dovrebbe essere disabilitato, ma aggiungiamo comunque il controllo
+    // Controllo preventivo con priorità di conflitto
+    if (!employeeStatus?.canCheckIn || employeeStatus.conflictPriority > 0) {
+      return;
     }
 
     if ('geolocation' in navigator) {
@@ -74,7 +75,6 @@ export default function AttendanceCheckInOut() {
         },
         (error) => {
           console.error('Error getting location:', error);
-          // Fallback senza coordinate GPS
           checkIn({
             latitude: 0,
             longitude: 0,
@@ -82,7 +82,6 @@ export default function AttendanceCheckInOut() {
         }
       );
     } else {
-      // Fallback se la geolocalizzazione non è supportata
       checkIn({
         latitude: 0,
         longitude: 0,
@@ -101,7 +100,6 @@ export default function AttendanceCheckInOut() {
         },
         (error) => {
           console.error('Error getting location:', error);
-          // Fallback senza coordinate GPS
           checkOut({
             latitude: 0,
             longitude: 0,
@@ -109,7 +107,6 @@ export default function AttendanceCheckInOut() {
         }
       );
     } else {
-      // Fallback se la geolocalizzazione non è supportata
       checkOut({
         latitude: 0,
         longitude: 0,
@@ -119,6 +116,18 @@ export default function AttendanceCheckInOut() {
 
   const currentTimeString = format(currentTime, 'HH:mm:ss', { locale: it });
   const currentDateString = format(currentTime, 'EEEE, dd MMMM yyyy', { locale: it });
+
+  // Determina il tipo di alert in base alla priorità del conflitto
+  const getConflictAlertVariant = (priority: number) => {
+    if (priority >= 4) return 'destructive'; // Malattia, Ferie
+    if (priority >= 2) return 'default'; // Permesso, Trasferta
+    return 'secondary'; // Presenza già registrata, richieste pending
+  };
+
+  const getConflictIcon = (priority: number) => {
+    if (priority >= 4) return XCircle;
+    return AlertCircle;
+  };
 
   return (
     <div className="max-w-md mx-auto space-y-6">
@@ -164,30 +173,76 @@ export default function AttendanceCheckInOut() {
         </Card>
       )}
 
-      {/* Avvisi di blocco per stati speciali */}
-      {employeeStatus && employeeStatus.blockingReasons.length > 0 && (
-        <Card className="border-red-200 bg-red-50">
+      {/* Avvisi di conflitto con priorità */}
+      {employeeStatus && employeeStatus.conflictPriority > 0 && (
+        <Card className={`border-2 ${
+          employeeStatus.conflictPriority >= 4 
+            ? 'border-red-200 bg-red-50' 
+            : employeeStatus.conflictPriority >= 2 
+            ? 'border-yellow-200 bg-yellow-50'
+            : 'border-blue-200 bg-blue-50'
+        }`}>
           <CardContent className="p-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-red-700">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">
-                  Non puoi registrare la presenza
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const IconComponent = getConflictIcon(employeeStatus.conflictPriority);
+                  return <IconComponent className={`w-5 h-5 ${
+                    employeeStatus.conflictPriority >= 4 
+                      ? 'text-red-600' 
+                      : employeeStatus.conflictPriority >= 2 
+                      ? 'text-yellow-600'
+                      : 'text-blue-600'
+                  }`} />;
+                })()}
+                <span className={`font-semibold ${
+                  employeeStatus.conflictPriority >= 4 
+                    ? 'text-red-800' 
+                    : employeeStatus.conflictPriority >= 2 
+                    ? 'text-yellow-800'
+                    : 'text-blue-800'
+                }`}>
+                  {employeeStatus.conflictPriority >= 4 
+                    ? 'PRESENZA VIETATA' 
+                    : employeeStatus.conflictPriority >= 2 
+                    ? 'CONFLITTO RILEVATO'
+                    : 'INFORMAZIONE'}
                 </span>
               </div>
-              <div className="text-sm text-red-600">
+              
+              <div className={`text-sm ${
+                employeeStatus.conflictPriority >= 4 
+                  ? 'text-red-700' 
+                  : employeeStatus.conflictPriority >= 2 
+                  ? 'text-yellow-700'
+                  : 'text-blue-700'
+              }`}>
                 {employeeStatus.blockingReasons.map((reason, index) => (
                   <p key={index}>• {reason}</p>
                 ))}
               </div>
+
               {employeeStatus.statusDetails && (
-                <div className="mt-2 p-2 bg-red-100 rounded text-xs text-red-700">
-                  <strong>Stato attuale:</strong> {employeeStatus.statusDetails.type}
-                  {employeeStatus.statusDetails.startDate && employeeStatus.statusDetails.endDate && (
-                    <span> ({employeeStatus.statusDetails.startDate} - {employeeStatus.statusDetails.endDate})</span>
+                <div className={`mt-3 p-3 rounded-md text-xs ${
+                  employeeStatus.conflictPriority >= 4 
+                    ? 'bg-red-100 text-red-800' 
+                    : employeeStatus.conflictPriority >= 2 
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  <div className="font-semibold mb-1">Dettagli stato:</div>
+                  <div><strong>Tipo:</strong> {employeeStatus.statusDetails.type}</div>
+                  {employeeStatus.statusDetails.startDate && (
+                    <div><strong>Data:</strong> {employeeStatus.statusDetails.startDate}
+                      {employeeStatus.statusDetails.endDate && employeeStatus.statusDetails.endDate !== employeeStatus.statusDetails.startDate && 
+                        ` - ${employeeStatus.statusDetails.endDate}`}
+                    </div>
+                  )}
+                  {employeeStatus.statusDetails.timeFrom && employeeStatus.statusDetails.timeTo && (
+                    <div><strong>Orario:</strong> {employeeStatus.statusDetails.timeFrom} - {employeeStatus.statusDetails.timeTo}</div>
                   )}
                   {employeeStatus.statusDetails.notes && (
-                    <div>Note: {employeeStatus.statusDetails.notes}</div>
+                    <div><strong>Note:</strong> {employeeStatus.statusDetails.notes}</div>
                   )}
                 </div>
               )}
@@ -260,13 +315,30 @@ export default function AttendanceCheckInOut() {
               )}
             </div>
           ) : (
-            <Button 
-              onClick={handleCheckIn} 
-              disabled={isCheckingIn || !employeeStatus?.canCheckIn || statusLoading} 
-              className="w-full"
-            >
-              {isCheckingIn ? 'Registrando entrata...' : 'Registra Entrata'}
-            </Button>
+            <div className="space-y-3">
+              <Button 
+                onClick={handleCheckIn} 
+                disabled={isCheckingIn || !employeeStatus?.canCheckIn || statusLoading || (employeeStatus?.conflictPriority ?? 0) > 0} 
+                className="w-full"
+                variant={employeeStatus?.canCheckIn ? "default" : "secondary"}
+              >
+                {isCheckingIn ? 'Registrando entrata...' : 
+                 !employeeStatus?.canCheckIn ? 'Presenza non consentita' : 
+                 'Registra Entrata'}
+              </Button>
+              
+              {/* Indicatore di priorità del conflitto */}
+              {employeeStatus && employeeStatus.conflictPriority > 0 && (
+                <div className="text-center">
+                  <Badge variant={getConflictAlertVariant(employeeStatus.conflictPriority)}>
+                    {employeeStatus.conflictPriority >= 4 && 'BLOCCATO - Conflitto critico'}
+                    {employeeStatus.conflictPriority === 3 && 'BLOCCATO - Permesso attivo'}
+                    {employeeStatus.conflictPriority === 2 && 'BLOCCATO - In trasferta'}
+                    {employeeStatus.conflictPriority === 1 && 'BLOCCATO - Già presente'}
+                  </Badge>
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

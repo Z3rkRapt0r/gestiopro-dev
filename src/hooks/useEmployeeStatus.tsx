@@ -3,19 +3,22 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
-import { format, isAfter, isBefore, isToday, parseISO } from 'date-fns';
+import { format, isAfter, isBefore, isToday, parseISO, isWithinInterval } from 'date-fns';
 
 export interface EmployeeStatus {
   canCheckIn: boolean;
   canCheckOut: boolean;
-  currentStatus: 'available' | 'sick' | 'vacation' | 'permission' | 'business_trip' | 'pending_request';
+  currentStatus: 'available' | 'sick' | 'vacation' | 'permission' | 'business_trip' | 'pending_request' | 'already_present';
   blockingReasons: string[];
   statusDetails?: {
     type: string;
     startDate?: string;
     endDate?: string;
+    timeFrom?: string;
+    timeTo?: string;
     notes?: string;
   };
+  conflictPriority: number; // 0=no conflict, 1=lowest, 5=highest
 }
 
 export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
@@ -32,149 +35,231 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
           canCheckIn: false,
           canCheckOut: false,
           currentStatus: 'available',
-          blockingReasons: ['Utente non autenticato']
+          blockingReasons: ['Utente non autenticato'],
+          conflictPriority: 0
         };
       }
 
       const blockingReasons: string[] = [];
       let currentStatus: EmployeeStatus['currentStatus'] = 'available';
       let statusDetails: EmployeeStatus['statusDetails'] | undefined;
+      let conflictPriority = 0;
 
-      // 1. Controlla se c'è una richiesta pending
-      const { data: pendingRequests } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('user_id', targetUserId)
-        .eq('status', 'pending');
+      // PRIORITÀ DEI CONFLITTI (dal più importante al meno importante):
+      // 1. Malattia (priorità 5)
+      // 2. Ferie (priorità 4) 
+      // 3. Permesso (priorità 3)
+      // 4. Trasferta (priorità 2)
+      // 5. Già presente (priorità 1)
 
-      if (pendingRequests && pendingRequests.length > 0) {
-        const request = pendingRequests[0];
-        currentStatus = 'pending_request';
-        blockingReasons.push(`Hai una richiesta di ${request.type} in attesa di approvazione`);
-        statusDetails = {
-          type: request.type,
-          startDate: request.date_from || request.day,
-          endDate: request.date_to || request.day,
-          notes: request.note || undefined
-        };
-      }
-
-      // 2. Controlla presenza/stato nel giorno specifico
-      const { data: todayAttendance } = await supabase
+      // 1. CONTROLLO MALATTIA - Priorità massima
+      const { data: sickLeave } = await supabase
         .from('unified_attendances')
         .select('*')
         .eq('user_id', targetUserId)
         .eq('date', targetDate)
+        .eq('is_sick_leave', true)
         .single();
 
-      if (todayAttendance) {
-        if (todayAttendance.is_sick_leave) {
-          currentStatus = 'sick';
-          blockingReasons.push('Sei registrato come in malattia per oggi');
-          statusDetails = {
-            type: 'malattia',
-            startDate: targetDate,
-            notes: todayAttendance.notes || undefined
-          };
-        } else if (todayAttendance.is_business_trip) {
-          currentStatus = 'business_trip';
-          blockingReasons.push('Sei registrato come in trasferta per oggi');
-          statusDetails = {
-            type: 'trasferta',
-            startDate: targetDate,
-            notes: todayAttendance.notes || undefined
-          };
-        } else if (todayAttendance.notes === 'Ferie') {
-          currentStatus = 'vacation';
-          blockingReasons.push('Sei registrato come in ferie per oggi');
-          statusDetails = {
-            type: 'ferie',
-            startDate: targetDate,
-            notes: todayAttendance.notes || undefined
-          };
-        } else if (todayAttendance.notes === 'Permesso') {
-          currentStatus = 'permission';
-          blockingReasons.push('Sei registrato come in permesso per oggi');
-          statusDetails = {
-            type: 'permesso',
-            startDate: targetDate,
-            notes: todayAttendance.notes || undefined
-          };
-        }
+      if (sickLeave) {
+        currentStatus = 'sick';
+        conflictPriority = 5;
+        blockingReasons.push('Il dipendente è registrato come in malattia per questa data');
+        statusDetails = {
+          type: 'Malattia',
+          startDate: targetDate,
+          notes: sickLeave.notes || undefined
+        };
       }
 
-      // 3. Controlla ferie/permessi approvati per periodo che include oggi
-      const { data: approvedLeaves } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('user_id', targetUserId)
-        .eq('status', 'approved');
+      // 2. CONTROLLO FERIE APPROVATE - Seconda priorità
+      if (conflictPriority < 4) {
+        const { data: approvedVacations } = await supabase
+          .from('leave_requests')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .eq('status', 'approved')
+          .eq('type', 'ferie');
 
-      if (approvedLeaves) {
-        for (const leave of approvedLeaves) {
-          if (leave.type === 'ferie' && leave.date_from && leave.date_to) {
-            const startDate = parseISO(leave.date_from);
-            const endDate = parseISO(leave.date_to);
-            const checkDateObj = parseISO(targetDate);
-            
-            if (!isBefore(checkDateObj, startDate) && !isAfter(checkDateObj, endDate)) {
-              currentStatus = 'vacation';
-              blockingReasons.push(`Sei in ferie dal ${leave.date_from} al ${leave.date_to}`);
-              statusDetails = {
-                type: 'ferie',
-                startDate: leave.date_from,
-                endDate: leave.date_to,
-                notes: leave.note || undefined
-              };
-              break;
+        if (approvedVacations) {
+          for (const vacation of approvedVacations) {
+            if (vacation.date_from && vacation.date_to) {
+              const startDate = parseISO(vacation.date_from);
+              const endDate = parseISO(vacation.date_to);
+              const checkDateObj = parseISO(targetDate);
+              
+              if (isWithinInterval(checkDateObj, { start: startDate, end: endDate })) {
+                currentStatus = 'vacation';
+                conflictPriority = 4;
+                blockingReasons.push(`Il dipendente è in ferie dal ${vacation.date_from} al ${vacation.date_to}`);
+                statusDetails = {
+                  type: 'Ferie',
+                  startDate: vacation.date_from,
+                  endDate: vacation.date_to,
+                  notes: vacation.note || undefined
+                };
+                break;
+              }
             }
-          } else if (leave.type === 'permesso' && leave.day === targetDate) {
-            currentStatus = 'permission';
-            if (leave.time_from && leave.time_to) {
-              blockingReasons.push(`Hai un permesso orario dalle ${leave.time_from} alle ${leave.time_to}`);
-            } else {
-              blockingReasons.push('Hai un permesso giornaliero per oggi');
-            }
-            statusDetails = {
-              type: 'permesso',
-              startDate: leave.day,
-              notes: leave.note || undefined
-            };
-            break;
           }
         }
       }
 
-      // 4. Verifica orari lavorativi solo se oggi
-      const isWorkingDay = workSchedule && isToday(parseISO(targetDate)) ? (() => {
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        switch (dayOfWeek) {
-          case 0: return workSchedule.sunday;
-          case 1: return workSchedule.monday;
-          case 2: return workSchedule.tuesday;
-          case 3: return workSchedule.wednesday;
-          case 4: return workSchedule.thursday;
-          case 5: return workSchedule.friday;
-          case 6: return workSchedule.saturday;
-          default: return false;
-        }
-      })() : true;
+      // 3. CONTROLLO PERMESSI APPROVATI - Terza priorità
+      if (conflictPriority < 3) {
+        const { data: approvedPermissions } = await supabase
+          .from('leave_requests')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .eq('status', 'approved')
+          .eq('type', 'permesso')
+          .eq('day', targetDate);
 
-      if (!isWorkingDay && isToday(parseISO(targetDate))) {
-        blockingReasons.push('Oggi non è un giorno lavorativo');
+        if (approvedPermissions && approvedPermissions.length > 0) {
+          const permission = approvedPermissions[0];
+          currentStatus = 'permission';
+          conflictPriority = 3;
+          
+          if (permission.time_from && permission.time_to) {
+            blockingReasons.push(`Il dipendente ha un permesso orario dalle ${permission.time_from} alle ${permission.time_to}`);
+            statusDetails = {
+              type: 'Permesso orario',
+              startDate: permission.day,
+              timeFrom: permission.time_from,
+              timeTo: permission.time_to,
+              notes: permission.note || undefined
+            };
+          } else {
+            blockingReasons.push('Il dipendente ha un permesso giornaliero per oggi');
+            statusDetails = {
+              type: 'Permesso giornaliero',
+              startDate: permission.day,
+              notes: permission.note || undefined
+            };
+          }
+        }
       }
 
-      // Determina possibilità di check-in/out
-      const canCheckIn = currentStatus === 'available' && blockingReasons.length === 0;
-      const canCheckOut = todayAttendance && !todayAttendance.check_out_time && currentStatus === 'available';
+      // 4. CONTROLLO TRASFERTE - Quarta priorità
+      if (conflictPriority < 2) {
+        const { data: businessTrips } = await supabase
+          .from('business_trips')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .eq('status', 'approved');
+
+        if (businessTrips) {
+          for (const trip of businessTrips) {
+            const startDate = parseISO(trip.start_date);
+            const endDate = parseISO(trip.end_date);
+            const checkDateObj = parseISO(targetDate);
+            
+            if (isWithinInterval(checkDateObj, { start: startDate, end: endDate })) {
+              currentStatus = 'business_trip';
+              conflictPriority = 2;
+              blockingReasons.push(`Il dipendente è in trasferta a ${trip.destination} dal ${trip.start_date} al ${trip.end_date}`);
+              statusDetails = {
+                type: 'Trasferta',
+                startDate: trip.start_date,
+                endDate: trip.end_date,
+                notes: `Destinazione: ${trip.destination}. ${trip.reason || ''}`
+              };
+              break;
+            }
+          }
+        }
+      }
+
+      // 5. CONTROLLO PRESENZA GIÀ REGISTRATA - Quinta priorità
+      if (conflictPriority < 1) {
+        const { data: existingAttendance } = await supabase
+          .from('unified_attendances')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .eq('date', targetDate)
+          .eq('is_sick_leave', false)
+          .single();
+
+        if (existingAttendance && !existingAttendance.is_business_trip) {
+          currentStatus = 'already_present';
+          conflictPriority = 1;
+          blockingReasons.push('Il dipendente ha già registrato la presenza per questa data');
+          statusDetails = {
+            type: 'Presenza già registrata',
+            startDate: targetDate,
+            notes: existingAttendance.notes || undefined
+          };
+        }
+      }
+
+      // 6. CONTROLLO RICHIESTE PENDING - Solo avviso, non blocca
+      if (conflictPriority === 0) {
+        const { data: pendingRequests } = await supabase
+          .from('leave_requests')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .eq('status', 'pending');
+
+        if (pendingRequests && pendingRequests.length > 0) {
+          const request = pendingRequests[0];
+          
+          // Controlla se la richiesta pending riguarda la data target
+          let isRelevant = false;
+          if (request.type === 'ferie' && request.date_from && request.date_to) {
+            const startDate = parseISO(request.date_from);
+            const endDate = parseISO(request.date_to);
+            const checkDateObj = parseISO(targetDate);
+            isRelevant = isWithinInterval(checkDateObj, { start: startDate, end: endDate });
+          } else if (request.type === 'permesso' && request.day === targetDate) {
+            isRelevant = true;
+          }
+          
+          if (isRelevant) {
+            currentStatus = 'pending_request';
+            blockingReasons.push(`Il dipendente ha una richiesta di ${request.type} in attesa di approvazione per questo periodo`);
+            statusDetails = {
+              type: `Richiesta ${request.type} in attesa`,
+              startDate: request.date_from || request.day,
+              endDate: request.date_to || request.day,
+              notes: request.note || undefined
+            };
+          }
+        }
+      }
+
+      // 7. VERIFICA ORARI LAVORATIVI (solo se oggi e nessun conflitto)
+      if (conflictPriority === 0 && isToday(parseISO(targetDate))) {
+        const isWorkingDay = workSchedule ? (() => {
+          const today = new Date();
+          const dayOfWeek = today.getDay();
+          switch (dayOfWeek) {
+            case 0: return workSchedule.sunday;
+            case 1: return workSchedule.monday;
+            case 2: return workSchedule.tuesday;
+            case 3: return workSchedule.wednesday;
+            case 4: return workSchedule.thursday;
+            case 5: return workSchedule.friday;
+            case 6: return workSchedule.saturday;
+            default: return false;
+          }
+        })() : true;
+
+        if (!isWorkingDay) {
+          blockingReasons.push('Oggi non è un giorno lavorativo secondo la configurazione');
+        }
+      }
+
+      // DETERMINAZIONE FINALE DELLE CAPACITÀ
+      const canCheckIn = conflictPriority === 0 && blockingReasons.length === 0;
+      const canCheckOut = conflictPriority <= 1 && currentStatus === 'already_present';
 
       return {
         canCheckIn,
-        canCheckOut: !!canCheckOut,
+        canCheckOut,
         currentStatus,
         blockingReasons,
-        statusDetails
+        statusDetails,
+        conflictPriority
       };
     },
     enabled: !!targetUserId,

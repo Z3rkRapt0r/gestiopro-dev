@@ -12,6 +12,80 @@ export const useAttendanceOperations = () => {
   const queryClient = useQueryClient();
   const { validateLocation } = useGPSValidation();
 
+  // Funzione per validare lo stato del dipendente prima di procedere
+  const validateEmployeeStatus = async (userId: string, date: string) => {
+    console.log('🔍 Validazione stato dipendente per:', { userId, date });
+
+    // Controllo malattia
+    const { data: sickLeave } = await supabase
+      .from('unified_attendances')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', date)
+      .eq('is_sick_leave', true)
+      .single();
+
+    if (sickLeave) {
+      throw new Error('Non è possibile registrare presenza: il dipendente è in malattia');
+    }
+
+    // Controllo ferie approvate
+    const { data: approvedVacations } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .eq('type', 'ferie');
+
+    if (approvedVacations) {
+      for (const vacation of approvedVacations) {
+        if (vacation.date_from && vacation.date_to) {
+          const checkDate = new Date(date);
+          const startDate = new Date(vacation.date_from);
+          const endDate = new Date(vacation.date_to);
+          
+          if (checkDate >= startDate && checkDate <= endDate) {
+            throw new Error(`Non è possibile registrare presenza: il dipendente è in ferie dal ${vacation.date_from} al ${vacation.date_to}`);
+          }
+        }
+      }
+    }
+
+    // Controllo permessi approvati
+    const { data: approvedPermissions } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .eq('type', 'permesso')
+      .eq('day', date);
+
+    if (approvedPermissions && approvedPermissions.length > 0) {
+      const permission = approvedPermissions[0];
+      if (permission.time_from && permission.time_to) {
+        throw new Error(`Non è possibile registrare presenza: il dipendente ha un permesso orario dalle ${permission.time_from} alle ${permission.time_to}`);
+      } else {
+        throw new Error('Non è possibile registrare presenza: il dipendente ha un permesso giornaliero');
+      }
+    }
+
+    // Controllo presenza già esistente
+    const { data: existingAttendance } = await supabase
+      .from('unified_attendances')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', date)
+      .eq('is_sick_leave', false)
+      .single();
+
+    if (existingAttendance && !existingAttendance.is_business_trip) {
+      throw new Error('Non è possibile registrare presenza: presenza già registrata per questa data');
+    }
+
+    console.log('✅ Validazione stato dipendente completata con successo');
+    return true;
+  };
+
   const checkInMutation = useMutation({
     mutationFn: async ({ latitude, longitude, isBusinessTrip = false, businessTripId }: { 
       latitude: number; 
@@ -19,14 +93,19 @@ export const useAttendanceOperations = () => {
       isBusinessTrip?: boolean;
       businessTripId?: string;
     }) => {
-      console.log('Check-in con struttura italiana e coordinate:', { latitude, longitude, isBusinessTrip });
+      console.log('🔐 Inizio check-in con validazione anti-conflitto:', { latitude, longitude, isBusinessTrip });
 
+      const today = new Date().toISOString().split('T')[0];
+      
+      // VALIDAZIONE ANTI-CONFLITTO PRIORITARIA
+      await validateEmployeeStatus(user?.id!, today);
+
+      // Validazione GPS
       const gpsValidation = validateLocation(latitude, longitude, isBusinessTrip);
       if (!gpsValidation.isValid) {
         throw new Error(gpsValidation.message || 'Posizione non valida');
       }
 
-      const today = new Date().toISOString().split('T')[0];
       const now = new Date();
       const checkInTime = now.toTimeString().slice(0, 5);
       
@@ -35,23 +114,12 @@ export const useAttendanceOperations = () => {
       const operationPath = await generateOperationPath(operationType, user?.id!, now);
       const readableId = generateReadableId(operationType, now, user?.id!);
 
-      console.log('Path organizzativo italiano per check-in:', {
+      console.log('📋 Path organizzativo italiano per check-in:', {
         operationPath,
         readableId,
         operationType
       });
       
-      const { data: existingAttendance } = await supabase
-        .from('unified_attendances')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('date', today)
-        .single();
-
-      if (existingAttendance) {
-        throw new Error('Hai già registrato la presenza per oggi');
-      }
-
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendances')
         .upsert({
@@ -88,21 +156,22 @@ export const useAttendanceOperations = () => {
 
       if (unifiedError) throw unifiedError;
 
-      console.log('Check-in completato nella struttura italiana');
+      console.log('✅ Check-in completato con validazione anti-conflitto');
       return { attendanceData, unifiedData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['employee-status'] });
       toast({
         title: "Check-in effettuato",
-        description: "Il tuo check-in è stato registrato nella struttura organizzativa italiana",
+        description: "Il tuo check-in è stato registrato con successo",
       });
     },
     onError: (error: any) => {
-      console.error('Check-in error:', error);
+      console.error('❌ Check-in error:', error);
       toast({
-        title: "Errore",
+        title: "Check-in non consentito",
         description: error.message || "Errore durante il check-in",
         variant: "destructive",
       });
@@ -115,7 +184,7 @@ export const useAttendanceOperations = () => {
       const now = new Date();
       const checkOutTime = now.toTimeString().slice(0, 5);
       
-      console.log('Check-out con struttura italiana');
+      console.log('🔐 Check-out con validazione');
       
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendances')
@@ -143,19 +212,20 @@ export const useAttendanceOperations = () => {
 
       if (unifiedError) throw unifiedError;
 
-      console.log('Check-out completato nella struttura italiana');
+      console.log('✅ Check-out completato');
       return { attendanceData, unifiedData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['employee-status'] });
       toast({
         title: "Check-out effettuato",
-        description: "Il tuo check-out è stato registrato nella struttura organizzativa italiana",
+        description: "Il tuo check-out è stato registrato con successo",
       });
     },
     onError: (error: any) => {
-      console.error('Check-out error:', error);
+      console.error('❌ Check-out error:', error);
       toast({
         title: "Errore",
         description: "Errore durante il check-out",

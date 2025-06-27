@@ -32,6 +32,97 @@ export const useUnifiedAttendances = () => {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
 
+  // Funzione per validare lo stato del dipendente prima di inserimenti manuali
+  const validateEmployeeStatusForManual = async (userId: string, date: string, isAdmin: boolean, isSickLeave: boolean) => {
+    console.log('🔍 Validazione stato per inserimento manuale:', { userId, date, isAdmin, isSickLeave });
+
+    // Se è malattia, controlliamo solo conflitti con ferie/permessi
+    if (isSickLeave) {
+      // Controllo ferie approvate
+      const { data: approvedVacations } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved')
+        .eq('type', 'ferie');
+
+      if (approvedVacations) {
+        for (const vacation of approvedVacations) {
+          if (vacation.date_from && vacation.date_to) {
+            const checkDate = new Date(date);
+            const startDate = new Date(vacation.date_from);
+            const endDate = new Date(vacation.date_to);
+            
+            if (checkDate >= startDate && checkDate <= endDate) {
+              throw new Error(`Conflitto: il dipendente è già in ferie dal ${vacation.date_from} al ${vacation.date_to}. Le ferie hanno priorità sulla malattia.`);
+            }
+          }
+        }
+      }
+      return; // Per la malattia, dopo il controllo ferie, possiamo procedere
+    }
+
+    // Per presenze normali, controlli completi
+    // Controllo malattia esistente
+    const { data: sickLeave } = await supabase
+      .from('unified_attendances')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', date)
+      .eq('is_sick_leave', true)
+      .single();
+
+    if (sickLeave) {
+      throw new Error('Conflitto critico: il dipendente è già registrato come in malattia per questa data');
+    }
+
+    // Controllo ferie approvate
+    const { data: approvedVacations } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .eq('type', 'ferie');
+
+    if (approvedVacations) {
+      for (const vacation of approvedVacations) {
+        if (vacation.date_from && vacation.date_to) {
+          const checkDate = new Date(date);
+          const startDate = new Date(vacation.date_from);
+          const endDate = new Date(vacation.date_to);
+          
+          if (checkDate >= startDate && checkDate <= endDate) {
+            throw new Error(`Conflitto critico: il dipendente è in ferie dal ${vacation.date_from} al ${vacation.date_to}`);
+          }
+        }
+      }
+    }
+
+    // Controllo permessi approvati (solo per non-admin o come avviso per admin)
+    const { data: approvedPermissions } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .eq('type', 'permesso')
+      .eq('day', date);
+
+    if (approvedPermissions && approvedPermissions.length > 0) {
+      const permission = approvedPermissions[0];
+      const permissionMessage = permission.time_from && permission.time_to 
+        ? `il dipendente ha un permesso orario dalle ${permission.time_from} alle ${permission.time_to}`
+        : 'il dipendente ha un permesso giornaliero';
+      
+      if (!isAdmin) {
+        throw new Error(`Conflitto: ${permissionMessage}`);
+      } else {
+        console.warn(`⚠️ Admin override: ${permissionMessage}`);
+      }
+    }
+
+    console.log('✅ Validazione per inserimento manuale completata');
+  };
+
   const { data: attendances, isLoading } = useQuery({
     queryKey: ['unified-attendances'],
     queryFn: async () => {
@@ -88,7 +179,16 @@ export const useUnifiedAttendances = () => {
       notes: string | null;
       is_sick_leave?: boolean;
     }) => {
-      console.log('SALVATAGGIO PRESENZA con struttura italiana - Dati ricevuti:', attendanceData);
+      console.log('🔐 CREAZIONE PRESENZA MANUALE con validazione anti-conflitto:', attendanceData);
+      
+      // VALIDAZIONE ANTI-CONFLITTO PRIORITARIA
+      const isAdmin = profile?.role === 'admin';
+      await validateEmployeeStatusForManual(
+        attendanceData.user_id, 
+        attendanceData.date, 
+        isAdmin, 
+        attendanceData.is_sick_leave || false
+      );
       
       // Genera il path organizzativo italiano
       const attendanceDate = new Date(attendanceData.date);
@@ -96,7 +196,7 @@ export const useUnifiedAttendances = () => {
       const operationPath = await generateOperationPath(operationType, attendanceData.user_id, attendanceDate);
       const readableId = generateReadableId(operationType, attendanceDate, attendanceData.user_id);
 
-      console.log('Path organizzativo italiano generato:', {
+      console.log('📋 Path organizzativo italiano generato:', {
         operationPath,
         readableId,
         operationType
@@ -114,7 +214,7 @@ export const useUnifiedAttendances = () => {
         created_by: user?.id,
       };
 
-      console.log('Dati che verranno inseriti nel database con struttura italiana:', dataToInsert);
+      console.log('💾 Dati che verranno inseriti nel database con validazione:', dataToInsert);
 
       const { data, error } = await supabase
         .from('unified_attendances')
@@ -125,26 +225,29 @@ export const useUnifiedAttendances = () => {
         .single();
 
       if (error) {
-        console.error('ERRORE SUPABASE durante il salvataggio:', error);
+        console.error('❌ ERRORE SUPABASE durante il salvataggio:', error);
         throw error;
       }
 
-      console.log('SUCCESSO - Presenza salvata nella struttura italiana:', data);
+      console.log('✅ SUCCESSO - Presenza salvata con validazione anti-conflitto:', data);
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
-      console.log('SUCCESS CALLBACK - Presenza salvata nella struttura italiana');
+      queryClient.invalidateQueries({ queryKey: ['employee-status'] });
+      console.log('✅ SUCCESS CALLBACK - Presenza salvata con validazione anti-conflitto');
       toast({
         title: "Presenza salvata",
-        description: data.is_sick_leave ? "La malattia è stata registrata nella struttura organizzativa italiana" : "La presenza manuale è stata registrata nella struttura organizzativa italiana",
+        description: data.is_sick_leave ? 
+          "La malattia è stata registrata con controlli anti-conflitto" : 
+          "La presenza manuale è stata registrata con controlli anti-conflitto",
       });
     },
     onError: (error: any) => {
-      console.error('Errore creazione presenza manuale:', error);
+      console.error('❌ Errore creazione presenza manuale:', error);
       toast({
-        title: "Errore",
+        title: "Presenza non consentita",
         description: error.message || "Errore nella registrazione della presenza",
         variant: "destructive",
       });
@@ -153,7 +256,7 @@ export const useUnifiedAttendances = () => {
 
   const deleteAttendance = useMutation({
     mutationFn: async (attendance: UnifiedAttendance) => {
-      console.log('Eliminando presenza dalla struttura italiana:', attendance);
+      console.log('🗑️ Eliminando presenza dalla struttura italiana:', attendance);
       
       const { error: unifiedError } = await supabase
         .from('unified_attendances')
@@ -170,20 +273,21 @@ export const useUnifiedAttendances = () => {
           .eq('date', attendance.date);
 
         if (attendanceError) {
-          console.warn('Errore eliminazione da attendances (non bloccante):', attendanceError);
+          console.warn('⚠️ Errore eliminazione da attendances (non bloccante):', attendanceError);
         }
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['employee-status'] });
       toast({
         title: "Presenza eliminata",
         description: "La presenza è stata eliminata dalla struttura organizzativa italiana",
       });
     },
     onError: (error: any) => {
-      console.error('Errore eliminazione presenza:', error);
+      console.error('❌ Errore eliminazione presenza:', error);
       toast({
         title: "Errore",
         description: error.message || "Errore nell'eliminazione della presenza",
