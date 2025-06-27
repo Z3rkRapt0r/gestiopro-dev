@@ -9,7 +9,7 @@ import { Clock, Calendar } from 'lucide-react';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 
 export default function WorkScheduleSettings() {
-  const { workSchedule, updateWorkSchedule, isUpdating } = useWorkSchedules();
+  const { workSchedule, updateWorkSchedule, isUpdating, isLoading } = useWorkSchedules();
   const [formData, setFormData] = useState({
     start_time: '08:00',
     end_time: '17:00',
@@ -25,6 +25,7 @@ export default function WorkScheduleSettings() {
 
   useEffect(() => {
     if (workSchedule) {
+      console.log('Impostazione dati form con orari caricati:', workSchedule);
       setFormData({
         start_time: workSchedule.start_time || '08:00',
         end_time: workSchedule.end_time || '17:00',
@@ -42,8 +43,21 @@ export default function WorkScheduleSettings() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Invio form orari:', formData);
     updateWorkSchedule(formData);
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="text-muted-foreground">Caricamento orari di lavoro...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const dayLabels = {
     monday: 'Lunedì',

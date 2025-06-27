@@ -28,6 +28,8 @@ export default function AttendanceCalendarSidebar({
   onDateSelect, 
   workSchedule 
 }: AttendanceCalendarSidebarProps) {
+  console.log('AttendanceCalendarSidebar - workSchedule ricevuto:', workSchedule);
+  
   return (
     <Card className="xl:col-span-1">
       <CardHeader className="pb-4">
@@ -50,7 +52,7 @@ export default function AttendanceCalendarSidebar({
           />
         </div>
         
-        {workSchedule && (
+        {workSchedule ? (
           <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="text-sm font-semibold text-blue-700 mb-2">Giorni Lavorativi:</div>
             <div className="text-xs text-blue-600 space-y-1">
@@ -64,6 +66,15 @@ export default function AttendanceCalendarSidebar({
                 {workSchedule.saturday && <span className="bg-blue-100 px-2 py-0.5 rounded text-xs font-medium">Sab</span>}
                 {workSchedule.sunday && <span className="bg-blue-100 px-2 py-0.5 rounded text-xs font-medium">Dom</span>}
               </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div className="text-sm font-medium text-yellow-700">
+              Orari di lavoro non configurati
+            </div>
+            <div className="text-xs text-yellow-600 mt-1">
+              Configura gli orari nella sezione Impostazioni
             </div>
           </div>
         )}

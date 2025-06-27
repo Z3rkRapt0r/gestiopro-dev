@@ -24,31 +24,51 @@ export const useWorkSchedules = () => {
   const { data: workSchedule, isLoading } = useQuery({
     queryKey: ['work-schedules'],
     queryFn: async () => {
+      console.log('Caricamento orari di lavoro...');
+      
       const { data, error } = await supabase
         .from('work_schedules')
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Errore nel caricamento orari di lavoro:', error);
         throw error;
       }
 
-      return data as WorkSchedule;
+      console.log('Orari di lavoro caricati:', data);
+      return data as WorkSchedule | null;
     },
   });
 
   const updateWorkSchedule = useMutation({
     mutationFn: async (newSchedule: Partial<WorkSchedule>) => {
-      const { data, error } = await supabase
-        .from('work_schedules')
-        .update(newSchedule)
-        .eq('id', workSchedule?.id)
-        .select()
-        .single();
+      console.log('Aggiornamento orari di lavoro:', newSchedule);
+      
+      if (workSchedule?.id) {
+        // Update existing record
+        const { data, error } = await supabase
+          .from('work_schedules')
+          .update(newSchedule)
+          .eq('id', workSchedule.id)
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        console.log('Orari aggiornati:', data);
+        return data;
+      } else {
+        // Insert new record if none exists
+        const { data, error } = await supabase
+          .from('work_schedules')
+          .insert(newSchedule)
+          .select()
+          .single();
+
+        if (error) throw error;
+        console.log('Nuovi orari inseriti:', data);
+        return data;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-schedules'] });
