@@ -269,8 +269,8 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
                                     </CardHeader>
                                     <CardContent>
                                       <div className="space-y-3">
-                                        {sortedRequests.map((request, index) => (
-                                          <div key={`${year}-${index}`} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                        {sortedRequests.map(request => (
+                                          <div key={request.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                                             <div className="flex-1">
                                               <div className="flex items-center gap-3 mb-2">
                                                 <span className="font-medium">
