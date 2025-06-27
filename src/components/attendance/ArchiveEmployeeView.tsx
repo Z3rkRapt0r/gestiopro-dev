@@ -65,9 +65,9 @@ export default function ArchiveEmployeeView({ employeeId, attendances, type }: A
       if (isConsecutive && isSameType) {
         currentPeriod.push(current);
       } else {
-        // Create period from current group
+        // Create period from current group - using index instead of technical ID
         periods.push({
-          id: `period-${currentPeriod[0].id}`,
+          id: `period-${periods.length}`,
           startDate: currentPeriod[0].date,
           endDate: currentPeriod[currentPeriod.length - 1].date,
           type: currentPeriod[0].is_sick_leave ? 'malattia' : 'presenza',
@@ -78,9 +78,9 @@ export default function ArchiveEmployeeView({ employeeId, attendances, type }: A
       }
     }
 
-    // Add the last period
+    // Add the last period - using index instead of technical ID
     periods.push({
-      id: `period-${currentPeriod[0].id}`,
+      id: `period-${periods.length}`,
       startDate: currentPeriod[0].date,
       endDate: currentPeriod[currentPeriod.length - 1].date,
       type: currentPeriod[0].is_sick_leave ? 'malattia' : 'presenza',
