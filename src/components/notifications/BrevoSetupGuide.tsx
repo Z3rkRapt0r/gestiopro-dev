@@ -9,17 +9,20 @@ import { ExternalLink, Mail, Settings } from "lucide-react";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 
 const BrevoSetupGuide = () => {
-  const { apiKey, loading, saveApiKey } = useAdminSettings();
+  const { brevoSettings, loading, saveBrevoSettings } = useAdminSettings();
   const [tempApiKey, setTempApiKey] = useState("");
 
   const handleSaveKey = () => {
     if (tempApiKey.trim()) {
-      saveApiKey(tempApiKey.trim());
+      saveBrevoSettings({
+        ...brevoSettings,
+        apiKey: tempApiKey.trim()
+      });
       setTempApiKey("");
     }
   };
 
-  if (apiKey) {
+  if (brevoSettings.apiKey) {
     return (
       <Alert className="mb-4 border-green-200 bg-green-50">
         <Mail className="h-4 w-4 text-green-600" />
