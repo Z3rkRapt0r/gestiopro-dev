@@ -7,7 +7,6 @@ import AdminBusinessTripsManagement from '@/components/admin/AdminBusinessTripsM
 import AttendanceExportSection from '@/components/attendance/AttendanceExportSection';
 import ManualAttendanceSection from '@/components/attendance/ManualAttendanceSection';
 import OperatorCalendarSection from '@/components/attendance/OperatorCalendarSection';
-import AttendanceArchiveSection from '@/components/attendance/AttendanceArchiveSection';
 
 export default function AdminAttendanceSection() {
   const [activeTab, setActiveTab] = useState("calendar");
@@ -22,7 +21,6 @@ export default function AdminAttendanceSection() {
     queryClient.invalidateQueries({ queryKey: ['profiles'] });
     queryClient.invalidateQueries({ queryKey: ['business-trips'] });
     queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
-    queryClient.invalidateQueries({ queryKey: ['leave_requests'] });
   }, [activeTab, queryClient]);
 
   return (
@@ -35,12 +33,11 @@ export default function AdminAttendanceSection() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="calendar">Calendario Generale</TabsTrigger>
           <TabsTrigger value="operator">Calendario Operatore</TabsTrigger>
           <TabsTrigger value="manual">Inserimento Presenza/Malattia</TabsTrigger>
           <TabsTrigger value="business-trips">Trasferte</TabsTrigger>
-          <TabsTrigger value="archives">Archivi</TabsTrigger>
           <TabsTrigger value="export">Esportazioni</TabsTrigger>
         </TabsList>
 
@@ -58,10 +55,6 @@ export default function AdminAttendanceSection() {
 
         <TabsContent value="business-trips" className="space-y-6">
           <AdminBusinessTripsManagement />
-        </TabsContent>
-
-        <TabsContent value="archives" className="space-y-6">
-          <AttendanceArchiveSection />
         </TabsContent>
 
         <TabsContent value="export" className="space-y-6">
