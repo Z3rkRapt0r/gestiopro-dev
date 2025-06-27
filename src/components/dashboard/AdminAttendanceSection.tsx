@@ -7,6 +7,8 @@ import AdminBusinessTripsManagement from '@/components/admin/AdminBusinessTripsM
 import AttendanceExportSection from '@/components/attendance/AttendanceExportSection';
 import ManualAttendanceSection from '@/components/attendance/ManualAttendanceSection';
 import OperatorCalendarSection from '@/components/attendance/OperatorCalendarSection';
+import AttendanceArchiveSection from '@/components/attendance/AttendanceArchiveSection';
+import SickLeaveArchiveSection from '@/components/attendance/SickLeaveArchiveSection';
 
 export default function AdminAttendanceSection() {
   const [activeTab, setActiveTab] = useState("calendar");
@@ -33,11 +35,13 @@ export default function AdminAttendanceSection() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="calendar">Calendario Generale</TabsTrigger>
           <TabsTrigger value="operator">Calendario Operatore</TabsTrigger>
           <TabsTrigger value="manual">Inserimento Presenza/Malattia</TabsTrigger>
           <TabsTrigger value="business-trips">Trasferte</TabsTrigger>
+          <TabsTrigger value="attendance-archive">Archivio Presenze</TabsTrigger>
+          <TabsTrigger value="sick-archive">Archivio Malattia</TabsTrigger>
           <TabsTrigger value="export">Esportazioni</TabsTrigger>
         </TabsList>
 
@@ -55,6 +59,14 @@ export default function AdminAttendanceSection() {
 
         <TabsContent value="business-trips" className="space-y-6">
           <AdminBusinessTripsManagement />
+        </TabsContent>
+
+        <TabsContent value="attendance-archive" className="space-y-6">
+          <AttendanceArchiveSection />
+        </TabsContent>
+
+        <TabsContent value="sick-archive" className="space-y-6">
+          <SickLeaveArchiveSection />
         </TabsContent>
 
         <TabsContent value="export" className="space-y-6">
