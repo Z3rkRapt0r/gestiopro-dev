@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -334,7 +335,7 @@ export function useLeaveRequests() {
         if (requestToApprove) {
           await validateLeaveOverlap(
             requestToApprove.user_id,
-            requestToApprove.type,
+            requestToApprove.type as 'ferie' | 'permesso',
             requestToApprove.date_from || undefined,
             requestToApprove.date_to || undefined,
             requestToApprove.day || undefined
