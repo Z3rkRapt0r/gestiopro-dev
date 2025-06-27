@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +19,9 @@ export interface Attendance {
   updated_at: string;
   is_business_trip: boolean | null;
   business_trip_id: string | null;
+  is_manual?: boolean;
+  is_sick_leave?: boolean;
+  notes?: string | null;
   profiles?: {
     first_name: string | null;
     last_name: string | null;
@@ -39,33 +41,86 @@ export const useAttendances = () => {
     queryFn: async () => {
       console.log('Fetching attendances...');
       
-      let query = supabase
+      let automaticAttendances: Attendance[] = [];
+      let manualAttendances: Attendance[] = [];
+
+      // Fetch automatic attendances from attendances table
+      let automaticQuery = supabase
         .from('attendances')
         .select('*')
         .order('date', { ascending: false });
 
       // Se non è admin, mostra solo le proprie presenze
       if (profile?.role !== 'admin') {
-        query = query.eq('user_id', user?.id);
+        automaticQuery = automaticQuery.eq('user_id', user?.id);
       }
 
-      const { data: attendanceData, error: attendanceError } = await query;
+      const { data: automaticData, error: automaticError } = await automaticQuery;
 
-      if (attendanceError) {
-        console.error('Error fetching attendances:', attendanceError);
+      if (automaticError) {
+        console.error('Error fetching automatic attendances:', automaticError);
         toast({
           title: "Errore",
-          description: "Errore nel caricamento delle presenze",
+          description: "Errore nel caricamento delle presenze automatiche",
           variant: "destructive",
         });
-        throw attendanceError;
+        throw automaticError;
       }
 
-      console.log('Attendances data:', attendanceData);
+      if (automaticData) {
+        automaticAttendances = automaticData.map(att => ({
+          ...att,
+          is_manual: false,
+          is_sick_leave: false,
+          notes: null
+        }));
+      }
+
+      // Fetch manual attendances from unified_attendances table
+      let manualQuery = supabase
+        .from('unified_attendances')
+        .select('*')
+        .order('date', { ascending: false });
+
+      // Se non è admin, mostra solo le proprie presenze
+      if (profile?.role !== 'admin') {
+        manualQuery = manualQuery.eq('user_id', user?.id);
+      }
+
+      const { data: manualData, error: manualError } = await manualQuery;
+
+      if (manualError) {
+        console.error('Error fetching manual attendances:', manualError);
+        // Non bloccare se non riusciamo a prendere le presenze manuali
+      } else if (manualData) {
+        manualAttendances = manualData.map(att => ({
+          id: att.id,
+          user_id: att.user_id,
+          check_in_time: att.check_in_time,
+          check_out_time: att.check_out_time,
+          check_in_latitude: null,
+          check_in_longitude: null,
+          check_out_latitude: null,
+          check_out_longitude: null,
+          date: att.date,
+          created_at: att.created_at,
+          updated_at: att.updated_at,
+          is_business_trip: att.is_business_trip,
+          business_trip_id: null,
+          is_manual: att.is_manual,
+          is_sick_leave: att.is_sick_leave,
+          notes: att.notes
+        }));
+      }
+
+      // Combine both arrays
+      const allAttendances = [...automaticAttendances, ...manualAttendances];
+
+      console.log('Combined attendances:', allAttendances.length);
 
       // Se è admin, ottieni anche i profili degli utenti
-      if (profile?.role === 'admin' && attendanceData && attendanceData.length > 0) {
-        const userIds = [...new Set(attendanceData.map(att => att.user_id))];
+      if (profile?.role === 'admin' && allAttendances.length > 0) {
+        const userIds = [...new Set(allAttendances.map(att => att.user_id))];
         
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
@@ -78,16 +133,19 @@ export const useAttendances = () => {
         }
 
         // Combina i dati
-        const attendancesWithProfiles = attendanceData.map(attendance => ({
+        const attendancesWithProfiles = allAttendances.map(attendance => ({
           ...attendance,
           profiles: profilesData?.find(profile => profile.id === attendance.user_id) || null
         }));
 
         console.log('Attendances with profiles:', attendancesWithProfiles);
-        return attendancesWithProfiles as Attendance[];
+        
+        // Ordina per data (più recente prima)
+        return attendancesWithProfiles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       }
 
-      return attendanceData as Attendance[];
+      // Ordina per data (più recente prima)
+      return allAttendances.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     },
     enabled: !!user && !!profile,
   });
