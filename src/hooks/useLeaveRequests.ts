@@ -144,7 +144,9 @@ export const useLeaveRequests = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (params: string | { id: string; leaveRequest?: LeaveRequest }) => {
+      const id = typeof params === 'string' ? params : params.id;
+      
       const { error } = await supabase
         .from('leave_requests')
         .delete()
