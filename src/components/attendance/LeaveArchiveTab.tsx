@@ -24,13 +24,13 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
     return currentYear;
   });
 
-  // Filtra le richieste in base al tipo
+  // Filter requests by type
   const filteredRequests = useMemo(() => {
     if (!leaveRequests) return [];
     return leaveRequests.filter(request => request.type === type);
   }, [leaveRequests, type]);
 
-  // Raggruppa per dipendente
+  // Group by employee
   const employeeGroups = useMemo(() => {
     const groups: Record<string, any[]> = {};
     
@@ -45,7 +45,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
     return groups;
   }, [filteredRequests]);
 
-  // Raggruppa per anno
+  // Group by year
   const employeeYearGroups = useMemo(() => {
     const groups: Record<string, Record<string, any[]>> = {};
     
@@ -66,7 +66,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
     return groups;
   }, [employeeGroups, type]);
 
-  // Calcola statistiche
+  // Calculate statistics
   const stats = useMemo(() => {
     const totalOperations = filteredRequests.length;
     const employeeCount = Object.keys(employeeGroups).length;
@@ -95,7 +95,13 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
   const formatPeriod = (request: any) => {
     if (type === 'ferie') {
       if (request.date_from && request.date_to) {
-        return `Dal ${format(new Date(request.date_from), 'dd/MM/yyyy')} al ${format(new Date(request.date_to), 'dd/MM/yyyy')}`;
+        const startDate = format(new Date(request.date_from), 'dd/MM/yyyy');
+        const endDate = format(new Date(request.date_to), 'dd/MM/yyyy');
+        if (startDate === endDate) {
+          return `${startDate}`;
+        } else {
+          return `Dal ${startDate} al ${endDate}`;
+        }
       }
     } else {
       if (request.day) {
@@ -126,7 +132,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Statistiche */}
+      {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -165,7 +171,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
         </Card>
       </div>
 
-      {/* Lista Dipendenti */}
+      {/* Employee List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -177,7 +183,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
           {Object.keys(employeeGroups).length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>Nessuna operazione trovata per {type}</p>
+              <p>Nessun periodo trovato per {type}</p>
             </div>
           ) : (
             <Tabs value={selectedEmployee || Object.keys(employeeGroups)[0]} onValueChange={setSelectedEmployee}>
@@ -198,7 +204,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
                           {employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente'}
                         </span>
                         <Badge variant="secondary" className="mt-1">
-                          {currentYearCount}
+                          {currentYearCount} periodi
                         </Badge>
                       </div>
                     </TabsTrigger>
@@ -220,7 +226,7 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
                         </h3>
                       </div>
 
-                      {/* Selezione Anno */}
+                      {/* Year Selection */}
                       <Tabs value={selectedYear} onValueChange={setSelectedYear}>
                         <TabsList className="grid w-full grid-cols-4 lg:grid-cols-6">
                           {availableYears.map(year => (
@@ -248,59 +254,76 @@ export default function LeaveArchiveTab({ type }: LeaveArchiveTabProps) {
                                 {sortedRequests.length === 0 ? (
                                   <div className="text-center py-8 text-muted-foreground">
                                     <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                                    <p>Nessuna operazione per l'anno {year}</p>
+                                    <p>Nessun periodo per l'anno {year}</p>
                                   </div>
                                 ) : (
-                                  sortedRequests.map(request => (
-                                    <div key={request.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                          <span className="font-medium">
-                                            {formatPeriod(request)}
-                                          </span>
-                                          {getStatusBadge(request.status)}
-                                        </div>
-                                        
-                                        {request.note && (
-                                          <div className="flex items-center gap-1 text-sm text-gray-600">
-                                            <FileText className="w-3 h-3" />
-                                            {request.note}
+                                  <Card>
+                                    <CardHeader className="pb-3">
+                                      <CardTitle className="text-base flex items-center gap-2">
+                                        <Calendar className="w-4 h-4" />
+                                        Anno {year}
+                                        <Badge variant="outline">
+                                          {sortedRequests.length} periodi
+                                        </Badge>
+                                      </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <div className="space-y-3">
+                                        {sortedRequests.map(request => (
+                                          <div key={request.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-3 mb-2">
+                                                <span className="font-medium">
+                                                  {formatPeriod(request)}
+                                                </span>
+                                                {getStatusBadge(request.status)}
+                                              </div>
+                                              
+                                              {request.note && (
+                                                <div className="flex items-center gap-1 text-sm text-gray-600">
+                                                  <FileText className="w-3 h-3" />
+                                                  {request.note}
+                                                </div>
+                                              )}
+                                            </div>
+                                            
+                                            <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                <Button 
+                                                  variant="destructive" 
+                                                  size="sm"
+                                                  disabled={deleteRequestMutation.isPending}
+                                                >
+                                                  <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                  <AlertDialogTitle>Conferma Eliminazione Periodo</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                    Sei sicuro di voler eliminare questo periodo di {type}?
+                                                    <br />
+                                                    <strong>Periodo: {formatPeriod(request)}</strong>
+                                                    <br />
+                                                    <strong>Questa azione non può essere annullata.</strong>
+                                                  </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                                  <AlertDialogAction 
+                                                    onClick={() => handleDelete(request.id)}
+                                                    className="bg-red-600 hover:bg-red-700"
+                                                  >
+                                                    Elimina Periodo
+                                                  </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                            </AlertDialog>
                                           </div>
-                                        )}
+                                        ))}
                                       </div>
-                                      
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <Button 
-                                            variant="destructive" 
-                                            size="sm"
-                                            disabled={deleteRequestMutation.isPending}
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              Sei sicuro di voler eliminare questa richiesta di {type}?
-                                              <br />
-                                              <strong>Questa azione non può essere annullata.</strong>
-                                            </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Annulla</AlertDialogCancel>
-                                            <AlertDialogAction 
-                                              onClick={() => handleDelete(request.id)}
-                                              className="bg-red-600 hover:bg-red-700"
-                                            >
-                                              Elimina
-                                            </AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
-                                    </div>
-                                  ))
+                                    </CardContent>
+                                  </Card>
                                 )}
                               </div>
                             </TabsContent>
