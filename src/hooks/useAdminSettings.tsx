@@ -19,7 +19,6 @@ interface BrevoSettings {
   trackClicks: boolean;
   autoRetry: boolean;
   maxRetries: number;
-  hideAttendanceHistoryForEmployees: boolean;
 }
 
 export function useAdminSettings() {
@@ -40,8 +39,7 @@ export function useAdminSettings() {
     trackOpens: true,
     trackClicks: true,
     autoRetry: true,
-    maxRetries: 3,
-    hideAttendanceHistoryForEmployees: false
+    maxRetries: 3
   });
   const [loading, setLoading] = useState(false);
 
@@ -72,8 +70,7 @@ export function useAdminSettings() {
               trackOpens: data.track_opens ?? true,
               trackClicks: data.track_clicks ?? true,
               autoRetry: data.auto_retry ?? true,
-              maxRetries: data.max_retries ?? 3,
-              hideAttendanceHistoryForEmployees: data.hide_attendance_history_for_employees ?? false
+              maxRetries: data.max_retries ?? 3
             });
           }
         } finally {
@@ -82,6 +79,67 @@ export function useAdminSettings() {
       })();
     }
   }, [profile]);
+
+  const saveApiKey = async (key: string) => {
+    if (!profile?.id) {
+      toast({
+        title: "Errore",
+        description: "Profilo utente non caricato. Riprova.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!key.trim()) {
+      toast({
+        title: "Errore",
+        description: "La chiave API non può essere vuota.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("admin_settings")
+        .upsert(
+          { 
+            admin_id: profile.id, 
+            brevo_api_key: key.trim() 
+          },
+          { 
+            onConflict: "admin_id",
+            ignoreDuplicates: false 
+          }
+        );
+
+      if (error) {
+        console.error("Error saving API key:", error);
+        toast({
+          title: "Errore",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        setApiKey(key.trim());
+        setBrevoSettings(prev => ({ ...prev, apiKey: key.trim() }));
+        toast({
+          title: "Chiave salvata",
+          description: "Chiave Brevo aggiornata con successo.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Unexpected error:", error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore imprevisto.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const saveBrevoSettings = async (settings: BrevoSettings) => {
     if (!profile?.id) {
@@ -122,8 +180,7 @@ export function useAdminSettings() {
             track_opens: settings.trackOpens,
             track_clicks: settings.trackClicks,
             auto_retry: settings.autoRetry,
-            max_retries: settings.maxRetries,
-            hide_attendance_history_for_employees: settings.hideAttendanceHistoryForEmployees
+            max_retries: settings.maxRetries
           },
           { 
             onConflict: "admin_id",
@@ -163,6 +220,7 @@ export function useAdminSettings() {
     brevoSettings, 
     setBrevoSettings, 
     loading, 
+    saveApiKey, 
     saveBrevoSettings 
   };
 }

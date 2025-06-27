@@ -28,7 +28,6 @@ export type Database = {
           global_logo_alignment: string | null
           global_logo_size: string | null
           global_logo_url: string | null
-          hide_attendance_history_for_employees: boolean | null
           id: string
           max_retries: number | null
           reply_to: string | null
@@ -56,7 +55,6 @@ export type Database = {
           global_logo_alignment?: string | null
           global_logo_size?: string | null
           global_logo_url?: string | null
-          hide_attendance_history_for_employees?: boolean | null
           id?: string
           max_retries?: number | null
           reply_to?: string | null
@@ -84,7 +82,6 @@ export type Database = {
           global_logo_alignment?: string | null
           global_logo_size?: string | null
           global_logo_url?: string | null
-          hide_attendance_history_for_employees?: boolean | null
           id?: string
           max_retries?: number | null
           reply_to?: string | null
