@@ -206,7 +206,14 @@ export default function NewDailyAttendanceCalendar() {
       const employee = employees?.find(emp => emp.id === att.user_id);
       return {
         ...employee,
-        attendance: att,
+        check_in_time: att.check_in_time,
+        check_out_time: att.check_out_time,
+        is_business_trip: att.is_business_trip,
+        is_manual: att.is_manual,
+        is_sick_leave: att.is_sick_leave,
+        is_late: att.is_late,
+        late_minutes: att.late_minutes,
+        notes: att.notes
       };
     })
     .filter(emp => emp.id);
@@ -341,7 +348,6 @@ export default function NewDailyAttendanceCalendar() {
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-6 gap-4">
               <PresentEmployeesSection
                 employees={presentEmployees}
-                formatTime={formatTime}
               />
 
               <SickEmployeesSection
