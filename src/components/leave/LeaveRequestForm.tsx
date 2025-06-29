@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -123,11 +124,10 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
     
     let validationErrors: string[] = [];
     
+    // Only validate working days for 'ferie' and 'permesso', not 'malattia'
     if (data.type === 'ferie' && data.date_from && data.date_to) {
       validationErrors = validateWorkingDays(data.date_from, data.date_to, data.type);
-    }
-    
-    if (data.type === 'permesso' && data.day) {
+    } else if (data.type === 'permesso' && data.day) {
       validationErrors = validateWorkingDays(data.day, data.day, data.type);
     }
     
