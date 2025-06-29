@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, AlertCircle, XCircle, Info } from 'lucide-react';
+import { Clock, MapPin, AlertCircle, XCircle, Info, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
@@ -74,11 +75,8 @@ export default function AttendanceCheckInOut() {
         return false;
     }
   };
+
   const handleCheckIn = async () => {
-    // Controllo preventivo con priorità di conflitto
-    if (!employeeStatus?.canCheckIn || employeeStatus.conflictPriority > 0) {
-      return;
-    }
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(position => {
         checkIn({
@@ -99,6 +97,7 @@ export default function AttendanceCheckInOut() {
       });
     }
   };
+
   const handleCheckOut = async () => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(position => {
@@ -120,6 +119,7 @@ export default function AttendanceCheckInOut() {
       });
     }
   };
+
   const currentTimeString = format(currentTime, 'HH:mm:ss', {
     locale: it
   });
@@ -133,13 +133,33 @@ export default function AttendanceCheckInOut() {
   // Determina il tipo di alert in base alla priorità del conflitto
   const getConflictAlertVariant = (priority: number) => {
     if (priority >= 4) return 'destructive'; // Malattia, Ferie
-    if (priority >= 2) return 'default'; // Permesso, Trasferta
+    if (priority >= 3) return 'destructive'; // Trasferta
+    if (priority >= 2) return 'default'; // Permesso attivo
     return 'secondary'; // Presenza già registrata, richieste pending
   };
-  const getConflictIcon = (priority: number) => {
+
+  const getConflictIcon = (priority: number, status: string) => {
     if (priority >= 4) return XCircle;
+    if (priority >= 3) return XCircle;
+    if (status === 'permission_ended') return CheckCircle;
     return AlertCircle;
   };
+
+  // Funzione per determinare se mostrare il countdown per i permessi orari
+  const getPermissionCountdown = () => {
+    if (!employeeStatus?.statusDetails) return null;
+    
+    if (employeeStatus.currentStatus === 'permission_active' && employeeStatus.statusDetails.timeTo) {
+      return `Permesso attivo fino alle ${employeeStatus.statusDetails.timeTo}`;
+    }
+    
+    if (employeeStatus.currentStatus === 'permission_ended' && employeeStatus.canCheckInAfterTime) {
+      return `Puoi registrare la presenza (permesso terminato alle ${employeeStatus.canCheckInAfterTime})`;
+    }
+    
+    return null;
+  };
+
   return <div className="max-w-md mx-auto space-y-6">
       {/* Info configurazione orari di lavoro */}
       {workSchedule && <Card>
@@ -182,31 +202,44 @@ export default function AttendanceCheckInOut() {
           </CardContent>
         </Card>}
 
-      {/* Avvisi di conflitto con priorità */}
-      {employeeStatus && employeeStatus.conflictPriority > 0 && <Card className={`border-2 ${employeeStatus.conflictPriority >= 4 ? 'border-red-200 bg-red-50' : employeeStatus.conflictPriority >= 2 ? 'border-yellow-200 bg-yellow-50' : 'border-blue-200 bg-blue-50'}`}>
+      {/* Avvisi di conflitto con messaggi migliorati per permessi */}
+      {employeeStatus && employeeStatus.conflictPriority > 0 && <Card className={`border-2 ${employeeStatus.conflictPriority >= 4 ? 'border-red-200 bg-red-50' : employeeStatus.conflictPriority >= 3 ? 'border-red-200 bg-red-50' : employeeStatus.currentStatus === 'permission_ended' ? 'border-green-200 bg-green-50' : employeeStatus.conflictPriority >= 2 ? 'border-yellow-200 bg-yellow-50' : 'border-blue-200 bg-blue-50'}`}>
           <CardContent className="p-4">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 {(() => {
-              const IconComponent = getConflictIcon(employeeStatus.conflictPriority);
-              return <IconComponent className={`w-5 h-5 ${employeeStatus.conflictPriority >= 4 ? 'text-red-600' : employeeStatus.conflictPriority >= 2 ? 'text-yellow-600' : 'text-blue-600'}`} />;
+              const IconComponent = getConflictIcon(employeeStatus.conflictPriority, employeeStatus.currentStatus);
+              return <IconComponent className={`w-5 h-5 ${employeeStatus.conflictPriority >= 4 ? 'text-red-600' : employeeStatus.conflictPriority >= 3 ? 'text-red-600' : employeeStatus.currentStatus === 'permission_ended' ? 'text-green-600' : employeeStatus.conflictPriority >= 2 ? 'text-yellow-600' : 'text-blue-600'}`} />;
             })()}
-                <span className={`font-semibold ${employeeStatus.conflictPriority >= 4 ? 'text-red-800' : employeeStatus.conflictPriority >= 2 ? 'text-yellow-800' : 'text-blue-800'}`}>
-                  {employeeStatus.conflictPriority >= 4 ? 'PRESENZA VIETATA' : employeeStatus.conflictPriority >= 2 ? 'CONFLITTO RILEVATO' : 'INFORMAZIONE'}
+                <span className={`font-semibold ${employeeStatus.conflictPriority >= 4 ? 'text-red-800' : employeeStatus.conflictPriority >= 3 ? 'text-red-800' : employeeStatus.currentStatus === 'permission_ended' ? 'text-green-800' : employeeStatus.conflictPriority >= 2 ? 'text-yellow-800' : 'text-blue-800'}`}>
+                  {employeeStatus.conflictPriority >= 4 && 'PRESENZA VIETATA'}
+                  {employeeStatus.conflictPriority === 3 && 'PRESENZA VIETATA - TRASFERTA'}
+                  {employeeStatus.currentStatus === 'permission_active' && 'PERMESSO ATTIVO'}
+                  {employeeStatus.currentStatus === 'permission_ended' && 'PERMESSO TERMINATO'}
+                  {employeeStatus.conflictPriority === 1 && 'GIÀ PRESENTE'}
+                  {employeeStatus.currentStatus === 'pending_request' && 'RICHIESTA IN ATTESA'}
                 </span>
               </div>
               
-              <div className={`text-sm ${employeeStatus.conflictPriority >= 4 ? 'text-red-700' : employeeStatus.conflictPriority >= 2 ? 'text-yellow-700' : 'text-blue-700'}`}>
+              <div className={`text-sm ${employeeStatus.conflictPriority >= 4 ? 'text-red-700' : employeeStatus.conflictPriority >= 3 ? 'text-red-700' : employeeStatus.currentStatus === 'permission_ended' ? 'text-green-700' : employeeStatus.conflictPriority >= 2 ? 'text-yellow-700' : 'text-blue-700'}`}>
                 {employeeStatus.blockingReasons.map((reason, index) => <p key={index}>• {reason}</p>)}
+                
+                {/* Messaggio speciale per permessi orari */}
+                {getPermissionCountdown() && (
+                  <p className="mt-2 font-medium">
+                    • {getPermissionCountdown()}
+                  </p>
+                )}
               </div>
 
-              {employeeStatus.statusDetails && <div className={`mt-3 p-3 rounded-md text-xs ${employeeStatus.conflictPriority >= 4 ? 'bg-red-100 text-red-800' : employeeStatus.conflictPriority >= 2 ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>
+              {employeeStatus.statusDetails && <div className={`mt-3 p-3 rounded-md text-xs ${employeeStatus.conflictPriority >= 4 ? 'bg-red-100 text-red-800' : employeeStatus.conflictPriority >= 3 ? 'bg-red-100 text-red-800' : employeeStatus.currentStatus === 'permission_ended' ? 'bg-green-100 text-green-800' : employeeStatus.conflictPriority >= 2 ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>
                   <div className="font-semibold mb-1">Dettagli stato:</div>
                   <div><strong>Tipo:</strong> {employeeStatus.statusDetails.type}</div>
                   {employeeStatus.statusDetails.startDate && <div><strong>Data:</strong> {employeeStatus.statusDetails.startDate}
                       {employeeStatus.statusDetails.endDate && employeeStatus.statusDetails.endDate !== employeeStatus.statusDetails.startDate && ` - ${employeeStatus.statusDetails.endDate}`}
                     </div>}
                   {employeeStatus.statusDetails.timeFrom && employeeStatus.statusDetails.timeTo && <div><strong>Orario:</strong> {employeeStatus.statusDetails.timeFrom} - {employeeStatus.statusDetails.timeTo}</div>}
+                  {employeeStatus.statusDetails.canCheckInAfter && <div><strong>Check-in consentito dopo:</strong> {employeeStatus.statusDetails.canCheckInAfter}</div>}
                   {employeeStatus.statusDetails.notes && <div><strong>Note:</strong> {employeeStatus.statusDetails.notes}</div>}
                 </div>}
             </div>
@@ -274,16 +307,24 @@ export default function AttendanceCheckInOut() {
                   </Badge>
                 </div>}
             </div> : <div className="space-y-3">
-              <Button onClick={handleCheckIn} disabled={isCheckingIn || !employeeStatus?.canCheckIn || statusLoading || (employeeStatus?.conflictPriority ?? 0) > 0} className="w-full" variant={employeeStatus?.canCheckIn ? "default" : "secondary"}>
-                {isCheckingIn ? 'Registrando entrata...' : !employeeStatus?.canCheckIn ? 'Presenza non consentita' : 'Registra Entrata'}
+              <Button 
+                onClick={handleCheckIn} 
+                disabled={isCheckingIn || !employeeStatus?.canCheckIn || statusLoading || (employeeStatus?.conflictPriority ?? 0) > 0} 
+                className="w-full" 
+                variant={employeeStatus?.canCheckIn || employeeStatus?.currentStatus === 'permission_ended' ? "default" : "secondary"}
+              >
+                {isCheckingIn ? 'Registrando entrata...' : 
+                 employeeStatus?.currentStatus === 'permission_ended' ? 'Registra Entrata (Dopo Permesso)' :
+                 !employeeStatus?.canCheckIn ? 'Presenza non consentita' : 'Registra Entrata'}
               </Button>
               
-              {/* Indicatore di priorità del conflitto */}
+              {/* Indicatore di priorità del conflitto con messaggi specifici */}
               {employeeStatus && employeeStatus.conflictPriority > 0 && <div className="text-center">
                   <Badge variant={getConflictAlertVariant(employeeStatus.conflictPriority)}>
                     {employeeStatus.conflictPriority >= 4 && 'BLOCCATO - Conflitto critico'}
-                    {employeeStatus.conflictPriority === 3 && 'BLOCCATO - Permesso attivo'}
-                    {employeeStatus.conflictPriority === 2 && 'BLOCCATO - In trasferta'}
+                    {employeeStatus.conflictPriority === 3 && 'BLOCCATO - In trasferta'}
+                    {employeeStatus.currentStatus === 'permission_active' && 'BLOCCATO - Permesso attivo'}
+                    {employeeStatus.currentStatus === 'permission_ended' && 'DISPONIBILE - Permesso terminato'}
                     {employeeStatus.conflictPriority === 1 && 'BLOCCATO - Già presente'}
                   </Badge>
                 </div>}
