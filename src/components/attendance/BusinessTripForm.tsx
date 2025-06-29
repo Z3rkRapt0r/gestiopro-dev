@@ -10,6 +10,7 @@ import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
+import { useBusinessTripValidation } from '@/hooks/useBusinessTripValidation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function BusinessTripForm() {
@@ -17,6 +18,7 @@ export default function BusinessTripForm() {
   const { profile } = useAuth();
   const { employees } = useActiveEmployees();
   const { isValidDateForEmployee } = useWorkingDaysTracking();
+  const { validateTripConflicts } = useBusinessTripValidation();
   
   const [formData, setFormData] = useState({
     start_date: '',
@@ -26,7 +28,7 @@ export default function BusinessTripForm() {
   });
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const validateDates = (startDate: string, endDate: string) => {
+  const validateDates = async (startDate: string, endDate: string) => {
     if (!startDate || !profile?.id || !employees) return true;
 
     // Valida data di inizio
@@ -45,24 +47,38 @@ export default function BusinessTripForm() {
       }
     }
 
+    // Controllo conflitti con congedi approvati
+    try {
+      const conflictResult = await validateTripConflicts(profile.id, startDate, endDate);
+      if (conflictResult.hasConflict) {
+        setValidationError(conflictResult.message || 'Conflitto con congedo esistente');
+        return false;
+      }
+    } catch (error) {
+      console.error('Errore validazione conflitti:', error);
+      setValidationError('Errore durante la validazione. Riprova.');
+      return false;
+    }
+
     setValidationError(null);
     return true;
   };
 
-  const handleDateChange = (field: 'start_date' | 'end_date', value: string) => {
+  const handleDateChange = async (field: 'start_date' | 'end_date', value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     const startDate = field === 'start_date' ? value : formData.start_date;
     const endDate = field === 'end_date' ? value : formData.end_date;
     
-    validateDates(startDate, endDate);
+    await validateDates(startDate, endDate);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Verifica finale della validazione
-    if (!validateDates(formData.start_date, formData.end_date)) {
+    const isValid = await validateDates(formData.start_date, formData.end_date);
+    if (!isValid) {
       return;
     }
     

@@ -1,260 +1,196 @@
-import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, AlertCircle } from 'lucide-react';
-import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
-import { useActiveEmployees } from '@/hooks/useActiveEmployees';
-import { useLeaveRequests } from '@/hooks/useLeaveRequests';
-import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { useManualAttendances } from '@/hooks/useManualAttendances';
+import { useAttendanceConflictValidation } from '@/hooks/useAttendanceConflictValidation';
+
+const formSchema = z.object({
+  user_id: z.string().min(1, 'Seleziona un dipendente'),
+  date: z.string().min(1, 'Seleziona una data'),
+  check_in_time: z.string().optional(),
+  check_out_time: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 export default function ManualAttendanceForm() {
-  const { createManualAttendance, isCreating, attendances } = useUnifiedAttendances();
-  const { employees } = useActiveEmployees();
-  const { leaveRequests } = useLeaveRequests();
-  const { isValidDateForEmployee } = useWorkingDaysTracking();
-  
-  const [formData, setFormData] = useState({
-    user_id: '',
-    date: '',
-    check_in_time: '',
-    check_out_time: '',
-    notes: '',
-  });
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const { employees, isLoading: loadingEmployees } = useActiveEmployees();
+  const { createAttendance, isCreating } = useManualAttendances();
+  const { checkAttendanceConflicts } = useAttendanceConflictValidation();
+  const [conflictError, setConflictError] = useState<string | null>(null);
 
-  // Funzione per validare la data rispetto alla logica di tracking
-  const validateDate = (selectedDate: string, employeeId: string) => {
-    if (!selectedDate || !employeeId || !employees) return true;
-
-    const validation = isValidDateForEmployee(employeeId, selectedDate, employees);
-    if (!validation.isValid) {
-      setValidationError(validation.message || 'Data non valida');
-      return false;
-    }
-
-    setValidationError(null);
-    return true;
-  };
-
-  // Filtra i dipendenti disponibili escludendo quelli in ferie o malattia nella data selezionata
-  const availableEmployees = useMemo(() => {
-    if (!formData.date || !employees || !leaveRequests || !attendances) {
-      return employees || [];
-    }
-
-    return employees.filter(employee => {
-      // Controlla se il dipendente ha ferie approvate nella data selezionata
-      const hasApprovedLeave = leaveRequests.some(leave => {
-        if (leave.status !== 'approved' || leave.user_id !== employee.id) return false;
-        
-        if (leave.type === 'ferie' && leave.date_from && leave.date_to) {
-          const leaveStart = new Date(leave.date_from);
-          const leaveEnd = new Date(leave.date_to);
-          const selectedDate = new Date(formData.date);
-          return selectedDate >= leaveStart && selectedDate <= leaveEnd;
-        }
-        
-        if (leave.type === 'permesso' && leave.day) {
-          return leave.day === formData.date;
-        }
-        
-        return false;
-      });
-
-      // Controlla se il dipendente è già in malattia nella data selezionata
-      const hasSickLeave = attendances.some(att => 
-        att.user_id === employee.id && 
-        att.date === formData.date && 
-        att.is_sick_leave
-      );
-
-      return !hasApprovedLeave && !hasSickLeave;
-    });
-  }, [formData.date, employees, leaveRequests, attendances]);
-
-  const handleDateChange = (date: string) => {
-    setFormData(prev => ({ ...prev, date }));
-    
-    // Valida immediatamente se c'è un dipendente selezionato
-    if (formData.user_id) {
-      validateDate(date, formData.user_id);
-    }
-  };
-
-  const handleEmployeeChange = (userId: string) => {
-    setFormData(prev => ({ ...prev, user_id: userId }));
-    
-    // Valida immediatamente se c'è una data selezionata
-    if (formData.date) {
-      validateDate(formData.date, userId);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Verifica finale della validazione
-    if (!validateDate(formData.date, formData.user_id)) {
-      return;
-    }
-    
-    // Costruiamo gli orari mantenendo la data e l'orario esatti senza conversioni di fuso orario
-    const attendanceData = {
-      user_id: formData.user_id,
-      date: formData.date,
-      check_in_time: formData.check_in_time ? `${formData.date}T${formData.check_in_time}:00` : null,
-      check_out_time: formData.check_out_time ? `${formData.date}T${formData.check_out_time}:00` : null,
-      notes: formData.notes,
-    };
-
-    console.log('Dati presenza manuale (timestamp locali):', attendanceData);
-    createManualAttendance(attendanceData);
-    setFormData({
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
       user_id: '',
-      date: '',
+      date: format(new Date(), 'yyyy-MM-dd'),
       check_in_time: '',
       check_out_time: '',
       notes: '',
-    });
-    setValidationError(null);
-  };
+    },
+  });
 
-  // Calcola dipendenti esclusi per mostrare l'avviso
-  const excludedEmployees = useMemo(() => {
-    if (!formData.date || !employees || !leaveRequests || !attendances) {
-      return [];
+  const watchedUserId = form.watch('user_id');
+  const watchedDate = form.watch('date');
+
+  // Controlla conflitti quando cambiano utente o data
+  React.useEffect(() => {
+    if (watchedUserId && watchedDate) {
+      checkAttendanceConflicts(watchedUserId, watchedDate).then(result => {
+        if (result.hasConflict) {
+          setConflictError(result.message || 'Conflitto rilevato');
+        } else {
+          setConflictError(null);
+        }
+      });
+    } else {
+      setConflictError(null);
+    }
+  }, [watchedUserId, watchedDate, checkAttendanceConflicts]);
+
+  const onSubmit = async (data: FormData) => {
+    // Controllo finale dei conflitti prima dell'invio
+    const conflictResult = await checkAttendanceConflicts(data.user_id, data.date);
+    if (conflictResult.hasConflict) {
+      setConflictError(conflictResult.message || 'Conflitto rilevato');
+      return;
     }
 
-    return employees.filter(employee => {
-      const hasApprovedLeave = leaveRequests.some(leave => {
-        if (leave.status !== 'approved' || leave.user_id !== employee.id) return false;
-        
-        if (leave.type === 'ferie' && leave.date_from && leave.date_to) {
-          const leaveStart = new Date(leave.date_from);
-          const leaveEnd = new Date(leave.date_to);
-          const selectedDate = new Date(formData.date);
-          return selectedDate >= leaveStart && selectedDate <= leaveEnd;
-        }
-        
-        if (leave.type === 'permesso' && leave.day) {
-          return leave.day === formData.date;
-        }
-        
-        return false;
-      });
+    createAttendance(data);
+    form.reset();
+    setConflictError(null);
+  };
 
-      const hasSickLeave = attendances.some(att => 
-        att.user_id === employee.id && 
-        att.date === formData.date && 
-        att.is_sick_leave
-      );
+  if (loadingEmployees) {
+    return <div>Caricamento dipendenti...</div>;
+  }
 
-      return hasApprovedLeave || hasSickLeave;
-    });
-  }, [formData.date, employees, leaveRequests, attendances]);
+  // Filtra dipendenti disponibili (attivi)
+  const availableEmployees = employees?.filter(emp => emp.is_active) || [];
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5" />
-            Aggiungi Presenza Manuale
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="date">Data</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleDateChange(e.target.value)}
-                required
-              />
-            </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Inserimento Presenza Manuale</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {conflictError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {conflictError}
+            </AlertDescription>
+          </Alert>
+        )}
 
-            {validationError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{validationError}</AlertDescription>
-              </Alert>
-            )}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="user_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Dipendente</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona dipendente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableEmployees.map((employee) => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.first_name} {employee.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            {excludedEmployees.length > 0 && formData.date && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {excludedEmployees.length} dipendente/i escluso/i per la data {format(new Date(formData.date), 'dd/MM/yyyy')} 
-                  (in ferie o malattia): {excludedEmployees.map(emp => `${emp.first_name} ${emp.last_name}`).join(', ')}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div>
-              <Label htmlFor="employee">Dipendente</Label>
-              <Select value={formData.user_id} onValueChange={handleEmployeeChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona dipendente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableEmployees?.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
-                      {employee.first_name} {employee.last_name} ({employee.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Data</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="check_in">Orario Entrata</Label>
-                <Input
-                  id="check_in"
-                  type="time"
-                  value={formData.check_in_time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="check_out">Orario Uscita</Label>
-                <Input
-                  id="check_out"
-                  type="time"
-                  value={formData.check_out_time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
-                />
-              </div>
-            </div>
+              <FormField
+                control={form.control}
+                name="check_in_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Orario Entrata</FormLabel>
+                    <FormControl>
+                      <Input type="time" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div>
-              <Label htmlFor="notes">Note</Label>
-              <Textarea
-                id="notes"
-                placeholder="Note aggiuntive..."
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              <FormField
+                control={form.control}
+                name="check_out_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Orario Uscita</FormLabel>
+                    <FormControl>
+                      <Input type="time" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Note aggiuntive..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <Button 
               type="submit" 
-              disabled={isCreating || !formData.user_id || !formData.date || !!validationError} 
+              disabled={isCreating || !!conflictError}
               className="w-full"
             >
-              {isCreating ? 'Salvando...' : 'Salva Presenza'}
+              {isCreating ? 'Creazione...' : 'Crea Presenza'}
             </Button>
           </form>
-        </CardContent>
-      </Card>
-    </div>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }
