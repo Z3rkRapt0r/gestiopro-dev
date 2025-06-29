@@ -18,7 +18,6 @@ export interface UnifiedAttendance {
   late_minutes: number;
   notes?: string | null;
   created_at: string;
-  // Nuovi campi per l'organizzazione italiana
   operation_path?: string;
   readable_id?: string;
   profiles?: {
@@ -38,9 +37,11 @@ export const useUnifiedAttendances = () => {
   const validateEmployeeStatusForManual = async (userId: string, date: string, isAdmin: boolean, isSickLeave: boolean) => {
     console.log('🔍 Validazione stato per inserimento manuale:', { userId, date, isAdmin, isSickLeave });
 
-    // Se è malattia, controlliamo solo conflitti con ferie/permessi
+    // VALIDAZIONE COMPLETA PER MALATTIA - Controlla TUTTI i possibili conflitti
     if (isSickLeave) {
-      // Controllo ferie approvate
+      console.log('🏥 Validazione malattia - controllo conflitti completi');
+
+      // 1. Controllo ferie approvate
       const { data: approvedVacations } = await supabase
         .from('leave_requests')
         .select('*')
@@ -56,15 +57,74 @@ export const useUnifiedAttendances = () => {
             const endDate = new Date(vacation.date_to);
             
             if (checkDate >= startDate && checkDate <= endDate) {
-              throw new Error(`Conflitto: il dipendente è già in ferie dal ${vacation.date_from} al ${vacation.date_to}. Le ferie hanno priorità sulla malattia.`);
+              throw new Error(`❌ Conflitto critico: il dipendente è già in ferie dal ${vacation.date_from} al ${vacation.date_to}. Non è possibile registrare malattia in questo periodo.`);
             }
           }
         }
       }
-      return; // Per la malattia, dopo il controllo ferie, possiamo procedere
+
+      // 2. Controllo trasferte approvate
+      const { data: approvedBusinessTrips } = await supabase
+        .from('business_trips')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved');
+
+      if (approvedBusinessTrips) {
+        for (const trip of approvedBusinessTrips) {
+          const checkDate = new Date(date);
+          const startDate = new Date(trip.start_date);
+          const endDate = new Date(trip.end_date);
+          
+          if (checkDate >= startDate && checkDate <= endDate) {
+            throw new Error(`❌ Conflitto critico: il dipendente è in trasferta dal ${trip.start_date} al ${trip.end_date} (${trip.destination}). Non è possibile registrare malattia durante una trasferta.`);
+          }
+        }
+      }
+
+      // 3. Controllo permessi approvati per la data specifica
+      const { data: approvedPermissions } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved')
+        .eq('type', 'permesso')
+        .eq('day', date);
+
+      if (approvedPermissions && approvedPermissions.length > 0) {
+        const permission = approvedPermissions[0];
+        const permissionMessage = permission.time_from && permission.time_to 
+          ? `un permesso orario dalle ${permission.time_from} alle ${permission.time_to}`
+          : 'un permesso giornaliero';
+        
+        throw new Error(`❌ Conflitto critico: il dipendente ha già ${permissionMessage} per il ${date}. Non è possibile registrare malattia nello stesso giorno.`);
+      }
+
+      // 4. Controllo presenza già registrata (sia normale che manuale)
+      const { data: existingAttendance } = await supabase
+        .from('unified_attendances')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('date', date)
+        .neq('is_sick_leave', true) // Esclude altre malattie già registrate
+        .single();
+
+      if (existingAttendance) {
+        const presenceType = existingAttendance.is_manual ? 'manuale' : 'automatica';
+        const presenceDetails = existingAttendance.check_in_time && existingAttendance.check_out_time
+          ? `(entrata: ${existingAttendance.check_in_time}, uscita: ${existingAttendance.check_out_time})`
+          : existingAttendance.check_in_time
+          ? `(entrata: ${existingAttendance.check_in_time})`
+          : '';
+        
+        throw new Error(`❌ Conflitto critico: il dipendente ha già una presenza ${presenceType} registrata per il ${date} ${presenceDetails}. Non è possibile registrare malattia per un giorno con presenza già confermata.`);
+      }
+
+      console.log('✅ Validazione malattia completata - nessun conflitto trovato');
+      return; // Per la malattia, dopo tutti i controlli, possiamo procedere
     }
 
-    // Per presenze normali, controlli completi
+    // Per presenze normali, controlli completi (logica esistente)
     // Controllo malattia esistente
     const { data: sickLeave } = await supabase
       .from('unified_attendances')
@@ -181,9 +241,9 @@ export const useUnifiedAttendances = () => {
       notes: string | null;
       is_sick_leave?: boolean;
     }) => {
-      console.log('🔐 CREAZIONE PRESENZA MANUALE con validazione anti-conflitto:', attendanceData);
+      console.log('🔐 CREAZIONE PRESENZA MANUALE con validazione anti-conflitto completa:', attendanceData);
       
-      // VALIDAZIONE ANTI-CONFLITTO PRIORITARIA
+      // VALIDAZIONE ANTI-CONFLITTO PRIORITARIA E COMPLETA
       const isAdmin = profile?.role === 'admin';
       await validateEmployeeStatusForManual(
         attendanceData.user_id, 
@@ -192,7 +252,6 @@ export const useUnifiedAttendances = () => {
         attendanceData.is_sick_leave || false
       );
       
-      // Genera il path organizzativo italiano
       const attendanceDate = new Date(attendanceData.date);
       const operationType = attendanceData.is_sick_leave ? 'malattia' : 'presenza_manuale';
       const operationPath = await generateOperationPath(operationType, attendanceData.user_id, attendanceDate);
@@ -216,7 +275,7 @@ export const useUnifiedAttendances = () => {
         created_by: user?.id,
       };
 
-      console.log('💾 Dati che verranno inseriti nel database con validazione:', dataToInsert);
+      console.log('💾 Dati che verranno inseriti nel database con validazione completa:', dataToInsert);
 
       const { data, error } = await supabase
         .from('unified_attendances')
@@ -231,25 +290,25 @@ export const useUnifiedAttendances = () => {
         throw error;
       }
 
-      console.log('✅ SUCCESSO - Presenza salvata con validazione anti-conflitto:', data);
+      console.log('✅ SUCCESSO - Presenza salvata con validazione anti-conflitto completa:', data);
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       queryClient.invalidateQueries({ queryKey: ['employee-status'] });
-      console.log('✅ SUCCESS CALLBACK - Presenza salvata con validazione anti-conflitto');
+      console.log('✅ SUCCESS CALLBACK - Presenza salvata con validazione anti-conflitto completa');
+      
+      const messageType = data.is_sick_leave ? 'malattia' : 'presenza manuale';
       toast({
         title: "Presenza salvata",
-        description: data.is_sick_leave ? 
-          "La malattia è stata registrata con controlli anti-conflitto" : 
-          "La presenza manuale è stata registrata con controlli anti-conflitto",
+        description: `La ${messageType} è stata registrata con controlli anti-conflitto completi`,
       });
     },
     onError: (error: any) => {
       console.error('❌ Errore creazione presenza manuale:', error);
       toast({
-        title: "Presenza non consentita",
+        title: "Operazione non consentita",
         description: error.message || "Errore nella registrazione della presenza",
         variant: "destructive",
       });

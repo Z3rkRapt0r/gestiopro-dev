@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -75,7 +74,7 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
   const watchedTimeFrom = form.watch('time_from');
   const watchedTimeTo = form.watch('time_to');
 
-  // Validazione bilancio in tempo reale
+  // Validazione bilancio in tempo reale (solo per ferie e permessi, non per malattia)
   useEffect(() => {
     if (!balanceValidation || watchedType === 'malattia') {
       setBalanceValidationError(null);
@@ -83,10 +82,10 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
     }
 
     if (watchedType === 'ferie' && watchedDateFrom && watchedDateTo) {
-      const validation = validateLeaveRequest(watchedType, watchedDateFrom, watchedDateTo);
+      const validation = validateLeaveRequest(watchedType as "ferie" | "permesso", watchedDateFrom, watchedDateTo);
       setBalanceValidationError(validation.errorMessage || null);
     } else if (watchedType === 'permesso' && watchedDay) {
-      const validation = validateLeaveRequest(watchedType, null, null, watchedDay, watchedTimeFrom, watchedTimeTo);
+      const validation = validateLeaveRequest(watchedType as "ferie" | "permesso", null, null, watchedDay, watchedTimeFrom, watchedTimeTo);
       setBalanceValidationError(validation.errorMessage || null);
     } else {
       setBalanceValidationError(null);
@@ -113,8 +112,7 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
 
   // Funzione per disabilitare giorni nel calendario
   const isDateDisabled = (date: Date, type: string): boolean => {
-    if (type === 'malattia') return false; // La malattia può essere registrata per qualsiasi giorno
-    
+    if (type === 'malattia') return false;
     return !isWorkingDay(date);
   };
 
@@ -123,7 +121,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
     
     setShowValidationErrors(false);
     
-    // Validazione aggiuntiva per giorni lavorativi
     let validationErrors: string[] = [];
     
     if (data.type === 'ferie' && data.date_from && data.date_to) {
@@ -139,7 +136,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
       return;
     }
 
-    // Verifica validazione bilancio finale
     if (balanceValidationError && data.type !== 'malattia') {
       return;
     }
@@ -184,7 +180,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
           <CardTitle>Nuova Richiesta</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Informazioni sui giorni lavorativi */}
           {workingDaysLabels.length > 0 && (
             <Alert className="mb-6 border-blue-200 bg-blue-50">
               <AlertCircle className="h-4 w-4 text-blue-600" />
@@ -198,7 +193,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
             </Alert>
           )}
 
-          {/* Informazioni bilancio */}
           {balanceValidation && watchedType !== 'malattia' && (
             <div className="mb-6">
               <LeaveBalanceDisplay 
@@ -208,7 +202,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
             </div>
           )}
 
-          {/* Errori di validazione */}
           {showValidationErrors && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
@@ -218,7 +211,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
             </Alert>
           )}
 
-          {/* Errore validazione bilancio */}
           {balanceValidationError && watchedType !== 'malattia' && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
@@ -337,7 +329,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
                     />
                   </div>
 
-                  {/* Preview conteggio giorni lavorativi per ferie */}
                   <WorkingDaysPreview 
                     startDate={watchedDateFrom}
                     endDate={watchedDateTo}
@@ -419,7 +410,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
                     />
                   </div>
 
-                  {/* Validazione per permessi in giorni non lavorativi */}
                   {watchedDay && !isWorkingDay(watchedDay) && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
@@ -433,13 +423,56 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
               )}
 
               {watchedType === 'malattia' && (
-                <Alert className="border-yellow-200 bg-yellow-50">
-                  <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-700">
-                    <strong>Nota:</strong> La malattia può essere registrata per qualsiasi giorno, 
-                    indipendentemente dalla configurazione dei giorni lavorativi e dal bilancio ferie/permessi.
-                  </AlertDescription>
-                </Alert>
+                <>
+                  <FormField
+                    control={form.control}
+                    name="day"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data della Malattia</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP", { locale: it })
+                                ) : (
+                                  <span>Seleziona data</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) => isDateDisabled(date, watchedType)}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Alert className="border-yellow-200 bg-yellow-50">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <AlertDescription className="text-yellow-700">
+                      <strong>Nota:</strong> La malattia può essere registrata per qualsiasi giorno, 
+                      indipendentemente dalla configurazione dei giorni lavorativi e dal bilancio ferie/permessi.
+                    </AlertDescription>
+                  </Alert>
+                </>
               )}
 
               <FormField
