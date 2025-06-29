@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,60 +58,44 @@ export default function DailyAttendanceCalendar() {
     }
   }, [selectedDateStr, employees]);
 
-  // Calcola i dipendenti in ferie usando le richieste approvate
-  const selectedDateLeaves = leaveRequests?.filter(request => {
-    if (request.status !== 'approved') return false;
+  // Funzione helper per verificare se un dipendente è in ferie approvate per la data selezionata
+  const isEmployeeOnApprovedLeave = (employeeId: string, dateStr: string) => {
+    if (!leaveRequests) return false;
     
-    if (request.type === 'ferie' && request.date_from && request.date_to) {
-      return selectedDateStr >= request.date_from && selectedDateStr <= request.date_to;
-    }
-    
-    if (request.type === 'permesso' && request.day) {
-      return request.day === selectedDateStr;
-    }
-    
-    return false;
-  }) || [];
+    return leaveRequests.some(request => {
+      if (request.user_id !== employeeId || request.status !== 'approved') return false;
+      
+      if (request.type === 'ferie' && request.date_from && request.date_to) {
+        return dateStr >= request.date_from && dateStr <= request.date_to;
+      }
+      
+      return false;
+    });
+  };
 
-  // Dipendenti in ferie
+  // Dipendenti in ferie - logica semplificata
   const onLeaveEmployees = [];
   employees?.forEach(employee => {
-    const activeLeave = selectedDateLeaves.find(leave => 
-      leave.type === 'ferie' && leave.user_id === employee.id
-    );
-    
-    if (activeLeave) {
-      const automaticAttendance = selectedDateAttendances.find(att => 
-        att.user_id === employee.id && att.notes === 'Ferie'
+    if (isEmployeeOnApprovedLeave(employee.id, selectedDateStr)) {
+      // Trova l'eventuale attendance record per questo dipendente
+      const attendance = selectedDateAttendances.find(att => att.user_id === employee.id);
+      
+      // Trova la richiesta di ferie corrispondente
+      const leave = leaveRequests?.find(request => 
+        request.user_id === employee.id && 
+        request.status === 'approved' &&
+        request.type === 'ferie' &&
+        request.date_from && 
+        request.date_to &&
+        selectedDateStr >= request.date_from &&
+        selectedDateStr <= request.date_to
       );
       
       onLeaveEmployees.push({
         ...employee,
-        attendance: automaticAttendance || null,
-        leave: activeLeave,
+        attendance: attendance || null,
+        leave: leave || null,
       });
-    } else {
-      const ferieAttendance = selectedDateAttendances.find(att => 
-        att.user_id === employee.id && att.notes === 'Ferie'
-      );
-      
-      if (ferieAttendance) {
-        const relatedLeave = leaveRequests?.find(leave => 
-          leave.type === 'ferie' && 
-          leave.user_id === employee.id && 
-          leave.status === 'approved' &&
-          leave.date_from && 
-          leave.date_to &&
-          selectedDateStr >= leave.date_from &&
-          selectedDateStr <= leave.date_to
-        );
-        
-        onLeaveEmployees.push({
-          ...employee,
-          attendance: ferieAttendance,
-          leave: relatedLeave || null,
-        });
-      }
     }
   });
 
@@ -121,9 +104,9 @@ export default function DailyAttendanceCalendar() {
     .filter(att => {
       if (!att.check_in_time) return false;
       
-      // Escludi se è in ferie
-      const isOnLeave = onLeaveEmployees.some(emp => emp.id === att.user_id);
-      if (isOnLeave) return false;
+      // Escludi se è in ferie approvate
+      const isOnApprovedLeave = isEmployeeOnApprovedLeave(att.user_id, selectedDateStr);
+      if (isOnApprovedLeave) return false;
       
       return true;
     })
@@ -139,11 +122,11 @@ export default function DailyAttendanceCalendar() {
     })
     .filter(emp => emp !== null);
 
-  // Ottieni i dipendenti assenti (escludendo quelli in ferie)
+  // Ottieni i dipendenti assenti (escludendo quelli in ferie approvate)
   const absentEmployees = relevantEmployeesForDate.filter(emp => {
     const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time);
-    const isOnLeave = onLeaveEmployees.some(leaveEmp => leaveEmp.id === emp.id);
-    return !hasAttendance && !isOnLeave;
+    const isOnApprovedLeave = isEmployeeOnApprovedLeave(emp.id, selectedDateStr);
+    return !hasAttendance && !isOnApprovedLeave;
   });
 
   // Ottieni i dipendenti non ancora assunti per questa data
