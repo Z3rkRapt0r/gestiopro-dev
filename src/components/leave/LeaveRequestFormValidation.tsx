@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +26,7 @@ export function LeaveRequestFormValidation({
 }: LeaveRequestValidationProps) {
   const { user } = useAuth();
 
+  // Usa staleTime più alto per ridurre le query ridondanti
   const { data: pendingRequests, isLoading } = useQuery({
     queryKey: ['pending-leave-requests', user?.id],
     queryFn: async () => {
@@ -41,40 +42,39 @@ export function LeaveRequestFormValidation({
       return data || [];
     },
     enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000, // 5 minuti per ridurre le query
+    refetchOnWindowFocus: false, // Evita refetch automatici
   });
 
-  const hasPendingRequest = pendingRequests && pendingRequests.length > 0;
-  const pendingRequest = hasPendingRequest ? pendingRequests[0] : null;
+  // Memoizza i calcoli per evitare re-render
+  const validationState = useMemo(() => {
+    const hasPendingRequest = pendingRequests && pendingRequests.length > 0;
+    const pendingRequest = hasPendingRequest ? pendingRequests[0] : null;
+    
+    return {
+      hasPendingRequest,
+      pendingRequest,
+      isValid: !hasPendingRequest,
+      message: hasPendingRequest ? 'Hai già una richiesta in attesa di approvazione' : ''
+    };
+  }, [pendingRequests]);
 
   // Gestisce i risultati delle validazioni
-  const [pendingValidation, setPendingValidation] = React.useState({ isValid: true, message: '' });
   const [overlapValidation, setOverlapValidation] = React.useState({ isValid: true, message: '' });
 
   // Combina i risultati delle validazioni
-  const overallValidation = React.useMemo(() => {
-    const isValid = pendingValidation.isValid && overlapValidation.isValid;
-    const messages = [pendingValidation.message, overlapValidation.message].filter(Boolean);
+  const overallValidation = useMemo(() => {
+    const isValid = validationState.isValid && overlapValidation.isValid;
+    const messages = [validationState.message, overlapValidation.message].filter(Boolean);
     return { isValid, message: messages.join(' ') };
-  }, [pendingValidation, overlapValidation]);
+  }, [validationState, overlapValidation]);
 
-  // Notifica il componente padre dello stato di validazione combinato
+  // Notifica il componente padre solo quando necessario
   React.useEffect(() => {
     if (onValidationChange) {
       onValidationChange(overallValidation.isValid, overallValidation.message);
     }
   }, [overallValidation, onValidationChange]);
-
-  // Gestisce la validazione delle richieste pending
-  React.useEffect(() => {
-    if (hasPendingRequest) {
-      setPendingValidation({
-        isValid: false,
-        message: 'Hai già una richiesta in attesa di approvazione'
-      });
-    } else {
-      setPendingValidation({ isValid: true, message: '' });
-    }
-  }, [hasPendingRequest]);
 
   if (isLoading) {
     return (
@@ -87,7 +87,7 @@ export function LeaveRequestFormValidation({
 
   // Wrapper con validazione richieste pending
   const PendingValidationWrapper = ({ children }: { children: React.ReactNode }) => {
-    if (hasPendingRequest) {
+    if (validationState.hasPendingRequest) {
       return (
         <div className="space-y-4">
           <Alert variant="destructive">
@@ -98,12 +98,12 @@ export function LeaveRequestFormValidation({
                   Non puoi inviare una nuova richiesta
                 </p>
                 <p>
-                  Hai già una richiesta di <strong>{pendingRequest?.type}</strong> in attesa di approvazione
-                  {pendingRequest?.date_from && pendingRequest?.date_to && (
-                    <span> dal {pendingRequest.date_from} al {pendingRequest.date_to}</span>
+                  Hai già una richiesta di <strong>{validationState.pendingRequest?.type}</strong> in attesa di approvazione
+                  {validationState.pendingRequest?.date_from && validationState.pendingRequest?.date_to && (
+                    <span> dal {validationState.pendingRequest.date_from} al {validationState.pendingRequest.date_to}</span>
                   )}
-                  {pendingRequest?.day && (
-                    <span> per il giorno {pendingRequest.day}</span>
+                  {validationState.pendingRequest?.day && (
+                    <span> per il giorno {validationState.pendingRequest.day}</span>
                   )}
                 </p>
                 <p className="text-sm text-muted-foreground">
