@@ -26,7 +26,6 @@ export function LeaveTypeSelector({ control }: LeaveTypeSelectorProps) {
             <SelectContent>
               <SelectItem value="ferie">Ferie</SelectItem>
               <SelectItem value="permesso">Permesso</SelectItem>
-              <SelectItem value="malattia">Malattia</SelectItem>
             </SelectContent>
           </Select>
           <FormMessage />

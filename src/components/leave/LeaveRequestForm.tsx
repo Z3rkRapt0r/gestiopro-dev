@@ -17,7 +17,6 @@ import { LeaveBalanceDisplay } from './LeaveBalanceDisplay';
 import { LeaveTypeSelector } from './LeaveTypeSelector';
 import { VacationFields } from './VacationFields';
 import { PermissionFields } from './PermissionFields';
-import { SickLeaveFields } from './SickLeaveFields';
 import { leaveRequestSchema, LeaveRequestFormData, LeaveRequestFormProps } from './types';
 
 export default function LeaveRequestForm({ type: defaultType, onSuccess }: LeaveRequestFormProps) {
@@ -41,7 +40,7 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
     defaultValues: {
-      type: (defaultType as 'ferie' | 'permesso' | 'malattia') || 'ferie',
+      type: (defaultType as 'ferie' | 'permesso') || 'ferie',
     },
   });
 
@@ -71,9 +70,9 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
     
     let validationErrors: string[] = [];
     
-    // Only validate working days for 'ferie' and 'permesso', not 'malattia'
+    // Validate working days for both types
     if (data.type === 'ferie' && data.date_from && data.date_to) {
-      validationErrors = validateWorkingDays(data.date_from, data.date_to, data.type);
+      validationErrors = validateWorkingDays(data.date_from, data.data_to, data.type);
     } else if (data.type === 'permesso' && data.day) {
       validationErrors = validateWorkingDays(data.day, data.day, data.type);
     }
@@ -83,7 +82,8 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
       return;
     }
 
-    if (balanceValidationError && data.type !== 'malattia') {
+    // Only check balance validation error if it exists
+    if (balanceValidationError) {
       return;
     }
 
@@ -104,122 +104,12 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
   };
 
   const workingDaysLabels = getWorkingDaysLabels();
+  
+  // Simplified canSubmit logic - don't block submission if balance is not configured
   const canSubmit = isFormValid && 
     !balanceValidationError && 
-    !insertMutation.isPending && 
-    (watchedType === 'malattia' || (balanceValidation?.hasBalance ?? false));
+    !insertMutation.isPending;
 
-  // Render del contenuto del form
-  const FormContent = () => (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Nuova Richiesta</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {workingDaysLabels.length > 0 && (
-          <Alert className="mb-6 border-blue-200 bg-blue-50">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-700">
-              <strong>Giorni lavorativi configurati:</strong> {workingDaysLabels.join(', ')}
-              <br />
-              <span className="text-sm">
-                Solo i giorni lavorativi verranno conteggiati per ferie e permessi.
-              </span>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {balanceValidation && watchedType !== 'malattia' && (
-          <div className="mb-6">
-            <LeaveBalanceDisplay 
-              balance={balanceValidation} 
-              isLoading={isLoadingBalance}
-            />
-          </div>
-        )}
-
-        {showValidationErrors && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Correggi gli errori di validazione dei giorni lavorativi prima di procedere.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {balanceValidationError && watchedType !== 'malattia' && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{balanceValidationError}</AlertDescription>
-          </Alert>
-        )}
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <LeaveTypeSelector control={form.control} />
-
-            {watchedType === 'ferie' && (
-              <VacationFields
-                control={form.control}
-                startDate={watchedDateFrom}
-                endDate={watchedDateTo}
-                isDateDisabled={(date) => isDateDisabled(date, watchedType)}
-              />
-            )}
-
-            {watchedType === 'permesso' && (
-              <PermissionFields
-                control={form.control}
-                selectedDay={watchedDay}
-                isDateDisabled={(date) => isDateDisabled(date, watchedType)}
-                isWorkingDay={isWorkingDay}
-                workingDaysLabels={workingDaysLabels}
-              />
-            )}
-
-            {watchedType === 'malattia' && (
-              <SickLeaveFields
-                control={form.control}
-                isDateDisabled={(date) => isDateDisabled(date, watchedType)}
-              />
-            )}
-
-            <FormField
-              control={form.control}
-              name="note"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Note (opzionale)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Aggiungi dettagli sulla tua richiesta..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={!canSubmit}
-            >
-              {insertMutation.isPending ? 'Invio in corso...' : 'Invia Richiesta'}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
-  );
-
-  // Render condizionale: per 'malattia' non usiamo LeaveRequestFormValidation
-  if (watchedType === 'malattia') {
-    return <FormContent />;
-  }
-
-  // Per 'ferie' e 'permesso' usiamo LeaveRequestFormValidation
   return (
     <LeaveRequestFormValidation
       leaveType={watchedType}
@@ -231,7 +121,113 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
         setFormValidationMessage(message || '');
       }}
     >
-      <FormContent />
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Nuova Richiesta</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {workingDaysLabels.length > 0 && (
+            <Alert className="mb-6 border-blue-200 bg-blue-50">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-700">
+                <strong>Giorni lavorativi configurati:</strong> {workingDaysLabels.join(', ')}
+                <br />
+                <span className="text-sm">
+                  Solo i giorni lavorativi verranno conteggiati per ferie e permessi.
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {balanceValidation && (
+            <div className="mb-6">
+              <LeaveBalanceDisplay 
+                balance={balanceValidation} 
+                isLoading={isLoadingBalance}
+              />
+            </div>
+          )}
+
+          {!balanceValidation && !isLoadingBalance && (
+            <Alert className="mb-6 border-yellow-200 bg-yellow-50">
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-700">
+                <strong>Attenzione:</strong> Il bilancio ferie/permessi non è ancora configurato per il tuo account.
+                <br />
+                <span className="text-sm">
+                  Puoi comunque inviare la richiesta, ma assicurati di verificare la disponibilità con l'amministratore.
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {showValidationErrors && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Correggi gli errori di validazione dei giorni lavorativi prima di procedere.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {balanceValidationError && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{balanceValidationError}</AlertDescription>
+            </Alert>
+          )}
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <LeaveTypeSelector control={form.control} />
+
+              {watchedType === 'ferie' && (
+                <VacationFields
+                  control={form.control}
+                  startDate={watchedDateFrom}
+                  endDate={watchedDateTo}
+                  isDateDisabled={(date) => isDateDisabled(date, watchedType)}
+                />
+              )}
+
+              {watchedType === 'permesso' && (
+                <PermissionFields
+                  control={form.control}
+                  selectedDay={watchedDay}
+                  isDateDisabled={(date) => isDateDisabled(date, watchedType)}
+                  isWorkingDay={isWorkingDay}
+                  workingDaysLabels={workingDaysLabels}
+                />
+              )}
+
+              <FormField
+                control={form.control}
+                name="note"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Note (opzionale)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Aggiungi dettagli sulla tua richiesta..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={!canSubmit}
+              >
+                {insertMutation.isPending ? 'Invio in corso...' : 'Invia Richiesta'}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </LeaveRequestFormValidation>
   );
 }

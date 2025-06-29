@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 export const leaveRequestSchema = z.object({
-  type: z.enum(['ferie', 'permesso', 'malattia']),
+  type: z.enum(['ferie', 'permesso']),
   date_from: z.date().optional(),
   date_to: z.date().optional(),
   day: z.date().optional(),

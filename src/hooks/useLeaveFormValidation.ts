@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useWorkingDaysValidation } from './useWorkingDaysValidation';
 import { useLeaveBalanceValidation } from './useLeaveBalanceValidation';
@@ -8,14 +9,15 @@ export function useLeaveFormValidation() {
   const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
 
   const validateBalanceForRequest = (
-    type: 'ferie' | 'permesso' | 'malattia',
+    type: 'ferie' | 'permesso',
     dateFrom?: Date,
     dateTo?: Date,
     day?: Date,
     timeFrom?: string,
     timeTo?: string
   ) => {
-    if (!balanceValidation || type === 'malattia') {
+    // Only validate balance if it exists
+    if (!balanceValidation) {
       setBalanceValidationError(null);
       return;
     }
@@ -49,7 +51,6 @@ export function useLeaveFormValidation() {
   };
 
   const isDateDisabled = (date: Date, type: string): boolean => {
-    if (type === 'malattia') return false;
     return !isWorkingDay(date);
   };
 

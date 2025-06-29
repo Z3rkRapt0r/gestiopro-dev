@@ -32,14 +32,8 @@ export function useLeaveBalanceValidation() {
       if (error) throw error;
 
       if (!balance) {
-        return {
-          hasBalance: false,
-          remainingVacationDays: 0,
-          remainingPermissionHours: 0,
-          exceedsVacationLimit: false,
-          exceedsPermissionLimit: false,
-          errorMessage: "Nessun bilancio configurato per l'anno corrente"
-        } as LeaveBalanceValidation;
+        // Return null instead of an error object - this allows the form to work without balance
+        return null;
       }
 
       const remainingVacationDays = Math.max(0, balance.vacation_days_total - balance.vacation_days_used);
@@ -69,9 +63,9 @@ export function useLeaveBalanceValidation() {
         hasBalance: false,
         remainingVacationDays: 0,
         remainingPermissionHours: 0,
-        exceedsVacationLimit: true,
-        exceedsPermissionLimit: true,
-        errorMessage: "Nessun bilancio configurato per l'anno corrente"
+        exceedsVacationLimit: false,
+        exceedsPermissionLimit: false,
+        errorMessage: "Bilancio non configurato - verifica con l'amministratore"
       };
     }
 

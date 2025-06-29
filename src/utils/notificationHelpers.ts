@@ -5,7 +5,7 @@ interface NotificationData {
   userId: string;
   title: string;
   message: string;
-  type: 'document' | 'system' | 'message' | 'announcement' | 'leave_request' | 'permission_request' | 'sick_leave';
+  type: 'document' | 'system' | 'message' | 'announcement' | 'leave_request' | 'permission_request';
   body?: string;
   createdBy?: string;
 }
@@ -42,20 +42,17 @@ export const createSystemNotification = async (data: NotificationData) => {
 export const notifyLeaveRequest = async (userId: string, requestType: string, dates: string) => {
   const typeMap = {
     'ferie': 'leave_request',
-    'permesso': 'permission_request',
-    'malattia': 'sick_leave'
+    'permesso': 'permission_request'
   } as const;
 
   const emojiMap = {
     'ferie': '🏖️',
-    'permesso': '📅',
-    'malattia': '🏥'
+    'permesso': '📅'
   } as const;
 
   const titleMap = {
     'ferie': 'Richiesta Ferie Inviata',
-    'permesso': 'Richiesta Permesso Inviata',
-    'malattia': 'Richiesta Malattia Inviata'
+    'permesso': 'Richiesta Permesso Inviata'
   } as const;
 
   return createSystemNotification({
@@ -89,15 +86,14 @@ export const notifyRequestStatusUpdate = async (
   
   const typeEmoji = {
     'ferie': '🏖️',
-    'permesso': '📅',
-    'malattia': '🏥'
+    'permesso': '📅'
   } as const;
 
   return createSystemNotification({
     userId,
     title: `Richiesta ${requestType} ${statusText}`,
     message: `${emoji} La tua richiesta di ${requestType} per ${dates} è stata ${statusText}.`,
-    type: requestType === 'ferie' ? 'leave_request' : requestType === 'permesso' ? 'permission_request' : 'sick_leave',
+    type: requestType === 'ferie' ? 'leave_request' : 'permission_request',
     body: adminNote ? `Note dell'amministratore: ${adminNote}` : undefined
   });
 };
