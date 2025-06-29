@@ -2,25 +2,19 @@
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Calendar as CalendarIcon, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useDailyAttendanceLogic } from '@/hooks/useDailyAttendanceLogic';
-import PresentEmployeesSection from './sections/PresentEmployeesSection';
-import AbsentEmployeesSection from './sections/AbsentEmployeesSection';
-import LeaveEmployeesSection from './sections/LeaveEmployeesSection';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
+import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 
 export default function DailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  
-  const {
-    isLoading,
-    presentEmployees,
-    employeesOnLeave,
-    absentEmployees,
-    notYetHiredEmployees,
-    datesWithAttendance
-  } = useDailyAttendanceLogic(selectedDate);
+  const { attendances, isLoading } = useUnifiedAttendances();
+  const { employees } = useActiveEmployees();
+  const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
 
   if (isLoading) {
     return (
@@ -36,9 +30,80 @@ export default function DailyAttendanceCalendar() {
     );
   }
 
+  // Ottieni le presenze per la data selezionata
+  const selectedDateStr = selectedDate?.toISOString().split('T')[0];
+  const selectedDateAttendances = attendances?.filter(att => att.date === selectedDateStr) || [];
+
+  // Funzione per filtrare i dipendenti che dovrebbero essere tracciati per la data selezionata
+  const getRelevantEmployeesForDate = async (dateStr: string) => {
+    if (!employees) return [];
+    
+    const relevantEmployees = [];
+    for (const emp of employees) {
+      const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, dateStr);
+      if (shouldTrack) {
+        relevantEmployees.push(emp);
+      }
+    }
+    return relevantEmployees;
+  };
+
+  const [relevantEmployeesForDate, setRelevantEmployeesForDate] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (selectedDateStr) {
+      getRelevantEmployeesForDate(selectedDateStr).then(setRelevantEmployeesForDate);
+    }
+  }, [selectedDateStr, employees]);
+
+  // Ottieni i dipendenti presenti
+  const presentEmployees = selectedDateAttendances
+    .filter(att => att.check_in_time)
+    .map(att => {
+      const employee = relevantEmployeesForDate.find(emp => emp.id === att.user_id);
+      return employee ? {
+        ...employee,
+        check_in_time: att.check_in_time,
+        check_out_time: att.check_out_time,
+        is_business_trip: att.is_business_trip,
+        is_sick_leave: att.is_sick_leave
+      } : null;
+    })
+    .filter(emp => emp !== null);
+
+  // Ottieni i dipendenti assenti (solo quelli che dovrebbero essere considerati per questa data)
+  const absentEmployees = relevantEmployeesForDate.filter(emp => {
+    const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time);
+    return !hasAttendance;
+  });
+
+  // Ottieni i dipendenti non ancora assunti per questa data
+  const notYetHiredEmployees = employees?.filter(emp => 
+    selectedDate && emp.hire_date && emp.tracking_start_type === 'from_hire_date' && 
+    new Date(selectedDate) < new Date(emp.hire_date)
+  ) || [];
+
+  // Ottieni le date con presenze per evidenziarle nel calendario
+  const datesWithAttendance = attendances?.filter(att => att.check_in_time).map(att => new Date(att.date)) || [];
+
+  const formatTime = (timeString: string | null) => {
+    if (!timeString) return '--:--';
+    
+    // Se è già in formato HH:MM, restituiscilo così com'è
+    if (/^\d{2}:\d{2}$/.test(timeString)) {
+      return timeString;
+    }
+    
+    // Altrimenti prova a parsarlo come timestamp
+    return new Date(timeString).toLocaleTimeString('it-IT', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-      {/* Calendar */}
+      {/* Calendario */}
       <Card className="xl:col-span-1">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -75,7 +140,7 @@ export default function DailyAttendanceCalendar() {
         </CardContent>
       </Card>
 
-      {/* Attendance Details */}
+      {/* Dettagli presenze */}
       <Card className="xl:col-span-2">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -84,22 +149,69 @@ export default function DailyAttendanceCalendar() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Present Employees */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Dipendenti Presenti */}
             <div>
-              <PresentEmployeesSection employees={presentEmployees} />
+              <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                Presenti ({presentEmployees.length})
+              </h3>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {presentEmployees.length > 0 ? (
+                  presentEmployees.map((employee) => (
+                    <div key={employee.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <span className="font-medium text-sm">
+                            {employee.first_name} {employee.last_name}
+                          </span>
+                          {employee.is_business_trip && (
+                            <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 text-xs">
+                              Trasferta
+                            </Badge>
+                          )}
+                          {employee.is_sick_leave && (
+                            <Badge variant="outline" className="ml-2 bg-red-50 text-red-700 text-xs">
+                              Malattia
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-600 text-right">
+                          <div>{formatTime(employee.check_in_time)}</div>
+                          <div>{formatTime(employee.check_out_time)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">Nessun dipendente presente</p>
+                )}
+              </div>
             </div>
 
-            {/* Employees on Leave */}
+            {/* Dipendenti Assenti */}
             <div>
-              <LeaveEmployeesSection employees={employeesOnLeave} />
-            </div>
+              <h3 className="font-semibold text-red-700 mb-3 flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                Assenti ({absentEmployees.length})
+              </h3>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {absentEmployees.length > 0 ? (
+                  absentEmployees.map((employee) => (
+                    <div key={employee.id} className="p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-sm">
+                          {employee.first_name} {employee.last_name}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">Tutti i dipendenti rilevanti sono presenti</p>
+                )}
+              </div>
 
-            {/* Absent Employees */}
-            <div>
-              <AbsentEmployeesSection employees={absentEmployees} />
-
-              {/* Employees not yet hired */}
+              {/* Dipendenti non ancora assunti */}
               {notYetHiredEmployees.length > 0 && (
                 <div className="mt-4">
                   <h4 className="font-medium text-gray-600 mb-2 text-sm">

@@ -7,13 +7,21 @@ interface Employee {
   id: string;
   first_name: string;
   last_name: string;
+  attendance?: any;
+  leave?: {
+    note?: string;
+    date_from?: string;
+    date_to?: string;
+  };
 }
 
 interface LeaveEmployeesSectionProps {
   employees: Employee[];
 }
 
-export default function LeaveEmployeesSection({ employees }: LeaveEmployeesSectionProps) {
+export default function LeaveEmployeesSection({ 
+  employees
+}: LeaveEmployeesSectionProps) {
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-purple-700 text-base mb-3 flex items-center gap-2">
@@ -34,6 +42,14 @@ export default function LeaveEmployeesSection({ employees }: LeaveEmployeesSecti
                       Ferie
                     </Badge>
                   </div>
+                  {employee.leave?.note && (
+                    <p className="text-xs text-gray-600">{employee.leave.note}</p>
+                  )}
+                  {employee.leave?.date_from && employee.leave.date_to && (
+                    <div className="text-xs text-purple-600 font-medium">
+                      Periodo: {format(new Date(employee.leave.date_from), 'dd/MM/yyyy')} - {format(new Date(employee.leave.date_to), 'dd/MM/yyyy')}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
