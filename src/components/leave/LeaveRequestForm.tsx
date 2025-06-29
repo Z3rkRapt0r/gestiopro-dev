@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -82,6 +81,7 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
       return;
     }
 
+    // Only call validateLeaveRequest for 'ferie' and 'permesso' types
     if (watchedType === 'ferie' && watchedDateFrom && watchedDateTo) {
       const validation = validateLeaveRequest(watchedType, watchedDateFrom, watchedDateTo);
       setBalanceValidationError(validation.errorMessage || null);
