@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWorkingDaysValidation } from './useWorkingDaysValidation';
 import { useLeaveBalanceValidation } from './useLeaveBalanceValidation';
 
@@ -7,12 +7,8 @@ export function useLeaveFormValidation() {
   const { isWorkingDay, countWorkingDays, getWorkingDaysLabels } = useWorkingDaysValidation();
   const { balanceValidation, validateLeaveRequest, isLoading: isLoadingBalance } = useLeaveBalanceValidation();
   const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
 
-  // Stabilizza le labels dei giorni lavorativi
-  const workingDaysLabels = useMemo(() => getWorkingDaysLabels(), [getWorkingDaysLabels]);
-
-  // Stabilizza la funzione di validazione del bilancio con useCallback
+  // Debounced validation to prevent continuous re-renders
   const validateBalanceForRequest = useCallback((
     type: 'ferie' | 'permesso',
     dateFrom?: Date,
@@ -21,19 +17,12 @@ export function useLeaveFormValidation() {
     timeFrom?: string,
     timeTo?: string
   ) => {
-    // Evita validazioni ridondanti se già in corso
-    if (isValidating) return;
-
-    setIsValidating(true);
-    
     // Clear previous errors first
     setBalanceValidationError(null);
 
-    // Se il bilancio non è configurato, non bloccare il form ma mostra un warning
+    // If balance is not configured, set a blocking error
     if (!balanceValidation) {
-      console.log('Bilancio non configurato, permettendo comunque il submit con warning');
-      setBalanceValidationError('Attenzione: Il bilancio ferie/permessi non è configurato. Contatta l\'amministratore.');
-      setIsValidating(false);
+      setBalanceValidationError('Il bilancio ferie/permessi deve essere configurato prima di poter inviare richieste.');
       return;
     }
 
@@ -45,11 +34,9 @@ export function useLeaveFormValidation() {
       const validation = validateLeaveRequest('permesso', null, null, day, timeFrom, timeTo);
       setBalanceValidationError(validation.errorMessage || null);
     }
+  }, [balanceValidation, validateLeaveRequest]);
 
-    setIsValidating(false);
-  }, [balanceValidation, validateLeaveRequest, isValidating]);
-
-  const validateWorkingDays = useCallback((startDate: Date, endDate: Date, type: string): string[] => {
+  const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
     
     if (type === 'ferie') {
@@ -64,26 +51,11 @@ export function useLeaveFormValidation() {
     }
     
     return errors;
-  }, [countWorkingDays, isWorkingDay]);
+  };
 
-  const isDateDisabled = useCallback((date: Date, type: string): boolean => {
+  const isDateDisabled = (date: Date, type: string): boolean => {
     return !isWorkingDay(date);
-  }, [isWorkingDay]);
-
-  // Determina se il form può essere inviato
-  const canSubmit = useMemo(() => {
-    // Se il bilancio non è configurato, permettiamo il submit con warning
-    if (!balanceValidation) {
-      return true;
-    }
-    
-    // Se c'è un errore di validazione che blocca (non un warning), blocca il submit
-    const hasBlockingError = balanceValidationError && 
-      !balanceValidationError.includes('Attenzione:') &&
-      !balanceValidationError.includes('non è configurato');
-    
-    return !hasBlockingError && !isValidating;
-  }, [balanceValidation, balanceValidationError, isValidating]);
+  };
 
   return {
     balanceValidation,
@@ -93,8 +65,6 @@ export function useLeaveFormValidation() {
     validateWorkingDays,
     isDateDisabled,
     isWorkingDay,
-    workingDaysLabels,
-    canSubmit,
-    isValidating,
+    getWorkingDaysLabels,
   };
 }

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
@@ -30,9 +30,7 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
     validateWorkingDays,
     isDateDisabled,
     isWorkingDay,
-    workingDaysLabels,
-    canSubmit: canSubmitFromValidation,
-    isValidating,
+    getWorkingDaysLabels,
   } = useLeaveFormValidation();
   
   const [showValidationErrors, setShowValidationErrors] = useState(false);
@@ -53,37 +51,23 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
   const watchedTimeFrom = form.watch('time_from');
   const watchedTimeTo = form.watch('time_to');
 
-  // Memoizza i valori per evitare re-render inutili
-  const formValues = useMemo(() => ({
-    type: watchedType,
-    dateFrom: watchedDateFrom,
-    dateTo: watchedDateTo,
-    day: watchedDay,
-    timeFrom: watchedTimeFrom,
-    timeTo: watchedTimeTo,
-  }), [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo]);
-
-  // Debounced balance validation con timeout più lungo
+  // Debounced balance validation to prevent continuous validation
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (!isValidating) {
-        console.log('Validating balance for:', formValues);
-        validateBalanceForRequest(
-          formValues.type,
-          formValues.dateFrom,
-          formValues.dateTo,
-          formValues.day,
-          formValues.timeFrom,
-          formValues.timeTo
-        );
-      }
-    }, 500); // Aumentato a 500ms per ridurre le chiamate
+      validateBalanceForRequest(
+        watchedType,
+        watchedDateFrom,
+        watchedDateTo,
+        watchedDay,
+        watchedTimeFrom,
+        watchedTimeTo
+      );
+    }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [formValues, validateBalanceForRequest, isValidating]);
+  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, validateBalanceForRequest]);
 
-  // Callback per il submit stabilizzato
-  const onSubmit = useCallback((data: LeaveRequestFormData) => {
+  const onSubmit = (data: LeaveRequestFormData) => {
     if (!profile?.id) return;
     
     console.log('Form submission attempt:', { data, balanceValidationError, isFormValid });
@@ -105,13 +89,9 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
       return;
     }
 
-    // Se il bilancio non è configurato, permettiamo comunque il submit
-    const hasBlockingBalanceError = balanceValidationError && 
-      !balanceValidationError.includes('Attenzione:') &&
-      !balanceValidationError.includes('non è configurato');
-
-    if (hasBlockingBalanceError) {
-      console.log('Blocking balance validation error:', balanceValidationError);
+    // Check for balance validation errors
+    if (balanceValidationError) {
+      console.log('Balance validation error:', balanceValidationError);
       return;
     }
 
@@ -131,36 +111,18 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
         if (onSuccess) onSuccess();
       }
     });
-  }, [profile?.id, balanceValidationError, isFormValid, validateWorkingDays, form, insertMutation, onSuccess]);
+  };
+
+  const workingDaysLabels = getWorkingDaysLabels();
   
-  // Calcola lo stato del submit
-  const canSubmit = useMemo(() => {
-    return canSubmitFromValidation && 
-           isFormValid && 
-           !insertMutation.isPending && 
-           !isValidating;
-  }, [canSubmitFromValidation, isFormValid, insertMutation.isPending, isValidating]);
-
-  // Determina se il bilancio è un warning (non bloccante) o un errore (bloccante)
-  const isBalanceWarning = useMemo(() => {
-    return balanceValidationError && (
-      balanceValidationError.includes('Attenzione:') ||
-      balanceValidationError.includes('non è configurato')
-    );
-  }, [balanceValidationError]);
-
-  const isBalanceError = useMemo(() => {
-    return balanceValidationError && !isBalanceWarning;
-  }, [balanceValidationError, isBalanceWarning]);
+  // Clear canSubmit logic - form is valid if there are no blocking errors
+  const canSubmit = isFormValid && !balanceValidationError && !insertMutation.isPending;
 
   console.log('Form state:', {
     isFormValid,
     balanceValidationError,
-    isBalanceWarning,
-    isBalanceError,
     canSubmit,
     isLoadingBalance,
-    isValidating,
     balanceValidation: !!balanceValidation
   });
 
@@ -203,13 +165,13 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
           )}
 
           {!balanceValidation && !isLoadingBalance && (
-            <Alert className="mb-6 border-yellow-200 bg-yellow-50">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-700">
-                <strong>Attenzione:</strong> Il bilancio ferie/permessi non è configurato per il tuo account.
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Errore:</strong> Il bilancio ferie/permessi non è configurato per il tuo account.
                 <br />
                 <span className="text-sm">
-                  Puoi comunque inviare la richiesta, ma contatta l'amministratore per configurare il bilancio.
+                  Contatta l'amministratore per configurare il bilancio prima di poter inviare richieste.
                 </span>
               </AlertDescription>
             </Alert>
@@ -224,14 +186,7 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
             </Alert>
           )}
 
-          {isBalanceWarning && (
-            <Alert className="mb-6 border-yellow-200 bg-yellow-50">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-700">{balanceValidationError}</AlertDescription>
-            </Alert>
-          )}
-
-          {isBalanceError && (
+          {balanceValidationError && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{balanceValidationError}</AlertDescription>
@@ -283,19 +238,13 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
                 className="w-full" 
                 disabled={!canSubmit}
               >
-                {insertMutation.isPending ? 'Invio in corso...' : 
-                 isValidating ? 'Validazione in corso...' : 
-                 'Invia Richiesta'}
+                {insertMutation.isPending ? 'Invio in corso...' : 'Invia Richiesta'}
               </Button>
               
               {/* Debug info - remove in production */}
               {process.env.NODE_ENV === 'development' && (
-                <div className="text-xs text-gray-500 mt-2 space-y-1">
-                  <div>canSubmit: {canSubmit.toString()}</div>
-                  <div>isValidating: {isValidating.toString()}</div>
-                  <div>balanceError: {!!balanceValidationError}</div>
-                  <div>formValid: {isFormValid.toString()}</div>
-                  <div>hasBalance: {!!balanceValidation}</div>
+                <div className="text-xs text-gray-500 mt-2">
+                  Debug: canSubmit={canSubmit.toString()}, balanceError={!!balanceValidationError}, formValid={isFormValid}
                 </div>
               )}
             </form>
