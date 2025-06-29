@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -85,14 +84,24 @@ export default function NewDailyAttendanceCalendar() {
 
   console.log('Presenze per la data selezionata:', selectedDateAttendances);
 
+  // CORREZIONE: Usa confronto stringhe invece di Date objects come nel calendario operatore
   const selectedDateLeaves = leaveRequests?.filter(request => {
     if (request.status !== 'approved') return false;
     
     if (request.type === 'ferie' && request.date_from && request.date_to) {
-      const leaveStart = new Date(request.date_from);
-      const leaveEnd = new Date(request.date_to);
-      const currentDate = selectedDate ? new Date(selectedDate) : new Date();
-      return currentDate >= leaveStart && currentDate <= leaveEnd;
+      // Debug per Gabriele
+      if (request.profiles?.first_name?.toLowerCase() === 'gabriele') {
+        console.log('🔍 DEBUG Gabriele nel calendario generale:', {
+          currentDateStr: selectedDateStr,
+          date_from: request.date_from,
+          date_to: request.date_to,
+          comparison: `${selectedDateStr} >= ${request.date_from} && ${selectedDateStr} <= ${request.date_to}`,
+          result: selectedDateStr >= request.date_from && selectedDateStr <= request.date_to
+        });
+      }
+      
+      // Usa confronto stringhe come nel calendario operatore
+      return selectedDateStr >= request.date_from && selectedDateStr <= request.date_to;
     }
     
     if (request.type === 'permesso' && request.day) {
@@ -101,6 +110,13 @@ export default function NewDailyAttendanceCalendar() {
     
     return false;
   }) || [];
+
+  console.log('🔍 Ferie per la data selezionata nel calendario generale:', selectedDateLeaves.map(leave => ({
+    user: leave.profiles?.first_name,
+    type: leave.type,
+    from: leave.date_from,
+    to: leave.date_to
+  })));
 
   // PRIMA: Calcola i dipendenti in trasferta (riorganizzato per essere calcolato per primo)
   const onBusinessTripEmployees = [];
