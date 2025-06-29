@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -143,18 +144,30 @@ export default function NewManualAttendanceForm() {
       return;
     }
     
-    if (formData.is_sick_leave && formData.date && formData.date_to) {
-      // Gestione range di date per malattia
+    if (formData.is_sick_leave) {
+      // CORREZIONE BUG: Gestione corretta malattia singola vs multipla
       const startDate = new Date(formData.date);
-      const endDate = new Date(formData.date_to);
+      let endDate;
+      
+      // Se date_to è vuoto o uguale a date, è una malattia di un solo giorno
+      if (!formData.date_to || formData.date_to === formData.date) {
+        endDate = new Date(formData.date); // Stesso giorno
+        console.log('Malattia singola - data:', formData.date);
+      } else {
+        endDate = new Date(formData.date_to);
+        console.log('Malattia multipla - dal:', formData.date, 'al:', formData.date_to);
+      }
       
       const dates = [];
       const currentDate = new Date(startDate);
       
+      // Genera le date del range (o singola data)
       while (currentDate <= endDate) {
         dates.push(new Date(currentDate).toISOString().split('T')[0]);
         currentDate.setDate(currentDate.getDate() + 1);
       }
+      
+      console.log('Date da creare per malattia:', dates);
       
       // Crea una presenza per ogni giorno nel range
       for (const date of dates) {
@@ -312,33 +325,42 @@ export default function NewManualAttendanceForm() {
             )}
 
             {formData.is_sick_leave ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="date">Data Inizio</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => {
-                      console.log('Data inizio malattia selezionata:', e.target.value);
-                      handleDateChange('date', e.target.value);
-                    }}
-                    required
-                  />
+              <div className="space-y-4">
+                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="text-sm font-medium text-orange-700 mb-2">Malattia:</div>
+                  <div className="text-xs text-orange-600">
+                    • Per un solo giorno: inserisci solo la data di inizio<br/>
+                    • Per più giorni: inserisci data di inizio e fine
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="date_to">Data Fine</Label>
-                  <Input
-                    id="date_to"
-                    type="date"
-                    value={formData.date_to}
-                    min={formData.date}
-                    onChange={(e) => {
-                      console.log('Data fine malattia selezionata:', e.target.value);
-                      handleDateChange('date_to', e.target.value);
-                    }}
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="date">Data Inizio</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => {
+                        console.log('Data inizio malattia selezionata:', e.target.value);
+                        handleDateChange('date', e.target.value);
+                      }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="date_to">Data Fine (opzionale)</Label>
+                    <Input
+                      id="date_to"
+                      type="date"
+                      value={formData.date_to}
+                      min={formData.date}
+                      onChange={(e) => {
+                        console.log('Data fine malattia selezionata:', e.target.value);
+                        handleDateChange('date_to', e.target.value);
+                      }}
+                      placeholder="Lascia vuoto per un solo giorno"
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -426,7 +448,7 @@ export default function NewManualAttendanceForm() {
 
             <Button 
               type="submit" 
-              disabled={isCreating || !formData.user_id || !formData.date || (formData.is_sick_leave && !formData.date_to) || !!validationError || !!conflictError} 
+              disabled={isCreating || !formData.user_id || !formData.date || !!validationError || !!conflictError} 
               className="w-full"
             >
               {isCreating ? 'Salvando...' : 
