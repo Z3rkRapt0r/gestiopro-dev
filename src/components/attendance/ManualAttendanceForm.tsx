@@ -69,7 +69,17 @@ export default function ManualAttendanceForm() {
       return;
     }
 
-    createManualAttendance(data);
+    // Transform the form data to match the expected type
+    const attendanceData = {
+      user_id: data.user_id,
+      date: data.date,
+      check_in_time: data.check_in_time || null,
+      check_out_time: data.check_out_time || null,
+      notes: data.notes || null,
+      is_sick_leave: false,
+    };
+
+    createManualAttendance(attendanceData);
     form.reset();
     setConflictError(null);
   };
