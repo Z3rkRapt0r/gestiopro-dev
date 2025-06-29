@@ -12,6 +12,7 @@ import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useBusinessTripValidation } from '@/hooks/useBusinessTripValidation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { format } from 'date-fns';
 
 export default function BusinessTripForm() {
   const { createTrip, isCreating } = useBusinessTrips();
@@ -27,6 +28,7 @@ export default function BusinessTripForm() {
     reason: '',
   });
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [conflictError, setConflictError] = useState<string | null>(null);
 
   const validateDates = async (startDate: string, endDate: string) => {
     if (!startDate || !profile?.id || !employees) return true;
@@ -45,22 +47,25 @@ export default function BusinessTripForm() {
         setValidationError(endValidation.message?.replace('la data selezionata', 'la data di fine') || 'Data di fine non valida');
         return false;
       }
-    }
 
-    // Controllo conflitti con congedi approvati
-    try {
-      const conflictResult = await validateTripConflicts(profile.id, startDate, endDate);
-      if (conflictResult.hasConflict) {
-        setValidationError(conflictResult.message || 'Conflitto con congedo esistente');
+      // Controllo conflitti COMPLETI con tutte le validazioni
+      try {
+        console.log('🔍 Inizio controllo conflitti completi trasferta');
+        const conflictResult = await validateTripConflicts(profile.id, startDate, endDate);
+        if (conflictResult.hasConflict) {
+          setConflictError(conflictResult.message || 'Conflitto rilevato con evento esistente');
+          setValidationError(null);
+          return false;
+        }
+      } catch (error) {
+        console.error('Errore validazione conflitti trasferta:', error);
+        setConflictError('Errore durante la validazione. Riprova.');
         return false;
       }
-    } catch (error) {
-      console.error('Errore validazione conflitti:', error);
-      setValidationError('Errore durante la validazione. Riprova.');
-      return false;
     }
 
     setValidationError(null);
+    setConflictError(null);
     return true;
   };
 
@@ -70,13 +75,42 @@ export default function BusinessTripForm() {
     const startDate = field === 'start_date' ? value : formData.start_date;
     const endDate = field === 'end_date' ? value : formData.end_date;
     
-    await validateDates(startDate, endDate);
+    // Solo se abbiamo entrambe le date, facciamo la validazione completa
+    if (startDate && endDate) {
+      await validateDates(startDate, endDate);
+    } else if (startDate && field === 'start_date') {
+      // Validazione base solo per data di inizio
+      const startValidation = isValidDateForEmployee(profile?.id || '', startDate, employees || []);
+      if (!startValidation.isValid) {
+        setValidationError(startValidation.message || 'Data di inizio non valida');
+      } else {
+        setValidationError(null);
+        setConflictError(null);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Verifica finale della validazione
+    // Controllo finale completo prima dell'invio
+    if (formData.start_date && formData.end_date && profile?.id) {
+      console.log('🔐 Controllo finale conflitti trasferta prima dell\'invio');
+      
+      try {
+        const finalCheck = await validateTripConflicts(profile.id, formData.start_date, formData.end_date);
+        if (finalCheck.hasConflict) {
+          setConflictError(finalCheck.message || 'Conflitto rilevato - creazione trasferta non consentita');
+          return;
+        }
+      } catch (error) {
+        console.error('Errore controllo finale trasferta:', error);
+        setConflictError('Errore durante il controllo finale. Riprova.');
+        return;
+      }
+    }
+    
+    // Verifica finale della validazione base
     const isValid = await validateDates(formData.start_date, formData.end_date);
     if (!isValid) {
       return;
@@ -90,6 +124,7 @@ export default function BusinessTripForm() {
       reason: '',
     });
     setValidationError(null);
+    setConflictError(null);
   };
 
   return (
@@ -102,7 +137,16 @@ export default function BusinessTripForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {validationError && (
+          {/* Errori di conflitto con priorità visiva */}
+          {conflictError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{conflictError}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Errori di validazione di base */}
+          {validationError && !conflictError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{validationError}</AlertDescription>
@@ -127,6 +171,7 @@ export default function BusinessTripForm() {
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => handleDateChange('end_date', e.target.value)}
+                min={formData.start_date}
                 required
               />
             </div>
@@ -155,7 +200,7 @@ export default function BusinessTripForm() {
 
           <Button 
             type="submit" 
-            disabled={isCreating || !!validationError} 
+            disabled={isCreating || !!validationError || !!conflictError} 
             className="w-full"
           >
             {isCreating ? 'Creando...' : 'Crea Trasferta'}
