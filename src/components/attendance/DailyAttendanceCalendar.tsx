@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,15 +35,24 @@ export default function DailyAttendanceCalendar() {
   const selectedDateStr = selectedDate?.toISOString().split('T')[0];
   const selectedDateAttendances = attendances?.filter(att => att.date === selectedDateStr) || [];
 
-  // Ottieni le ferie approvate per la data selezionata
+  // Migliora la logica per ottenere le ferie approvate per la data selezionata
   const selectedDateLeaves = leaveRequests?.filter(request => {
     if (request.status !== 'approved') return false;
     
-    if (request.type === 'ferie' && request.date_from && request.date_to) {
-      const leaveStart = new Date(request.date_from);
-      const leaveEnd = new Date(request.date_to);
-      const currentDate = selectedDate ? new Date(selectedDate) : new Date();
-      return currentDate >= leaveStart && currentDate <= leaveEnd;
+    if (request.type === 'ferie' && request.date_from && request.date_to && selectedDateStr) {
+      // Normalizza le date a formato YYYY-MM-DD per confronto diretto
+      const leaveStartStr = request.date_from;
+      const leaveEndStr = request.date_to;
+      
+      console.log(`Confronto ferie per dipendente ${request.user_id}:`, {
+        selectedDate: selectedDateStr,
+        leaveStart: leaveStartStr,
+        leaveEnd: leaveEndStr,
+        isInRange: selectedDateStr >= leaveStartStr && selectedDateStr <= leaveEndStr
+      });
+      
+      // Confronto diretto tra stringhe in formato YYYY-MM-DD
+      return selectedDateStr >= leaveStartStr && selectedDateStr <= leaveEndStr;
     }
     
     return false;
@@ -93,18 +101,22 @@ export default function DailyAttendanceCalendar() {
   // Ottieni i dipendenti in ferie
   const onLeaveEmployees = selectedDateLeaves.map(leave => {
     const employee = employees?.find(emp => emp.id === leave.user_id);
+    console.log(`Dipendente in ferie trovato:`, {
+      employeeId: leave.user_id,
+      employee: employee ? `${employee.first_name} ${employee.last_name}` : 'non trovato'
+    });
     return employee ? {
       ...employee,
       leave: leave
     } : null;
   }).filter(emp => emp !== null);
 
-  // Ottieni i dipendenti assenti (escludendo quelli in ferie)
+  // Ottieni i dipendenti assenti (escludendo quelli in ferie e quelli presenti)
   const absentEmployees = relevantEmployeesForDate.filter(emp => {
     const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time);
     const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id);
     
-    console.log(`Dipendente ${emp.first_name} ${emp.last_name}:`, {
+    console.log(`Dipendente ${emp.first_name} ${emp.last_name} (ID: ${emp.id}):`, {
       hasAttendance,
       isOnLeave,
       shouldBeAbsent: !hasAttendance && !isOnLeave
@@ -125,12 +137,10 @@ export default function DailyAttendanceCalendar() {
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
-    // Se è già in formato HH:MM, restituiscilo così com'è
     if (/^\d{2}:\d{2}$/.test(timeString)) {
       return timeString;
     }
     
-    // Altrimenti prova a parsarlo come timestamp
     return new Date(timeString).toLocaleTimeString('it-IT', {
       hour: '2-digit',
       minute: '2-digit'
