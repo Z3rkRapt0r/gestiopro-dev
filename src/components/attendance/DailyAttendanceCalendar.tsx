@@ -69,34 +69,30 @@ export default function DailyAttendanceCalendar() {
     }
   }, [selectedDateStr, employees]);
 
-  // Funzione helper migliorata per verificare se un dipendente è in ferie approvate per la data selezionata
+  // Funzione helper SEMPLIFICATA per verificare se un dipendente è in ferie approvate per la data selezionata
   const isEmployeeOnApprovedLeave = (employeeId: string, dateStr: string) => {
     if (!leaveRequests) return false;
-    
-    const currentDate = new Date(dateStr);
     
     const matchingRequest = leaveRequests.find(request => {
       if (request.user_id !== employeeId || request.status !== 'approved') return false;
       
       if (request.type === 'ferie' && request.date_from && request.date_to) {
-        const startDate = new Date(request.date_from);
-        const endDate = new Date(request.date_to);
-        
         // Debug specifico per Gabriele Bellante
         if (request.profiles?.first_name === 'Gabriele' && request.profiles?.last_name === 'Bellante') {
-          console.log('🔍 DEBUG Gabriele Bellante:', {
+          console.log('🔍 DEBUG Gabriele Bellante - Confronto stringhe:', {
             currentDateStr: dateStr,
-            currentDate: currentDate.toISOString(),
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
-            isInRange: currentDate >= startDate && currentDate <= endDate,
-            stringComparison: `${dateStr} >= ${request.date_from} && ${dateStr} <= ${request.date_to}`,
-            stringResult: dateStr >= request.date_from && dateStr <= request.date_to
+            date_from: request.date_from,
+            date_to: request.date_to,
+            comparison1: `${dateStr} >= ${request.date_from}`,
+            result1: dateStr >= request.date_from,
+            comparison2: `${dateStr} <= ${request.date_to}`,
+            result2: dateStr <= request.date_to,
+            finalResult: dateStr >= request.date_from && dateStr <= request.date_to
           });
         }
         
-        // Usa confronto con Date objects per maggiore precisione
-        return currentDate >= startDate && currentDate <= endDate;
+        // Usa confronto con stringhe come nel calendario operatore
+        return dateStr >= request.date_from && dateStr <= request.date_to;
       }
       
       return false;
@@ -116,16 +112,13 @@ export default function DailyAttendanceCalendar() {
       // Trova l'eventuale attendance record per questo dipendente
       const attendance = selectedDateAttendances.find(att => att.user_id === employee.id);
       
-      // Trova la richiesta di ferie corrispondente usando anche Date objects
+      // Trova la richiesta di ferie corrispondente usando confronto stringhe
       const leave = leaveRequests?.find(request => {
         if (request.user_id !== employee.id || request.status !== 'approved' || request.type !== 'ferie') return false;
         if (!request.date_from || !request.date_to) return false;
         
-        const currentDate = new Date(selectedDateStr);
-        const startDate = new Date(request.date_from);
-        const endDate = new Date(request.date_to);
-        
-        return currentDate >= startDate && currentDate <= endDate;
+        // Usa confronto stringhe come nella funzione principale
+        return selectedDateStr >= request.date_from && selectedDateStr <= request.date_to;
       });
       
       onLeaveEmployees.push({
