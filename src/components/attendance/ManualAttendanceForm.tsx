@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,21 +50,45 @@ export default function ManualAttendanceForm() {
     if (watchedUserId && watchedDate) {
       checkAttendanceConflicts(watchedUserId, watchedDate).then(result => {
         if (result.hasConflict) {
-          setConflictError(result.message || 'Conflitto rilevato');
+          const employee = employees?.find(emp => emp.id === watchedUserId);
+          const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'Il dipendente';
+          
+          let conflictMessage = '';
+          switch (result.conflictType) {
+            case 'business_trip':
+              conflictMessage = `🚫 ${employeeName} è in trasferta: ${result.conflictDetails}`;
+              break;
+            case 'ferie':
+              conflictMessage = `🏖️ ${employeeName} è in ferie: ${result.conflictDetails}`;
+              break;
+            case 'permesso':
+              conflictMessage = `📅 ${employeeName} ha un permesso: ${result.conflictDetails}`;
+              break;
+            case 'malattia':
+              conflictMessage = `🏥 ${employeeName} è in malattia: ${result.conflictDetails}`;
+              break;
+            default:
+              conflictMessage = `⚠️ ${result.message}`;
+          }
+          
+          setConflictError(conflictMessage);
         } else {
           setConflictError(null);
         }
+      }).catch(error => {
+        console.error('Errore controllo conflitti:', error);
+        setConflictError('Errore durante il controllo dei conflitti');
       });
     } else {
       setConflictError(null);
     }
-  }, [watchedUserId, watchedDate, checkAttendanceConflicts]);
+  }, [watchedUserId, watchedDate, checkAttendanceConflicts, employees]);
 
   const onSubmit = async (data: FormData) => {
     // Controllo finale dei conflitti prima dell'invio
     const conflictResult = await checkAttendanceConflicts(data.user_id, data.date);
     if (conflictResult.hasConflict) {
-      setConflictError(conflictResult.message || 'Conflitto rilevato');
+      setConflictError(conflictResult.message || 'Conflitto rilevato - inserimento non consentito');
       return;
     }
 

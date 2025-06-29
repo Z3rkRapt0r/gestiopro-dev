@@ -13,6 +13,7 @@ import { it } from "date-fns/locale";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { useAdminLeaveBalanceValidation } from "@/hooks/useAdminLeaveBalanceValidation";
+import { useAttendanceConflictValidation } from "@/hooks/useAttendanceConflictValidation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LeaveBalanceDisplay } from "./LeaveBalanceDisplay";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export function ManualLeaveEntryForm({
   const [note, setNote] = useState<string>("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
+  const [conflictError, setConflictError] = useState<string | null>(null);
 
   const {
     employees
@@ -50,8 +52,8 @@ export function ManualLeaveEntryForm({
     validateLeaveRequest,
     isLoading: isLoadingBalance
   } = useAdminLeaveBalanceValidation(selectedUserId);
+  const { checkAttendanceConflicts } = useAttendanceConflictValidation();
 
-  // Effetto per validare il bilancio quando cambiano i parametri
   useEffect(() => {
     if (!selectedUserId || !balanceValidation) {
       setBalanceValidationError(null);
@@ -68,7 +70,53 @@ export function ManualLeaveEntryForm({
     }
   }, [selectedUserId, leaveType, startDate, endDate, timeFrom, timeTo, permissionType, balanceValidation, validateLeaveRequest]);
 
-  // Funzione per validare le date rispetto alla data di assunzione
+  // Check for conflicts when user or dates change
+  useEffect(() => {
+    const checkConflicts = async () => {
+      if (!selectedUserId || !startDate) {
+        setConflictError(null);
+        return;
+      }
+
+      try {
+        const dateToCheck = format(startDate, 'yyyy-MM-dd');
+        const result = await checkAttendanceConflicts(selectedUserId, dateToCheck);
+        
+        if (result.hasConflict) {
+          const employee = employees?.find(emp => emp.id === selectedUserId);
+          const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'Il dipendente';
+          
+          let conflictMessage = '';
+          switch (result.conflictType) {
+            case 'business_trip':
+              conflictMessage = `🚫 ${employeeName} è già in trasferta: ${result.conflictDetails}`;
+              break;
+            case 'ferie':
+              conflictMessage = `🏖️ ${employeeName} è già in ferie: ${result.conflictDetails}`;
+              break;
+            case 'permesso':
+              conflictMessage = `📅 ${employeeName} ha già un permesso: ${result.conflictDetails}`;
+              break;
+            case 'malattia':
+              conflictMessage = `🏥 ${employeeName} è già in malattia: ${result.conflictDetails}`;
+              break;
+            default:
+              conflictMessage = `⚠️ ${result.message}`;
+          }
+          
+          setConflictError(conflictMessage);
+        } else {
+          setConflictError(null);
+        }
+      } catch (error) {
+        console.error('Errore controllo conflitti:', error);
+        setConflictError('Errore durante il controllo dei conflitti');
+      }
+    };
+
+    checkConflicts();
+  }, [selectedUserId, startDate, checkAttendanceConflicts, employees]);
+
   const validateDatesAgainstHireDate = (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
     const employee = employees?.find(emp => emp.id === employeeId);
@@ -109,12 +157,16 @@ export function ManualLeaveEntryForm({
       return;
     }
 
-    // Verifica finale della validazione date di assunzione
+    // Verifica finale dei conflitti
+    if (conflictError) {
+      alert(`Conflitto rilevato: ${conflictError}`);
+      return;
+    }
+
     if (!validateDatesAgainstHireDate(startDate, endDate, selectedUserId)) {
       return;
     }
 
-    // Verifica finale della validazione bilancio
     if (balanceValidationError) {
       alert(`Errore bilancio: ${balanceValidationError}`);
       return;
@@ -145,6 +197,7 @@ export function ManualLeaveEntryForm({
           setNote("");
           setValidationError(null);
           setBalanceValidationError(null);
+          setConflictError(null);
           onSuccess?.();
         }
       });
@@ -178,13 +231,14 @@ export function ManualLeaveEntryForm({
           setNote("");
           setValidationError(null);
           setBalanceValidationError(null);
+          setConflictError(null);
           onSuccess?.();
         }
       });
     }
   };
 
-  const canSubmit = selectedUserId && !validationError && !balanceValidationError && !insertMutation.isPending && balanceValidation?.hasBalance;
+  const canSubmit = selectedUserId && !validationError && !balanceValidationError && !conflictError && !insertMutation.isPending && balanceValidation?.hasBalance;
 
   return (
     <Card className="max-w-2xl mx-auto">
@@ -196,7 +250,6 @@ export function ManualLeaveEntryForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Selezione dipendente */}
           <div className="space-y-2">
             <Label htmlFor="employee">Dipendente *</Label>
             <Select value={selectedUserId} onValueChange={handleEmployeeChange}>
@@ -213,7 +266,6 @@ export function ManualLeaveEntryForm({
             </Select>
           </div>
 
-          {/* Informazioni bilancio */}
           {selectedUserId && balanceValidation && (
             <LeaveBalanceDisplay 
               balance={balanceValidation} 
@@ -221,7 +273,6 @@ export function ManualLeaveEntryForm({
             />
           )}
 
-          {/* Tipo di richiesta */}
           <div className="space-y-2">
             <Label>Tipo di richiesta *</Label>
             <Select value={leaveType} onValueChange={(value: "ferie" | "permesso") => setLeaveType(value)}>
@@ -234,6 +285,13 @@ export function ManualLeaveEntryForm({
               </SelectContent>
             </Select>
           </div>
+
+          {conflictError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{conflictError}</AlertDescription>
+            </Alert>
+          )}
 
           {validationError && (
             <Alert variant="destructive">
@@ -249,7 +307,6 @@ export function ManualLeaveEntryForm({
             </Alert>
           )}
 
-          {/* Avviso se non c'è bilancio */}
           {selectedUserId && balanceValidation && !balanceValidation.hasBalance && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -260,7 +317,6 @@ export function ManualLeaveEntryForm({
             </Alert>
           )}
 
-          {/* Date selection */}
           {leaveType === "ferie" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -321,7 +377,6 @@ export function ManualLeaveEntryForm({
             </div>
           ) : (
             <>
-              {/* Tipo permesso */}
               <div className="space-y-2">
                 <Label>Tipo permesso</Label>
                 <Select value={permissionType} onValueChange={(value: "giornaliero" | "orario") => setPermissionType(value)}>
@@ -335,7 +390,6 @@ export function ManualLeaveEntryForm({
                 </Select>
               </div>
 
-              {/* Data permesso */}
               <div className="space-y-2">
                 <Label>Data permesso *</Label>
                 <Popover>
@@ -364,7 +418,6 @@ export function ManualLeaveEntryForm({
                 </Popover>
               </div>
 
-              {/* Orari per permesso orario */}
               {permissionType === "orario" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -400,7 +453,6 @@ export function ManualLeaveEntryForm({
             </>
           )}
 
-          {/* Note */}
           <div className="space-y-2">
             <Label htmlFor="note">Note</Label>
             <Textarea

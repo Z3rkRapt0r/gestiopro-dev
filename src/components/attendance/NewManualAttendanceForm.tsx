@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UserPlus, AlertCircle } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { useAttendanceConflictValidation } from '@/hooks/useAttendanceConflictValidation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 
 export default function NewManualAttendanceForm() {
   const { createManualAttendance, isCreating } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
+  const { checkAttendanceConflicts } = useAttendanceConflictValidation();
   const [formData, setFormData] = useState({
     user_id: '',
     date: '',
@@ -23,11 +25,12 @@ export default function NewManualAttendanceForm() {
     check_out_time: '',
     notes: '',
     is_sick_leave: false,
-    is_permission: false, // Nuovo campo per permessi
-    permission_time_from: '', // Nuovo campo per orario inizio permesso
-    permission_time_to: '', // Nuovo campo per orario fine permesso
+    is_permission: false,
+    permission_time_from: '',
+    permission_time_to: '',
   });
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [conflictError, setConflictError] = useState<string | null>(null);
 
   // Funzione per validare le date rispetto alla data di assunzione
   const validateDatesAgainstHireDate = (startDate: string, endDate: string, employeeId: string) => {
@@ -56,12 +59,54 @@ export default function NewManualAttendanceForm() {
     return true;
   };
 
+  // Check for attendance conflicts
+  const checkConflicts = async (userId: string, date: string) => {
+    if (!userId || !date) {
+      setConflictError(null);
+      return;
+    }
+
+    try {
+      const result = await checkAttendanceConflicts(userId, date);
+      if (result.hasConflict) {
+        const employee = employees?.find(emp => emp.id === userId);
+        const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'Il dipendente';
+        
+        let conflictMessage = '';
+        switch (result.conflictType) {
+          case 'business_trip':
+            conflictMessage = `🚫 ${employeeName} è in trasferta: ${result.conflictDetails}`;
+            break;
+          case 'ferie':
+            conflictMessage = `🏖️ ${employeeName} è in ferie: ${result.conflictDetails}`;
+            break;
+          case 'permesso':
+            conflictMessage = `📅 ${employeeName} ha un permesso: ${result.conflictDetails}`;
+            break;
+          case 'malattia':
+            conflictMessage = `🏥 ${employeeName} è in malattia: ${result.conflictDetails}`;
+            break;
+          default:
+            conflictMessage = `⚠️ ${result.message}`;
+        }
+        
+        setConflictError(conflictMessage);
+      } else {
+        setConflictError(null);
+      }
+    } catch (error) {
+      console.error('Errore controllo conflitti:', error);
+      setConflictError('Errore durante il controllo dei conflitti');
+    }
+  };
+
   const handleEmployeeChange = (userId: string) => {
     setFormData(prev => ({ ...prev, user_id: userId }));
     
     // Valida immediatamente se ci sono date selezionate
     if (formData.date) {
       validateDatesAgainstHireDate(formData.date, formData.date_to, userId);
+      checkConflicts(userId, formData.date);
     }
   };
 
@@ -73,11 +118,25 @@ export default function NewManualAttendanceForm() {
       const startDate = field === 'date' ? value : formData.date;
       const endDate = field === 'date_to' ? value : formData.date_to;
       validateDatesAgainstHireDate(startDate, endDate, formData.user_id);
+      
+      // Controlla conflitti solo per la data principale
+      if (field === 'date' && value) {
+        checkConflicts(formData.user_id, value);
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Controllo finale dei conflitti
+    if (formData.user_id && formData.date) {
+      const conflictResult = await checkAttendanceConflicts(formData.user_id, formData.date);
+      if (conflictResult.hasConflict) {
+        setConflictError(conflictResult.message || 'Conflitto rilevato - inserimento non consentito');
+        return;
+      }
+    }
     
     // Verifica finale della validazione
     if (!validateDatesAgainstHireDate(formData.date, formData.date_to, formData.user_id)) {
@@ -164,6 +223,7 @@ export default function NewManualAttendanceForm() {
       permission_time_to: '',
     });
     setValidationError(null);
+    setConflictError(null);
   };
 
   return (
@@ -203,7 +263,7 @@ export default function NewManualAttendanceForm() {
                     setFormData(prev => ({ 
                       ...prev, 
                       is_sick_leave: checked as boolean,
-                      is_permission: false, // Reset permesso se selezioni malattia
+                      is_permission: false,
                       check_in_time: checked ? '' : prev.check_in_time,
                       check_out_time: checked ? '' : prev.check_out_time,
                       permission_time_from: '',
@@ -224,7 +284,7 @@ export default function NewManualAttendanceForm() {
                     setFormData(prev => ({ 
                       ...prev, 
                       is_permission: checked as boolean,
-                      is_sick_leave: false, // Reset malattia se selezioni permesso
+                      is_sick_leave: false,
                       check_in_time: '',
                       check_out_time: ''
                     }));
@@ -235,6 +295,14 @@ export default function NewManualAttendanceForm() {
                 </Label>
               </div>
             </div>
+
+            {/* Error alerts */}
+            {conflictError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{conflictError}</AlertDescription>
+              </Alert>
+            )}
 
             {validationError && (
               <Alert variant="destructive">
@@ -358,7 +426,7 @@ export default function NewManualAttendanceForm() {
 
             <Button 
               type="submit" 
-              disabled={isCreating || !formData.user_id || !formData.date || (formData.is_sick_leave && !formData.date_to) || !!validationError} 
+              disabled={isCreating || !formData.user_id || !formData.date || (formData.is_sick_leave && !formData.date_to) || !!validationError || !!conflictError} 
               className="w-full"
             >
               {isCreating ? 'Salvando...' : 
