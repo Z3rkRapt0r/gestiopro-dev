@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,17 +8,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Clock, User, AlertCircle, Info } from "lucide-react";
+import { CalendarIcon, Clock, User, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { useAdminLeaveBalanceValidation } from "@/hooks/useAdminLeaveBalanceValidation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LeaveBalanceDisplay } from "./LeaveBalanceDisplay";
 import { cn } from "@/lib/utils";
+
 interface ManualLeaveEntryFormProps {
   onSuccess?: () => void;
 }
+
 export function ManualLeaveEntryForm({
   onSuccess
 }: ManualLeaveEntryFormProps) {
@@ -35,6 +39,7 @@ export function ManualLeaveEntryForm({
   const [note, setNote] = useState<string>("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
+
   const {
     employees
   } = useActiveEmployees();
@@ -81,19 +86,23 @@ export function ManualLeaveEntryForm({
     setValidationError(null);
     return true;
   };
+
   const handleEmployeeChange = (userId: string) => {
     setSelectedUserId(userId);
     // Valida immediatamente se ci sono date selezionate
     validateDatesAgainstHireDate(startDate, endDate, userId);
   };
+
   const handleStartDateChange = (date: Date | undefined) => {
     setStartDate(date);
     validateDatesAgainstHireDate(date, endDate, selectedUserId);
   };
+
   const handleEndDateChange = (date: Date | undefined) => {
     setEndDate(date);
     validateDatesAgainstHireDate(startDate, date, selectedUserId);
   };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) {
@@ -111,6 +120,7 @@ export function ManualLeaveEntryForm({
       alert(`Errore bilancio: ${balanceValidationError}`);
       return;
     }
+
     if (leaveType === "ferie") {
       if (!startDate || !endDate) {
         alert("Seleziona le date di inizio e fine per le ferie");
@@ -174,8 +184,11 @@ export function ManualLeaveEntryForm({
       });
     }
   };
+
   const canSubmit = selectedUserId && !validationError && !balanceValidationError && !insertMutation.isPending && balanceValidation?.hasBalance;
-  return <Card className="max-w-2xl mx-auto">
+
+  return (
+    <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="w-5 h-5" />
@@ -192,20 +205,27 @@ export function ManualLeaveEntryForm({
                 <SelectValue placeholder="Seleziona un dipendente" />
               </SelectTrigger>
               <SelectContent>
-                {employees?.map(employee => <SelectItem key={employee.id} value={employee.id}>
+                {employees?.map(employee => (
+                  <SelectItem key={employee.id} value={employee.id}>
                     {employee.first_name} {employee.last_name} ({employee.email})
-                  </SelectItem>)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           {/* Informazioni bilancio */}
-          {selectedUserId && balanceValidation}
+          {selectedUserId && balanceValidation && (
+            <LeaveBalanceDisplay 
+              balance={balanceValidation} 
+              isLoading={isLoadingBalance}
+            />
+          )}
 
           {/* Tipo di richiesta */}
           <div className="space-y-2">
             <Label>Tipo di richiesta *</Label>
-            <Select value={leaveType} onValueChange={(value: "ferie" | "permesso") => setLeaveType(value)}>
+            <Select value={leaveType} onValueChange={setLeaveType}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -216,37 +236,58 @@ export function ManualLeaveEntryForm({
             </Select>
           </div>
 
-          {validationError && <Alert variant="destructive">
+          {validationError && (
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{validationError}</AlertDescription>
-            </Alert>}
+            </Alert>
+          )}
 
-          {balanceValidationError}
+          {balanceValidationError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{balanceValidationError}</AlertDescription>
+            </Alert>
+          )}
 
           {/* Avviso se non c'è bilancio */}
-          {selectedUserId && balanceValidation && !balanceValidation.hasBalance && <Alert>
+          {selectedUserId && balanceValidation && !balanceValidation.hasBalance && (
+            <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 Impossibile inserire ferie o permessi: il dipendente non ha un bilancio configurato per l'anno corrente.
                 Configura prima il bilancio nella sezione "Impostazioni Ferie/Permessi".
               </AlertDescription>
-            </Alert>}
+            </Alert>
+          )}
 
           {/* Date selection */}
-          {leaveType === "ferie" ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {leaveType === "ferie" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Data inizio ferie *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "dd/MM/yyyy", {
-                    locale: it
-                  }) : "Seleziona data"}
+                      {startDate ? format(startDate, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={startDate} onSelect={handleStartDateChange} disabled={date => date < new Date()} locale={it} initialFocus />
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={handleStartDateChange}
+                      disabled={date => date < new Date()}
+                      locale={it}
+                      initialFocus
+                    />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -255,23 +296,36 @@ export function ManualLeaveEntryForm({
                 <Label>Data fine ferie *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "dd/MM/yyyy", {
-                    locale: it
-                  }) : "Seleziona data"}
+                      {endDate ? format(endDate, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={endDate} onSelect={handleEndDateChange} disabled={date => date < (startDate || new Date())} locale={it} initialFocus />
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={handleEndDateChange}
+                      disabled={date => date < (startDate || new Date())}
+                      locale={it}
+                      initialFocus
+                    />
                   </PopoverContent>
                 </Popover>
               </div>
-            </div> : <>
+            </div>
+          ) : (
+            <>
               {/* Tipo permesso */}
               <div className="space-y-2">
                 <Label>Tipo permesso</Label>
-                <Select value={permissionType} onValueChange={(value: "giornaliero" | "orario") => setPermissionType(value)}>
+                <Select value={permissionType} onValueChange={setPermissionType}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -287,42 +341,76 @@ export function ManualLeaveEntryForm({
                 <Label>Data permesso *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "dd/MM/yyyy", {
-                    locale: it
-                  }) : "Seleziona data"}
+                      {startDate ? format(startDate, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={startDate} onSelect={handleStartDateChange} disabled={date => date < new Date()} locale={it} initialFocus />
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={handleStartDateChange}
+                      disabled={date => date < new Date()}
+                      locale={it}
+                      initialFocus
+                    />
                   </PopoverContent>
                 </Popover>
               </div>
 
               {/* Orari per permesso orario */}
-              {permissionType === "orario" && <div className="grid grid-cols-2 gap-4">
+              {permissionType === "orario" && (
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="timeFrom">Ora inizio *</Label>
                     <div className="relative">
                       <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input id="timeFrom" type="time" value={timeFrom} onChange={e => setTimeFrom(e.target.value)} className="pl-10" required />
+                      <Input
+                        id="timeFrom"
+                        type="time"
+                        value={timeFrom}
+                        onChange={e => setTimeFrom(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="timeTo">Ora fine *</Label>
                     <div className="relative">
                       <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input id="timeTo" type="time" value={timeTo} onChange={e => setTimeTo(e.target.value)} className="pl-10" required />
+                      <Input
+                        id="timeTo"
+                        type="time"
+                        value={timeTo}
+                        onChange={e => setTimeTo(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
                     </div>
                   </div>
-                </div>}
-            </>}
+                </div>
+              )}
+            </>
+          )}
 
           {/* Note */}
           <div className="space-y-2">
             <Label htmlFor="note">Note</Label>
-            <Textarea id="note" placeholder="Note aggiuntive (opzionale)" value={note} onChange={e => setNote(e.target.value)} rows={3} />
+            <Textarea
+              id="note"
+              placeholder="Note aggiuntive (opzionale)"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              rows={3}
+            />
           </div>
 
           <Button type="submit" className="w-full" disabled={!canSubmit}>
@@ -330,5 +418,6 @@ export function ManualLeaveEntryForm({
           </Button>
         </form>
       </CardContent>
-    </Card>;
+    </Card>
+  );
 }
