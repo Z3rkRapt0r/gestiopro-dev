@@ -7,18 +7,16 @@ import { Calendar as CalendarIcon, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
-import { useAllActiveUsers } from '@/hooks/useAllActiveUsers';
+import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
-import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 
 export default function DailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { attendances, isLoading } = useUnifiedAttendances();
-  const { users, loading: usersLoading } = useAllActiveUsers();
-  const { leaveRequests } = useLeaveRequests();
+  const { employees } = useActiveEmployees();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
 
-  if (isLoading || usersLoading) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -36,62 +34,35 @@ export default function DailyAttendanceCalendar() {
   const selectedDateStr = selectedDate?.toISOString().split('T')[0];
   const selectedDateAttendances = attendances?.filter(att => att.date === selectedDateStr) || [];
 
-  // Migliora la logica per ottenere le ferie approvate per la data selezionata
-  const selectedDateLeaves = leaveRequests?.filter(request => {
-    if (request.status !== 'approved') return false;
+  // Funzione per filtrare i dipendenti che dovrebbero essere tracciati per la data selezionata
+  const getRelevantEmployeesForDate = async (dateStr: string) => {
+    if (!employees) return [];
     
-    if (request.type === 'ferie' && request.date_from && request.date_to && selectedDateStr) {
-      // Normalizza le date a formato YYYY-MM-DD per confronto diretto
-      const leaveStartStr = request.date_from;
-      const leaveEndStr = request.date_to;
-      
-      console.log(`Confronto ferie per dipendente ${request.user_id}:`, {
-        selectedDate: selectedDateStr,
-        leaveStart: leaveStartStr,
-        leaveEnd: leaveEndStr,
-        isInRange: selectedDateStr >= leaveStartStr && selectedDateStr <= leaveEndStr
-      });
-      
-      // Confronto diretto tra stringhe in formato YYYY-MM-DD
-      return selectedDateStr >= leaveStartStr && selectedDateStr <= leaveEndStr;
-    }
-    
-    return false;
-  }) || [];
-
-  console.log('Data selezionata:', selectedDateStr);
-  console.log('Ferie approvate per questa data:', selectedDateLeaves);
-  console.log('Utenti disponibili:', users?.map(u => ({ id: u.id, name: `${u.first_name} ${u.last_name}`, role: u.role })));
-
-  // Funzione per filtrare gli utenti che dovrebbero essere tracciati per la data selezionata
-  const getRelevantUsersForDate = async (dateStr: string) => {
-    if (!users) return [];
-    
-    const relevantUsers = [];
-    for (const user of users) {
-      const shouldTrack = await shouldTrackEmployeeOnDate(user.id, dateStr);
+    const relevantEmployees = [];
+    for (const emp of employees) {
+      const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, dateStr);
       if (shouldTrack) {
-        relevantUsers.push(user);
+        relevantEmployees.push(emp);
       }
     }
-    return relevantUsers;
+    return relevantEmployees;
   };
 
-  const [relevantUsersForDate, setRelevantUsersForDate] = useState<any[]>([]);
+  const [relevantEmployeesForDate, setRelevantEmployeesForDate] = useState<any[]>([]);
 
   React.useEffect(() => {
     if (selectedDateStr) {
-      getRelevantUsersForDate(selectedDateStr).then(setRelevantUsersForDate);
+      getRelevantEmployeesForDate(selectedDateStr).then(setRelevantEmployeesForDate);
     }
-  }, [selectedDateStr, users]);
+  }, [selectedDateStr, employees]);
 
-  // Ottieni gli utenti presenti
+  // Ottieni i dipendenti presenti
   const presentEmployees = selectedDateAttendances
-    .filter(att => att.check_in_time && !att.is_sick_leave)
+    .filter(att => att.check_in_time)
     .map(att => {
-      const user = relevantUsersForDate.find(u => u.id === att.user_id);
-      return user ? {
-        ...user,
+      const employee = relevantEmployeesForDate.find(emp => emp.id === att.user_id);
+      return employee ? {
+        ...employee,
         check_in_time: att.check_in_time,
         check_out_time: att.check_out_time,
         is_business_trip: att.is_business_trip,
@@ -100,37 +71,16 @@ export default function DailyAttendanceCalendar() {
     })
     .filter(emp => emp !== null);
 
-  // Ottieni gli utenti in ferie
-  const onLeaveEmployees = selectedDateLeaves.map(leave => {
-    const user = users?.find(u => u.id === leave.user_id);
-    console.log(`Dipendente in ferie trovato:`, {
-      employeeId: leave.user_id,
-      user: user ? `${user.first_name} ${user.last_name} (${user.role})` : 'non trovato'
-    });
-    return user ? {
-      ...user,
-      leave: leave
-    } : null;
-  }).filter(emp => emp !== null);
-
-  // Ottieni gli utenti assenti (escludendo quelli in ferie e quelli presenti)
-  const absentEmployees = relevantUsersForDate.filter(user => {
-    const hasAttendance = selectedDateAttendances.some(att => att.user_id === user.id && att.check_in_time);
-    const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === user.id);
-    
-    console.log(`Utente ${user.first_name} ${user.last_name} (ID: ${user.id}, Role: ${user.role}):`, {
-      hasAttendance,
-      isOnLeave,
-      shouldBeAbsent: !hasAttendance && !isOnLeave
-    });
-    
-    return !hasAttendance && !isOnLeave;
+  // Ottieni i dipendenti assenti (solo quelli che dovrebbero essere considerati per questa data)
+  const absentEmployees = relevantEmployeesForDate.filter(emp => {
+    const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time);
+    return !hasAttendance;
   });
 
-  // Ottieni gli utenti non ancora assunti per questa data
-  const notYetHiredEmployees = users?.filter(user => 
-    selectedDate && user.hire_date && user.tracking_start_type === 'from_hire_date' && 
-    new Date(selectedDate) < new Date(user.hire_date)
+  // Ottieni i dipendenti non ancora assunti per questa data
+  const notYetHiredEmployees = employees?.filter(emp => 
+    selectedDate && emp.hire_date && emp.tracking_start_type === 'from_hire_date' && 
+    new Date(selectedDate) < new Date(emp.hire_date)
   ) || [];
 
   // Ottieni le date con presenze per evidenziarle nel calendario
@@ -139,10 +89,12 @@ export default function DailyAttendanceCalendar() {
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
     
+    // Se è già in formato HH:MM, restituiscilo così com'è
     if (/^\d{2}:\d{2}$/.test(timeString)) {
       return timeString;
     }
     
+    // Altrimenti prova a parsarlo come timestamp
     return new Date(timeString).toLocaleTimeString('it-IT', {
       hour: '2-digit',
       minute: '2-digit'
@@ -197,8 +149,8 @@ export default function DailyAttendanceCalendar() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Utenti Presenti */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Dipendenti Presenti */}
             <div>
               <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -213,11 +165,6 @@ export default function DailyAttendanceCalendar() {
                           <span className="font-medium text-sm">
                             {employee.first_name} {employee.last_name}
                           </span>
-                          {employee.role === 'admin' && (
-                            <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 text-xs">
-                              Admin
-                            </Badge>
-                          )}
                           {employee.is_business_trip && (
                             <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 text-xs">
                               Trasferta
@@ -237,53 +184,12 @@ export default function DailyAttendanceCalendar() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-sm">Nessun utente presente</p>
+                  <p className="text-gray-500 text-sm">Nessun dipendente presente</p>
                 )}
               </div>
             </div>
 
-            {/* Utenti in Ferie */}
-            <div>
-              <h3 className="font-semibold text-purple-700 mb-3 flex items-center gap-2">
-                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                In Ferie ({onLeaveEmployees.length})
-              </h3>
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {onLeaveEmployees.length > 0 ? (
-                  onLeaveEmployees.map((employee) => (
-                    <div key={employee.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <span className="font-medium text-sm">
-                            {employee.first_name} {employee.last_name}
-                          </span>
-                          {employee.role === 'admin' && (
-                            <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 text-xs">
-                              Admin
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700 text-xs">
-                            Ferie
-                          </Badge>
-                          {employee.leave?.note && (
-                            <p className="text-xs text-gray-600 mt-1">{employee.leave.note}</p>
-                          )}
-                          {employee.leave?.date_from && employee.leave.date_to && (
-                            <div className="text-xs text-purple-600 mt-1">
-                              {format(new Date(employee.leave.date_from), 'dd/MM')} - {format(new Date(employee.leave.date_to), 'dd/MM')}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">Nessun utente in ferie</p>
-                )}
-              </div>
-            </div>
-
-            {/* Utenti Assenti */}
+            {/* Dipendenti Assenti */}
             <div>
               <h3 className="font-semibold text-red-700 mb-3 flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full"></div>
@@ -294,25 +200,18 @@ export default function DailyAttendanceCalendar() {
                   absentEmployees.map((employee) => (
                     <div key={employee.id} className="p-3 bg-red-50 rounded-lg border border-red-200">
                       <div className="flex justify-between items-center">
-                        <div className="flex-1">
-                          <span className="font-medium text-sm">
-                            {employee.first_name} {employee.last_name}
-                          </span>
-                          {employee.role === 'admin' && (
-                            <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 text-xs">
-                              Admin
-                            </Badge>
-                          )}
-                        </div>
+                        <span className="font-medium text-sm">
+                          {employee.first_name} {employee.last_name}
+                        </span>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-sm">Tutti gli utenti rilevanti sono giustificati</p>
+                  <p className="text-gray-500 text-sm">Tutti i dipendenti rilevanti sono presenti</p>
                 )}
               </div>
 
-              {/* Utenti non ancora assunti */}
+              {/* Dipendenti non ancora assunti */}
               {notYetHiredEmployees.length > 0 && (
                 <div className="mt-4">
                   <h4 className="font-medium text-gray-600 mb-2 text-sm">
@@ -322,16 +221,9 @@ export default function DailyAttendanceCalendar() {
                     {notYetHiredEmployees.map((employee) => (
                       <div key={employee.id} className="p-2 bg-gray-50 rounded border border-gray-200">
                         <div className="flex justify-between items-center">
-                          <div className="flex-1">
-                            <span className="text-sm text-gray-600">
-                              {employee.first_name} {employee.last_name}
-                            </span>
-                            {employee.role === 'admin' && (
-                              <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 text-xs">
-                                Admin
-                              </Badge>
-                            )}
-                          </div>
+                          <span className="text-sm text-gray-600">
+                            {employee.first_name} {employee.last_name}
+                          </span>
                           <span className="text-xs text-gray-500">
                             Assunto: {employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'}
                           </span>
