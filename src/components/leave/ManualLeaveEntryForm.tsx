@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -225,7 +224,7 @@ export function ManualLeaveEntryForm({
           {/* Tipo di richiesta */}
           <div className="space-y-2">
             <Label>Tipo di richiesta *</Label>
-            <Select value={leaveType} onValueChange={setLeaveType}>
+            <Select value={leaveType} onValueChange={(value: "ferie" | "permesso") => setLeaveType(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -325,7 +324,7 @@ export function ManualLeaveEntryForm({
               {/* Tipo permesso */}
               <div className="space-y-2">
                 <Label>Tipo permesso</Label>
-                <Select value={permissionType} onValueChange={setPermissionType}>
+                <Select value={permissionType} onValueChange={(value: "giornaliero" | "orario") => setPermissionType(value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
