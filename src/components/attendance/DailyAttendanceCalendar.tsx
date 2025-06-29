@@ -9,12 +9,17 @@ import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
+import { useLeaveRequests } from '@/hooks/useLeaveRequests';
+import PresentEmployeesSection from './sections/PresentEmployeesSection';
+import AbsentEmployeesSection from './sections/AbsentEmployeesSection';
+import LeaveEmployeesSection from './sections/LeaveEmployeesSection';
 
 export default function DailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
+  const { leaveRequests } = useLeaveRequests();
 
   if (isLoading) {
     return (
@@ -56,6 +61,27 @@ export default function DailyAttendanceCalendar() {
     }
   }, [selectedDateStr, employees]);
 
+  // Ottieni i dipendenti in ferie per la data selezionata
+  const employeesOnLeave = relevantEmployeesForDate.filter(employee => {
+    if (!leaveRequests) return false;
+    
+    return leaveRequests.some(request => {
+      if (request.status !== 'approved' || request.user_id !== employee.id) return false;
+      
+      // Gestisci ferie (con date_from e date_to)
+      if (request.type === 'ferie' && request.date_from && request.date_to) {
+        return selectedDateStr >= request.date_from && selectedDateStr <= request.date_to;
+      }
+      
+      // Gestisci permesso giornaliero (con day)
+      if (request.type === 'permesso' && request.day && !request.time_from && !request.time_to) {
+        return selectedDateStr === request.day;
+      }
+      
+      return false;
+    });
+  });
+
   // Ottieni i dipendenti presenti
   const presentEmployees = selectedDateAttendances
     .filter(att => att.check_in_time)
@@ -71,10 +97,11 @@ export default function DailyAttendanceCalendar() {
     })
     .filter(emp => emp !== null);
 
-  // Ottieni i dipendenti assenti (solo quelli che dovrebbero essere considerati per questa data)
+  // Ottieni i dipendenti assenti (escludendo quelli in ferie e quelli presenti)
   const absentEmployees = relevantEmployeesForDate.filter(emp => {
     const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time);
-    return !hasAttendance;
+    const isOnLeave = employeesOnLeave.some(leaveEmp => leaveEmp.id === emp.id);
+    return !hasAttendance && !isOnLeave;
   });
 
   // Ottieni i dipendenti non ancora assunti per questa data
@@ -149,67 +176,24 @@ export default function DailyAttendanceCalendar() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Dipendenti Presenti */}
             <div>
-              <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                Presenti ({presentEmployees.length})
-              </h3>
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {presentEmployees.length > 0 ? (
-                  presentEmployees.map((employee) => (
-                    <div key={employee.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <span className="font-medium text-sm">
-                            {employee.first_name} {employee.last_name}
-                          </span>
-                          {employee.is_business_trip && (
-                            <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 text-xs">
-                              Trasferta
-                            </Badge>
-                          )}
-                          {employee.is_sick_leave && (
-                            <Badge variant="outline" className="ml-2 bg-red-50 text-red-700 text-xs">
-                              Malattia
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-600 text-right">
-                          <div>{formatTime(employee.check_in_time)}</div>
-                          <div>{formatTime(employee.check_out_time)}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">Nessun dipendente presente</p>
-                )}
-              </div>
+              <PresentEmployeesSection employees={presentEmployees} />
+            </div>
+
+            {/* Dipendenti in Ferie */}
+            <div>
+              <LeaveEmployeesSection 
+                employees={employeesOnLeave} 
+                leaveRequests={leaveRequests || []}
+                selectedDate={selectedDateStr || ''}
+              />
             </div>
 
             {/* Dipendenti Assenti */}
             <div>
-              <h3 className="font-semibold text-red-700 mb-3 flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                Assenti ({absentEmployees.length})
-              </h3>
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {absentEmployees.length > 0 ? (
-                  absentEmployees.map((employee) => (
-                    <div key={employee.id} className="p-3 bg-red-50 rounded-lg border border-red-200">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-sm">
-                          {employee.first_name} {employee.last_name}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">Tutti i dipendenti rilevanti sono presenti</p>
-                )}
-              </div>
+              <AbsentEmployeesSection employees={absentEmployees} />
 
               {/* Dipendenti non ancora assunti */}
               {notYetHiredEmployees.length > 0 && (
