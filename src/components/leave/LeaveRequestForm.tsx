@@ -72,7 +72,7 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
     
     // Validate working days for both types
     if (data.type === 'ferie' && data.date_from && data.date_to) {
-      validationErrors = validateWorkingDays(data.date_from, data.data_to, data.type);
+      validationErrors = validateWorkingDays(data.date_from, data.date_to, data.type);
     } else if (data.type === 'permesso' && data.day) {
       validationErrors = validateWorkingDays(data.day, data.day, data.type);
     }
@@ -105,10 +105,8 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
 
   const workingDaysLabels = getWorkingDaysLabels();
   
-  // Simplified canSubmit logic - don't block submission if balance is not configured
-  const canSubmit = isFormValid && 
-    !balanceValidationError && 
-    !insertMutation.isPending;
+  // Allow submission if form is valid and no balance validation error exists
+  const canSubmit = isFormValid && !balanceValidationError && !insertMutation.isPending;
 
   return (
     <LeaveRequestFormValidation
