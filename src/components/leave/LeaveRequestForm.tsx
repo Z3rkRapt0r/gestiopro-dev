@@ -51,20 +51,26 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
   const watchedTimeFrom = form.watch('time_from');
   const watchedTimeTo = form.watch('time_to');
 
-  // Validazione bilancio in tempo reale
+  // Debounced balance validation to prevent continuous validation
   useEffect(() => {
-    validateBalanceForRequest(
-      watchedType,
-      watchedDateFrom,
-      watchedDateTo,
-      watchedDay,
-      watchedTimeFrom,
-      watchedTimeTo
-    );
-  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo]);
+    const timeoutId = setTimeout(() => {
+      validateBalanceForRequest(
+        watchedType,
+        watchedDateFrom,
+        watchedDateTo,
+        watchedDay,
+        watchedTimeFrom,
+        watchedTimeTo
+      );
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, validateBalanceForRequest]);
 
   const onSubmit = (data: LeaveRequestFormData) => {
     if (!profile?.id) return;
+    
+    console.log('Form submission attempt:', { data, balanceValidationError, isFormValid });
     
     setShowValidationErrors(false);
     
@@ -78,12 +84,14 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
     }
     
     if (validationErrors.length > 0) {
+      console.log('Working days validation errors:', validationErrors);
       setShowValidationErrors(true);
       return;
     }
 
-    // Only check balance validation error if it exists
+    // Check for balance validation errors
     if (balanceValidationError) {
+      console.log('Balance validation error:', balanceValidationError);
       return;
     }
 
@@ -95,6 +103,8 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
       day: data.day ? format(data.day, 'yyyy-MM-dd') : undefined,
     };
 
+    console.log('Submitting leave request:', payload);
+
     insertMutation.mutate(payload, {
       onSuccess: () => {
         form.reset();
@@ -105,8 +115,16 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
 
   const workingDaysLabels = getWorkingDaysLabels();
   
-  // Allow submission if form is valid and no balance validation error exists
+  // Clear canSubmit logic - form is valid if there are no blocking errors
   const canSubmit = isFormValid && !balanceValidationError && !insertMutation.isPending;
+
+  console.log('Form state:', {
+    isFormValid,
+    balanceValidationError,
+    canSubmit,
+    isLoadingBalance,
+    balanceValidation: !!balanceValidation
+  });
 
   return (
     <LeaveRequestFormValidation
@@ -147,13 +165,13 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
           )}
 
           {!balanceValidation && !isLoadingBalance && (
-            <Alert className="mb-6 border-yellow-200 bg-yellow-50">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-700">
-                <strong>Attenzione:</strong> Il bilancio ferie/permessi non è ancora configurato per il tuo account.
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Errore:</strong> Il bilancio ferie/permessi non è configurato per il tuo account.
                 <br />
                 <span className="text-sm">
-                  Puoi comunque inviare la richiesta, ma assicurati di verificare la disponibilità con l'amministratore.
+                  Contatta l'amministratore per configurare il bilancio prima di poter inviare richieste.
                 </span>
               </AlertDescription>
             </Alert>
@@ -222,6 +240,13 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
               >
                 {insertMutation.isPending ? 'Invio in corso...' : 'Invia Richiesta'}
               </Button>
+              
+              {/* Debug info - remove in production */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="text-xs text-gray-500 mt-2">
+                  Debug: canSubmit={canSubmit.toString()}, balanceError={!!balanceValidationError}, formValid={isFormValid}
+                </div>
+              )}
             </form>
           </Form>
         </CardContent>

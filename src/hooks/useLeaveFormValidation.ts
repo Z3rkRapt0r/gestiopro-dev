@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWorkingDaysValidation } from './useWorkingDaysValidation';
 import { useLeaveBalanceValidation } from './useLeaveBalanceValidation';
 
@@ -8,7 +8,8 @@ export function useLeaveFormValidation() {
   const { balanceValidation, validateLeaveRequest, isLoading: isLoadingBalance } = useLeaveBalanceValidation();
   const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
 
-  const validateBalanceForRequest = (
+  // Debounced validation to prevent continuous re-renders
+  const validateBalanceForRequest = useCallback((
     type: 'ferie' | 'permesso',
     dateFrom?: Date,
     dateTo?: Date,
@@ -16,22 +17,24 @@ export function useLeaveFormValidation() {
     timeFrom?: string,
     timeTo?: string
   ) => {
-    // Only validate balance if it exists
+    // Clear previous errors first
+    setBalanceValidationError(null);
+
+    // If balance is not configured, set a blocking error
     if (!balanceValidation) {
-      setBalanceValidationError(null);
+      setBalanceValidationError('Il bilancio ferie/permessi deve essere configurato prima di poter inviare richieste.');
       return;
     }
 
+    // Only validate if we have the necessary data
     if (type === 'ferie' && dateFrom && dateTo) {
       const validation = validateLeaveRequest('ferie', dateFrom, dateTo);
       setBalanceValidationError(validation.errorMessage || null);
     } else if (type === 'permesso' && day) {
       const validation = validateLeaveRequest('permesso', null, null, day, timeFrom, timeTo);
       setBalanceValidationError(validation.errorMessage || null);
-    } else {
-      setBalanceValidationError(null);
     }
-  };
+  }, [balanceValidation, validateLeaveRequest]);
 
   const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
