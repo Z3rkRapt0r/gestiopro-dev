@@ -53,7 +53,7 @@ export function useLeaveFormValidation() {
     return errors;
   };
 
-  const isDateDisabled = (date: Date, type: string): boolean => {
+  const isDateDisabled = (date: Date): boolean => {
     return !isWorkingDay(date);
   };
 
