@@ -27,8 +27,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export default function ManualAttendanceForm() {
-  const { employees, isLoading: loadingEmployees } = useActiveEmployees();
-  const { createAttendance, isCreating } = useManualAttendances();
+  const { employees, loading: loadingEmployees } = useActiveEmployees();
+  const { createManualAttendance, isCreating } = useManualAttendances();
   const { checkAttendanceConflicts } = useAttendanceConflictValidation();
   const [conflictError, setConflictError] = useState<string | null>(null);
 
@@ -69,7 +69,7 @@ export default function ManualAttendanceForm() {
       return;
     }
 
-    createAttendance(data);
+    createManualAttendance(data);
     form.reset();
     setConflictError(null);
   };
