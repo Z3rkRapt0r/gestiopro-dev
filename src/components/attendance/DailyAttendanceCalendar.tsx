@@ -36,6 +36,17 @@ export default function DailyAttendanceCalendar() {
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   const selectedDateAttendances = attendances?.filter(att => att.date === selectedDateStr) || [];
 
+  // Debug: Log delle date per verificare il problema
+  console.log('🔍 DEBUG Calendario Generale - Data selezionata:', selectedDateStr);
+  console.log('📋 Richieste di ferie disponibili:', leaveRequests?.map(req => ({
+    user_id: req.user_id,
+    type: req.type,
+    status: req.status,
+    date_from: req.date_from,
+    date_to: req.date_to,
+    profiles: req.profiles
+  })));
+
   // Funzione per ottenere i dipendenti che dovrebbero essere tracciati
   const getRelevantEmployeesForDate = async (dateStr: string) => {
     if (!employees) return [];
@@ -58,19 +69,44 @@ export default function DailyAttendanceCalendar() {
     }
   }, [selectedDateStr, employees]);
 
-  // Funzione helper per verificare se un dipendente è in ferie approvate per la data selezionata
+  // Funzione helper migliorata per verificare se un dipendente è in ferie approvate per la data selezionata
   const isEmployeeOnApprovedLeave = (employeeId: string, dateStr: string) => {
     if (!leaveRequests) return false;
     
-    return leaveRequests.some(request => {
+    const currentDate = new Date(dateStr);
+    
+    const matchingRequest = leaveRequests.find(request => {
       if (request.user_id !== employeeId || request.status !== 'approved') return false;
       
       if (request.type === 'ferie' && request.date_from && request.date_to) {
-        return dateStr >= request.date_from && dateStr <= request.date_to;
+        const startDate = new Date(request.date_from);
+        const endDate = new Date(request.date_to);
+        
+        // Debug specifico per Gabriele Bellante
+        if (request.profiles?.first_name === 'Gabriele' && request.profiles?.last_name === 'Bellante') {
+          console.log('🔍 DEBUG Gabriele Bellante:', {
+            currentDateStr: dateStr,
+            currentDate: currentDate.toISOString(),
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            isInRange: currentDate >= startDate && currentDate <= endDate,
+            stringComparison: `${dateStr} >= ${request.date_from} && ${dateStr} <= ${request.date_to}`,
+            stringResult: dateStr >= request.date_from && dateStr <= request.date_to
+          });
+        }
+        
+        // Usa confronto con Date objects per maggiore precisione
+        return currentDate >= startDate && currentDate <= endDate;
       }
       
       return false;
     });
+    
+    if (matchingRequest && matchingRequest.profiles?.first_name === 'Gabriele') {
+      console.log('✅ Gabriele trovato in ferie per', dateStr);
+    }
+    
+    return !!matchingRequest;
   };
 
   // Dipendenti in ferie - logica semplificata
@@ -80,16 +116,17 @@ export default function DailyAttendanceCalendar() {
       // Trova l'eventuale attendance record per questo dipendente
       const attendance = selectedDateAttendances.find(att => att.user_id === employee.id);
       
-      // Trova la richiesta di ferie corrispondente
-      const leave = leaveRequests?.find(request => 
-        request.user_id === employee.id && 
-        request.status === 'approved' &&
-        request.type === 'ferie' &&
-        request.date_from && 
-        request.date_to &&
-        selectedDateStr >= request.date_from &&
-        selectedDateStr <= request.date_to
-      );
+      // Trova la richiesta di ferie corrispondente usando anche Date objects
+      const leave = leaveRequests?.find(request => {
+        if (request.user_id !== employee.id || request.status !== 'approved' || request.type !== 'ferie') return false;
+        if (!request.date_from || !request.date_to) return false;
+        
+        const currentDate = new Date(selectedDateStr);
+        const startDate = new Date(request.date_from);
+        const endDate = new Date(request.date_to);
+        
+        return currentDate >= startDate && currentDate <= endDate;
+      });
       
       onLeaveEmployees.push({
         ...employee,
@@ -98,6 +135,8 @@ export default function DailyAttendanceCalendar() {
       });
     }
   });
+
+  console.log('🏖️ Dipendenti in ferie per il', selectedDateStr, ':', onLeaveEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
 
   // Ottieni i dipendenti presenti
   const presentEmployees = selectedDateAttendances
@@ -128,6 +167,8 @@ export default function DailyAttendanceCalendar() {
     const isOnApprovedLeave = isEmployeeOnApprovedLeave(emp.id, selectedDateStr);
     return !hasAttendance && !isOnApprovedLeave;
   });
+
+  console.log('❌ Dipendenti assenti per il', selectedDateStr, ':', absentEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
 
   // Ottieni i dipendenti non ancora assunti per questa data
   const notYetHiredEmployees = employees?.filter(emp => 
