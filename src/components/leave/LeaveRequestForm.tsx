@@ -1,62 +1,40 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { format } from 'date-fns';
-import { it } from 'date-fns/locale';
-import { CalendarIcon, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
-import { useWorkingDaysValidation } from '@/hooks/useWorkingDaysValidation';
-import { useLeaveBalanceValidation } from '@/hooks/useLeaveBalanceValidation';
 import { useAuth } from '@/hooks/useAuth';
+import { useLeaveFormValidation } from '@/hooks/useLeaveFormValidation';
 import { LeaveRequestFormValidation } from './LeaveRequestFormValidation';
 import { LeaveBalanceDisplay } from './LeaveBalanceDisplay';
-import WorkingDaysPreview from './WorkingDaysPreview';
-
-const leaveRequestSchema = z.object({
-  type: z.enum(['ferie', 'permesso', 'malattia']),
-  date_from: z.date().optional(),
-  date_to: z.date().optional(),
-  day: z.date().optional(),
-  time_from: z.string().optional(),
-  time_to: z.string().optional(),
-  note: z.string().optional(),
-}).refine((data) => {
-  if (data.type === 'permesso' && data.day) {
-    return data.time_from && data.time_to;
-  }
-  if (data.type === 'ferie') {
-    return data.date_from && data.date_to;
-  }
-  return true;
-}, {
-  message: "Compila tutti i campi obbligatori per il tipo di richiesta selezionato",
-});
-
-type LeaveRequestFormData = z.infer<typeof leaveRequestSchema>;
-
-interface LeaveRequestFormProps {
-  type?: string;
-  onSuccess?: () => void;
-}
+import { LeaveTypeSelector } from './LeaveTypeSelector';
+import { VacationFields } from './VacationFields';
+import { PermissionFields } from './PermissionFields';
+import { SickLeaveFields } from './SickLeaveFields';
+import { leaveRequestSchema, LeaveRequestFormData, LeaveRequestFormProps } from './types';
 
 export default function LeaveRequestForm({ type: defaultType, onSuccess }: LeaveRequestFormProps) {
   const { profile } = useAuth();
   const { insertMutation } = useLeaveRequests();
-  const { isWorkingDay, countWorkingDays, getWorkingDaysLabels } = useWorkingDaysValidation();
-  const { balanceValidation, validateLeaveRequest, isLoading: isLoadingBalance } = useLeaveBalanceValidation();
+  const {
+    balanceValidation,
+    isLoadingBalance,
+    balanceValidationError,
+    validateBalanceForRequest,
+    validateWorkingDays,
+    isDateDisabled,
+    isWorkingDay,
+    getWorkingDaysLabels,
+  } = useLeaveFormValidation();
+  
   const [showValidationErrors, setShowValidationErrors] = useState(false);
-  const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
   const [isFormValid, setIsFormValid] = useState(true);
   const [formValidationMessage, setFormValidationMessage] = useState<string>('');
   
@@ -74,48 +52,17 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
   const watchedTimeFrom = form.watch('time_from');
   const watchedTimeTo = form.watch('time_to');
 
-  // Validazione bilancio in tempo reale (solo per ferie e permessi, non per malattia)
+  // Validazione bilancio in tempo reale
   useEffect(() => {
-    if (!balanceValidation || watchedType === 'malattia') {
-      setBalanceValidationError(null);
-      return;
-    }
-
-    // Only call validateLeaveRequest for 'ferie' and 'permesso' types
-    if (watchedType === 'ferie' && watchedDateFrom && watchedDateTo) {
-      const validation = validateLeaveRequest(watchedType, watchedDateFrom, watchedDateTo);
-      setBalanceValidationError(validation.errorMessage || null);
-    } else if (watchedType === 'permesso' && watchedDay) {
-      const validation = validateLeaveRequest(watchedType, null, null, watchedDay, watchedTimeFrom, watchedTimeTo);
-      setBalanceValidationError(validation.errorMessage || null);
-    } else {
-      setBalanceValidationError(null);
-    }
-  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, balanceValidation, validateLeaveRequest]);
-
-  // Validazione personalizzata per giorni lavorativi
-  const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
-    const errors: string[] = [];
-    
-    if (type === 'ferie') {
-      const workingDaysCount = countWorkingDays(startDate, endDate);
-      if (workingDaysCount === 0) {
-        errors.push('Il periodo selezionato non include giorni lavorativi validi per le ferie.');
-      }
-    }
-    
-    if (type === 'permesso' && !isWorkingDay(startDate)) {
-      errors.push('I permessi possono essere richiesti solo per giorni lavorativi.');
-    }
-    
-    return errors;
-  };
-
-  // Funzione per disabilitare giorni nel calendario
-  const isDateDisabled = (date: Date, type: string): boolean => {
-    if (type === 'malattia') return false;
-    return !isWorkingDay(date);
-  };
+    validateBalanceForRequest(
+      watchedType,
+      watchedDateFrom,
+      watchedDateTo,
+      watchedDay,
+      watchedTimeFrom,
+      watchedTimeTo
+    );
+  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo]);
 
   const onSubmit = (data: LeaveRequestFormData) => {
     if (!profile?.id) return;
@@ -157,8 +104,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
   };
 
   const workingDaysLabels = getWorkingDaysLabels();
-
-  // Controllo se il form può essere inviato
   const canSubmit = isFormValid && 
     !balanceValidationError && 
     !insertMutation.isPending && 
@@ -220,259 +165,32 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo di Richiesta</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleziona il tipo di richiesta" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="ferie">Ferie</SelectItem>
-                        <SelectItem value="permesso">Permesso</SelectItem>
-                        <SelectItem value="malattia">Malattia</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <LeaveTypeSelector control={form.control} />
 
               {watchedType === 'ferie' && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="date_from"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Data Inizio</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP", { locale: it })
-                                  ) : (
-                                    <span>Seleziona data</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={(date) => isDateDisabled(date, watchedType)}
-                                initialFocus
-                                className="pointer-events-auto"
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="date_to"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Data Fine</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP", { locale: it })
-                                  ) : (
-                                    <span>Seleziona data</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={(date) => isDateDisabled(date, watchedType)}
-                                initialFocus
-                                className="pointer-events-auto"
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <WorkingDaysPreview 
-                    startDate={watchedDateFrom}
-                    endDate={watchedDateTo}
-                    leaveType="ferie"
-                  />
-                </>
+                <VacationFields
+                  control={form.control}
+                  startDate={watchedDateFrom}
+                  endDate={watchedDateTo}
+                  isDateDisabled={(date) => isDateDisabled(date, watchedType)}
+                />
               )}
 
               {watchedType === 'permesso' && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="day"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data del Permesso</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP", { locale: it })
-                                ) : (
-                                  <span>Seleziona data</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => isDateDisabled(date, watchedType)}
-                              initialFocus
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="time_from"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ora Inizio</FormLabel>
-                          <FormControl>
-                            <Input type="time" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="time_to"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ora Fine</FormLabel>
-                          <FormControl>
-                            <Input type="time" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {watchedDay && !isWorkingDay(watchedDay) && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        Non puoi richiedere un permesso per un giorno non lavorativo.
-                        Seleziona un giorno lavorativo: {workingDaysLabels.join(', ')}.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </>
+                <PermissionFields
+                  control={form.control}
+                  selectedDay={watchedDay}
+                  isDateDisabled={(date) => isDateDisabled(date, watchedType)}
+                  isWorkingDay={isWorkingDay}
+                  workingDaysLabels={workingDaysLabels}
+                />
               )}
 
               {watchedType === 'malattia' && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="day"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data della Malattia</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP", { locale: it })
-                                ) : (
-                                  <span>Seleziona data</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => isDateDisabled(date, watchedType)}
-                              initialFocus
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Alert className="border-yellow-200 bg-yellow-50">
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                    <AlertDescription className="text-yellow-700">
-                      <strong>Nota:</strong> La malattia può essere registrata per qualsiasi giorno, 
-                      indipendentemente dalla configurazione dei giorni lavorativi e dal bilancio ferie/permessi.
-                    </AlertDescription>
-                  </Alert>
-                </>
+                <SickLeaveFields
+                  control={form.control}
+                  isDateDisabled={(date) => isDateDisabled(date, watchedType)}
+                />
               )}
 
               <FormField
