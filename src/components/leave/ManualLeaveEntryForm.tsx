@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Clock, User, AlertCircle } from "lucide-react";
+import { CalendarIcon, Clock, User, AlertCircle, Info } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
+import { useAdminLeaveBalanceValidation } from "@/hooks/useAdminLeaveBalanceValidation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
@@ -34,9 +35,32 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [timeTo, setTimeTo] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
 
   const { employees } = useActiveEmployees();
   const { insertMutation } = useLeaveRequests();
+  const { balanceValidation, validateLeaveRequest, isLoading: isLoadingBalance } = useAdminLeaveBalanceValidation(selectedUserId);
+
+  // Effetto per validare il bilancio quando cambiano i parametri
+  useEffect(() => {
+    if (!selectedUserId || !balanceValidation) {
+      setBalanceValidationError(null);
+      return;
+    }
+
+    if (leaveType === "ferie" && startDate && endDate) {
+      const validation = validateLeaveRequest("ferie", startDate, endDate);
+      setBalanceValidationError(validation.errorMessage || null);
+    } else if (leaveType === "permesso" && startDate) {
+      const validation = validateLeaveRequest("permesso", null, null, startDate, 
+        permissionType === "orario" ? timeFrom : null, 
+        permissionType === "orario" ? timeTo : null
+      );
+      setBalanceValidationError(validation.errorMessage || null);
+    } else {
+      setBalanceValidationError(null);
+    }
+  }, [selectedUserId, leaveType, startDate, endDate, timeFrom, timeTo, permissionType, balanceValidation, validateLeaveRequest]);
 
   // Funzione per validare le date rispetto alla data di assunzione
   const validateDatesAgainstHireDate = (startDate?: Date, endDate?: Date, employeeId?: string) => {
@@ -85,8 +109,14 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
       return;
     }
 
-    // Verifica finale della validazione
+    // Verifica finale della validazione date di assunzione
     if (!validateDatesAgainstHireDate(startDate, endDate, selectedUserId)) {
+      return;
+    }
+
+    // Verifica finale della validazione bilancio
+    if (balanceValidationError) {
+      alert(`Errore bilancio: ${balanceValidationError}`);
       return;
     }
 
@@ -116,6 +146,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           setEndDate(undefined);
           setNote("");
           setValidationError(null);
+          setBalanceValidationError(null);
           onSuccess?.();
         }
       });
@@ -150,11 +181,18 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           setTimeTo("");
           setNote("");
           setValidationError(null);
+          setBalanceValidationError(null);
           onSuccess?.();
         }
       });
     }
   };
+
+  const canSubmit = selectedUserId && 
+    !validationError && 
+    !balanceValidationError && 
+    !insertMutation.isPending &&
+    balanceValidation?.hasBalance;
 
   return (
     <Card className="max-w-2xl mx-auto">
@@ -183,6 +221,42 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
             </Select>
           </div>
 
+          {/* Informazioni bilancio */}
+          {selectedUserId && balanceValidation && (
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="h-4 w-4 text-blue-600" />
+                <span className="font-medium text-blue-700">Bilancio Dipendente</span>
+              </div>
+              {balanceValidation.hasBalance ? (
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="font-medium text-blue-600">Ferie</div>
+                    <div className="text-blue-700">
+                      Rimanenti: <strong>{balanceValidation.remainingVacationDays}</strong> giorni
+                    </div>
+                    <div className="text-gray-600">
+                      ({balanceValidation.usedVacationDays}/{balanceValidation.totalVacationDays} usati)
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-blue-600">Permessi</div>
+                    <div className="text-blue-700">
+                      Rimanenti: <strong>{balanceValidation.remainingPermissionHours}</strong> ore
+                    </div>
+                    <div className="text-gray-600">
+                      ({balanceValidation.usedPermissionHours}/{balanceValidation.totalPermissionHours} usate)
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-red-600 font-medium">
+                  ⚠️ Nessun bilancio configurato per questo dipendente
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Tipo di richiesta */}
           <div className="space-y-2">
             <Label>Tipo di richiesta *</Label>
@@ -201,6 +275,24 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{validationError}</AlertDescription>
+            </Alert>
+          )}
+
+          {balanceValidationError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{balanceValidationError}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Avviso se non c'è bilancio */}
+          {selectedUserId && balanceValidation && !balanceValidation.hasBalance && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Impossibile inserire ferie o permessi: il dipendente non ha un bilancio configurato per l'anno corrente.
+                Configura prima il bilancio nella sezione "Impostazioni Ferie/Permessi".
+              </AlertDescription>
             </Alert>
           )}
 
@@ -359,7 +451,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={insertMutation.isPending || !!validationError}
+            disabled={!canSubmit}
           >
             {insertMutation.isPending ? "Salvando..." : "Salva Richiesta"}
           </Button>
