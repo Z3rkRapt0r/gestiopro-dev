@@ -8,12 +8,15 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
+import LeaveEmployeesSection from './sections/LeaveEmployeesSection';
 
 export default function DailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
+  const { leaveRequests } = useLeaveRequests();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
 
   if (isLoading) {
@@ -30,11 +33,11 @@ export default function DailyAttendanceCalendar() {
     );
   }
 
-  // Ottieni le presenze per la data selezionata
-  const selectedDateStr = selectedDate?.toISOString().split('T')[0];
+  // Usa format per evitare problemi di fuso orario
+  const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   const selectedDateAttendances = attendances?.filter(att => att.date === selectedDateStr) || [];
 
-  // Funzione per filtrare i dipendenti che dovrebbero essere tracciati per la data selezionata
+  // Funzione per ottenere i dipendenti che dovrebbero essere tracciati
   const getRelevantEmployeesForDate = async (dateStr: string) => {
     if (!employees) return [];
     
@@ -56,9 +59,74 @@ export default function DailyAttendanceCalendar() {
     }
   }, [selectedDateStr, employees]);
 
+  // Calcola i dipendenti in ferie usando le richieste approvate
+  const selectedDateLeaves = leaveRequests?.filter(request => {
+    if (request.status !== 'approved') return false;
+    
+    if (request.type === 'ferie' && request.date_from && request.date_to) {
+      return selectedDateStr >= request.date_from && selectedDateStr <= request.date_to;
+    }
+    
+    if (request.type === 'permesso' && request.day) {
+      return request.day === selectedDateStr;
+    }
+    
+    return false;
+  }) || [];
+
+  // Dipendenti in ferie
+  const onLeaveEmployees = [];
+  employees?.forEach(employee => {
+    const activeLeave = selectedDateLeaves.find(leave => 
+      leave.type === 'ferie' && leave.user_id === employee.id
+    );
+    
+    if (activeLeave) {
+      const automaticAttendance = selectedDateAttendances.find(att => 
+        att.user_id === employee.id && att.notes === 'Ferie'
+      );
+      
+      onLeaveEmployees.push({
+        ...employee,
+        attendance: automaticAttendance || null,
+        leave: activeLeave,
+      });
+    } else {
+      const ferieAttendance = selectedDateAttendances.find(att => 
+        att.user_id === employee.id && att.notes === 'Ferie'
+      );
+      
+      if (ferieAttendance) {
+        const relatedLeave = leaveRequests?.find(leave => 
+          leave.type === 'ferie' && 
+          leave.user_id === employee.id && 
+          leave.status === 'approved' &&
+          leave.date_from && 
+          leave.date_to &&
+          selectedDateStr >= leave.date_from &&
+          selectedDateStr <= leave.date_to
+        );
+        
+        onLeaveEmployees.push({
+          ...employee,
+          attendance: ferieAttendance,
+          leave: relatedLeave || null,
+        });
+      }
+    }
+  });
+
   // Ottieni i dipendenti presenti
   const presentEmployees = selectedDateAttendances
-    .filter(att => att.check_in_time)
+    .filter(att => {
+      if (!att.check_in_time) return false;
+      
+      // Escludi se è in ferie
+      const isOnLeave = onLeaveEmployees.some(emp => emp.id === att.user_id);
+      if (isOnLeave) return false;
+      
+      return true;
+    })
     .map(att => {
       const employee = relevantEmployeesForDate.find(emp => emp.id === att.user_id);
       return employee ? {
@@ -71,10 +139,11 @@ export default function DailyAttendanceCalendar() {
     })
     .filter(emp => emp !== null);
 
-  // Ottieni i dipendenti assenti (solo quelli che dovrebbero essere considerati per questa data)
+  // Ottieni i dipendenti assenti (escludendo quelli in ferie)
   const absentEmployees = relevantEmployeesForDate.filter(emp => {
     const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time);
-    return !hasAttendance;
+    const isOnLeave = onLeaveEmployees.some(leaveEmp => leaveEmp.id === emp.id);
+    return !hasAttendance && !isOnLeave;
   });
 
   // Ottieni i dipendenti non ancora assunti per questa data
@@ -149,7 +218,7 @@ export default function DailyAttendanceCalendar() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Dipendenti Presenti */}
             <div>
               <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
@@ -189,6 +258,9 @@ export default function DailyAttendanceCalendar() {
               </div>
             </div>
 
+            {/* Dipendenti in Ferie */}
+            <LeaveEmployeesSection employees={onLeaveEmployees} />
+
             {/* Dipendenti Assenti */}
             <div>
               <h3 className="font-semibold text-red-700 mb-3 flex items-center gap-2">
@@ -207,7 +279,7 @@ export default function DailyAttendanceCalendar() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-sm">Tutti i dipendenti rilevanti sono presenti</p>
+                  <p className="text-gray-500 text-sm">Tutti i dipendenti rilevanti sono presenti o in ferie</p>
                 )}
               </div>
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +8,7 @@ import { Calendar as CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useRealisticAttendanceStats } from '@/hooks/useRealisticAttendanceStats';
 import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceStats';
 import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
@@ -21,6 +23,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const { workSchedule } = useWorkSchedules();
+  const { leaveRequests } = useLeaveRequests();
   const stats = useRealisticAttendanceStats(employee, attendances, workSchedule);
   const { leaveBalance } = useEmployeeLeaveBalanceStats(employee?.id);
 
@@ -47,6 +50,23 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     return date >= new Date(employee.hire_date);
   };
 
+  // Funzione per verificare se una data è in un periodo di ferie approvate
+  const isDateInApprovedLeave = (date: Date) => {
+    if (!leaveRequests || !employee?.id) return false;
+    
+    const dateStr = format(date, 'yyyy-MM-dd');
+    
+    return leaveRequests.some(request => {
+      if (request.user_id !== employee.id || request.status !== 'approved') return false;
+      
+      if (request.type === 'ferie' && request.date_from && request.date_to) {
+        return dateStr >= request.date_from && dateStr <= request.date_to;
+      }
+      
+      return false;
+    });
+  };
+
   // Formattiamo la data selezionata in modo consistente
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
@@ -61,15 +81,39 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       });
   }, [attendances]);
 
-  // Date di ferie
+  // Date di ferie - include sia quelle dalle note che dalle richieste approvate
   const vacationDates = useMemo(() => {
-    return attendances
+    const datesFromNotes = attendances
       .filter(att => att.notes?.includes('Ferie'))
       .map(att => {
         const [year, month, day] = att.date.split('-').map(Number);
         return new Date(year, month - 1, day);
       });
-  }, [attendances]);
+
+    const datesFromApprovedLeaves = [];
+    if (leaveRequests && employee?.id) {
+      leaveRequests.forEach(request => {
+        if (request.user_id === employee.id && request.status === 'approved' && request.type === 'ferie' && request.date_from && request.date_to) {
+          const startDate = new Date(request.date_from);
+          const endDate = new Date(request.date_to);
+          
+          const currentDate = new Date(startDate);
+          while (currentDate <= endDate) {
+            datesFromApprovedLeaves.push(new Date(currentDate));
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        }
+      });
+    }
+
+    // Combina le date e rimuovi i duplicati
+    const allDates = [...datesFromNotes, ...datesFromApprovedLeaves];
+    const uniqueDates = allDates.filter((date, index, self) => 
+      index === self.findIndex(d => d.getTime() === date.getTime())
+    );
+
+    return uniqueDates;
+  }, [attendances, leaveRequests, employee?.id]);
 
   // Date con presenze per il calendario
   const sickLeaveDates = useMemo(() => {
@@ -81,7 +125,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       });
   }, [attendances]);
 
-  // Calcola i giorni di assenza dall'inizio dell'anno (o dalla data di assunzione se più tarda)
+  // Calcola i giorni di assenza dall'inizio dell'anno (o dalla data di assunzione se più tarda) escludendo le ferie approvate
   const absentDates = useMemo(() => {
     if (!employee?.id || !stats.hasValidData) return [];
 
@@ -104,9 +148,10 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
       if (isEmployeeHiredOnDate(tempDate)) {
         const dateStr = format(tempDate, 'yyyy-MM-dd');
         const hasAttendance = attendances.some(att => att.date === dateStr);
+        const isOnApprovedLeave = isDateInApprovedLeave(tempDate);
         
-        // Se è un giorno lavorativo, non ha presenza e la data è passata
-        if (isWorkingDay(tempDate) && !hasAttendance && tempDate < currentDate) {
+        // Se è un giorno lavorativo, non ha presenza, non è in ferie approvate e la data è passata
+        if (isWorkingDay(tempDate) && !hasAttendance && !isOnApprovedLeave && tempDate < currentDate) {
           absentDates.push(new Date(tempDate));
         }
       }
@@ -115,7 +160,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     }
     
     return absentDates;
-  }, [employee?.id, employee?.hire_date, attendances, workSchedule, stats]);
+  }, [employee?.id, employee?.hire_date, attendances, workSchedule, stats, leaveRequests]);
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
@@ -376,6 +421,38 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                 <p className="text-xs text-gray-600">
                   Questo giorno non è configurato come giorno lavorativo
                 </p>
+              </div>
+            ) : selectedDate && isDateInApprovedLeave(selectedDate) ? (
+              <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <span className="font-semibold text-purple-700 text-sm">Ferie</span>
+                  {selectedDateAttendance?.is_manual && (
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                      Manuale
+                    </Badge>
+                  )}
+                </div>
+                {selectedDateAttendance ? (
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <span className="text-gray-600">Entrata:</span>
+                      <div className="font-medium">
+                        {formatTime(selectedDateAttendance.check_in_time)}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Uscita:</span>
+                      <div className="font-medium">
+                        {formatTime(selectedDateAttendance.check_out_time)}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-purple-600">
+                    Ferie approvate per questo giorno
+                  </p>
+                )}
               </div>
             ) : selectedDateAttendance ? (
               <div className="space-y-3">
