@@ -22,10 +22,10 @@ export function useLeaveFormValidation() {
     }
 
     if (type === 'ferie' && dateFrom && dateTo) {
-      const validation = validateLeaveRequest(type, dateFrom, dateTo);
+      const validation = validateLeaveRequest('ferie', dateFrom, dateTo);
       setBalanceValidationError(validation.errorMessage || null);
     } else if (type === 'permesso' && day) {
-      const validation = validateLeaveRequest(type, null, null, day, timeFrom, timeTo);
+      const validation = validateLeaveRequest('permesso', null, null, day, timeFrom, timeTo);
       setBalanceValidationError(validation.errorMessage || null);
     } else {
       setBalanceValidationError(null);
