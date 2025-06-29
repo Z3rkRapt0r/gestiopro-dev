@@ -82,10 +82,10 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
     }
 
     if (watchedType === 'ferie' && watchedDateFrom && watchedDateTo) {
-      const validation = validateLeaveRequest(watchedType as "ferie", watchedDateFrom, watchedDateTo);
+      const validation = validateLeaveRequest(watchedType, watchedDateFrom, watchedDateTo);
       setBalanceValidationError(validation.errorMessage || null);
     } else if (watchedType === 'permesso' && watchedDay) {
-      const validation = validateLeaveRequest(watchedType as "permesso", null, null, watchedDay, watchedTimeFrom, watchedTimeTo);
+      const validation = validateLeaveRequest(watchedType, null, null, watchedDay, watchedTimeFrom, watchedTimeTo);
       setBalanceValidationError(validation.errorMessage || null);
     } else {
       setBalanceValidationError(null);
