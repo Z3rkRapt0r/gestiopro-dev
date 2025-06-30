@@ -57,9 +57,11 @@ export function LeaveRequestFormFields({
         name="note"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Note (opzionale)</FormLabel>
+            <FormLabel htmlFor="leave_notes">Note (opzionale)</FormLabel>
             <FormControl>
               <Textarea
+                id="leave_notes"
+                name="note"
                 placeholder="Aggiungi dettagli sulla tua richiesta..."
                 {...field}
               />

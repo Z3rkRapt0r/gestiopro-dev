@@ -77,9 +77,14 @@ export function PermissionFields({
           name="time_from"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Ora Inizio</FormLabel>
+              <FormLabel htmlFor="time_from">Ora Inizio</FormLabel>
               <FormControl>
-                <Input type="time" {...field} />
+                <Input 
+                  id="time_from"
+                  name="time_from"
+                  type="time" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -91,9 +96,14 @@ export function PermissionFields({
           name="time_to"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Ora Fine</FormLabel>
+              <FormLabel htmlFor="time_to">Ora Fine</FormLabel>
               <FormControl>
-                <Input type="time" {...field} />
+                <Input 
+                  id="time_to"
+                  name="time_to"
+                  type="time" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

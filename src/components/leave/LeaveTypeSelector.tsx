@@ -16,10 +16,10 @@ export function LeaveTypeSelector({ control }: LeaveTypeSelectorProps) {
       name="type"
       render={({ field }) => (
         <FormItem>
-          <FormLabel>Tipo di Richiesta</FormLabel>
-          <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <FormLabel htmlFor="leave_type">Tipo di Richiesta</FormLabel>
+          <Select onValueChange={field.onChange} defaultValue={field.value} name="type">
             <FormControl>
-              <SelectTrigger>
+              <SelectTrigger id="leave_type" name="leave_type">
                 <SelectValue placeholder="Seleziona il tipo di richiesta" />
               </SelectTrigger>
             </FormControl>
