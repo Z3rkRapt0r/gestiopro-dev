@@ -56,7 +56,7 @@ export function EmployeeLeaveArchiveSection() {
       const timeRange = [req.time_from, req.time_to].filter(Boolean).join(" - ");
       return (
         <div className="text-sm">
-          <div>{new Date(req.day).toLocaleDateString('it-IT')}</div>
+          <div className="font-medium">{new Date(req.day).toLocaleDateString('it-IT')}</div>
           {timeRange && <div className="text-xs text-muted-foreground">({timeRange})</div>}
         </div>
       );
@@ -64,7 +64,9 @@ export function EmployeeLeaveArchiveSection() {
     if (req.type === "ferie" && req.date_from && req.date_to) {
       return (
         <div className="text-sm">
-          {new Date(req.date_from).toLocaleDateString('it-IT')} - {new Date(req.date_to).toLocaleDateString('it-IT')}
+          <div className="font-medium">
+            {new Date(req.date_from).toLocaleDateString('it-IT')} - {new Date(req.date_to).toLocaleDateString('it-IT')}
+          </div>
         </div>
       );
     }
@@ -72,10 +74,12 @@ export function EmployeeLeaveArchiveSection() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <h2 className="text-2xl font-bold">Storico Richieste Approvate</h2>
-        <Badge variant="secondary">{approvedRequests.length} richieste</Badge>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        <h2 className="text-lg sm:text-2xl font-bold">Storico Richieste Approvate</h2>
+        <Badge variant="secondary" className="self-start sm:self-auto text-xs">
+          {approvedRequests.length} richieste
+        </Badge>
       </div>
 
       {Object.entries(groupedRequests).map(([userId, data]) => {
@@ -85,22 +89,66 @@ export function EmployeeLeaveArchiveSection() {
 
         return (
           <Card key={userId}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                {userName}
-                <Badge variant="outline">{data.requests.length} richieste</Badge>
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                  <span className="truncate text-sm sm:text-base">{userName}</span>
+                </div>
+                <Badge variant="outline" className="self-start sm:self-auto text-xs">
+                  {data.requests.length} richieste
+                </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="space-y-3">
                 {data.requests.map((req) => (
                   <div 
                     key={req.id} 
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col">
+                    {/* Mobile layout - stacked */}
+                    <div className="space-y-3 sm:hidden">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {req.type === "permesso" ? (
+                            <Clock className="w-4 h-4 text-violet-600 flex-shrink-0" />
+                          ) : (
+                            <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                          )}
+                          <Badge 
+                            variant="outline" 
+                            className="bg-green-50 text-green-700 border-green-200 text-xs"
+                          >
+                            {req.type === "permesso" ? "Permesso" : "Ferie"}
+                          </Badge>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className="bg-green-50 text-green-700 border-green-200 text-xs"
+                        >
+                          Approvato
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {getDateDisplay(req)}
+                        
+                        {req.note && (
+                          <div className="text-xs text-muted-foreground p-2 bg-white rounded border-l-2 border-gray-200">
+                            <span className="font-medium">Note:</span> {req.note}
+                          </div>
+                        )}
+                        
+                        <div className="text-xs text-muted-foreground">
+                          Richiesta del {new Date(req.created_at).toLocaleDateString('it-IT')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Desktop layout - horizontal */}
+                    <div className="hidden sm:flex sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                           {req.type === "permesso" ? (
                             <Clock className="w-4 h-4 text-violet-600" />
@@ -110,29 +158,29 @@ export function EmployeeLeaveArchiveSection() {
                           {getDateDisplay(req)}
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {req.note && (
-                        <div className="text-xs text-muted-foreground max-w-48 truncate" title={req.note}>
-                          "{req.note}"
+                      
+                      <div className="flex items-center gap-2">
+                        {req.note && (
+                          <div className="text-xs text-muted-foreground max-w-48 truncate" title={req.note}>
+                            "{req.note}"
+                          </div>
+                        )}
+                        <Badge 
+                          variant="outline" 
+                          className="bg-green-50 text-green-700 border-green-200"
+                        >
+                          Approvato
+                        </Badge>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(req.created_at).toLocaleDateString('it-IT')}
                         </div>
-                      )}
-                      <Badge 
-                        variant="outline" 
-                        className="bg-green-50 text-green-700 border-green-200"
-                      >
-                        Approvato
-                      </Badge>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(req.created_at).toLocaleDateString('it-IT')}
                       </div>
                     </div>
                   </div>
                 ))}
                 
                 {data.requests.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">
+                  <p className="text-muted-foreground text-center py-8 text-sm">
                     Nessuna richiesta approvata trovata
                   </p>
                 )}
@@ -145,7 +193,7 @@ export function EmployeeLeaveArchiveSection() {
       {Object.keys(groupedRequests).length === 0 && (
         <Card>
           <CardContent className="pt-6">
-            <p className="text-muted-foreground text-center">
+            <p className="text-muted-foreground text-center text-sm">
               Nessuna richiesta approvata trovata
             </p>
           </CardContent>

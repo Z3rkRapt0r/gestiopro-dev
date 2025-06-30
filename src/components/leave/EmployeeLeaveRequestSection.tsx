@@ -32,39 +32,54 @@ export function EmployeeLeaveRequestSection() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <LeaveRequestForm onSuccess={handleSuccess} />
 
       {/* Sezione richieste in attesa */}
       {pendingRequests.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-              Richieste in Attesa di Approvazione ({pendingRequests.length})
+        <Card className="mt-4 sm:mt-6">
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500 flex-shrink-0" />
+              <span className="truncate">Richieste in Attesa</span>
+              <Badge variant="secondary" className="ml-auto flex-shrink-0 text-xs">
+                {pendingRequests.length}
+              </Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <div className="space-y-3">
               {pendingRequests.map((request) => (
-                <div key={request.id} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300">
+                <div key={request.id} className="p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  {/* Header mobile con badge e tipo */}
+                  <div className="flex items-start justify-between mb-3 sm:mb-2">
+                    <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300 text-xs flex-shrink-0">
                       {request.type === "permesso" ? "Permesso" : "Ferie"}
                     </Badge>
-                    <div className="text-sm">
-                      <div className="font-medium">{getRequestDisplayText(request)}</div>
-                      {request.note && (
-                        <div className="text-gray-600 mt-1">Note: {request.note}</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-xs ml-2 flex-shrink-0">
                       In Attesa
                     </Badge>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {format(new Date(request.created_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                  </div>
+
+                  {/* Informazioni principali */}
+                  <div className="space-y-2">
+                    <div className="text-sm sm:text-base font-medium text-gray-900">
+                      {getRequestDisplayText(request)}
+                    </div>
+                    
+                    {request.note && (
+                      <div className="text-xs sm:text-sm text-gray-600 bg-white/50 p-2 rounded">
+                        <span className="font-medium">Note:</span> {request.note}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between pt-2 border-t border-orange-200">
+                      <div className="text-xs text-gray-500">
+                        Richiesta del {format(new Date(request.created_at), 'dd/MM/yyyy', { locale: it })}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {format(new Date(request.created_at), 'HH:mm', { locale: it })}
+                      </div>
                     </div>
                   </div>
                 </div>

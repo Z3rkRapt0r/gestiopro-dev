@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -102,7 +103,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     }
   }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, validateLeaveRequest]);
 
-  // Validazione personalizzata per giorni lavorativi
   const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
     
@@ -120,17 +120,12 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     return errors;
   };
 
-  // Funzione per disabilitare giorni nel calendario - SOLO PER HARD BLOCKS
   const isDateDisabled = (date: Date, type: string): boolean => {
-    // Prima controlla se è un giorno lavorativo
     if (!isWorkingDay(date)) return true;
     
-    // Poi controlla se c'è un hard block per questa data
     const dateStr = format(date, 'yyyy-MM-dd');
     const { employeeStatus } = useEmployeeStatus(profile?.id, dateStr);
     
-    // Blocca solo per malattia, ferie approvate, trasferte (hasHardBlock = true)
-    // NON blocca per permessi (permettiamo sovrapposizioni)
     return employeeStatus?.hasHardBlock || false;
   };
 
@@ -139,27 +134,23 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     
     setShowValidationErrors(false);
     
-    // CONTROLLO CRITICO: Bloccare se ci sono richieste pending
     if (!formValidationState.isValid) {
       setShowValidationErrors(true);
       console.log('Invio bloccato per validazione form:', formValidationState.message);
       return;
     }
 
-    // Validazione bilanci
     if (balanceValidationErrors.length > 0) {
       setShowValidationErrors(true);
       console.log('Invio bloccato per bilanci:', balanceValidationErrors);
       return;
     }
 
-    // Validazione giorni lavorativi
     let validationErrors: string[] = [];
     
     if (data.type === 'ferie' && data.date_from && data.date_to) {
       validationErrors = validateWorkingDays(data.date_from, data.date_to, data.type);
       
-      // Controllo che la data fine non sia precedente alla data inizio
       if (data.date_to < data.date_from) {
         validationErrors.push('La data di fine non può essere precedente alla data di inizio.');
       }
@@ -174,7 +165,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       return;
     }
 
-    // Controllo status dipendente - SOLO per hard blocks (non permessi)
     if (employeeStatus && employeeStatus.hasHardBlock) {
       setShowValidationErrors(true);
       console.log('Invio bloccato per hard block:', employeeStatus.blockingReasons);
@@ -200,14 +190,12 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
 
   const workingDaysLabels = getWorkingDaysLabels();
 
-  // Determina le date per le validazioni
   const validationStartDate = watchedType === 'ferie' ? (watchedDateFrom ? format(watchedDateFrom, 'yyyy-MM-dd') : undefined) : 
                               watchedType === 'permesso' ? (watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined) : undefined;
   
   const validationEndDate = watchedType === 'ferie' ? (watchedDateTo ? format(watchedDateTo, 'yyyy-MM-dd') : undefined) : 
                             watchedType === 'permesso' ? (watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined) : undefined;
 
-  // Determina lo stato finale del pulsante
   const isFormBlocked = !formValidationState.isValid || balanceValidationErrors.length > 0;
   const isPendingRequest = !formValidationState.isValid && formValidationState.message.includes('richiesta in attesa');
 
@@ -222,55 +210,55 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
         setFormValidationState({ isValid, message: message || '' });
       }}
     >
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>Nuova Richiesta</CardTitle>
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardHeader className="pb-4 sm:pb-6">
+          <CardTitle className="text-lg sm:text-xl">Nuova Richiesta</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4 sm:space-y-6">
           {/* Informazioni sui bilanci disponibili */}
           {leaveBalance && (
-            <Alert className="mb-6 border-blue-200 bg-blue-50">
-              <Info className="h-4 w-4 text-blue-600" />
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
               <AlertDescription className="text-blue-700">
-                <strong>Bilanci disponibili:</strong>
-                <br />
-                <span className="text-sm">
-                  • Ferie: {leaveBalance.vacation_days_remaining} giorni su {leaveBalance.vacation_days_total}
-                  <br />
-                  • Permessi: {leaveBalance.permission_hours_remaining} ore su {leaveBalance.permission_hours_total}
-                </span>
+                <div className="font-medium mb-2">Bilanci disponibili:</div>
+                <div className="space-y-1 text-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                    <span>• Ferie: <strong>{leaveBalance.vacation_days_remaining}</strong> giorni su {leaveBalance.vacation_days_total}</span>
+                    <span>• Permessi: <strong>{leaveBalance.permission_hours_remaining}</strong> ore su {leaveBalance.permission_hours_total}</span>
+                  </div>
+                </div>
               </AlertDescription>
             </Alert>
           )}
 
           {/* Informazioni sui giorni lavorativi */}
           {workingDaysLabels.length > 0 && (
-            <Alert className="mb-6 border-blue-200 bg-blue-50">
-              <AlertCircle className="h-4 w-4 text-blue-600" />
+            <Alert className="border-blue-200 bg-blue-50">
+              <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
               <AlertDescription className="text-blue-700">
-                <strong>Giorni lavorativi configurati:</strong> {workingDaysLabels.join(', ')}
-                <br />
-                <span className="text-sm">
-                  Solo i giorni lavorativi verranno conteggiati per ferie e permessi.
-                </span>
+                <div className="font-medium mb-2">Giorni lavorativi configurati:</div>
+                <div className="text-sm">
+                  <div className="font-medium">{workingDaysLabels.join(', ')}</div>
+                  <div className="mt-1 text-xs">Solo i giorni lavorativi verranno conteggiati per ferie e permessi.</div>
+                </div>
               </AlertDescription>
             </Alert>
           )}
 
           {/* Errori di validazione */}
           {showValidationErrors && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <AlertDescription>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {balanceValidationErrors.map((error, index) => (
-                    <p key={index}>{error}</p>
+                    <p key={index} className="text-sm">{error}</p>
                   ))}
                   {!formValidationState.isValid && formValidationState.message && (
-                    <p>{formValidationState.message}</p>
+                    <p className="text-sm">{formValidationState.message}</p>
                   )}
                   {employeeStatus && employeeStatus.hasHardBlock && (
-                    <p>Non puoi fare richieste per questo periodo: {employeeStatus.blockingReasons.join(', ')}</p>
+                    <p className="text-sm">Non puoi fare richieste per questo periodo: {employeeStatus.blockingReasons.join(', ')}</p>
                   )}
                 </div>
               </AlertDescription>
@@ -279,50 +267,53 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
 
           {/* Avviso status dipendente - SOLO per hard blocks */}
           {employeeStatus && employeeStatus.hasHardBlock && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <AlertDescription>
-                <strong>Attenzione:</strong> {employeeStatus.blockingReasons.join(', ')}
-                {employeeStatus.statusDetails && (
-                  <div className="mt-2 text-sm">
-                    <strong>Dettagli:</strong> {employeeStatus.statusDetails.type}
-                    {employeeStatus.statusDetails.startDate && (
-                      <span> dal {employeeStatus.statusDetails.startDate}</span>
-                    )}
-                    {employeeStatus.statusDetails.endDate && (
-                      <span> al {employeeStatus.statusDetails.endDate}</span>
-                    )}
-                  </div>
-                )}
+                <div className="font-medium mb-2">Attenzione:</div>
+                <div className="text-sm space-y-1">
+                  <p>{employeeStatus.blockingReasons.join(', ')}</p>
+                  {employeeStatus.statusDetails && (
+                    <div className="text-xs">
+                      <strong>Dettagli:</strong> {employeeStatus.statusDetails.type}
+                      {employeeStatus.statusDetails.startDate && (
+                        <span> dal {employeeStatus.statusDetails.startDate}</span>
+                      )}
+                      {employeeStatus.statusDetails.endDate && (
+                        <span> al {employeeStatus.statusDetails.endDate}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </AlertDescription>
             </Alert>
           )}
 
           {/* Avviso per permessi sovrapposti - INFO, non blocca */}
           {employeeStatus && employeeStatus.currentStatus === 'permission' && !employeeStatus.hasHardBlock && (
-            <Alert className="mb-6 border-orange-200 bg-orange-50">
-              <Info className="h-4 w-4 text-orange-600" />
+            <Alert className="border-orange-200 bg-orange-50">
+              <Info className="h-4 w-4 text-orange-600 flex-shrink-0" />
               <AlertDescription className="text-orange-700">
-                <strong>Informazione:</strong> {employeeStatus.blockingReasons.join(', ')}
-                <br />
-                <span className="text-sm">
-                  I permessi possono sovrapporsi. La richiesta verrà valutata dall'amministratore.
-                </span>
+                <div className="font-medium mb-2">Informazione:</div>
+                <div className="text-sm space-y-1">
+                  <p>{employeeStatus.blockingReasons.join(', ')}</p>
+                  <p className="text-xs">I permessi possono sovrapporsi. La richiesta verrà valutata dall'amministratore.</p>
+                </div>
               </AlertDescription>
             </Alert>
           )}
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
               <FormField
                 control={form.control}
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo di Richiesta</FormLabel>
+                    <FormLabel className="text-sm sm:text-base">Tipo di Richiesta</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-12 sm:h-10 text-base sm:text-sm">
                           <SelectValue placeholder="Seleziona il tipo di richiesta" />
                         </SelectTrigger>
                       </FormControl>
@@ -338,29 +329,29 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
 
               {watchedType === 'ferie' && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <FormField
                       control={form.control}
                       name="date_from"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Data Inizio</FormLabel>
+                          <FormLabel className="text-sm sm:text-base">Data Inizio</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
                                 <Button
                                   variant="outline"
                                   className={cn(
-                                    "pl-3 text-left font-normal",
+                                    "h-12 sm:h-10 pl-3 text-left font-normal text-base sm:text-sm justify-start",
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
                                   {field.value ? (
-                                    format(field.value, "PPP", { locale: it })
+                                    format(field.value, "dd/MM/yyyy", { locale: it })
                                   ) : (
                                     <span>Seleziona data</span>
                                   )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50 flex-shrink-0" />
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
@@ -385,23 +376,23 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                       name="date_to"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Data Fine</FormLabel>
+                          <FormLabel className="text-sm sm:text-base">Data Fine</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
                                 <Button
                                   variant="outline"
                                   className={cn(
-                                    "pl-3 text-left font-normal",
+                                    "h-12 sm:h-10 pl-3 text-left font-normal text-base sm:text-sm justify-start",
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
                                   {field.value ? (
-                                    format(field.value, "PPP", { locale: it })
+                                    format(field.value, "dd/MM/yyyy", { locale: it })
                                   ) : (
                                     <span>Seleziona data</span>
                                   )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50 flex-shrink-0" />
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
@@ -411,9 +402,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                                 selected={field.value}
                                 onSelect={field.onChange}
                                 disabled={(date) => {
-                                  // Disabilita giorni non lavorativi E giorni con hard blocks
                                   if (isDateDisabled(date, watchedType)) return true;
-                                  // Disabilita giorni precedenti alla data di inizio
                                   if (watchedDateFrom && date < watchedDateFrom) return true;
                                   return false;
                                 }}
@@ -444,23 +433,23 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                     name="day"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Data del Permesso</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Data del Permesso</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
                                 variant="outline"
                                 className={cn(
-                                  "pl-3 text-left font-normal",
+                                  "h-12 sm:h-10 pl-3 text-left font-normal text-base sm:text-sm justify-start",
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
                                 {field.value ? (
-                                  format(field.value, "PPP", { locale: it })
+                                  format(field.value, "dd/MM/yyyy", { locale: it })
                                 ) : (
                                   <span>Seleziona data</span>
                                 )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50 flex-shrink-0" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
@@ -480,15 +469,19 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <FormField
                       control={form.control}
                       name="time_from"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Ora Inizio</FormLabel>
+                          <FormLabel className="text-sm sm:text-base">Ora Inizio</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} />
+                            <Input 
+                              type="time" 
+                              {...field} 
+                              className="h-12 sm:h-10 text-base sm:text-sm"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -500,9 +493,13 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                       name="time_to"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Ora Fine</FormLabel>
+                          <FormLabel className="text-sm sm:text-base">Ora Fine</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} />
+                            <Input 
+                              type="time" 
+                              {...field} 
+                              className="h-12 sm:h-10 text-base sm:text-sm"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -513,10 +510,13 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                   {/* Validazione per permessi in giorni non lavorativi */}
                   {watchedDay && !isWorkingDay(watchedDay) && (
                     <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
                       <AlertDescription>
-                        Non puoi richiedere un permesso per un giorno non lavorativo.
-                        Seleziona un giorno lavorativo: {workingDaysLabels.join(', ')}.
+                        <div className="text-sm">
+                          <div className="font-medium mb-1">Giorno non lavorativo</div>
+                          <div>Non puoi richiedere un permesso per un giorno non lavorativo.</div>
+                          <div className="mt-1 text-xs">Giorni lavorativi: {workingDaysLabels.join(', ')}</div>
+                        </div>
                       </AlertDescription>
                     </Alert>
                   )}
@@ -528,10 +528,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                 name="note"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Note (opzionale)</FormLabel>
+                    <FormLabel className="text-sm sm:text-base">Note (opzionale)</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Aggiungi dettagli sulla tua richiesta..."
+                        className="min-h-[100px] sm:min-h-[80px] text-base sm:text-sm resize-none"
                         {...field}
                       />
                     </FormControl>
@@ -542,7 +543,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
 
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full h-12 sm:h-10 text-base sm:text-sm font-medium" 
                 disabled={insertMutation.isPending || isFormBlocked}
               >
                 {insertMutation.isPending ? 'Invio in corso...' : 
