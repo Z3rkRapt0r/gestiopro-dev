@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -12,51 +11,22 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { useBusinessTripConflicts } from '@/hooks/useBusinessTripConflicts';
 import { Plane, Calendar as CalendarIcon, Users, Trash2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 export default function AdminBusinessTripsManagement() {
-  const { businessTrips, createTrip, isCreating, deleteTrip, isDeleting, getConflictDatesForEmployees } = useBusinessTrips();
+  const { businessTrips, createTrip, isCreating, deleteTrip, isDeleting } = useBusinessTrips();
   const { employees } = useActiveEmployees();
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [destination, setDestination] = useState('');
   const [reason, setReason] = useState('');
-  const [conflictDates, setConflictDates] = useState<Date[]>([]);
-  const [isCalculatingConflicts, setIsCalculatingConflicts] = useState(false);
 
-  // Calcola i conflitti quando cambiano i dipendenti selezionati
-  useEffect(() => {
-    const calculateConflicts = async () => {
-      if (selectedEmployees.length === 0) {
-        setConflictDates([]);
-        return;
-      }
-
-      setIsCalculatingConflicts(true);
-      try {
-        const conflicts = await getConflictDatesForEmployees(selectedEmployees);
-        setConflictDates(conflicts);
-        console.log('📅 Conflitti calcolati per dipendenti selezionati:', conflicts.length);
-      } catch (error) {
-        console.error('❌ Errore calcolo conflitti:', error);
-        setConflictDates([]);
-      } finally {
-        setIsCalculatingConflicts(false);
-      }
-    };
-
-    calculateConflicts();
-  }, [selectedEmployees, getConflictDatesForEmployees]);
-
-  // Funzione per verificare se una data è in conflitto
-  const isDateDisabled = (date: Date) => {
-    return conflictDates.some(conflictDate => 
-      format(date, 'yyyy-MM-dd') === format(conflictDate, 'yyyy-MM-dd')
-    );
-  };
+  // Usa il nuovo hook per i conflitti
+  const { conflictDates, isLoading: isCalculatingConflicts, isDateDisabled } = useBusinessTripConflicts(selectedEmployees);
 
   const handleEmployeeToggle = (employeeId: string) => {
     setSelectedEmployees(prev => 

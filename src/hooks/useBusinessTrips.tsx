@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -142,71 +143,6 @@ export const useBusinessTrips = () => {
         conflicts: ['Errore durante la validazione dei conflitti'],
         warnings: []
       };
-    }
-  };
-
-  // Nuova funzione per calcolare le date con conflitti critici per dipendenti multipli
-  const getConflictDatesForEmployees = async (userIds: string[]): Promise<Date[]> => {
-    if (!userIds || userIds.length === 0) return [];
-    
-    console.log('🔍 Calcolo date con conflitti per dipendenti:', userIds);
-    
-    const conflictDates = new Set<string>();
-    
-    try {
-      // Per ogni dipendente, verifica i conflitti critici
-      for (const userId of userIds) {
-        // 1. CONTROLLO TRASFERTE APPROVATE ESISTENTI
-        const { data: existingTrips } = await supabase
-          .from('business_trips')
-          .select('start_date, end_date')
-          .eq('user_id', userId)
-          .eq('status', 'approved');
-
-        if (existingTrips) {
-          for (const trip of existingTrips) {
-            const startDate = new Date(trip.start_date);
-            const endDate = new Date(trip.end_date);
-            const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-            
-            allDays.forEach(day => {
-              conflictDates.add(format(day, 'yyyy-MM-dd'));
-            });
-          }
-        }
-
-        // 2. CONTROLLO FERIE APPROVATE
-        const { data: approvedVacations } = await supabase
-          .from('leave_requests')
-          .select('date_from, date_to')
-          .eq('user_id', userId)
-          .eq('status', 'approved')
-          .eq('type', 'ferie')
-          .not('date_from', 'is', null)
-          .not('date_to', 'is', null);
-
-        if (approvedVacations) {
-          for (const vacation of approvedVacations) {
-            const startDate = new Date(vacation.date_from!);
-            const endDate = new Date(vacation.date_to!);
-            const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-            
-            allDays.forEach(day => {
-              conflictDates.add(format(day, 'yyyy-MM-dd'));
-            });
-          }
-        }
-      }
-
-      // Converti le date string in oggetti Date
-      const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
-      
-      console.log('📅 Date con conflitti trovate:', conflictDateObjects.length);
-      return conflictDateObjects;
-      
-    } catch (error) {
-      console.error('❌ Errore nel calcolo conflitti per dipendenti:', error);
-      return [];
     }
   };
 
@@ -455,10 +391,6 @@ export const useBusinessTrips = () => {
 
         console.log('✅ Trasferta eliminata con successo dal database');
         
-        // Nota: Non controlliamo più il count delle righe eliminate perché 
-        // alcune versioni di Supabase potrebbero non restituirlo correttamente
-        // Il fatto che non ci sia errore significa che l'operazione è riuscita
-
         return { trip, deletedAttendances: deletedAttendances || 0 };
       } catch (error) {
         console.error('💥 Errore durante l\'eliminazione:', error);
@@ -502,6 +434,5 @@ export const useBusinessTrips = () => {
     isDeleting: deleteTripMutation.isPending,
     isWorkingDay, // Esportiamo la funzione per uso nei componenti
     validateBusinessTripDates, // Esportiamo la funzione di validazione
-    getConflictDatesForEmployees, // Nuova esportazione per il calcolo conflitti
   };
 };
