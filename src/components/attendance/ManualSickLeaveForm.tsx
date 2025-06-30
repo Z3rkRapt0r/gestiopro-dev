@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,7 @@ export function ManualSickLeaveForm({ onSuccess }: ManualSickLeaveFormProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const { employees } = useActiveEmployees();
-  const { createAttendance } = useUnifiedAttendances();
+  const { createManualAttendance } = useUnifiedAttendances();
   
   // Usa il nuovo hook per i conflitti
   const { 
@@ -164,11 +163,12 @@ export function ManualSickLeaveForm({ onSuccess }: ManualSickLeaveFormProps) {
     try {
       // Crea un record di presenza per ogni giorno di malattia
       for (const dateStr of dates) {
-        await createAttendance({
+        await createManualAttendance({
           user_id: selectedUserId,
           date: dateStr,
+          check_in_time: null,
+          check_out_time: null,
           is_sick_leave: true,
-          is_manual: true,
           notes: notes || `Malattia registrata manualmente${dates.length > 1 ? ` (dal ${format(startDate, 'dd/MM/yyyy')} al ${format(finalEndDate, 'dd/MM/yyyy')})` : ''}`,
         });
       }
