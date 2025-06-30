@@ -1,12 +1,12 @@
-import * as React from "react"
 
+import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+  <div className="relative w-full overflow-auto rounded-md border">
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
@@ -20,7 +20,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead ref={ref} className={cn("[&_tr]:border-b bg-muted/50", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -73,7 +73,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -87,7 +87,7 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn("p-2 sm:p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
     {...props}
   />
 ))
@@ -105,6 +105,30 @@ const TableCaption = React.forwardRef<
 ))
 TableCaption.displayName = "TableCaption"
 
+// Mobile-friendly table container
+const ResponsiveTableContainer = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { 
+    showBorder?: boolean
+    maxHeight?: string 
+  }
+>(({ className, showBorder = true, maxHeight, children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "w-full overflow-auto",
+      showBorder && "rounded-md border",
+      maxHeight && `max-h-[${maxHeight}]`,
+      "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-300",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </div>
+))
+ResponsiveTableContainer.displayName = "ResponsiveTableContainer"
+
 export {
   Table,
   TableHeader,
@@ -114,4 +138,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  ResponsiveTableContainer,
 }

@@ -206,33 +206,34 @@ export default function MultiEmployeeManualAttendanceForm() {
     });
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <UserPlus className="w-5 h-5" />
             Inserimento Presenza/Malattia
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Selezione dipendenti */}
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            {/* Selezione dipendenti - Mobile optimized */}
             <div>
               <Label className="text-base font-medium mb-3 block">Seleziona Dipendenti</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto border rounded-md p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 sm:max-h-64 overflow-y-auto border rounded-md p-4 bg-slate-50">
                 {employees?.map((employee) => {
                   const hasConflict = bulkValidationResults[employee.id] && !bulkValidationResults[employee.id].isValid;
                   return (
-                    <div key={employee.id} className={`flex items-center space-x-2 ${hasConflict ? 'text-red-600' : ''}`}>
+                    <div key={employee.id} className={`flex items-center space-x-3 py-2 ${hasConflict ? 'text-red-600' : ''}`}>
                       <Checkbox
                         id={employee.id}
                         checked={formData.selected_user_ids.includes(employee.id)}
                         onCheckedChange={(checked) => handleEmployeeToggle(employee.id, checked as boolean)}
                         disabled={hasConflict}
+                        className="h-5 w-5"
                       />
-                      <Label htmlFor={employee.id} className="text-sm">
-                        {employee.first_name} {employee.last_name}
-                        {hasConflict && ' (conflitto)'}
+                      <Label htmlFor={employee.id} className="text-sm sm:text-base leading-tight cursor-pointer flex-1">
+                        <div className="font-medium">{employee.first_name} {employee.last_name}</div>
+                        {hasConflict && <div className="text-xs text-red-500">conflitto</div>}
                       </Label>
                     </div>
                   );
@@ -242,9 +243,9 @@ export default function MultiEmployeeManualAttendanceForm() {
 
             {/* Mostra dipendenti con conflitti */}
             {employeesWithConflicts.length > 0 && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="text-sm">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
+                <AlertDescription className="break-words">
                   {employeesWithConflicts.length} dipendente/i con conflitti (disabilitati): {employeesWithConflicts.join(', ')}
                 </AlertDescription>
               </Alert>
@@ -252,7 +253,7 @@ export default function MultiEmployeeManualAttendanceForm() {
 
             {/* Tipo di inserimento */}
             <div className="space-y-3">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
                 <Checkbox
                   id="sick_leave"
                   checked={formData.is_sick_leave}
@@ -264,35 +265,37 @@ export default function MultiEmployeeManualAttendanceForm() {
                       check_out_time: checked ? '' : prev.check_out_time,
                     }));
                   }}
+                  className="h-5 w-5"
                 />
-                <Label htmlFor="sick_leave" className="text-orange-700 font-medium">
+                <Label htmlFor="sick_leave" className="text-orange-700 font-medium text-sm sm:text-base cursor-pointer">
                   Giorno/i di malattia
                 </Label>
               </div>
             </div>
 
             {validationError && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="text-sm">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{validationError}</AlertDescription>
+                <AlertDescription className="break-words">{validationError}</AlertDescription>
               </Alert>
             )}
 
-            {/* Date */}
+            {/* Date - Mobile responsive layout */}
             {formData.is_sick_leave ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="date">Data Inizio</Label>
+                  <Label htmlFor="date" className="text-sm sm:text-base">Data Inizio</Label>
                   <Input
                     id="date"
                     type="date"
                     value={formData.date}
                     onChange={(e) => handleDateChange('date', e.target.value)}
                     required
+                    className="mt-1 h-11 sm:h-10"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="date_to">Data Fine</Label>
+                  <Label htmlFor="date_to" className="text-sm sm:text-base">Data Fine</Label>
                   <Input
                     id="date_to"
                     type="date"
@@ -300,42 +303,46 @@ export default function MultiEmployeeManualAttendanceForm() {
                     min={formData.date}
                     onChange={(e) => handleDateChange('date_to', e.target.value)}
                     required
+                    className="mt-1 h-11 sm:h-10"
                   />
                 </div>
               </div>
             ) : (
               <div>
-                <Label htmlFor="date">Data</Label>
+                <Label htmlFor="date" className="text-sm sm:text-base">Data</Label>
                 <Input
                   id="date"
                   type="date"
                   value={formData.date}
                   onChange={(e) => handleDateChange('date', e.target.value)}
                   required
+                  className="mt-1 h-11 sm:h-10"
                 />
               </div>
             )}
 
-            {/* Orari presenza normale */}
+            {/* Orari presenza normale - Mobile responsive */}
             {!formData.is_sick_leave && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="check_in">Orario Entrata</Label>
+                  <Label htmlFor="check_in" className="text-sm sm:text-base">Orario Entrata</Label>
                   <Input
                     id="check_in"
                     type="time"
                     value={formData.check_in_time}
                     onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
+                    className="mt-1 h-11 sm:h-10"
                   />
                 </div>
                 {settings?.checkout_enabled && (
                   <div>
-                    <Label htmlFor="check_out">Orario Uscita</Label>
+                    <Label htmlFor="check_out" className="text-sm sm:text-base">Orario Uscita</Label>
                     <Input
                       id="check_out"
                       type="time"
                       value={formData.check_out_time}
                       onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
+                      className="mt-1 h-11 sm:h-10"
                     />
                   </div>
                 )}
@@ -344,19 +351,20 @@ export default function MultiEmployeeManualAttendanceForm() {
 
             {/* Note */}
             <div>
-              <Label htmlFor="notes">Note</Label>
+              <Label htmlFor="notes" className="text-sm sm:text-base">Note</Label>
               <Textarea
                 id="notes"
                 placeholder="Note aggiuntive..."
                 value={formData.notes}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                className="mt-1 min-h-[100px] sm:min-h-[80px]"
               />
             </div>
 
             <Button 
               type="submit" 
               disabled={isCreating || formData.selected_user_ids.length === 0 || !formData.date || (formData.is_sick_leave && !formData.date_to) || !!validationError} 
-              className="w-full"
+              className="w-full h-11 sm:h-10 text-base sm:text-sm"
             >
               {isCreating ? 'Salvando...' : 
                 formData.is_sick_leave ? 'Registra Malattia' : 

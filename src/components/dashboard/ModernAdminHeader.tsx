@@ -46,24 +46,24 @@ export default function ModernAdminHeader({
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/60 shadow-sm">
-      <div className="flex items-center justify-between h-16 px-4 lg:px-6">
+      <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 lg:px-6">
         {/* Left Section */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Mobile Menu Button */}
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden h-9 w-9 sm:h-10 sm:w-10"
             onClick={onToggleMobileMenu}
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
 
           {/* Desktop Collapse Button */}
           <Button
             variant="ghost"
             size="icon"
-            className="hidden lg:flex"
+            className="hidden lg:flex h-10 w-10"
             onClick={onToggleCollapse}
           >
             {isCollapsed ? (
@@ -75,17 +75,17 @@ export default function ModernAdminHeader({
 
           {/* Title */}
           <div className="hidden sm:block">
-            <h1 className="text-xl font-bold text-slate-900">{title}</h1>
-            <div className="flex items-center space-x-2 text-sm text-slate-500">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">{title}</h1>
+            <div className="hidden md:flex items-center space-x-2 text-xs sm:text-sm text-slate-500">
               <span>Dashboard</span>
               <span>•</span>
-              <span className="capitalize">{title.toLowerCase()}</span>
+              <span className="capitalize truncate">{title.toLowerCase()}</span>
             </div>
           </div>
         </div>
 
-        {/* Center Section - Search */}
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
+        {/* Center Section - Search (Hidden on mobile) */}
+        <div className="hidden lg:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -97,13 +97,18 @@ export default function ModernAdminHeader({
         </div>
 
         {/* Right Section */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Search Button for Mobile */}
+          <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9 sm:h-10 sm:w-10">
+            <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
+          </Button>
+
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5 text-slate-600" />
+          <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10">
+            <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
             <Badge 
               variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs animate-pulse"
+              className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center text-xs animate-pulse"
             >
               3
             </Badge>
@@ -112,16 +117,16 @@ export default function ModernAdminHeader({
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 px-3 rounded-xl hover:bg-slate-100/80">
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-8 w-8 ring-2 ring-slate-200">
+              <Button variant="ghost" className="relative h-9 sm:h-10 px-2 sm:px-3 rounded-xl hover:bg-slate-100/80">
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <Avatar className="h-7 w-7 sm:h-8 sm:w-8 ring-2 ring-slate-200">
                     <AvatarImage src="" alt={`${profile?.first_name} ${profile?.last_name}`} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold text-sm">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold text-xs sm:text-sm">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="hidden sm:flex flex-col items-start">
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm font-semibold text-slate-900 truncate max-w-[120px]">
                       {profile?.first_name} {profile?.last_name}
                     </span>
                     <span className="text-xs text-slate-500">
@@ -131,13 +136,13 @@ export default function ModernAdminHeader({
                 </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64 p-2" align="end" forceMount>
+            <DropdownMenuContent className="w-56 sm:w-64 p-2" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
+                  <p className="text-sm font-medium leading-none truncate">
                     {profile?.first_name} {profile?.last_name}
                   </p>
-                  <p className="text-xs leading-none text-muted-foreground">
+                  <p className="text-xs leading-none text-muted-foreground truncate">
                     {profile?.email}
                   </p>
                 </div>
