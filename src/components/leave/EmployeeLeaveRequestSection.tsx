@@ -1,16 +1,14 @@
 
-import React, { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import LeaveRequestForm from "./LeaveRequestForm";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
-import { Calendar, Clock, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 
 export function EmployeeLeaveRequestSection() {
-  const [activeTab, setActiveTab] = useState<"ferie" | "permesso">("ferie");
   const { leaveRequests, isLoading } = useLeaveRequests();
 
   // Filtra solo le richieste pending dell'utente corrente
@@ -35,26 +33,7 @@ export function EmployeeLeaveRequestSection() {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "ferie" | "permesso")}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="ferie" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Richiedi Ferie
-          </TabsTrigger>
-          <TabsTrigger value="permesso" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Richiedi Permesso
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="ferie">
-          <LeaveRequestForm type="ferie" onSuccess={handleSuccess} />
-        </TabsContent>
-
-        <TabsContent value="permesso">
-          <LeaveRequestForm type="permesso" onSuccess={handleSuccess} />
-        </TabsContent>
-      </Tabs>
+      <LeaveRequestForm onSuccess={handleSuccess} />
 
       {/* Sezione richieste in attesa */}
       {pendingRequests.length > 0 && (

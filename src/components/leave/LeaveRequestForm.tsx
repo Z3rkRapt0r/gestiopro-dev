@@ -22,7 +22,7 @@ import { useAuth } from '@/hooks/useAuth';
 import WorkingDaysPreview from './WorkingDaysPreview';
 
 const leaveRequestSchema = z.object({
-  type: z.enum(['ferie', 'permesso', 'malattia']),
+  type: z.enum(['ferie', 'permesso']),
   date_from: z.date().optional(),
   date_to: z.date().optional(),
   day: z.date().optional(),
@@ -44,11 +44,10 @@ const leaveRequestSchema = z.object({
 type LeaveRequestFormData = z.infer<typeof leaveRequestSchema>;
 
 interface LeaveRequestFormProps {
-  type?: string;
   onSuccess?: () => void;
 }
 
-export default function LeaveRequestForm({ type: defaultType, onSuccess }: LeaveRequestFormProps) {
+export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const { profile } = useAuth();
   const { insertMutation } = useLeaveRequests();
   const { isWorkingDay, countWorkingDays, getWorkingDaysLabels } = useWorkingDaysValidation();
@@ -57,7 +56,7 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
     defaultValues: {
-      type: (defaultType as 'ferie' | 'permesso' | 'malattia') || 'ferie',
+      type: 'ferie',
     },
   });
 
@@ -86,8 +85,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
 
   // Funzione per disabilitare giorni nel calendario
   const isDateDisabled = (date: Date, type: string): boolean => {
-    if (type === 'malattia') return false; // La malattia può essere registrata per qualsiasi giorno
-    
     return !isWorkingDay(date);
   };
 
@@ -177,7 +174,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
                     <SelectContent>
                       <SelectItem value="ferie">Ferie</SelectItem>
                       <SelectItem value="permesso">Permesso</SelectItem>
-                      <SelectItem value="malattia">Malattia</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -259,7 +255,12 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
                               mode="single"
                               selected={field.value}
                               onSelect={field.onChange}
-                              disabled={(date) => isDateDisabled(date, watchedType)}
+                              disabled={(date) => {
+                                // Disabilita giorni non lavorativi E giorni precedenti alla data di inizio
+                                if (isDateDisabled(date, watchedType)) return true;
+                                if (watchedDateFrom && date < watchedDateFrom) return true;
+                                return false;
+                              }}
                               initialFocus
                               className="pointer-events-auto"
                             />
@@ -364,16 +365,6 @@ export default function LeaveRequestForm({ type: defaultType, onSuccess }: Leave
                   </Alert>
                 )}
               </>
-            )}
-
-            {watchedType === 'malattia' && (
-              <Alert className="border-yellow-200 bg-yellow-50">
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                <AlertDescription className="text-yellow-700">
-                  <strong>Nota:</strong> La malattia può essere registrata per qualsiasi giorno, 
-                  indipendentemente dalla configurazione dei giorni lavorativi.
-                </AlertDescription>
-              </Alert>
             )}
 
             <FormField
