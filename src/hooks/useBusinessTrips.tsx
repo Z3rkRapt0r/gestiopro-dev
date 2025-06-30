@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +28,6 @@ export interface BusinessTrip {
 interface ValidationResult {
   isValid: boolean;
   conflicts: string[];
-  warnings: string[];
 }
 
 export const useBusinessTrips = () => {
@@ -55,12 +53,11 @@ export const useBusinessTrips = () => {
     }
   };
 
-  // Funzione di validazione anti-conflitto per trasferte
+  // Funzione di validazione anti-conflitto per trasferte - TUTTI I CONGEDI SONO CONFLITTI CRITICI
   const validateBusinessTripDates = async (userId: string, startDate: string, endDate: string): Promise<ValidationResult> => {
-    console.log('🔍 Validazione anti-conflitto per trasferta:', { userId, startDate, endDate });
+    console.log('🔍 Validazione anti-conflitto RIGOROSA per trasferta:', { userId, startDate, endDate });
     
     const conflicts: string[] = [];
-    const warnings: string[] = [];
     
     try {
       // 1. CONTROLLO TRASFERTE SOVRAPPOSTE (Conflitto critico)
@@ -79,69 +76,74 @@ export const useBusinessTrips = () => {
           
           // Controllo sovrapposizione date
           if ((newStart <= tripEnd && newEnd >= tripStart)) {
-            conflicts.push(`Conflitto critico: esiste già una trasferta a ${trip.destination} dal ${trip.start_date} al ${trip.end_date}`);
+            conflicts.push(`Conflitto critico: esiste già una trasferta a ${trip.destination} dal ${format(tripStart, 'dd/MM/yyyy')} al ${format(tripEnd, 'dd/MM/yyyy')}`);
           }
         }
       }
 
-      // 2. CONTROLLO FERIE APPROVATE (Conflitto critico - richiedere conferma admin)
-      const { data: approvedVacations } = await supabase
+      // 2. CONTROLLO TUTTI I CONGEDI APPROVATI (CONFLITTI CRITICI)
+      const { data: approvedLeaveRequests } = await supabase
         .from('leave_requests')
         .select('*')
         .eq('user_id', userId)
-        .eq('status', 'approved')
-        .eq('type', 'ferie');
+        .eq('status', 'approved');
 
-      if (approvedVacations && approvedVacations.length > 0) {
-        for (const vacation of approvedVacations) {
-          if (vacation.date_from && vacation.date_to) {
-            const vacStart = new Date(vacation.date_from);
-            const vacEnd = new Date(vacation.date_to);
-            const newStart = new Date(startDate);
-            const newEnd = new Date(endDate);
+      if (approvedLeaveRequests && approvedLeaveRequests.length > 0) {
+        for (const leave of approvedLeaveRequests) {
+          const newStart = new Date(startDate);
+          const newEnd = new Date(endDate);
+          
+          if (leave.type === 'ferie' && leave.date_from && leave.date_to) {
+            const leaveStart = new Date(leave.date_from);
+            const leaveEnd = new Date(leave.date_to);
             
-            if ((newStart <= vacEnd && newEnd >= vacStart)) {
-              conflicts.push(`Conflitto critico: esistono ferie approvate dal ${vacation.date_from} al ${vacation.date_to}. Le trasferte sostituiranno le ferie - richiedere conferma admin`);
+            if ((newStart <= leaveEnd && newEnd >= leaveStart)) {
+              conflicts.push(`Conflitto critico: esistono ferie approvate dal ${format(leaveStart, 'dd/MM/yyyy')} al ${format(leaveEnd, 'dd/MM/yyyy')}`);
+            }
+          }
+          
+          if (leave.type === 'permesso' && leave.day) {
+            const leaveDay = new Date(leave.day);
+            
+            if (leaveDay >= newStart && leaveDay <= newEnd) {
+              const timeInfo = leave.time_from && leave.time_to 
+                ? ` dalle ${leave.time_from} alle ${leave.time_to}` 
+                : ' (giornata intera)';
+              conflicts.push(`Conflitto critico: esiste un permesso approvato il ${format(leaveDay, 'dd/MM/yyyy')}${timeInfo}`);
             }
           }
         }
       }
 
-      // 3. CONTROLLO MALATTIE E PRESENZE (Warning - verranno sostituite)
-      const { data: existingAttendances } = await supabase
+      // 3. CONTROLLO MALATTIE (da unified_attendances con is_sick_leave = true)
+      const { data: sickLeaveAttendances } = await supabase
         .from('unified_attendances')
         .select('*')
         .eq('user_id', userId)
+        .eq('is_sick_leave', true)
         .gte('date', startDate)
         .lte('date', endDate);
 
-      if (existingAttendances && existingAttendances.length > 0) {
-        const sickDays = existingAttendances.filter(att => att.is_sick_leave);
-        const normalDays = existingAttendances.filter(att => !att.is_sick_leave && !att.is_business_trip);
-        
-        if (sickDays.length > 0) {
-          warnings.push(`Avviso: ${sickDays.length} giorno/i di malattia verranno sostituiti dalla trasferta`);
-        }
-        
-        if (normalDays.length > 0) {
-          warnings.push(`Avviso: ${normalDays.length} presenza/e normale/i verranno sostituite dalla trasferta`);
-        }
+      if (sickLeaveAttendances && sickLeaveAttendances.length > 0) {
+        const sickDays = sickLeaveAttendances.map(att => format(new Date(att.date), 'dd/MM/yyyy')).join(', ');
+        conflicts.push(`Conflitto critico: esistono giorni di malattia registrati nelle seguenti date: ${sickDays}`);
       }
 
-      console.log('✅ Validazione trasferta completata:', { conflicts: conflicts.length, warnings: warnings.length });
+      console.log('✅ Validazione trasferta completata:', { 
+        conflicts: conflicts.length, 
+        isValid: conflicts.length === 0 
+      });
       
       return {
         isValid: conflicts.length === 0,
-        conflicts,
-        warnings
+        conflicts
       };
 
     } catch (error) {
       console.error('❌ Errore durante la validazione trasferta:', error);
       return {
         isValid: false,
-        conflicts: ['Errore durante la validazione dei conflitti'],
-        warnings: []
+        conflicts: ['Errore durante la validazione dei conflitti']
       };
     }
   };
@@ -222,20 +224,15 @@ export const useBusinessTrips = () => {
 
       const createdTrips = [];
 
-      // Validazione anti-conflitto per ogni utente
+      // Validazione anti-conflitto RIGOROSA per ogni utente
       for (const targetUserId of targetUserIds) {
-        console.log(`🔐 VALIDAZIONE ANTI-CONFLITTO per utente ${targetUserId}`);
+        console.log(`🔐 VALIDAZIONE ANTI-CONFLITTO RIGOROSA per utente ${targetUserId}`);
         
         const validation = await validateBusinessTripDates(targetUserId, tripData.start_date, tripData.end_date);
         
         if (!validation.isValid) {
           const conflictMessages = validation.conflicts.join('; ');
           throw new Error(`Conflitti rilevati per la trasferta: ${conflictMessages}`);
-        }
-        
-        // Se ci sono warnings, li logghiamo ma procediamo
-        if (validation.warnings.length > 0) {
-          console.warn('⚠️ Warnings per trasferta:', validation.warnings);
         }
       }
 
@@ -301,7 +298,7 @@ export const useBusinessTrips = () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
         title: "Trasferte create",
-        description: `${trips.length} trasferta/e creata/e con successo con validazione anti-conflitto. Le presenze sono state registrate automaticamente per i giorni lavorativi configurati`,
+        description: `${trips.length} trasferta/e creata/e con successo con validazione anti-conflitto rigorosa. Le presenze sono state registrate automaticamente per i giorni lavorativi configurati`,
       });
     },
     onError: (error: any) => {

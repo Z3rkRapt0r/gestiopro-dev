@@ -18,12 +18,12 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
     setIsLoading(true);
     setError(null);
     
-    console.log('🔍 Calcolo conflitti per dipendenti:', userIds);
+    console.log('🔍 Calcolo conflitti RIGOROSO per dipendenti:', userIds);
     
     const conflictDates = new Set<string>();
     
     try {
-      // Per ogni dipendente, verifica i conflitti critici
+      // Per ogni dipendente, verifica TUTTI i conflitti critici
       for (const userId of userIds) {
         // 1. CONTROLLO TRASFERTE APPROVATE ESISTENTI
         const { data: existingTrips } = await supabase
@@ -44,33 +44,49 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
           }
         }
 
-        // 2. CONTROLLO FERIE APPROVATE
-        const { data: approvedVacations } = await supabase
+        // 2. CONTROLLO TUTTI I CONGEDI APPROVATI (FERIE, PERMESSI)
+        const { data: approvedLeaveRequests } = await supabase
           .from('leave_requests')
-          .select('date_from, date_to')
+          .select('type, date_from, date_to, day')
           .eq('user_id', userId)
-          .eq('status', 'approved')
-          .eq('type', 'ferie')
-          .not('date_from', 'is', null)
-          .not('date_to', 'is', null);
+          .eq('status', 'approved');
 
-        if (approvedVacations) {
-          for (const vacation of approvedVacations) {
-            const startDate = new Date(vacation.date_from!);
-            const endDate = new Date(vacation.date_to!);
-            const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+        if (approvedLeaveRequests) {
+          for (const leave of approvedLeaveRequests) {
+            if (leave.type === 'ferie' && leave.date_from && leave.date_to) {
+              const startDate = new Date(leave.date_from);
+              const endDate = new Date(leave.date_to);
+              const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+              
+              allDays.forEach(day => {
+                conflictDates.add(format(day, 'yyyy-MM-dd'));
+              });
+            }
             
-            allDays.forEach(day => {
-              conflictDates.add(format(day, 'yyyy-MM-dd'));
-            });
+            if (leave.type === 'permesso' && leave.day) {
+              conflictDates.add(format(new Date(leave.day), 'yyyy-MM-dd'));
+            }
           }
+        }
+
+        // 3. CONTROLLO MALATTIE (da unified_attendances)
+        const { data: sickLeaveAttendances } = await supabase
+          .from('unified_attendances')
+          .select('date')
+          .eq('user_id', userId)
+          .eq('is_sick_leave', true);
+
+        if (sickLeaveAttendances) {
+          sickLeaveAttendances.forEach(attendance => {
+            conflictDates.add(format(new Date(attendance.date), 'yyyy-MM-dd'));
+          });
         }
       }
 
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
-      console.log('📅 Date con conflitti trovate:', conflictDateObjects.length);
+      console.log('📅 Date con conflitti CRITICI trovate:', conflictDateObjects.length);
       setConflictDates(conflictDateObjects);
       
     } catch (error) {
