@@ -11,7 +11,7 @@ interface Notification {
   message: string;
   body?: string;
   attachment_url?: string;
-  type: 'document' | 'system' | 'message' | 'announcement' | 'leave_request' | 'permission_request' | 'sick_leave';
+  type: 'document' | 'system' | 'message' | 'announcement';
   is_read: boolean;
   created_by: string | null;
   created_at: string;
@@ -33,6 +33,14 @@ export const useNotifications = () => {
     try {
       console.log('Fetching notifications for user:', user.id);
       
+      // Prima verifichiamo se ci sono notifiche nella tabella
+      const { data: allNotifications, error: allError } = await supabase
+        .from('notifications')
+        .select('*');
+        
+      console.log('All notifications in database:', allNotifications);
+      
+      // Ora prendiamo solo quelle per questo utente
       const { data, error } = await supabase
         .from('notifications')
         .select('id, user_id, title, message, body, attachment_url, type, is_read, created_by, created_at')
@@ -65,13 +73,12 @@ export const useNotifications = () => {
     userId: string,
     title: string,
     message: string,
-    type: Notification['type'] = 'system',
-    body?: string
+    type: Notification['type'] = 'system'
   ) => {
     if (!user) return { error: 'User not authenticated' };
 
     try {
-      console.log('Creating notification:', { userId, title, message, type, body });
+      console.log('Creating notification:', { userId, title, message, type });
       
       const { error } = await supabase
         .from('notifications')
@@ -79,7 +86,6 @@ export const useNotifications = () => {
           user_id: userId,
           title,
           message,
-          body,
           type,
           created_by: user.id,
         });
@@ -90,15 +96,20 @@ export const useNotifications = () => {
       }
 
       console.log('Notification created successfully');
-      
-      // Se la notifica è per l'utente corrente, aggiorna la lista
-      if (userId === user.id) {
-        await fetchNotifications();
-      }
+      toast({
+        title: "Successo",
+        description: "Notifica inviata correttamente",
+      });
 
+      await fetchNotifications();
       return { error: null };
     } catch (error: any) {
       console.error('Error creating notification:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'invio della notifica",
+        variant: "destructive",
+      });
       return { error };
     }
   };
@@ -163,59 +174,14 @@ export const useNotifications = () => {
     }
   };
 
-  // Real-time subscription per le notifiche
   useEffect(() => {
-    if (!user) {
+    if (user) {
+      console.log('useNotifications: User found, fetching notifications for:', user.id);
+      fetchNotifications();
+    } else {
       console.log('useNotifications: No user, clearing notifications');
       setNotifications([]);
-      return;
     }
-
-    console.log('useNotifications: User found, setting up subscription for:', user.id);
-    
-    // Fetch initial notifications
-    fetchNotifications();
-
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('notifications-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('Real-time notification update:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            const newNotification = payload.new as Notification;
-            setNotifications(prev => [newNotification, ...prev]);
-            
-            // Show toast for new notifications
-            toast({
-              title: newNotification.title,
-              description: newNotification.message,
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedNotification = payload.new as Notification;
-            setNotifications(prev =>
-              prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            const deletedId = payload.old.id;
-            setNotifications(prev => prev.filter(n => n.id !== deletedId));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('Cleaning up notifications subscription');
-      supabase.removeChannel(channel);
-    };
   }, [user]);
 
   return {

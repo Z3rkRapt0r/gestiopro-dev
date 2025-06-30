@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,124 +13,50 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
-import { useAdminLeaveBalanceValidation } from "@/hooks/useAdminLeaveBalanceValidation";
-import { useAttendanceConflictValidation } from "@/hooks/useAttendanceConflictValidation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LeaveBalanceDisplay } from "./LeaveBalanceDisplay";
 import { cn } from "@/lib/utils";
 
 interface ManualLeaveEntryFormProps {
   onSuccess?: () => void;
 }
 
-export function ManualLeaveEntryForm({
-  onSuccess
-}: ManualLeaveEntryFormProps) {
+export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [leaveType, setLeaveType] = useState<"ferie" | "permesso">("ferie");
   const [permissionType, setPermissionType] = useState<"giornaliero" | "orario">("giornaliero");
-
+  
   // Date range for ferie or single date for permesso
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
-
+  
   // Time fields for hourly permissions
   const [timeFrom, setTimeFrom] = useState<string>("");
   const [timeTo, setTimeTo] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
-  const [conflictError, setConflictError] = useState<string | null>(null);
 
-  const {
-    employees
-  } = useActiveEmployees();
-  const {
-    insertMutation
-  } = useLeaveRequests();
-  const {
-    balanceValidation,
-    validateLeaveRequest,
-    isLoading: isLoadingBalance
-  } = useAdminLeaveBalanceValidation(selectedUserId);
-  const { checkAttendanceConflicts } = useAttendanceConflictValidation();
+  const { employees } = useActiveEmployees();
+  const { insertMutation } = useLeaveRequests();
 
-  useEffect(() => {
-    if (!selectedUserId || !balanceValidation) {
-      setBalanceValidationError(null);
-      return;
-    }
-    if (leaveType === "ferie" && startDate && endDate) {
-      const validation = validateLeaveRequest("ferie", startDate, endDate);
-      setBalanceValidationError(validation.errorMessage || null);
-    } else if (leaveType === "permesso" && startDate) {
-      const validation = validateLeaveRequest("permesso", null, null, startDate, permissionType === "orario" ? timeFrom : null, permissionType === "orario" ? timeTo : null);
-      setBalanceValidationError(validation.errorMessage || null);
-    } else {
-      setBalanceValidationError(null);
-    }
-  }, [selectedUserId, leaveType, startDate, endDate, timeFrom, timeTo, permissionType, balanceValidation, validateLeaveRequest]);
-
-  // Check for conflicts when user or dates change
-  useEffect(() => {
-    const checkConflicts = async () => {
-      if (!selectedUserId || !startDate) {
-        setConflictError(null);
-        return;
-      }
-
-      try {
-        const dateToCheck = format(startDate, 'yyyy-MM-dd');
-        const result = await checkAttendanceConflicts(selectedUserId, dateToCheck);
-        
-        if (result.hasConflict) {
-          const employee = employees?.find(emp => emp.id === selectedUserId);
-          const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'Il dipendente';
-          
-          let conflictMessage = '';
-          switch (result.conflictType) {
-            case 'business_trip':
-              conflictMessage = `🚫 ${employeeName} è già in trasferta: ${result.conflictDetails}`;
-              break;
-            case 'ferie':
-              conflictMessage = `🏖️ ${employeeName} è già in ferie: ${result.conflictDetails}`;
-              break;
-            case 'permesso':
-              conflictMessage = `📅 ${employeeName} ha già un permesso: ${result.conflictDetails}`;
-              break;
-            case 'malattia':
-              conflictMessage = `🏥 ${employeeName} è già in malattia: ${result.conflictDetails}`;
-              break;
-            default:
-              conflictMessage = `⚠️ ${result.message}`;
-          }
-          
-          setConflictError(conflictMessage);
-        } else {
-          setConflictError(null);
-        }
-      } catch (error) {
-        console.error('Errore controllo conflitti:', error);
-        setConflictError('Errore durante il controllo dei conflitti');
-      }
-    };
-
-    checkConflicts();
-  }, [selectedUserId, startDate, checkAttendanceConflicts, employees]);
-
+  // Funzione per validare le date rispetto alla data di assunzione
   const validateDatesAgainstHireDate = (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
+
     const employee = employees?.find(emp => emp.id === employeeId);
     if (!employee || !employee.hire_date) return true;
+
     const hireDateObj = new Date(employee.hire_date);
+    
     if (startDate < hireDateObj) {
       setValidationError(`⚠️ Impossibile salvare l'evento: la data di inizio (${format(startDate, 'dd/MM/yyyy')}) è antecedente alla data di assunzione del dipendente (${format(hireDateObj, 'dd/MM/yyyy')}).`);
       return false;
     }
+
     if (endDate && endDate < hireDateObj) {
       setValidationError(`⚠️ Impossibile salvare l'evento: la data di fine (${format(endDate, 'dd/MM/yyyy')}) è antecedente alla data di assunzione del dipendente (${format(hireDateObj, 'dd/MM/yyyy')}).`);
       return false;
     }
+
     setValidationError(null);
     return true;
   };
@@ -152,23 +79,14 @@ export function ManualLeaveEntryForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!selectedUserId) {
       alert("Seleziona un dipendente");
       return;
     }
 
-    // Verifica finale dei conflitti
-    if (conflictError) {
-      alert(`Conflitto rilevato: ${conflictError}`);
-      return;
-    }
-
+    // Verifica finale della validazione
     if (!validateDatesAgainstHireDate(startDate, endDate, selectedUserId)) {
-      return;
-    }
-
-    if (balanceValidationError) {
-      alert(`Errore bilancio: ${balanceValidationError}`);
       return;
     }
 
@@ -177,10 +95,12 @@ export function ManualLeaveEntryForm({
         alert("Seleziona le date di inizio e fine per le ferie");
         return;
       }
+      
       if (endDate < startDate) {
         alert("La data di fine non può essere precedente alla data di inizio");
         return;
       }
+
       insertMutation.mutate({
         user_id: selectedUserId,
         type: "ferie",
@@ -196,8 +116,6 @@ export function ManualLeaveEntryForm({
           setEndDate(undefined);
           setNote("");
           setValidationError(null);
-          setBalanceValidationError(null);
-          setConflictError(null);
           onSuccess?.();
         }
       });
@@ -207,12 +125,14 @@ export function ManualLeaveEntryForm({
         alert("Seleziona la data per il permesso");
         return;
       }
+
       if (permissionType === "orario") {
         if (!timeFrom || !timeTo) {
           alert("Inserisci orario di inizio e fine per il permesso orario");
           return;
         }
       }
+
       insertMutation.mutate({
         user_id: selectedUserId,
         type: "permesso",
@@ -230,15 +150,11 @@ export function ManualLeaveEntryForm({
           setTimeTo("");
           setNote("");
           setValidationError(null);
-          setBalanceValidationError(null);
-          setConflictError(null);
           onSuccess?.();
         }
       });
     }
   };
-
-  const canSubmit = selectedUserId && !validationError && !balanceValidationError && !conflictError && !insertMutation.isPending && balanceValidation?.hasBalance;
 
   return (
     <Card className="max-w-2xl mx-auto">
@@ -250,6 +166,7 @@ export function ManualLeaveEntryForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Selezione dipendente */}
           <div className="space-y-2">
             <Label htmlFor="employee">Dipendente *</Label>
             <Select value={selectedUserId} onValueChange={handleEmployeeChange}>
@@ -257,7 +174,7 @@ export function ManualLeaveEntryForm({
                 <SelectValue placeholder="Seleziona un dipendente" />
               </SelectTrigger>
               <SelectContent>
-                {employees?.map(employee => (
+                {employees?.map((employee) => (
                   <SelectItem key={employee.id} value={employee.id}>
                     {employee.first_name} {employee.last_name} ({employee.email})
                   </SelectItem>
@@ -266,13 +183,7 @@ export function ManualLeaveEntryForm({
             </Select>
           </div>
 
-          {selectedUserId && balanceValidation && (
-            <LeaveBalanceDisplay 
-              balance={balanceValidation} 
-              isLoading={isLoadingBalance}
-            />
-          )}
-
+          {/* Tipo di richiesta */}
           <div className="space-y-2">
             <Label>Tipo di richiesta *</Label>
             <Select value={leaveType} onValueChange={(value: "ferie" | "permesso") => setLeaveType(value)}>
@@ -286,13 +197,6 @@ export function ManualLeaveEntryForm({
             </Select>
           </div>
 
-          {conflictError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{conflictError}</AlertDescription>
-            </Alert>
-          )}
-
           {validationError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -300,23 +204,7 @@ export function ManualLeaveEntryForm({
             </Alert>
           )}
 
-          {balanceValidationError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{balanceValidationError}</AlertDescription>
-            </Alert>
-          )}
-
-          {selectedUserId && balanceValidation && !balanceValidation.hasBalance && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Impossibile inserire ferie o permessi: il dipendente non ha un bilancio configurato per l'anno corrente.
-                Configura prima il bilancio nella sezione "Impostazioni Ferie/Permessi".
-              </AlertDescription>
-            </Alert>
-          )}
-
+          {/* Date selection */}
           {leaveType === "ferie" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -339,7 +227,7 @@ export function ManualLeaveEntryForm({
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
-                      disabled={date => date < new Date()}
+                      disabled={(date) => date < new Date()}
                       locale={it}
                       initialFocus
                     />
@@ -367,7 +255,7 @@ export function ManualLeaveEntryForm({
                       mode="single"
                       selected={endDate}
                       onSelect={handleEndDateChange}
-                      disabled={date => date < (startDate || new Date())}
+                      disabled={(date) => date < (startDate || new Date())}
                       locale={it}
                       initialFocus
                     />
@@ -377,6 +265,7 @@ export function ManualLeaveEntryForm({
             </div>
           ) : (
             <>
+              {/* Tipo permesso */}
               <div className="space-y-2">
                 <Label>Tipo permesso</Label>
                 <Select value={permissionType} onValueChange={(value: "giornaliero" | "orario") => setPermissionType(value)}>
@@ -390,6 +279,7 @@ export function ManualLeaveEntryForm({
                 </Select>
               </div>
 
+              {/* Data permesso */}
               <div className="space-y-2">
                 <Label>Data permesso *</Label>
                 <Popover>
@@ -410,7 +300,7 @@ export function ManualLeaveEntryForm({
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
-                      disabled={date => date < new Date()}
+                      disabled={(date) => date < new Date()}
                       locale={it}
                       initialFocus
                     />
@@ -418,6 +308,7 @@ export function ManualLeaveEntryForm({
                 </Popover>
               </div>
 
+              {/* Orari per permesso orario */}
               {permissionType === "orario" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -428,7 +319,7 @@ export function ManualLeaveEntryForm({
                         id="timeFrom"
                         type="time"
                         value={timeFrom}
-                        onChange={e => setTimeFrom(e.target.value)}
+                        onChange={(e) => setTimeFrom(e.target.value)}
                         className="pl-10"
                         required
                       />
@@ -442,7 +333,7 @@ export function ManualLeaveEntryForm({
                         id="timeTo"
                         type="time"
                         value={timeTo}
-                        onChange={e => setTimeTo(e.target.value)}
+                        onChange={(e) => setTimeTo(e.target.value)}
                         className="pl-10"
                         required
                       />
@@ -453,18 +344,23 @@ export function ManualLeaveEntryForm({
             </>
           )}
 
+          {/* Note */}
           <div className="space-y-2">
             <Label htmlFor="note">Note</Label>
             <Textarea
               id="note"
               placeholder="Note aggiuntive (opzionale)"
               value={note}
-              onChange={e => setNote(e.target.value)}
+              onChange={(e) => setNote(e.target.value)}
               rows={3}
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={!canSubmit}>
+          <Button 
+            type="submit" 
+            className="w-full"
+            disabled={insertMutation.isPending || !!validationError}
+          >
             {insertMutation.isPending ? "Salvando..." : "Salva Richiesta"}
           </Button>
         </form>

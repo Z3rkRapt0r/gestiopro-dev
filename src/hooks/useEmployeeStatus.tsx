@@ -8,7 +8,7 @@ import { format, isAfter, isBefore, isToday, parseISO, isWithinInterval } from '
 export interface EmployeeStatus {
   canCheckIn: boolean;
   canCheckOut: boolean;
-  currentStatus: 'available' | 'sick' | 'vacation' | 'permission' | 'business_trip' | 'pending_request' | 'already_present' | 'permission_active' | 'permission_ended';
+  currentStatus: 'available' | 'sick' | 'vacation' | 'permission' | 'business_trip' | 'pending_request' | 'already_present';
   blockingReasons: string[];
   statusDetails?: {
     type: string;
@@ -17,10 +17,8 @@ export interface EmployeeStatus {
     timeFrom?: string;
     timeTo?: string;
     notes?: string;
-    canCheckInAfter?: string; // Nuovo: quando può fare check-in dopo un permesso
   };
   conflictPriority: number; // 0=no conflict, 1=lowest, 5=highest
-  canCheckInAfterTime?: string; // Quando può fare check-in (per permessi orari)
 }
 
 export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
@@ -46,16 +44,12 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
       let currentStatus: EmployeeStatus['currentStatus'] = 'available';
       let statusDetails: EmployeeStatus['statusDetails'] | undefined;
       let conflictPriority = 0;
-      let canCheckInAfterTime: string | undefined;
-
-      const currentTime = new Date();
-      const currentTimeString = format(currentTime, 'HH:mm');
 
       // PRIORITÀ DEI CONFLITTI (dal più importante al meno importante):
       // 1. Malattia (priorità 5)
       // 2. Ferie (priorità 4) 
-      // 3. Trasferta (priorità 3) - Aggiornata priorità per trasferte
-      // 4. Permesso attivo (priorità 2) - Nuova categoria per permessi attivi
+      // 3. Permesso (priorità 3)
+      // 4. Trasferta (priorità 2)
       // 5. Già presente (priorità 1)
 
       // 1. CONTROLLO MALATTIA - Priorità massima
@@ -111,8 +105,43 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         }
       }
 
-      // 3. CONTROLLO TRASFERTE - Terza priorità (aumentata da 2 a 3)
+      // 3. CONTROLLO PERMESSI APPROVATI - Terza priorità
       if (conflictPriority < 3) {
+        const { data: approvedPermissions } = await supabase
+          .from('leave_requests')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .eq('status', 'approved')
+          .eq('type', 'permesso')
+          .eq('day', targetDate);
+
+        if (approvedPermissions && approvedPermissions.length > 0) {
+          const permission = approvedPermissions[0];
+          currentStatus = 'permission';
+          conflictPriority = 3;
+          
+          if (permission.time_from && permission.time_to) {
+            blockingReasons.push(`Il dipendente ha un permesso orario dalle ${permission.time_from} alle ${permission.time_to}`);
+            statusDetails = {
+              type: 'Permesso orario',
+              startDate: permission.day,
+              timeFrom: permission.time_from,
+              timeTo: permission.time_to,
+              notes: permission.note || undefined
+            };
+          } else {
+            blockingReasons.push('Il dipendente ha un permesso giornaliero per oggi');
+            statusDetails = {
+              type: 'Permesso giornaliero',
+              startDate: permission.day,
+              notes: permission.note || undefined
+            };
+          }
+        }
+      }
+
+      // 4. CONTROLLO TRASFERTE - Quarta priorità
+      if (conflictPriority < 2) {
         const { data: businessTrips } = await supabase
           .from('business_trips')
           .select('*')
@@ -127,7 +156,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             
             if (isWithinInterval(checkDateObj, { start: startDate, end: endDate })) {
               currentStatus = 'business_trip';
-              conflictPriority = 3;
+              conflictPriority = 2;
               blockingReasons.push(`Il dipendente è in trasferta a ${trip.destination} dal ${trip.start_date} al ${trip.end_date}`);
               statusDetails = {
                 type: 'Trasferta',
@@ -137,78 +166,6 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               };
               break;
             }
-          }
-        }
-      }
-
-      // 4. CONTROLLO PERMESSI APPROVATI - Logica migliorata per permessi orari
-      if (conflictPriority < 2) {
-        const { data: approvedPermissions } = await supabase
-          .from('leave_requests')
-          .select('*')
-          .eq('user_id', targetUserId)
-          .eq('status', 'approved')
-          .eq('type', 'permesso')
-          .eq('day', targetDate);
-
-        if (approvedPermissions && approvedPermissions.length > 0) {
-          const permission = approvedPermissions[0];
-          
-          if (permission.time_from && permission.time_to && isToday(parseISO(targetDate))) {
-            // Permesso orario - controllo se è ancora attivo
-            const permissionStart = permission.time_from;
-            const permissionEnd = permission.time_to;
-            
-            if (currentTimeString >= permissionStart && currentTimeString <= permissionEnd) {
-              // Permesso attualmente attivo
-              currentStatus = 'permission_active';
-              conflictPriority = 2;
-              blockingReasons.push(`Il dipendente ha un permesso orario attivo dalle ${permissionStart} alle ${permissionEnd}`);
-              statusDetails = {
-                type: 'Permesso orario attivo',
-                startDate: permission.day,
-                timeFrom: permissionStart,
-                timeTo: permissionEnd,
-                notes: permission.note || undefined,
-                canCheckInAfter: permissionEnd
-              };
-              canCheckInAfterTime = permissionEnd;
-            } else if (currentTimeString < permissionStart) {
-              // Permesso futuro oggi
-              currentStatus = 'permission';
-              conflictPriority = 2;
-              blockingReasons.push(`Il dipendente ha un permesso orario programmato dalle ${permissionStart} alle ${permissionEnd}`);
-              statusDetails = {
-                type: 'Permesso orario programmato',
-                startDate: permission.day,
-                timeFrom: permissionStart,
-                timeTo: permissionEnd,
-                notes: permission.note || undefined
-              };
-            } else {
-              // Permesso terminato - può fare check-in ma potrebbe essere in ritardo
-              currentStatus = 'permission_ended';
-              conflictPriority = 0; // Non blocca più
-              statusDetails = {
-                type: 'Permesso orario terminato',
-                startDate: permission.day,
-                timeFrom: permissionStart,
-                timeTo: permissionEnd,
-                notes: permission.note || undefined,
-                canCheckInAfter: permissionEnd
-              };
-              canCheckInAfterTime = permissionEnd;
-            }
-          } else {
-            // Permesso giornaliero
-            currentStatus = 'permission';
-            conflictPriority = 2;
-            blockingReasons.push('Il dipendente ha un permesso giornaliero per oggi');
-            statusDetails = {
-              type: 'Permesso giornaliero',
-              startDate: permission.day,
-              notes: permission.note || undefined
-            };
           }
         }
       }
@@ -302,8 +259,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         currentStatus,
         blockingReasons,
         statusDetails,
-        conflictPriority,
-        canCheckInAfterTime
+        conflictPriority
       };
     },
     enabled: !!targetUserId,

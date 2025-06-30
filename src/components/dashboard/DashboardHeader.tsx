@@ -1,8 +1,9 @@
 
 import { Button } from "@/components/ui/button";
-import { LogOut, Building, User } from "lucide-react";
+import { LogOut, Building, User, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -12,7 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import NotificationDropdown from "@/components/notifications/NotificationDropdown";
 
 interface DashboardHeaderProps {
   title: string;
@@ -87,8 +87,16 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
           
           {/* User Section */}
           <div className="flex items-center space-x-4">
-            {/* Notification Bell with functional dropdown */}
-            <NotificationDropdown />
+            {/* Notification Bell */}
+            <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl">
+              <Bell className="h-5 w-5 text-slate-600" />
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+              >
+                3
+              </Badge>
+            </Button>
 
             {/* User Dropdown */}
             <DropdownMenu>
@@ -127,6 +135,10 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
                 <DropdownMenuItem className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   <span>Profilo</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">
+                  <Bell className="mr-2 h-4 w-4" />
+                  <span>Notifiche</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 

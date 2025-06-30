@@ -9,7 +9,6 @@ import { UserPlus, AlertCircle } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
-import { useAttendanceConflictValidation } from '@/hooks/useAttendanceConflictValidation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 
@@ -17,7 +16,6 @@ export default function MultiEmployeeManualAttendanceForm() {
   const { createManualAttendance, isCreating } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { settings } = useAttendanceSettings();
-  const { checkAttendanceConflicts } = useAttendanceConflictValidation();
   const [formData, setFormData] = useState({
     selected_user_ids: [] as string[],
     date: '',
@@ -28,7 +26,6 @@ export default function MultiEmployeeManualAttendanceForm() {
     is_sick_leave: false,
   });
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [conflictErrors, setConflictErrors] = useState<string[]>([]);
 
   // Funzione per validare le date rispetto alla data di assunzione
   const validateDatesAgainstHireDate = (startDate: string, endDate: string, employeeIds: string[]) => {
@@ -59,53 +56,6 @@ export default function MultiEmployeeManualAttendanceForm() {
     return true;
   };
 
-  // Check conflicts for selected employees
-  const checkEmployeesConflicts = async (employeeIds: string[], date: string) => {
-    if (!date || employeeIds.length === 0) {
-      setConflictErrors([]);
-      return;
-    }
-
-    const conflicts: string[] = [];
-    
-    for (const employeeId of employeeIds) {
-      try {
-        const result = await checkAttendanceConflicts(employeeId, date);
-        if (result.hasConflict) {
-          const employee = employees?.find(emp => emp.id === employeeId);
-          const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente';
-          
-          let conflictMessage = '';
-          switch (result.conflictType) {
-            case 'business_trip':
-              conflictMessage = `🚫 ${employeeName} è in trasferta: ${result.conflictDetails}`;
-              break;
-            case 'ferie':
-              conflictMessage = `🏖️ ${employeeName} è in ferie: ${result.conflictDetails}`;
-              break;
-            case 'permesso':
-              conflictMessage = `📅 ${employeeName} ha un permesso: ${result.conflictDetails}`;
-              break;
-            case 'malattia':
-              conflictMessage = `🏥 ${employeeName} è in malattia: ${result.conflictDetails}`;
-              break;
-            default:
-              conflictMessage = `⚠️ ${employeeName}: ${result.message}`;
-          }
-          
-          conflicts.push(conflictMessage);
-        }
-      } catch (error) {
-        console.error(`Errore controllo conflitti per ${employeeId}:`, error);
-        const employee = employees?.find(emp => emp.id === employeeId);
-        const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente';
-        conflicts.push(`⚠️ ${employeeName}: Errore durante il controllo`);
-      }
-    }
-    
-    setConflictErrors(conflicts);
-  };
-
   const handleEmployeeToggle = (userId: string, checked: boolean) => {
     const newSelectedIds = checked 
       ? [...formData.selected_user_ids, userId]
@@ -116,7 +66,6 @@ export default function MultiEmployeeManualAttendanceForm() {
     // Valida immediatamente se ci sono date selezionate
     if (formData.date) {
       validateDatesAgainstHireDate(formData.date, formData.date_to, newSelectedIds);
-      checkEmployeesConflicts(newSelectedIds, formData.date);
     }
   };
 
@@ -128,24 +77,11 @@ export default function MultiEmployeeManualAttendanceForm() {
       const startDate = field === 'date' ? value : formData.date;
       const endDate = field === 'date_to' ? value : formData.date_to;
       validateDatesAgainstHireDate(startDate, endDate, formData.selected_user_ids);
-      
-      // Controlla conflitti solo per la data principale
-      if (field === 'date' && value) {
-        checkEmployeesConflicts(formData.selected_user_ids, value);
-      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Controllo finale dei conflitti
-    if (formData.selected_user_ids.length > 0 && formData.date) {
-      await checkEmployeesConflicts(formData.selected_user_ids, formData.date);
-      if (conflictErrors.length > 0) {
-        return; // Non procedere se ci sono conflitti
-      }
-    }
     
     // Verifica finale della validazione
     if (!validateDatesAgainstHireDate(formData.date, formData.date_to, formData.selected_user_ids)) {
@@ -208,10 +144,7 @@ export default function MultiEmployeeManualAttendanceForm() {
       is_sick_leave: false,
     });
     setValidationError(null);
-    setConflictErrors([]);
   };
-
-  const hasErrors = !!validationError || conflictErrors.length > 0;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -263,21 +196,6 @@ export default function MultiEmployeeManualAttendanceForm() {
                 </Label>
               </div>
             </div>
-
-            {/* Error alerts */}
-            {conflictErrors.length > 0 && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-1">
-                    <div className="font-medium">Conflitti rilevati:</div>
-                    {conflictErrors.map((error, index) => (
-                      <div key={index} className="text-sm">• {error}</div>
-                    ))}
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
 
             {validationError && (
               <Alert variant="destructive">
@@ -363,7 +281,7 @@ export default function MultiEmployeeManualAttendanceForm() {
 
             <Button 
               type="submit" 
-              disabled={isCreating || formData.selected_user_ids.length === 0 || !formData.date || (formData.is_sick_leave && !formData.date_to) || hasErrors} 
+              disabled={isCreating || formData.selected_user_ids.length === 0 || !formData.date || (formData.is_sick_leave && !formData.date_to) || !!validationError} 
               className="w-full"
             >
               {isCreating ? 'Salvando...' : 

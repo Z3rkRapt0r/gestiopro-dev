@@ -5,18 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
-import { Plane, Calendar as CalendarIcon, Users } from 'lucide-react';
+import { Plane, Calendar as CalendarIcon, Users, Trash2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import BusinessTripsReport from './BusinessTripsReport';
 
 export default function AdminBusinessTripsManagement() {
-  const { businessTrips, createTrip, isCreating } = useBusinessTrips();
+  const { businessTrips, createTrip, isCreating, deleteTrip, isDeleting } = useBusinessTrips();
   const { employees } = useActiveEmployees();
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date>();
@@ -49,6 +51,15 @@ export default function AdminBusinessTripsManagement() {
     setEndDate(undefined);
     setDestination('');
     setReason('');
+  };
+
+  const handleDeleteTrip = (tripId: string, employeeName: string) => {
+    console.log('🔴 Richiesta eliminazione trasferta:', {
+      tripId,
+      employeeName,
+      timestamp: new Date().toISOString()
+    });
+    deleteTrip(tripId);
   };
 
   return (
@@ -102,7 +113,6 @@ export default function AdminBusinessTripsManagement() {
                       selected={startDate}
                       onSelect={setStartDate}
                       locale={it}
-                      className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
@@ -123,7 +133,6 @@ export default function AdminBusinessTripsManagement() {
                       selected={endDate}
                       onSelect={setEndDate}
                       locale={it}
-                      className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
@@ -189,8 +198,96 @@ export default function AdminBusinessTripsManagement() {
         </Card>
       </div>
 
-      {/* Resoconto Trasferte - sostituisce "Tutte le trasferte" */}
-      <BusinessTripsReport />
+      {/* Tutte le trasferte */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Tutte le Trasferte
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {businessTrips?.map((trip) => (
+              <div key={trip.id} className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">
+                    {trip.profiles?.first_name} {trip.profiles?.last_name}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-green-100 text-green-700">
+                      Approvata
+                    </Badge>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          disabled={isDeleting}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          {isDeleting ? (
+                            <AlertCircle className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Elimina Trasferta</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Sei sicuro di voler eliminare questa trasferta per {trip.profiles?.first_name} {trip.profiles?.last_name}? 
+                            <br /><br />
+                            <strong>Questa azione:</strong>
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                              <li>Eliminerà la trasferta in modo permanente</li>
+                              <li>Rimuoverà tutte le presenze associate alla trasferta</li>
+                              <li>Non può essere annullata</li>
+                            </ul>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleDeleteTrip(trip.id, `${trip.profiles?.first_name} ${trip.profiles?.last_name}`)}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? (
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 animate-spin" />
+                                Eliminando...
+                              </div>
+                            ) : (
+                              'Elimina Definitivamente'
+                            )}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+
+                <div className="text-sm space-y-1">
+                  <div><strong>Destinazione:</strong> {trip.destination}</div>
+                  <div><strong>Date:</strong> {format(new Date(trip.start_date), 'dd/MM/yyyy', { locale: it })} - {format(new Date(trip.end_date), 'dd/MM/yyyy', { locale: it })}</div>
+                  {trip.reason && <div><strong>Motivo:</strong> {trip.reason}</div>}
+                  {trip.admin_notes && (
+                    <div className="p-2 bg-blue-50 rounded border-l-2 border-blue-200">
+                      <strong>Note:</strong> {trip.admin_notes}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )) || (
+              <div className="text-center py-4 text-gray-500">
+                Nessuna trasferta registrata
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

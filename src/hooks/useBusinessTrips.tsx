@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
-import { useBusinessTripValidation } from '@/hooks/useBusinessTripValidation';
 import { format, eachDayOfInterval } from 'date-fns';
 
 export interface BusinessTrip {
@@ -31,7 +30,6 @@ export const useBusinessTrips = () => {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const { workSchedule } = useWorkSchedules();
-  const { validateTripConflicts } = useBusinessTripValidation();
 
   // Funzione per verificare se un giorno è lavorativo basata sulla configurazione
   const isWorkingDay = (date: Date) => {
@@ -122,19 +120,6 @@ export const useBusinessTrips = () => {
         // Utente corrente
         if (!user?.id) throw new Error('Utente non autenticato');
         targetUserIds = [user.id];
-      }
-
-      // Validazione conflitti per ogni utente target
-      for (const targetUserId of targetUserIds) {
-        const conflictResult = await validateTripConflicts(
-          targetUserId,
-          tripData.start_date,
-          tripData.end_date
-        );
-
-        if (conflictResult.hasConflict) {
-          throw new Error(conflictResult.message || 'Conflitto con congedo esistente');
-        }
       }
 
       const createdTrips = [];
