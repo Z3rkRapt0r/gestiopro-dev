@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 
 interface LeaveOverlapValidationProps {
@@ -47,15 +47,20 @@ export function LeaveOverlapValidation({
         .from('leave_requests')
         .select('*')
         .eq('user_id', targetUserId)
-        .eq('status', 'approved')
-        .neq('type', leaveType); // Cerca conflitti con l'altro tipo
+        .eq('status', 'approved');
 
       if (error) throw error;
 
       if (!data || data.length === 0) return [];
 
       // Filtra solo le richieste che si sovrappongono con le date specificate
+      // ESCLUDE sovrapposizioni permesso-permesso (sono permesse)
       const overlappingRequests = data.filter(request => {
+        // Se entrambe sono permessi, non è un conflitto
+        if (leaveType === 'permesso' && request.type === 'permesso') {
+          return false;
+        }
+
         // Data singola (permesso o ferie di un giorno)
         if (singleDay) {
           const checkDate = parseISO(singleDay);
@@ -166,9 +171,7 @@ export function LeaveOverlapValidation({
             </div>
           </AlertDescription>
         </Alert>
-        <div className="opacity-50 pointer-events-none">
-          {children}
-        </div>
+        {children}
       </div>
     );
   }

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Info } from 'lucide-react';
 import { LeaveOverlapValidation } from './LeaveOverlapValidation';
 
 interface LeaveRequestValidationProps {
@@ -85,46 +85,41 @@ export function LeaveRequestFormValidation({
     );
   }
 
-  // Wrapper con validazione richieste pending
-  const PendingValidationWrapper = ({ children }: { children: React.ReactNode }) => {
-    if (hasPendingRequest) {
-      return (
-        <div className="space-y-4">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <p className="font-medium">
-                  Non puoi inviare una nuova richiesta
-                </p>
-                <p>
-                  Hai già una richiesta di <strong>{pendingRequest?.type}</strong> in attesa di approvazione
-                  {pendingRequest?.date_from && pendingRequest?.date_to && (
-                    <span> dal {pendingRequest.date_from} al {pendingRequest.date_to}</span>
-                  )}
-                  {pendingRequest?.day && (
-                    <span> per il giorno {pendingRequest.day}</span>
-                  )}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Attendi che l'amministratore approvi o rifiuti la tua richiesta prima di inviarne una nuova.
-                </p>
-              </div>
-            </AlertDescription>
-          </Alert>
-          <div className="opacity-50 pointer-events-none">
-            {children}
+  // Mostra avviso per richieste pending ma NON blocca il form
+  const PendingInfoAlert = () => {
+    if (!hasPendingRequest) return null;
+    
+    return (
+      <Alert className="mb-4 border-orange-200 bg-orange-50">
+        <Info className="h-4 w-4 text-orange-600" />
+        <AlertDescription className="text-orange-700">
+          <div className="space-y-2">
+            <p className="font-medium">
+              Hai già una richiesta in attesa di approvazione
+            </p>
+            <p>
+              Richiesta di <strong>{pendingRequest?.type}</strong>
+              {pendingRequest?.date_from && pendingRequest?.date_to && (
+                <span> dal {pendingRequest.date_from} al {pendingRequest.date_to}</span>
+              )}
+              {pendingRequest?.day && (
+                <span> per il giorno {pendingRequest.day}</span>
+              )}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Non potrai inviare nuove richieste finché questa non verrà gestita dall'amministratore.
+            </p>
           </div>
-        </div>
-      );
-    }
-    return <>{children}</>;
+        </AlertDescription>
+      </Alert>
+    );
   };
 
   // Se abbiamo le informazioni necessarie per la validazione sovrapposizioni, applichiamola
   if (leaveType && (startDate || singleDay)) {
     return (
-      <PendingValidationWrapper>
+      <div className="space-y-4">
+        <PendingInfoAlert />
         <LeaveOverlapValidation
           leaveType={leaveType}
           startDate={startDate}
@@ -136,14 +131,15 @@ export function LeaveRequestFormValidation({
         >
           {children}
         </LeaveOverlapValidation>
-      </PendingValidationWrapper>
+      </div>
     );
   }
 
-  // Altrimenti, solo validazione pending
+  // Altrimenti, solo avviso pending
   return (
-    <PendingValidationWrapper>
+    <div className="space-y-4">
+      <PendingInfoAlert />
       {children}
-    </PendingValidationWrapper>
+    </div>
   );
 }

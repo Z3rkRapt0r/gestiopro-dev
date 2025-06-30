@@ -121,9 +121,18 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     return errors;
   };
 
-  // Funzione per disabilitare giorni nel calendario
+  // Funzione per disabilitare giorni nel calendario - SOLO PER HARD BLOCKS
   const isDateDisabled = (date: Date, type: string): boolean => {
-    return !isWorkingDay(date);
+    // Prima controlla se è un giorno lavorativo
+    if (!isWorkingDay(date)) return true;
+    
+    // Poi controlla se c'è un hard block per questa data
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const { employeeStatus } = useEmployeeStatus(profile?.id, dateStr);
+    
+    // Blocca solo per malattia, ferie approvate, trasferte (hasHardBlock = true)
+    // NON blocca per permessi (permettiamo sovrapposizioni)
+    return employeeStatus?.hasHardBlock || false;
   };
 
   const onSubmit = (data: LeaveRequestFormData) => {
@@ -148,6 +157,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     
     if (data.type === 'ferie' && data.date_from && data.date_to) {
       validationErrors = validateWorkingDays(data.date_from, data.date_to, data.type);
+      
+      // Controllo che la data fine non sia precedente alla data inizio
+      if (data.date_to < data.date_from) {
+        validationErrors.push('La data di fine non può essere precedente alla data di inizio.');
+      }
     }
     
     if (data.type === 'permesso' && data.day) {
@@ -159,8 +173,8 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       return;
     }
 
-    // Controllo status dipendente
-    if (employeeStatus && !employeeStatus.canCheckIn && employeeStatus.conflictPriority > 0) {
+    // Controllo status dipendente - SOLO per hard blocks (non permessi)
+    if (employeeStatus && employeeStatus.hasHardBlock) {
       setShowValidationErrors(true);
       return;
     }
@@ -247,7 +261,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                   {!formValidationState.isValid && formValidationState.message && (
                     <p>{formValidationState.message}</p>
                   )}
-                  {employeeStatus && !employeeStatus.canCheckIn && employeeStatus.conflictPriority > 0 && (
+                  {employeeStatus && employeeStatus.hasHardBlock && (
                     <p>Non puoi fare richieste per questo periodo: {employeeStatus.blockingReasons.join(', ')}</p>
                   )}
                 </div>
@@ -255,8 +269,8 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             </Alert>
           )}
 
-          {/* Avviso status dipendente */}
-          {employeeStatus && employeeStatus.conflictPriority > 0 && (
+          {/* Avviso status dipendente - SOLO per hard blocks */}
+          {employeeStatus && employeeStatus.hasHardBlock && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
@@ -272,6 +286,20 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                     )}
                   </div>
                 )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Avviso per permessi sovrapposti - INFO, non blocca */}
+          {employeeStatus && employeeStatus.currentStatus === 'permission' && !employeeStatus.hasHardBlock && (
+            <Alert className="mb-6 border-orange-200 bg-orange-50">
+              <Info className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-700">
+                <strong>Informazione:</strong> {employeeStatus.blockingReasons.join(', ')}
+                <br />
+                <span className="text-sm">
+                  I permessi possono sovrapporsi. La richiesta verrà valutata dall'amministratore.
+                </span>
               </AlertDescription>
             </Alert>
           )}
@@ -375,8 +403,9 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                                 selected={field.value}
                                 onSelect={field.onChange}
                                 disabled={(date) => {
-                                  // Disabilita giorni non lavorativi E giorni precedenti alla data di inizio
+                                  // Disabilita giorni non lavorativi E giorni con hard blocks
                                   if (isDateDisabled(date, watchedType)) return true;
+                                  // Disabilita giorni precedenti alla data di inizio
                                   if (watchedDateFrom && date < watchedDateFrom) return true;
                                   return false;
                                 }}

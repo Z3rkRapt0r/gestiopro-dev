@@ -19,6 +19,8 @@ export interface EmployeeStatus {
     notes?: string;
   };
   conflictPriority: number; // 0=no conflict, 1=lowest, 5=highest
+  allowPermissionOverlap: boolean; // Permette sovrapposizione con permessi
+  hasHardBlock: boolean; // Solo per malattia, ferie, trasferte - blocca le date nel calendario
 }
 
 export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
@@ -36,7 +38,9 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
           canCheckOut: false,
           currentStatus: 'available',
           blockingReasons: ['Utente non autenticato'],
-          conflictPriority: 0
+          conflictPriority: 0,
+          allowPermissionOverlap: true,
+          hasHardBlock: false
         };
       }
 
@@ -44,15 +48,17 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
       let currentStatus: EmployeeStatus['currentStatus'] = 'available';
       let statusDetails: EmployeeStatus['statusDetails'] | undefined;
       let conflictPriority = 0;
+      let allowPermissionOverlap = true;
+      let hasHardBlock = false;
 
-      // PRIORITÀ DEI CONFLITTI (dal più importante al meno importante):
-      // 1. Malattia (priorità 5)
-      // 2. Ferie (priorità 4) 
-      // 3. Permesso (priorità 3)
-      // 4. Trasferta (priorità 2)
-      // 5. Già presente (priorità 1)
+      // PRIORITÀ DEI CONFLITTI:
+      // 1. Malattia (priorità 5) - BLOCCA DATE
+      // 2. Ferie (priorità 4) - BLOCCA DATE
+      // 3. Trasferta (priorità 2) - BLOCCA DATE
+      // 4. Permesso (priorità 3) - NON BLOCCA DATE (può sovrapporsi)
+      // 5. Già presente (priorità 1) - NON BLOCCA DATE
 
-      // 1. CONTROLLO MALATTIA - Priorità massima
+      // 1. CONTROLLO MALATTIA - Priorità massima, BLOCCA DATE
       const { data: sickLeave } = await supabase
         .from('unified_attendances')
         .select('*')
@@ -64,6 +70,8 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
       if (sickLeave) {
         currentStatus = 'sick';
         conflictPriority = 5;
+        allowPermissionOverlap = false;
+        hasHardBlock = true;
         blockingReasons.push('Il dipendente è registrato come in malattia per questa data');
         statusDetails = {
           type: 'Malattia',
@@ -72,7 +80,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         };
       }
 
-      // 2. CONTROLLO FERIE APPROVATE - Seconda priorità
+      // 2. CONTROLLO FERIE APPROVATE - Seconda priorità, BLOCCA DATE
       if (conflictPriority < 4) {
         const { data: approvedVacations } = await supabase
           .from('leave_requests')
@@ -91,6 +99,8 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               if (isWithinInterval(checkDateObj, { start: startDate, end: endDate })) {
                 currentStatus = 'vacation';
                 conflictPriority = 4;
+                allowPermissionOverlap = false;
+                hasHardBlock = true;
                 blockingReasons.push(`Il dipendente è in ferie dal ${vacation.date_from} al ${vacation.date_to}`);
                 statusDetails = {
                   type: 'Ferie',
@@ -105,7 +115,39 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         }
       }
 
-      // 3. CONTROLLO PERMESSI APPROVATI - Terza priorità
+      // 3. CONTROLLO TRASFERTE - Quarta priorità, BLOCCA DATE
+      if (conflictPriority < 2) {
+        const { data: businessTrips } = await supabase
+          .from('business_trips')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .eq('status', 'approved');
+
+        if (businessTrips) {
+          for (const trip of businessTrips) {
+            const startDate = parseISO(trip.start_date);
+            const endDate = parseISO(trip.end_date);
+            const checkDateObj = parseISO(targetDate);
+            
+            if (isWithinInterval(checkDateObj, { start: startDate, end: endDate })) {
+              currentStatus = 'business_trip';
+              conflictPriority = 2;
+              allowPermissionOverlap = false;
+              hasHardBlock = true;
+              blockingReasons.push(`Il dipendente è in trasferta a ${trip.destination} dal ${trip.start_date} al ${trip.end_date}`);
+              statusDetails = {
+                type: 'Trasferta',
+                startDate: trip.start_date,
+                endDate: trip.end_date,
+                notes: `Destinazione: ${trip.destination}. ${trip.reason || ''}`
+              };
+              break;
+            }
+          }
+        }
+      }
+
+      // 4. CONTROLLO PERMESSI APPROVATI - Terza priorità, NON BLOCCA DATE
       if (conflictPriority < 3) {
         const { data: approvedPermissions } = await supabase
           .from('leave_requests')
@@ -119,6 +161,8 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
           const permission = approvedPermissions[0];
           currentStatus = 'permission';
           conflictPriority = 3;
+          // allowPermissionOverlap rimane true - i permessi possono sovrapporsi
+          // hasHardBlock rimane false - non blocca le date
           
           if (permission.time_from && permission.time_to) {
             blockingReasons.push(`Il dipendente ha un permesso orario dalle ${permission.time_from} alle ${permission.time_to}`);
@@ -140,37 +184,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         }
       }
 
-      // 4. CONTROLLO TRASFERTE - Quarta priorità
-      if (conflictPriority < 2) {
-        const { data: businessTrips } = await supabase
-          .from('business_trips')
-          .select('*')
-          .eq('user_id', targetUserId)
-          .eq('status', 'approved');
-
-        if (businessTrips) {
-          for (const trip of businessTrips) {
-            const startDate = parseISO(trip.start_date);
-            const endDate = parseISO(trip.end_date);
-            const checkDateObj = parseISO(targetDate);
-            
-            if (isWithinInterval(checkDateObj, { start: startDate, end: endDate })) {
-              currentStatus = 'business_trip';
-              conflictPriority = 2;
-              blockingReasons.push(`Il dipendente è in trasferta a ${trip.destination} dal ${trip.start_date} al ${trip.end_date}`);
-              statusDetails = {
-                type: 'Trasferta',
-                startDate: trip.start_date,
-                endDate: trip.end_date,
-                notes: `Destinazione: ${trip.destination}. ${trip.reason || ''}`
-              };
-              break;
-            }
-          }
-        }
-      }
-
-      // 5. CONTROLLO PRESENZA GIÀ REGISTRATA - Quinta priorità
+      // 5. CONTROLLO PRESENZA GIÀ REGISTRATA - Quinta priorità, NON BLOCCA DATE
       if (conflictPriority < 1) {
         const { data: existingAttendance } = await supabase
           .from('unified_attendances')
@@ -183,6 +197,8 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         if (existingAttendance && !existingAttendance.is_business_trip) {
           currentStatus = 'already_present';
           conflictPriority = 1;
+          // allowPermissionOverlap rimane true
+          // hasHardBlock rimane false
           blockingReasons.push('Il dipendente ha già registrato la presenza per questa data');
           statusDetails = {
             type: 'Presenza già registrata',
@@ -192,7 +208,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         }
       }
 
-      // 6. CONTROLLO RICHIESTE PENDING - Solo avviso, non blocca
+      // 6. CONTROLLO RICHIESTE PENDING - Solo avviso, NON BLOCCA
       if (conflictPriority === 0) {
         const { data: pendingRequests } = await supabase
           .from('leave_requests')
@@ -250,7 +266,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
       }
 
       // DETERMINAZIONE FINALE DELLE CAPACITÀ
-      const canCheckIn = conflictPriority === 0 && blockingReasons.length === 0;
+      const canCheckIn = !hasHardBlock && blockingReasons.length === 0;
       const canCheckOut = conflictPriority <= 1 && currentStatus === 'already_present';
 
       return {
@@ -259,7 +275,9 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         currentStatus,
         blockingReasons,
         statusDetails,
-        conflictPriority
+        conflictPriority,
+        allowPermissionOverlap,
+        hasHardBlock
       };
     },
     enabled: !!targetUserId,
