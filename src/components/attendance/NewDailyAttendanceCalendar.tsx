@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
@@ -22,6 +24,7 @@ import AbsentEmployeesSection from './sections/AbsentEmployeesSection';
 export default function NewDailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
+  const [showSidebar, setShowSidebar] = useState(false);
   
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
@@ -325,63 +328,123 @@ export default function NewDailyAttendanceCalendar() {
     });
   }
 
+  // Navigation functions for mobile
+  const navigateDate = (direction: 'prev' | 'next') => {
+    if (!selectedDate) return;
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
+    setSelectedDate(newDate);
+  };
+
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-      <AttendanceCalendarSidebar
-        selectedDate={selectedDate}
-        onDateSelect={setSelectedDate}
-        workSchedule={workSchedule}
-      />
-
-      <Card className="xl:col-span-2">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Users className="w-5 h-5" />
-            Presenze del {selectedDate ? format(selectedDate, 'dd MMMM yyyy', { locale: it }) : ''}
-            {selectedDate && !isWorkingDay(selectedDate, workSchedule) && (
-              <Badge variant="outline" className="bg-gray-50 text-gray-600 text-sm">
-                Non lavorativo
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          {selectedDate && !isWorkingDay(selectedDate, workSchedule) ? (
-            <div className="text-center py-8">
-              <div className="text-gray-500 text-lg mb-2">Giorno non lavorativo</div>
-              <div className="text-gray-400 text-sm">
-                Questo giorno non è configurato come giorno lavorativo
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-6 gap-4">
-              <PresentEmployeesSection
-                employees={presentEmployees}
-                formatTime={formatTime}
-              />
-
-              <SickEmployeesSection
-                employees={sickEmployees}
-              />
-
-              <LeaveEmployeesSection
-                employees={onLeaveEmployees}
-              />
-
-              <PermissionEmployeesSection
-                employees={onPermissionEmployees}
-                formatTime={formatTime}
-              />
-
-              <BusinessTripEmployeesSection
-                employees={onBusinessTripEmployees}
-              />
-
-              <AbsentEmployeesSection employees={absentEmployees} />
-            </div>
+    <div className="space-y-4">
+      {/* Mobile date navigation */}
+      <div className="flex sm:hidden items-center justify-between bg-white rounded-lg border p-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigateDate('prev')}
+          className="h-9 w-9 p-0"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        
+        <div className="flex flex-col items-center">
+          <div className="font-medium text-sm">
+            {selectedDate ? format(selectedDate, 'dd MMMM yyyy', { locale: it }) : ''}
+          </div>
+          {selectedDate && !isWorkingDay(selectedDate, workSchedule) && (
+            <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs mt-1">
+              Non lavorativo
+            </Badge>
           )}
-        </CardContent>
-      </Card>
+        </div>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigateDate('next')}
+          className="h-9 w-9 p-0"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Toggle sidebar button for mobile */}
+      <div className="flex sm:hidden mb-4">
+        <Button
+          variant="outline"
+          onClick={() => setShowSidebar(!showSidebar)}
+          className="w-full"
+        >
+          {showSidebar ? 'Nascondi Calendario' : 'Mostra Calendario'}
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Calendar Sidebar - Collapsible on mobile */}
+        <div className={`lg:block ${showSidebar ? 'block' : 'hidden'}`}>
+          <AttendanceCalendarSidebar
+            selectedDate={selectedDate}
+            onDateSelect={setSelectedDate}
+            workSchedule={workSchedule}
+          />
+        </div>
+
+        {/* Main Content */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-base sm:text-lg">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Presenze del {selectedDate ? format(selectedDate, 'dd MMMM yyyy', { locale: it }) : ''}</span>
+                <span className="sm:hidden">Presenze</span>
+              </div>
+              {selectedDate && !isWorkingDay(selectedDate, workSchedule) && (
+                <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs sm:text-sm">
+                  Non lavorativo
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-4">
+            {selectedDate && !isWorkingDay(selectedDate, workSchedule) ? (
+              <div className="text-center py-8">
+                <div className="text-gray-500 text-base sm:text-lg mb-2">Giorno non lavorativo</div>
+                <div className="text-gray-400 text-sm">
+                  Questo giorno non è configurato come giorno lavorativo
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
+                <PresentEmployeesSection
+                  employees={presentEmployees}
+                  formatTime={formatTime}
+                />
+
+                <SickEmployeesSection
+                  employees={sickEmployees}
+                />
+
+                <LeaveEmployeesSection
+                  employees={onLeaveEmployees}
+                />
+
+                <PermissionEmployeesSection
+                  employees={onPermissionEmployees}
+                  formatTime={formatTime}
+                />
+
+                <BusinessTripEmployeesSection
+                  employees={onBusinessTripEmployees}
+                />
+
+                <AbsentEmployeesSection employees={absentEmployees} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
