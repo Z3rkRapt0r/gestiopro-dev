@@ -64,11 +64,11 @@ export function LeaveRequestFormValidation({
     }
   }, [overallValidation, onValidationChange]);
 
-  // Gestisce la validazione delle richieste pending
+  // Gestisce la validazione delle richieste pending - ORA BLOCCA
   React.useEffect(() => {
     if (hasPendingRequest) {
       setPendingValidation({
-        isValid: false,
+        isValid: false, // CAMBIATO: ora blocca effettivamente
         message: 'Hai già una richiesta in attesa di approvazione'
       });
     } else {
@@ -85,20 +85,20 @@ export function LeaveRequestFormValidation({
     );
   }
 
-  // Mostra avviso per richieste pending ma NON blocca il form
-  const PendingInfoAlert = () => {
+  // Mostra avviso per richieste pending e BLOCCA il form
+  const PendingBlockAlert = () => {
     if (!hasPendingRequest) return null;
     
     return (
-      <Alert className="mb-4 border-orange-200 bg-orange-50">
-        <Info className="h-4 w-4 text-orange-600" />
-        <AlertDescription className="text-orange-700">
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
           <div className="space-y-2">
             <p className="font-medium">
-              Hai già una richiesta in attesa di approvazione
+              Non puoi inviare nuove richieste
             </p>
             <p>
-              Richiesta di <strong>{pendingRequest?.type}</strong>
+              Hai già una richiesta di <strong>{pendingRequest?.type}</strong> in attesa di approvazione
               {pendingRequest?.date_from && pendingRequest?.date_to && (
                 <span> dal {pendingRequest.date_from} al {pendingRequest.date_to}</span>
               )}
@@ -106,8 +106,8 @@ export function LeaveRequestFormValidation({
                 <span> per il giorno {pendingRequest.day}</span>
               )}
             </p>
-            <p className="text-sm text-muted-foreground">
-              Non potrai inviare nuove richieste finché questa non verrà gestita dall'amministratore.
+            <p className="text-sm">
+              Attendi che l'amministratore gestisca la tua richiesta prima di inviarne una nuova.
             </p>
           </div>
         </AlertDescription>
@@ -119,7 +119,7 @@ export function LeaveRequestFormValidation({
   if (leaveType && (startDate || singleDay)) {
     return (
       <div className="space-y-4">
-        <PendingInfoAlert />
+        <PendingBlockAlert />
         <LeaveOverlapValidation
           leaveType={leaveType}
           startDate={startDate}
@@ -138,7 +138,7 @@ export function LeaveRequestFormValidation({
   // Altrimenti, solo avviso pending
   return (
     <div className="space-y-4">
-      <PendingInfoAlert />
+      <PendingBlockAlert />
       {children}
     </div>
   );

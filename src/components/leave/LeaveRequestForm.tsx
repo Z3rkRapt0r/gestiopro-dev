@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -140,15 +139,17 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     
     setShowValidationErrors(false);
     
-    // Controllo validazione form generale
+    // CONTROLLO CRITICO: Bloccare se ci sono richieste pending
     if (!formValidationState.isValid) {
       setShowValidationErrors(true);
+      console.log('Invio bloccato per validazione form:', formValidationState.message);
       return;
     }
 
     // Validazione bilanci
     if (balanceValidationErrors.length > 0) {
       setShowValidationErrors(true);
+      console.log('Invio bloccato per bilanci:', balanceValidationErrors);
       return;
     }
 
@@ -176,6 +177,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     // Controllo status dipendente - SOLO per hard blocks (non permessi)
     if (employeeStatus && employeeStatus.hasHardBlock) {
       setShowValidationErrors(true);
+      console.log('Invio bloccato per hard block:', employeeStatus.blockingReasons);
       return;
     }
 
@@ -187,6 +189,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       day: data.day ? format(data.day, 'yyyy-MM-dd') : undefined,
     };
 
+    console.log('Invio richiesta:', payload);
     insertMutation.mutate(payload, {
       onSuccess: () => {
         form.reset();
@@ -204,6 +207,10 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const validationEndDate = watchedType === 'ferie' ? (watchedDateTo ? format(watchedDateTo, 'yyyy-MM-dd') : undefined) : 
                             watchedType === 'permesso' ? (watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined) : undefined;
 
+  // Determina lo stato finale del pulsante
+  const isFormBlocked = !formValidationState.isValid || balanceValidationErrors.length > 0;
+  const isPendingRequest = !formValidationState.isValid && formValidationState.message.includes('richiesta in attesa');
+
   return (
     <LeaveRequestFormValidation
       leaveType={watchedType}
@@ -211,6 +218,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       endDate={validationEndDate}
       singleDay={watchedType === 'permesso' ? validationStartDate : undefined}
       onValidationChange={(isValid, message) => {
+        console.log('Validazione cambiata:', { isValid, message });
         setFormValidationState({ isValid, message: message || '' });
       }}
     >
@@ -535,9 +543,12 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={insertMutation.isPending || !formValidationState.isValid || balanceValidationErrors.length > 0}
+                disabled={insertMutation.isPending || isFormBlocked}
               >
-                {insertMutation.isPending ? 'Invio in corso...' : 'Invia Richiesta'}
+                {insertMutation.isPending ? 'Invio in corso...' : 
+                 isPendingRequest ? 'Richiesta in attesa di approvazione' :
+                 isFormBlocked ? 'Impossibile inviare' :
+                 'Invia Richiesta'}
               </Button>
             </form>
           </Form>
