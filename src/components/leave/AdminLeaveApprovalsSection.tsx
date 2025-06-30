@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,7 +8,7 @@ import { ManualLeaveEntryForm } from "./ManualLeaveEntryForm";
 import { EmployeeLeaveBalanceSection } from "./EmployeeLeaveBalanceSection";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useLeaveBalanceSync } from "@/hooks/useLeaveBalanceSync";
-import { Settings, Plus, Calendar, FileText } from "lucide-react";
+import { Settings, Plus, Calendar, FileText, Archive } from "lucide-react";
 
 export default function AdminLeaveApprovalsSection() {
   const [tab, setTab] = useState<"pending" | "manual-entry" | "balance-settings" | "archive-permessi" | "archive-ferie">("pending");
@@ -69,32 +70,62 @@ export default function AdminLeaveApprovalsSection() {
   const groupedFerie = groupByEmployee(archiveFerie);
 
   return (
-    <div className="max-w-6xl mx-auto py-8">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2">Gestione Permessi & Ferie</h2>
-        <p className="text-muted-foreground">
+    <div className="w-full max-w-none px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2">Gestione Permessi & Ferie</h2>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Gestisci le richieste di permessi e ferie dei dipendenti
         </p>
       </div>
 
       <Tabs value={tab} onValueChange={val => setTab(val as any)} className="w-full">
-        <TabsList className="mb-4 w-full flex">
-          <TabsTrigger value="pending" className="flex-1 flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Approvazioni
-          </TabsTrigger>
-          <TabsTrigger value="manual-entry" className="flex-1 flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Caricamento Manuale
-          </TabsTrigger>
-          <TabsTrigger value="balance-settings" className="flex-1 flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Impostazioni Ferie/Permessi
-          </TabsTrigger>
-          <TabsTrigger value="archive-permessi" className="flex-1">Archivio Permessi</TabsTrigger>
-          <TabsTrigger value="archive-ferie" className="flex-1">Archivio Ferie</TabsTrigger>
-        </TabsList>
-        <TabsContent value="pending">
+        {/* Mobile-optimized tabs with horizontal scroll */}
+        <div className="w-full overflow-x-auto">
+          <TabsList className="mb-4 min-w-full flex sm:grid sm:grid-cols-5 h-auto sm:h-11 bg-muted/30 p-1">
+            <TabsTrigger 
+              value="pending" 
+              className="flex-shrink-0 flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm min-w-0"
+            >
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="hidden xs:inline">Approvazioni</span>
+              <span className="xs:hidden">App.</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="manual-entry" 
+              className="flex-shrink-0 flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm min-w-0"
+            >
+              <Plus className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Caricamento Manuale</span>
+              <span className="sm:hidden">Manuale</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="balance-settings" 
+              className="flex-shrink-0 flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm min-w-0"
+            >
+              <Settings className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Impostazioni</span>
+              <span className="sm:hidden">Impost.</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="archive-permessi" 
+              className="flex-shrink-0 flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm min-w-0"
+            >
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Archivio Permessi</span>
+              <span className="sm:hidden">Permessi</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="archive-ferie" 
+              className="flex-shrink-0 flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm min-w-0"
+            >
+              <Archive className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Archivio Ferie</span>
+              <span className="sm:hidden">Ferie</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="pending" className="mt-4 sm:mt-6 focus-visible:outline-none focus-visible:ring-0">
           <LeaveRequestsCardsGrid
             adminMode
             leaveRequests={pendingRequests}
@@ -102,18 +133,21 @@ export default function AdminLeaveApprovalsSection() {
             showDelete
           />
         </TabsContent>
-        <TabsContent value="manual-entry">
+        
+        <TabsContent value="manual-entry" className="mt-4 sm:mt-6 focus-visible:outline-none focus-visible:ring-0">
           <ManualLeaveEntryForm 
             onSuccess={() => {
               setTab("pending");
             }}
           />
         </TabsContent>
-        <TabsContent value="balance-settings">
+        
+        <TabsContent value="balance-settings" className="mt-4 sm:mt-6 focus-visible:outline-none focus-visible:ring-0">
           <EmployeeLeaveBalanceSection />
         </TabsContent>
-        <TabsContent value="archive-permessi">
-          <div className="space-y-4">
+        
+        <TabsContent value="archive-permessi" className="mt-4 sm:mt-6 focus-visible:outline-none focus-visible:ring-0">
+          <div className="space-y-3 sm:space-y-4">
             {groupedPermessi.length > 0 ? (
               groupedPermessi.map(({ employee, requests }) => (
                 <EmployeeLeaveArchive
@@ -124,14 +158,15 @@ export default function AdminLeaveApprovalsSection() {
                 />
               ))
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
                 Nessun permesso approvato trovato.
               </div>
             )}
           </div>
         </TabsContent>
-        <TabsContent value="archive-ferie">
-          <div className="space-y-4">
+        
+        <TabsContent value="archive-ferie" className="mt-4 sm:mt-6 focus-visible:outline-none focus-visible:ring-0">
+          <div className="space-y-3 sm:space-y-4">
             {groupedFerie.length > 0 ? (
               groupedFerie.map(({ employee, requests }) => (
                 <EmployeeLeaveArchive
@@ -142,7 +177,7 @@ export default function AdminLeaveApprovalsSection() {
                 />
               ))
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
                 Nessuna ferie approvata trovata.
               </div>
             )}

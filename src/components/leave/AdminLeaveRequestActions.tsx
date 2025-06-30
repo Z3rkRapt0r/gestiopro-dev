@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,35 +73,40 @@ export default function AdminLeaveRequestActions({ request, onUpdate }: AdminLea
   }
 
   return (
-    <div className="space-y-4 mt-4 p-4 bg-gray-50 rounded-lg">
-      <div>
-        <label className="block text-sm font-medium mb-2">Note amministratore</label>
+    <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+      {/* Admin note textarea - mobile optimized */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">Note amministratore</label>
         <Textarea
           value={adminNote}
           onChange={(e) => setAdminNote(e.target.value)}
           placeholder="Aggiungi note per il dipendente..."
           rows={3}
+          className="min-h-[80px] text-sm"
         />
       </div>
 
-      <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      {/* Notification checkbox - mobile optimized */}
+      <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
         <Checkbox
           id={`notify-${request.id}`}
           checked={notifyEmployee}
           onCheckedChange={(checked) => setNotifyEmployee(checked === true)}
+          className="mt-0.5 flex-shrink-0"
         />
-        <label htmlFor={`notify-${request.id}`} className="text-sm font-medium flex items-center gap-2">
-          <Mail className="w-4 h-4" />
-          Notifica il dipendente via email
+        <label htmlFor={`notify-${request.id}`} className="text-sm font-medium flex items-start gap-2 min-w-0 flex-1">
+          <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <span className="break-words">Notifica il dipendente via email</span>
         </label>
       </div>
 
-      <div className="flex gap-2">
+      {/* Action buttons - mobile optimized */}
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <Button
           onClick={() => handleStatusUpdate("approved")}
           disabled={loading}
           variant="default"
-          className="flex-1"
+          className="flex-1 h-11 sm:h-10"
         >
           <Check className="w-4 h-4 mr-2" />
           Approva
@@ -109,7 +115,7 @@ export default function AdminLeaveRequestActions({ request, onUpdate }: AdminLea
           onClick={() => handleStatusUpdate("rejected")}
           disabled={loading}
           variant="destructive"
-          className="flex-1"
+          className="flex-1 h-11 sm:h-10"
         >
           <X className="w-4 h-4 mr-2" />
           Rifiuta
