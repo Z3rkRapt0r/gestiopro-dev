@@ -31,7 +31,7 @@ const EmployeeCharts = ({ stats }: EmployeeChartsProps) => {
 
   const activityData = [
     { name: 'Documenti', value: safeStats.documentsCount },
-    { name: 'Notifiche Non Lette', value: safeStats.unreadNotificationsCount },
+    { name: 'Notifiche', value: safeStats.unreadNotificationsCount },
   ];
 
   const chartConfig = {
@@ -43,21 +43,21 @@ const EmployeeCharts = ({ stats }: EmployeeChartsProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Stato Richieste Ferie</CardTitle>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+      <Card className="hover:shadow-lg transition-all duration-300">
+        <CardHeader className="pb-3 sm:pb-4">
+          <CardTitle className="text-base sm:text-lg">Stato Richieste Ferie</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[200px]">
+        <CardContent className="pt-0">
+          <ChartContainer config={chartConfig} className="h-[200px] sm:h-[250px] lg:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={leaveRequestsData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
+                  innerRadius={30}
+                  outerRadius={window.innerWidth < 640 ? 60 : window.innerWidth < 1024 ? 70 : 80}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -65,25 +65,65 @@ const EmployeeCharts = ({ stats }: EmployeeChartsProps) => {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartTooltip 
+                  content={<ChartTooltipContent />}
+                  wrapperStyle={{ 
+                    fontSize: window.innerWidth < 640 ? '12px' : '14px',
+                    maxWidth: window.innerWidth < 640 ? '200px' : '250px'
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </ChartContainer>
+          
+          {/* Mobile legend */}
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-3 sm:mt-4 sm:hidden">
+            {leaveRequestsData.map((entry, index) => (
+              <div key={index} className="flex items-center gap-1 sm:gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full flex-shrink-0" 
+                  style={{ backgroundColor: entry.color }}
+                />
+                <span className="text-xs font-medium truncate">{entry.name}</span>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Attività Recente</CardTitle>
+      <Card className="hover:shadow-lg transition-all duration-300">
+        <CardHeader className="pb-3 sm:pb-4">
+          <CardTitle className="text-base sm:text-lg">Attività Recente</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[200px]">
+        <CardContent className="pt-0">
+          <ChartContainer config={chartConfig} className="h-[200px] sm:h-[250px] lg:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={activityData}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Bar dataKey="value" fill="#3b82f6" />
-                <ChartTooltip content={<ChartTooltipContent />} />
+              <BarChart data={activityData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                  interval={0}
+                  angle={window.innerWidth < 640 ? -45 : 0}
+                  textAnchor={window.innerWidth < 640 ? 'end' : 'middle'}
+                  height={window.innerWidth < 640 ? 60 : 30}
+                />
+                <YAxis 
+                  tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                  width={window.innerWidth < 640 ? 30 : 40}
+                />
+                <Bar 
+                  dataKey="value" 
+                  fill="#3b82f6" 
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={window.innerWidth < 640 ? 40 : 60}
+                />
+                <ChartTooltip 
+                  content={<ChartTooltipContent />}
+                  wrapperStyle={{ 
+                    fontSize: window.innerWidth < 640 ? '12px' : '14px',
+                    maxWidth: window.innerWidth < 640 ? '200px' : '250px'
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
