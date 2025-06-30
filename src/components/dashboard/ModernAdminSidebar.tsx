@@ -8,7 +8,6 @@ import {
   Bell, 
   Settings,
   Calendar,
-  ChevronLeft,
   Building
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,8 +16,6 @@ import { useDashboardSettings } from '@/hooks/useDashboardSettings';
 interface ModernAdminSidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
 }
 
 const menuItems = [
@@ -82,56 +79,34 @@ const menuItems = [
 
 export default function ModernAdminSidebar({ 
   activeTab, 
-  setActiveTab, 
-  isCollapsed, 
-  onToggleCollapse 
+  setActiveTab
 }: ModernAdminSidebarProps) {
   const { settings, loading } = useDashboardSettings();
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <div className={cn(
-        "hidden lg:flex flex-col bg-white/90 backdrop-blur-xl border-r border-slate-200/60 shadow-xl transition-all duration-300 ease-in-out relative z-30",
-        isCollapsed ? "w-20" : "w-72"
-      )}>
+      {/* Desktop Sidebar - Always visible */}
+      <div className="hidden lg:flex flex-col w-72 bg-white/90 backdrop-blur-xl border-r border-slate-200/60 shadow-xl">
         {/* Header */}
         <div className="p-6 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-white">
-          <div className="flex items-center justify-between">
-            {!isCollapsed && (
-              <div className="flex items-center space-x-3">
-                {settings.logo_url ? (
-                  <img
-                    src={settings.logo_url}
-                    alt="Logo"
-                    className="h-10 w-auto object-contain rounded-lg shadow-sm"
-                  />
-                ) : (
-                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-                    <Building className="h-5 w-5 text-white" />
-                  </div>
-                )}
-                <div>
-                  <h2 className="font-bold text-slate-900 text-lg">
-                    {settings.company_name || "Dashboard"}
-                  </h2>
-                  <p className="text-xs text-slate-500">Area Amministratore</p>
-                </div>
+          <div className="flex items-center space-x-3">
+            {settings.logo_url ? (
+              <img
+                src={settings.logo_url}
+                alt="Logo"
+                className="h-10 w-auto object-contain rounded-lg shadow-sm"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                <Building className="h-5 w-5 text-white" />
               </div>
             )}
-            
-            <button
-              onClick={onToggleCollapse}
-              className={cn(
-                "p-2 rounded-lg bg-white shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors",
-                isCollapsed && "mx-auto"
-              )}
-            >
-              <ChevronLeft className={cn(
-                "h-4 w-4 text-slate-600 transition-transform duration-200",
-                isCollapsed && "rotate-180"
-              )} />
-            </button>
+            <div>
+              <h2 className="font-bold text-slate-900 text-lg">
+                {settings.company_name || "Dashboard"}
+              </h2>
+              <p className="text-xs text-slate-500">Area Amministratore</p>
+            </div>
           </div>
         </div>
 
@@ -152,10 +127,7 @@ export default function ModernAdminSidebar({
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
-                <div className={cn(
-                  "flex items-center p-3 rounded-xl transition-all duration-200",
-                  isCollapsed ? "justify-center" : "space-x-3"
-                )}>
+                <div className="flex items-center space-x-3 p-3 rounded-xl transition-all duration-200">
                   <div className={cn(
                     "relative p-2 rounded-lg transition-all duration-200",
                     isActive
@@ -168,20 +140,18 @@ export default function ModernAdminSidebar({
                     )} />
                   </div>
                   
-                  {!isCollapsed && (
-                    <div className="flex-1 text-left">
-                      <span className="font-semibold text-sm">{item.label}</span>
-                    </div>
+                  <div className="flex-1 text-left">
+                    <span className="font-semibold text-sm">{item.label}</span>
+                  </div>
+
+                  {/* Active indicator */}
+                  {isActive && (
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      `bg-gradient-to-r ${item.color}`
+                    )} />
                   )}
                 </div>
-
-                {/* Active indicator */}
-                {isActive && !isCollapsed && (
-                  <div className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full",
-                    `bg-gradient-to-r ${item.color}`
-                  )} />
-                )}
               </button>
             );
           })}

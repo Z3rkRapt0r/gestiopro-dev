@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
-import { cn } from '@/lib/utils';
 
 // Import existing sections
 import AdminDashboardOverview from './AdminDashboardOverview';
@@ -30,24 +29,7 @@ const tabTitles = {
 export default function ModernAdminDashboard() {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const queryClient = useQueryClient();
-
-  // Handle responsive collapse
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1024) {
-        setIsCollapsed(true);
-      } else {
-        setIsCollapsed(false);
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Invalidate queries when changing tabs
   useEffect(() => {
@@ -102,8 +84,6 @@ export default function ModernAdminDashboard() {
         <ModernAdminSidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          isCollapsed={isCollapsed}
-          onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
         />
 
         {/* Main Content */}
@@ -111,9 +91,6 @@ export default function ModernAdminDashboard() {
           {/* Header */}
           <ModernAdminHeader
             title={tabTitles[activeTab as keyof typeof tabTitles]}
-            isCollapsed={isCollapsed}
-            onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
-            onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           />
 
           {/* Content Area */}
@@ -126,14 +103,6 @@ export default function ModernAdminDashboard() {
           </main>
         </div>
       </div>
-
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
     </div>
   );
 }

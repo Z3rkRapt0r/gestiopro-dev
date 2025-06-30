@@ -13,30 +13,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { 
   Bell, 
-  Search, 
   User, 
-  LogOut, 
-  Menu,
-  Maximize2,
-  Minimize2
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardSettings } from '@/hooks/useDashboardSettings';
-import { cn } from '@/lib/utils';
 
 interface ModernAdminHeaderProps {
   title: string;
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
-  onToggleMobileMenu?: () => void;
 }
 
-export default function ModernAdminHeader({ 
-  title, 
-  isCollapsed, 
-  onToggleCollapse,
-  onToggleMobileMenu 
-}: ModernAdminHeaderProps) {
+export default function ModernAdminHeader({ title }: ModernAdminHeaderProps) {
   const { profile, signOut } = useAuth();
   const { settings } = useDashboardSettings();
 
@@ -47,34 +34,9 @@ export default function ModernAdminHeader({
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/60 shadow-sm">
       <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 lg:px-6">
-        {/* Left Section */}
+        {/* Left Section - Title */}
         <div className="flex items-center space-x-2 sm:space-x-4">
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden h-9 w-9 sm:h-10 sm:w-10"
-            onClick={onToggleMobileMenu}
-          >
-            <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
-          </Button>
-
-          {/* Desktop Collapse Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hidden lg:flex h-10 w-10"
-            onClick={onToggleCollapse}
-          >
-            {isCollapsed ? (
-              <Maximize2 className="h-4 w-4" />
-            ) : (
-              <Minimize2 className="h-4 w-4" />
-            )}
-          </Button>
-
-          {/* Title */}
-          <div className="hidden sm:block">
+          <div>
             <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">{title}</h1>
             <div className="hidden md:flex items-center space-x-2 text-xs sm:text-sm text-slate-500">
               <span>Dashboard</span>
@@ -84,25 +46,8 @@ export default function ModernAdminHeader({
           </div>
         </div>
 
-        {/* Center Section - Search (Hidden on mobile) */}
-        <div className="hidden lg:flex flex-1 max-w-md mx-8">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cerca dipendenti, documenti..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            />
-          </div>
-        </div>
-
-        {/* Right Section */}
+        {/* Right Section - Notifications & User Menu */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Search Button for Mobile */}
-          <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9 sm:h-10 sm:w-10">
-            <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
-          </Button>
-
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10">
             <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
