@@ -10,12 +10,16 @@ export const leaveRequestSchema = z.object({
   time_to: z.string().optional(),
   note: z.string().optional(),
 }).refine((data) => {
-  if (data.type === 'permesso' && data.day) {
-    return data.time_from && data.time_to;
-  }
+  // Validazione per le ferie
   if (data.type === 'ferie') {
     return data.date_from && data.date_to;
   }
+  
+  // Validazione per i permessi - richiedono solo il giorno
+  if (data.type === 'permesso') {
+    return data.day;
+  }
+  
   return true;
 }, {
   message: "Compila tutti i campi obbligatori per il tipo di richiesta selezionato",

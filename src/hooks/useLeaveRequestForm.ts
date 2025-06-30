@@ -5,24 +5,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
-import { useLeaveFormValidation } from '@/hooks/useLeaveFormValidation';
+import { useLeaveBalanceValidation } from '@/hooks/useLeaveBalanceValidation';
 import { leaveRequestSchema, LeaveRequestFormData } from '@/components/leave/types';
 import { notifyLeaveRequest } from '@/utils/notificationHelpers';
 
 export function useLeaveRequestForm(defaultType?: string, onSuccess?: () => void) {
   const { profile } = useAuth();
   const { insertMutation } = useLeaveRequests();
-  const {
-    balanceValidation,
-    isLoadingBalance,
-    balanceValidationError,
-    validateBalanceForRequest,
-    validateWorkingDays,
-  } = useLeaveFormValidation();
+  const { balanceValidation, isLoading: isLoadingBalance, validateLeaveRequest } = useLeaveBalanceValidation();
   
-  const [showValidationErrors, setShowValidationErrors] = useState(false);
-  const [isFormValid, setIsFormValid] = useState(true);
-  const [formValidationMessage, setFormValidationMessage] = useState<string>('');
+  const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
   
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
@@ -40,18 +32,24 @@ export function useLeaveRequestForm(defaultType?: string, onSuccess?: () => void
     timeTo: form.watch('time_to'),
   };
 
-  // Debounced balance validation
+  // Validazione del bilancio semplificata
   useEffect(() => {
+    if (!balanceValidation) {
+      setBalanceValidationError('Il bilancio ferie/permessi deve essere configurato prima di poter inviare richieste.');
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
-      validateBalanceForRequest(
-        watchedValues.type,
-        watchedValues.dateFrom,
-        watchedValues.dateTo,
-        watchedValues.day,
-        watchedValues.timeFrom,
-        watchedValues.timeTo
-      );
-    }, 500);
+      if (watchedValues.type === 'ferie' && watchedValues.dateFrom && watchedValues.dateTo) {
+        const validation = validateLeaveRequest('ferie', watchedValues.dateFrom, watchedValues.dateTo);
+        setBalanceValidationError(validation.errorMessage || null);
+      } else if (watchedValues.type === 'permesso' && watchedValues.day) {
+        const validation = validateLeaveRequest('permesso', null, null, watchedValues.day, watchedValues.timeFrom, watchedValues.timeTo);
+        setBalanceValidationError(validation.errorMessage || null);
+      } else {
+        setBalanceValidationError(null);
+      }
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [
@@ -61,38 +59,21 @@ export function useLeaveRequestForm(defaultType?: string, onSuccess?: () => void
     watchedValues.day,
     watchedValues.timeFrom,
     watchedValues.timeTo,
-    validateBalanceForRequest
+    balanceValidation,
+    validateLeaveRequest
   ]);
 
   const canSubmit = useMemo(() => {
-    return isFormValid && !balanceValidationError && !insertMutation.isPending;
-  }, [isFormValid, balanceValidationError, insertMutation.isPending]);
+    return !balanceValidationError && !insertMutation.isPending && !!balanceValidation;
+  }, [balanceValidationError, insertMutation.isPending, balanceValidation]);
 
   const onSubmit = (data: LeaveRequestFormData) => {
     if (!profile?.id) return;
     
-    console.log('Form submission attempt:', { data, balanceValidationError, isFormValid });
+    console.log('Form submission:', { data, balanceValidationError });
     
-    setShowValidationErrors(false);
-    
-    let validationErrors: string[] = [];
-    
-    // Validate working days for both types
-    if (data.type === 'ferie' && data.date_from && data.date_to) {
-      validationErrors = validateWorkingDays(data.date_from, data.date_to, data.type);
-    } else if (data.type === 'permesso' && data.day) {
-      validationErrors = validateWorkingDays(data.day, data.day, data.type);
-    }
-    
-    if (validationErrors.length > 0) {
-      console.log('Working days validation errors:', validationErrors);
-      setShowValidationErrors(true);
-      return;
-    }
-
-    // Check for balance validation errors
     if (balanceValidationError) {
-      console.log('Balance validation error:', balanceValidationError);
+      console.log('Blocking submission due to balance validation error');
       return;
     }
 
@@ -108,7 +89,7 @@ export function useLeaveRequestForm(defaultType?: string, onSuccess?: () => void
 
     insertMutation.mutate(payload, {
       onSuccess: async () => {
-        // Create notification
+        // Notifica
         if (data.type === 'ferie' && data.date_from && data.date_to) {
           const dateRange = `${format(data.date_from, 'dd/MM/yyyy')} - ${format(data.date_to, 'dd/MM/yyyy')}`;
           await notifyLeaveRequest(profile.id, data.type, dateRange);
@@ -130,12 +111,7 @@ export function useLeaveRequestForm(defaultType?: string, onSuccess?: () => void
     balanceValidation,
     isLoadingBalance,
     balanceValidationError,
-    showValidationErrors,
-    isFormValid,
-    formValidationMessage,
     canSubmit,
     onSubmit,
-    setIsFormValid,
-    setFormValidationMessage,
   };
 }

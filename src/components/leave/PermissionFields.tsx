@@ -3,7 +3,7 @@ import React from 'react';
 import { Control } from 'react-hook-form';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CalendarIcon, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
@@ -16,18 +16,15 @@ import { LeaveRequestFormData } from './types';
 interface PermissionFieldsProps {
   control: Control<LeaveRequestFormData>;
   selectedDay: Date | undefined;
-  isDateDisabled: (date: Date) => boolean;
-  isWorkingDay: (date: Date) => boolean;
-  workingDaysLabels: string[];
 }
 
-export function PermissionFields({ 
-  control, 
-  selectedDay, 
-  isDateDisabled, 
-  isWorkingDay, 
-  workingDaysLabels 
-}: PermissionFieldsProps) {
+export function PermissionFields({ control, selectedDay }: PermissionFieldsProps) {
+  const isDateDisabled = (date: Date): boolean => {
+    // Disabilita sabato (6) e domenica (0)
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  };
+
   return (
     <>
       <FormField
@@ -62,7 +59,6 @@ export function PermissionFields({
                   onSelect={field.onChange}
                   disabled={isDateDisabled}
                   initialFocus
-                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
@@ -71,13 +67,24 @@ export function PermissionFields({
         )}
       />
 
+      <Alert className="border-blue-200 bg-blue-50">
+        <Info className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-blue-700">
+          <strong>Opzioni per i permessi:</strong>
+          <br />
+          • Lascia vuoti gli orari per un permesso giornaliero (8 ore)
+          <br />
+          • Compila gli orari per un permesso orario specifico
+        </AlertDescription>
+      </Alert>
+
       <div className="grid grid-cols-2 gap-4">
         <FormField
           control={control}
           name="time_from"
           render={({ field }) => (
             <FormItem>
-              <FormLabel htmlFor="time_from">Ora Inizio</FormLabel>
+              <FormLabel htmlFor="time_from">Ora Inizio (opzionale)</FormLabel>
               <FormControl>
                 <Input 
                   id="time_from"
@@ -96,7 +103,7 @@ export function PermissionFields({
           name="time_to"
           render={({ field }) => (
             <FormItem>
-              <FormLabel htmlFor="time_to">Ora Fine</FormLabel>
+              <FormLabel htmlFor="time_to">Ora Fine (opzionale)</FormLabel>
               <FormControl>
                 <Input 
                   id="time_to"
@@ -111,14 +118,12 @@ export function PermissionFields({
         />
       </div>
 
-      {selectedDay && !isWorkingDay(selectedDay) && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Non puoi richiedere un permesso per un giorno non lavorativo.
-            Seleziona un giorno lavorativo: {workingDaysLabels.join(', ')}.
-          </AlertDescription>
-        </Alert>
+      {selectedDay && (
+        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+          <p className="text-sm text-green-800">
+            <span className="font-medium">Permesso richiesto per:</span> {format(selectedDay, "dd/MM/yyyy", { locale: it })}
+          </p>
+        </div>
       )}
     </>
   );

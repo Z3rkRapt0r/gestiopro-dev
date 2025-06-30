@@ -10,16 +10,20 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/comp
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { LeaveRequestFormData } from './types';
-import WorkingDaysPreview from './WorkingDaysPreview';
 
 interface VacationFieldsProps {
   control: Control<LeaveRequestFormData>;
   startDate: Date | undefined;
   endDate: Date | undefined;
-  isDateDisabled: (date: Date) => boolean;
 }
 
-export function VacationFields({ control, startDate, endDate, isDateDisabled }: VacationFieldsProps) {
+export function VacationFields({ control, startDate, endDate }: VacationFieldsProps) {
+  const isDateDisabled = (date: Date): boolean => {
+    // Disabilita sabato (6) e domenica (0)
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  };
+
   return (
     <>
       <div className="grid grid-cols-2 gap-4">
@@ -55,7 +59,6 @@ export function VacationFields({ control, startDate, endDate, isDateDisabled }: 
                     onSelect={field.onChange}
                     disabled={isDateDisabled}
                     initialFocus
-                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -96,7 +99,6 @@ export function VacationFields({ control, startDate, endDate, isDateDisabled }: 
                     onSelect={field.onChange}
                     disabled={isDateDisabled}
                     initialFocus
-                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -106,11 +108,13 @@ export function VacationFields({ control, startDate, endDate, isDateDisabled }: 
         />
       </div>
 
-      <WorkingDaysPreview 
-        startDate={startDate}
-        endDate={endDate}
-        leaveType="ferie"
-      />
+      {startDate && endDate && (
+        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+          <p className="text-sm text-green-800">
+            <span className="font-medium">Periodo selezionato:</span> dal {format(startDate, "dd/MM/yyyy", { locale: it })} al {format(endDate, "dd/MM/yyyy", { locale: it })}
+          </p>
+        </div>
+      )}
     </>
   );
 }

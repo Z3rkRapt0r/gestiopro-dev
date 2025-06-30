@@ -14,9 +14,6 @@ interface LeaveRequestFormFieldsProps {
   watchedDateFrom?: Date;
   watchedDateTo?: Date;
   watchedDay?: Date;
-  isDateDisabled: (date: Date) => boolean;
-  isWorkingDay: (date: Date) => boolean;
-  workingDaysLabels: string[];
 }
 
 export function LeaveRequestFormFields({
@@ -25,9 +22,6 @@ export function LeaveRequestFormFields({
   watchedDateFrom,
   watchedDateTo,
   watchedDay,
-  isDateDisabled,
-  isWorkingDay,
-  workingDaysLabels,
 }: LeaveRequestFormFieldsProps) {
   return (
     <>
@@ -38,7 +32,6 @@ export function LeaveRequestFormFields({
           control={control}
           startDate={watchedDateFrom}
           endDate={watchedDateTo}
-          isDateDisabled={(date) => isDateDisabled(date)}
         />
       )}
 
@@ -46,9 +39,6 @@ export function LeaveRequestFormFields({
         <PermissionFields
           control={control}
           selectedDay={watchedDay}
-          isDateDisabled={(date) => isDateDisabled(date)}
-          isWorkingDay={isWorkingDay}
-          workingDaysLabels={workingDaysLabels}
         />
       )}
 
