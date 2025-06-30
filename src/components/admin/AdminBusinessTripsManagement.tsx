@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,13 +17,46 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 export default function AdminBusinessTripsManagement() {
-  const { businessTrips, createTrip, isCreating, deleteTrip, isDeleting } = useBusinessTrips();
+  const { businessTrips, createTrip, isCreating, deleteTrip, isDeleting, getConflictDatesForEmployees } = useBusinessTrips();
   const { employees } = useActiveEmployees();
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [destination, setDestination] = useState('');
   const [reason, setReason] = useState('');
+  const [conflictDates, setConflictDates] = useState<Date[]>([]);
+  const [isCalculatingConflicts, setIsCalculatingConflicts] = useState(false);
+
+  // Calcola i conflitti quando cambiano i dipendenti selezionati
+  useEffect(() => {
+    const calculateConflicts = async () => {
+      if (selectedEmployees.length === 0) {
+        setConflictDates([]);
+        return;
+      }
+
+      setIsCalculatingConflicts(true);
+      try {
+        const conflicts = await getConflictDatesForEmployees(selectedEmployees);
+        setConflictDates(conflicts);
+        console.log('📅 Conflitti calcolati per dipendenti selezionati:', conflicts.length);
+      } catch (error) {
+        console.error('❌ Errore calcolo conflitti:', error);
+        setConflictDates([]);
+      } finally {
+        setIsCalculatingConflicts(false);
+      }
+    };
+
+    calculateConflicts();
+  }, [selectedEmployees, getConflictDatesForEmployees]);
+
+  // Funzione per verificare se una data è in conflitto
+  const isDateDisabled = (date: Date) => {
+    return conflictDates.some(conflictDate => 
+      format(date, 'yyyy-MM-dd') === format(conflictDate, 'yyyy-MM-dd')
+    );
+  };
 
   const handleEmployeeToggle = (employeeId: string) => {
     setSelectedEmployees(prev => 
@@ -93,6 +125,7 @@ export default function AdminBusinessTripsManagement() {
               {selectedEmployees.length > 0 && (
                 <div className="text-sm text-blue-600 mt-1">
                   {selectedEmployees.length} dipendente/i selezionato/i
+                  {isCalculatingConflicts && <span className="ml-2 text-orange-600">(Calcolo conflitti...)</span>}
                 </div>
               )}
             </div>
@@ -113,6 +146,7 @@ export default function AdminBusinessTripsManagement() {
                       selected={startDate}
                       onSelect={setStartDate}
                       locale={it}
+                      disabled={isDateDisabled}
                     />
                   </PopoverContent>
                 </Popover>
@@ -133,11 +167,18 @@ export default function AdminBusinessTripsManagement() {
                       selected={endDate}
                       onSelect={setEndDate}
                       locale={it}
+                      disabled={isDateDisabled}
                     />
                   </PopoverContent>
                 </Popover>
               </div>
             </div>
+
+            {conflictDates.length > 0 && selectedEmployees.length > 0 && (
+              <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                ⚠️ {conflictDates.length} date disabilitate per conflitti con trasferte o ferie esistenti
+              </div>
+            )}
 
             <div>
               <Label>Destinazione</Label>
