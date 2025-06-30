@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
@@ -8,7 +7,7 @@ export interface LeaveValidationResult {
   conflicts: string[];
 }
 
-export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' | 'permesso' | 'sick_leave') => {
+export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' | 'permesso' | 'sick_leave' | 'attendance') => {
   const [conflictDates, setConflictDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +68,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 3. CONTROLLO PERMESSI APPROVATI (conflitti per permessi e malattie)
-      if (type === 'permesso' || type === 'sick_leave') {
+      // 3. CONTROLLO PERMESSI APPROVATI (conflitti per permessi, malattie e presenze)
+      if (type === 'permesso' || type === 'sick_leave' || type === 'attendance') {
         const { data: approvedPermissions } = await supabase
           .from('leave_requests')
           .select('day')
@@ -97,6 +96,21 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         sickLeaveAttendances.forEach(attendance => {
           conflictDates.add(format(new Date(attendance.date), 'yyyy-MM-dd'));
         });
+      }
+
+      // 5. CONTROLLO PRESENZE ESISTENTI (solo per nuove presenze)
+      if (type === 'attendance') {
+        const { data: existingAttendances } = await supabase
+          .from('unified_attendances')
+          .select('date')
+          .eq('user_id', userId)
+          .eq('is_sick_leave', false);
+
+        if (existingAttendances) {
+          existingAttendances.forEach(attendance => {
+            conflictDates.add(format(new Date(attendance.date), 'yyyy-MM-dd'));
+          });
+        }
       }
 
       // Converti le date string in oggetti Date
@@ -353,6 +367,104 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     }
   };
 
+  // Funzione di validazione specifica per presenze normali
+  const validateAttendanceEntry = async (userId: string, date: string): Promise<LeaveValidationResult> => {
+    console.log('🔍 Validazione anti-conflitto per presenza:', { userId, date });
+    
+    const conflicts: string[] = [];
+    
+    try {
+      const targetDate = new Date(date);
+
+      // 1. CONTROLLO TRASFERTE
+      const { data: existingTrips } = await supabase
+        .from('business_trips')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved')
+        .lte('start_date', date)
+        .gte('end_date', date);
+
+      if (existingTrips && existingTrips.length > 0) {
+        for (const trip of existingTrips) {
+          conflicts.push(`Conflitto critico: esiste una trasferta a ${trip.destination} che include il ${format(targetDate, 'dd/MM/yyyy')}`);
+        }
+      }
+
+      // 2. CONTROLLO FERIE
+      const { data: existingVacations } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved')
+        .eq('type', 'ferie')
+        .lte('date_from', date)
+        .gte('date_to', date);
+
+      if (existingVacations && existingVacations.length > 0) {
+        conflicts.push(`Conflitto critico: esistono ferie approvate che includono il ${format(targetDate, 'dd/MM/yyyy')}`);
+      }
+
+      // 3. CONTROLLO MALATTIE
+      const { data: sickLeaveAttendances } = await supabase
+        .from('unified_attendances')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_sick_leave', true)
+        .eq('date', date);
+
+      if (sickLeaveAttendances && sickLeaveAttendances.length > 0) {
+        conflicts.push(`Conflitto critico: esiste un giorno di malattia registrato il ${format(targetDate, 'dd/MM/yyyy')}`);
+      }
+
+      // 4. CONTROLLO PERMESSI GIORNALIERI
+      const { data: existingPermissions } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved')
+        .eq('type', 'permesso')
+        .eq('day', date)
+        .is('time_from', null)
+        .is('time_to', null);
+
+      if (existingPermissions && existingPermissions.length > 0) {
+        conflicts.push(`Conflitto critico: esiste un permesso giornaliero approvato il ${format(targetDate, 'dd/MM/yyyy')}`);
+      }
+
+      return {
+        isValid: conflicts.length === 0,
+        conflicts
+      };
+
+    } catch (error) {
+      console.error('❌ Errore durante la validazione presenza:', error);
+      return {
+        isValid: false,
+        conflicts: ['Errore durante la validazione dei conflitti']
+      };
+    }
+  };
+
+  // Funzione di validazione per operazioni bulk
+  const validateBulkAttendance = async (userIds: string[], startDate: string, endDate?: string): Promise<{ [userId: string]: LeaveValidationResult }> => {
+    console.log('🔍 Validazione bulk anti-conflitto:', { userIds, startDate, endDate });
+    
+    const results: { [userId: string]: LeaveValidationResult } = {};
+    
+    for (const userId of userIds) {
+      if (endDate && endDate !== startDate) {
+        // Per range di date (malattie multiple giorni)
+        results[userId] = await validateSickLeaveRange(userId, startDate, endDate);
+      } else {
+        // Per singola data
+        results[userId] = await validateAttendanceEntry(userId, startDate);
+      }
+    }
+    
+    return results;
+  };
+
   return {
     conflictDates,
     isLoading,
@@ -360,6 +472,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     isDateDisabled,
     validateVacationDates,
     validatePermissionDate,
-    validateSickLeaveRange
+    validateSickLeaveRange,
+    validateAttendanceEntry,
+    validateBulkAttendance
   };
 };

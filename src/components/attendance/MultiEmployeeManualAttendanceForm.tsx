@@ -9,6 +9,7 @@ import { UserPlus, AlertCircle } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
+import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 
@@ -26,6 +27,12 @@ export default function MultiEmployeeManualAttendanceForm() {
     is_sick_leave: false,
   });
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [bulkValidationResults, setBulkValidationResults] = useState<{[userId: string]: any}>({});
+
+  // Usa il sistema anti-conflitto per operazioni bulk
+  const { 
+    validateBulkAttendance
+  } = useLeaveConflicts();
 
   // Funzione per validare le date rispetto alla data di assunzione
   const validateDatesAgainstHireDate = (startDate: string, endDate: string, employeeIds: string[]) => {
@@ -56,7 +63,38 @@ export default function MultiEmployeeManualAttendanceForm() {
     return true;
   };
 
-  const handleEmployeeToggle = (userId: string, checked: boolean) => {
+  // Validazione bulk anti-conflitto
+  const validateBulkConflicts = async (startDate: string, endDate: string, employeeIds: string[]) => {
+    if (!startDate || employeeIds.length === 0) return true;
+
+    try {
+      console.log('🔍 Controllo conflitti bulk...');
+      const results = await validateBulkAttendance(employeeIds, startDate, endDate);
+      setBulkValidationResults(results);
+      
+      // Trova dipendenti con conflitti
+      const employeesWithConflicts = Object.entries(results)
+        .filter(([_, result]) => !result.isValid)
+        .map(([userId, result]) => {
+          const employee = employees?.find(emp => emp.id === userId);
+          return `${employee?.first_name} ${employee?.last_name}: ${result.conflicts.join(', ')}`;
+        });
+
+      if (employeesWithConflicts.length > 0) {
+        setValidationError(`Conflitti trovati per: ${employeesWithConflicts.join('; ')}`);
+        return false;
+      }
+      
+      setValidationError(null);
+      return true;
+    } catch (error) {
+      console.error('❌ Errore validazione conflitti bulk:', error);
+      setValidationError('Errore durante la validazione dei conflitti');
+      return false;
+    }
+  };
+
+  const handleEmployeeToggle = async (userId: string, checked: boolean) => {
     const newSelectedIds = checked 
       ? [...formData.selected_user_ids, userId]
       : formData.selected_user_ids.filter(id => id !== userId);
@@ -64,27 +102,40 @@ export default function MultiEmployeeManualAttendanceForm() {
     setFormData(prev => ({ ...prev, selected_user_ids: newSelectedIds }));
     
     // Valida immediatamente se ci sono date selezionate
-    if (formData.date) {
-      validateDatesAgainstHireDate(formData.date, formData.date_to, newSelectedIds);
+    if (formData.date && newSelectedIds.length > 0) {
+      const isHireDateValid = validateDatesAgainstHireDate(formData.date, formData.date_to, newSelectedIds);
+      if (isHireDateValid) {
+        await validateBulkConflicts(formData.date, formData.date_to, newSelectedIds);
+      }
     }
   };
 
-  const handleDateChange = (field: 'date' | 'date_to', value: string) => {
+  const handleDateChange = async (field: 'date' | 'date_to', value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Valida immediatamente se ci sono dipendenti selezionati
     if (formData.selected_user_ids.length > 0) {
       const startDate = field === 'date' ? value : formData.date;
       const endDate = field === 'date_to' ? value : formData.date_to;
-      validateDatesAgainstHireDate(startDate, endDate, formData.selected_user_ids);
+      
+      const isHireDateValid = validateDatesAgainstHireDate(startDate, endDate, formData.selected_user_ids);
+      if (isHireDateValid) {
+        await validateBulkConflicts(startDate, endDate, formData.selected_user_ids);
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Verifica finale della validazione
+    // Verifica finale della validazione data di assunzione
     if (!validateDatesAgainstHireDate(formData.date, formData.date_to, formData.selected_user_ids)) {
+      return;
+    }
+
+    // Verifica finale della validazione conflitti
+    const isConflictValid = await validateBulkConflicts(formData.date, formData.date_to, formData.selected_user_ids);
+    if (!isConflictValid) {
       return;
     }
     
@@ -146,6 +197,14 @@ export default function MultiEmployeeManualAttendanceForm() {
     setValidationError(null);
   };
 
+  // Conta dipendenti con conflitti
+  const employeesWithConflicts = Object.entries(bulkValidationResults)
+    .filter(([_, result]) => !result.isValid)
+    .map(([userId, _]) => {
+      const employee = employees?.find(emp => emp.id === userId);
+      return employee ? `${employee.first_name} ${employee.last_name}` : 'Sconosciuto';
+    });
+
   return (
     <div className="max-w-4xl mx-auto">
       <Card>
@@ -161,20 +220,35 @@ export default function MultiEmployeeManualAttendanceForm() {
             <div>
               <Label className="text-base font-medium mb-3 block">Seleziona Dipendenti</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto border rounded-md p-4">
-                {employees?.map((employee) => (
-                  <div key={employee.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={employee.id}
-                      checked={formData.selected_user_ids.includes(employee.id)}
-                      onCheckedChange={(checked) => handleEmployeeToggle(employee.id, checked as boolean)}
-                    />
-                    <Label htmlFor={employee.id} className="text-sm">
-                      {employee.first_name} {employee.last_name}
-                    </Label>
-                  </div>
-                ))}
+                {employees?.map((employee) => {
+                  const hasConflict = bulkValidationResults[employee.id] && !bulkValidationResults[employee.id].isValid;
+                  return (
+                    <div key={employee.id} className={`flex items-center space-x-2 ${hasConflict ? 'text-red-600' : ''}`}>
+                      <Checkbox
+                        id={employee.id}
+                        checked={formData.selected_user_ids.includes(employee.id)}
+                        onCheckedChange={(checked) => handleEmployeeToggle(employee.id, checked as boolean)}
+                        disabled={hasConflict}
+                      />
+                      <Label htmlFor={employee.id} className="text-sm">
+                        {employee.first_name} {employee.last_name}
+                        {hasConflict && ' (conflitto)'}
+                      </Label>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Mostra dipendenti con conflitti */}
+            {employeesWithConflicts.length > 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {employeesWithConflicts.length} dipendente/i con conflitti (disabilitati): {employeesWithConflicts.join(', ')}
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Tipo di inserimento */}
             <div className="space-y-3">

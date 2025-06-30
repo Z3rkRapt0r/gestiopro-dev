@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
+import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 
@@ -28,6 +30,14 @@ export default function ManualAttendanceForm() {
   });
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Usa il sistema anti-conflitto per presenze
+  const { 
+    conflictDates, 
+    isLoading: isCalculatingConflicts, 
+    isDateDisabled,
+    validateAttendanceEntry
+  } = useLeaveConflicts(formData.user_id, 'attendance');
+
   // Funzione per validare la data rispetto alla logica di tracking
   const validateDate = (selectedDate: string, employeeId: string) => {
     if (!selectedDate || !employeeId || !employees) return true;
@@ -40,6 +50,28 @@ export default function ManualAttendanceForm() {
 
     setValidationError(null);
     return true;
+  };
+
+  // Validazione anti-conflitto completa
+  const validateConflicts = async (date: string, employeeId: string) => {
+    if (!date || !employeeId) return true;
+
+    try {
+      console.log('🔍 Controllo conflitti per presenza...');
+      const validation = await validateAttendanceEntry(employeeId, date);
+      
+      if (!validation.isValid) {
+        setValidationError(validation.conflicts.join('; '));
+        return false;
+      }
+      
+      setValidationError(null);
+      return true;
+    } catch (error) {
+      console.error('❌ Errore validazione conflitti presenza:', error);
+      setValidationError('Errore durante la validazione dei conflitti');
+      return false;
+    }
   };
 
   // Filtra i dipendenti disponibili escludendo quelli in ferie o malattia nella data selezionata
@@ -78,29 +110,43 @@ export default function ManualAttendanceForm() {
     });
   }, [formData.date, employees, leaveRequests, attendances]);
 
-  const handleDateChange = (date: string) => {
+  const handleDateChange = async (date: string) => {
     setFormData(prev => ({ ...prev, date }));
     
-    // Valida immediatamente se c'è un dipendente selezionato
+    // Prima valida la data di assunzione
     if (formData.user_id) {
-      validateDate(date, formData.user_id);
+      const isDateValid = validateDate(date, formData.user_id);
+      if (!isDateValid) return;
+      
+      // Poi controlla i conflitti
+      await validateConflicts(date, formData.user_id);
     }
   };
 
-  const handleEmployeeChange = (userId: string) => {
+  const handleEmployeeChange = async (userId: string) => {
     setFormData(prev => ({ ...prev, user_id: userId }));
     
-    // Valida immediatamente se c'è una data selezionata
+    // Prima valida la data di assunzione
     if (formData.date) {
-      validateDate(formData.date, userId);
+      const isDateValid = validateDate(formData.date, userId);
+      if (!isDateValid) return;
+      
+      // Poi controlla i conflitti
+      await validateConflicts(formData.date, userId);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Verifica finale della validazione
+    // Verifica finale della validazione data di assunzione
     if (!validateDate(formData.date, formData.user_id)) {
+      return;
+    }
+
+    // Verifica finale della validazione conflitti
+    const isConflictValid = await validateConflicts(formData.date, formData.user_id);
+    if (!isConflictValid) {
       return;
     }
     
@@ -181,6 +227,20 @@ export default function ManualAttendanceForm() {
               />
             </div>
 
+            {/* Indicatore di calcolo conflitti */}
+            {formData.user_id && isCalculatingConflicts && (
+              <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                🔍 Calcolo conflitti in corso...
+              </div>
+            )}
+
+            {/* Indicatore conflitti trovati */}
+            {formData.user_id && conflictDates.length > 0 && (
+              <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                ⚠️ {conflictDates.length} date disabilitate per conflitti esistenti
+              </div>
+            )}
+
             {validationError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -247,7 +307,7 @@ export default function ManualAttendanceForm() {
 
             <Button 
               type="submit" 
-              disabled={isCreating || !formData.user_id || !formData.date || !!validationError} 
+              disabled={isCreating || !formData.user_id || !formData.date || !!validationError || isCalculatingConflicts} 
               className="w-full"
             >
               {isCreating ? 'Salvando...' : 'Salva Presenza'}
