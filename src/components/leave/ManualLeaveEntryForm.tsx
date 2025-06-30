@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
+import { useLeaveConflicts } from "@/hooks/useLeaveConflicts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,15 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
 
   const { employees } = useActiveEmployees();
   const { insertMutation } = useLeaveRequests();
+  
+  // Usa il nuovo hook per i conflitti
+  const { 
+    conflictDates, 
+    isLoading: isCalculatingConflicts, 
+    isDateDisabled,
+    validateVacationDates,
+    validatePermissionDate
+  } = useLeaveConflicts(selectedUserId, leaveType);
 
   // Funzione per validare le date rispetto alla data di assunzione
   const validateDatesAgainstHireDate = (startDate?: Date, endDate?: Date, employeeId?: string) => {
@@ -61,23 +71,101 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     return true;
   };
 
+  // Validazione anti-conflitto completa
+  const validateConflicts = async (startDate?: Date, endDate?: Date, employeeId?: string) => {
+    if (!startDate || !employeeId) return true;
+
+    try {
+      if (leaveType === 'ferie' && endDate) {
+        console.log('🔍 Controllo conflitti per ferie...');
+        const validation = await validateVacationDates(
+          employeeId, 
+          format(startDate, 'yyyy-MM-dd'),
+          format(endDate, 'yyyy-MM-dd')
+        );
+        
+        if (!validation.isValid) {
+          setValidationError(validation.conflicts.join('; '));
+          return false;
+        }
+      } else if (leaveType === 'permesso') {
+        console.log('🔍 Controllo conflitti per permesso...');
+        const validation = await validatePermissionDate(
+          employeeId,
+          format(startDate, 'yyyy-MM-dd'),
+          permissionType === 'orario' ? timeFrom : undefined,
+          permissionType === 'orario' ? timeTo : undefined
+        );
+        
+        if (!validation.isValid) {
+          setValidationError(validation.conflicts.join('; '));
+          return false;
+        }
+      }
+      
+      setValidationError(null);
+      return true;
+    } catch (error) {
+      console.error('❌ Errore validazione conflitti:', error);
+      setValidationError('Errore durante la validazione dei conflitti');
+      return false;
+    }
+  };
+
   const handleEmployeeChange = (userId: string) => {
     setSelectedUserId(userId);
     // Valida immediatamente se ci sono date selezionate
     validateDatesAgainstHireDate(startDate, endDate, userId);
+    if (startDate) {
+      validateConflicts(startDate, endDate, userId);
+    }
   };
 
-  const handleStartDateChange = (date: Date | undefined) => {
+  const handleStartDateChange = async (date: Date | undefined) => {
     setStartDate(date);
-    validateDatesAgainstHireDate(date, endDate, selectedUserId);
+    
+    // Prima controlla la data di assunzione
+    const isHireDateValid = validateDatesAgainstHireDate(date, endDate, selectedUserId);
+    if (!isHireDateValid) return;
+    
+    // Poi controlla i conflitti
+    if (selectedUserId && date) {
+      await validateConflicts(date, endDate, selectedUserId);
+    }
   };
 
-  const handleEndDateChange = (date: Date | undefined) => {
+  const handleEndDateChange = async (date: Date | undefined) => {
     setEndDate(date);
-    validateDatesAgainstHireDate(startDate, date, selectedUserId);
+    
+    // Prima controlla la data di assunzione
+    const isHireDateValid = validateDatesAgainstHireDate(startDate, date, selectedUserId);
+    if (!isHireDateValid) return;
+    
+    // Poi controlla i conflitti
+    if (selectedUserId && startDate) {
+      await validateConflicts(startDate, date, selectedUserId);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLeaveTypeChange = (newLeaveType: "ferie" | "permesso") => {
+    setLeaveType(newLeaveType);
+    setValidationError(null);
+    // Ricontrolla i conflitti con il nuovo tipo
+    if (selectedUserId && startDate) {
+      validateConflicts(startDate, endDate, selectedUserId);
+    }
+  };
+
+  const handlePermissionTypeChange = (newPermissionType: "giornaliero" | "orario") => {
+    setPermissionType(newPermissionType);
+    setValidationError(null);
+    // Ricontrolla i conflitti se è un permesso orario
+    if (selectedUserId && startDate && leaveType === 'permesso') {
+      validateConflicts(startDate, endDate, selectedUserId);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedUserId) {
@@ -85,8 +173,14 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
       return;
     }
 
-    // Verifica finale della validazione
+    // Verifica finale della validazione data di assunzione
     if (!validateDatesAgainstHireDate(startDate, endDate, selectedUserId)) {
+      return;
+    }
+
+    // Verifica finale della validazione conflitti
+    const isConflictValid = await validateConflicts(startDate, endDate, selectedUserId);
+    if (!isConflictValid) {
       return;
     }
 
@@ -186,7 +280,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           {/* Tipo di richiesta */}
           <div className="space-y-2">
             <Label>Tipo di richiesta *</Label>
-            <Select value={leaveType} onValueChange={(value: "ferie" | "permesso") => setLeaveType(value)}>
+            <Select value={leaveType} onValueChange={handleLeaveTypeChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -196,6 +290,20 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Indicatore di calcolo conflitti */}
+          {selectedUserId && isCalculatingConflicts && (
+            <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+              🔍 Calcolo conflitti in corso...
+            </div>
+          )}
+
+          {/* Indicatore conflitti trovati */}
+          {selectedUserId && conflictDates.length > 0 && (
+            <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+              ⚠️ {conflictDates.length} date disabilitate per conflitti esistenti
+            </div>
+          )}
 
           {validationError && (
             <Alert variant="destructive">
@@ -227,9 +335,10 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
-                      disabled={(date) => date < new Date()}
+                      disabled={(date) => date < new Date() || isDateDisabled(date)}
                       locale={it}
                       initialFocus
+                      className={cn("p-3 pointer-events-auto")}
                     />
                   </PopoverContent>
                 </Popover>
@@ -255,9 +364,10 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       mode="single"
                       selected={endDate}
                       onSelect={handleEndDateChange}
-                      disabled={(date) => date < (startDate || new Date())}
+                      disabled={(date) => date < (startDate || new Date()) || isDateDisabled(date)}
                       locale={it}
                       initialFocus
+                      className={cn("p-3 pointer-events-auto")}
                     />
                   </PopoverContent>
                 </Popover>
@@ -268,7 +378,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
               {/* Tipo permesso */}
               <div className="space-y-2">
                 <Label>Tipo permesso</Label>
-                <Select value={permissionType} onValueChange={(value: "giornaliero" | "orario") => setPermissionType(value)}>
+                <Select value={permissionType} onValueChange={handlePermissionTypeChange}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -300,9 +410,10 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
-                      disabled={(date) => date < new Date()}
+                      disabled={(date) => date < new Date() || isDateDisabled(date)}
                       locale={it}
                       initialFocus
+                      className={cn("p-3 pointer-events-auto")}
                     />
                   </PopoverContent>
                 </Popover>
@@ -359,7 +470,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={insertMutation.isPending || !!validationError}
+            disabled={insertMutation.isPending || !!validationError || isCalculatingConflicts}
           >
             {insertMutation.isPending ? "Salvando..." : "Salva Richiesta"}
           </Button>
