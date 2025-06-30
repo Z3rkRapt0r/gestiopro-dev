@@ -25,6 +25,12 @@ export interface BusinessTrip {
   } | null;
 }
 
+interface ValidationResult {
+  isValid: boolean;
+  conflicts: string[];
+  warnings: string[];
+}
+
 export const useBusinessTrips = () => {
   const { toast } = useToast();
   const { user, profile } = useAuth();
@@ -45,6 +51,97 @@ export const useBusinessTrips = () => {
       case 5: return workSchedule.friday;
       case 6: return workSchedule.saturday;
       default: return false;
+    }
+  };
+
+  // Funzione di validazione anti-conflitto per trasferte
+  const validateBusinessTripDates = async (userId: string, startDate: string, endDate: string): Promise<ValidationResult> => {
+    console.log('🔍 Validazione anti-conflitto per trasferta:', { userId, startDate, endDate });
+    
+    const conflicts: string[] = [];
+    const warnings: string[] = [];
+    
+    try {
+      // 1. CONTROLLO TRASFERTE SOVRAPPOSTE (Conflitto critico)
+      const { data: existingTrips } = await supabase
+        .from('business_trips')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved');
+
+      if (existingTrips && existingTrips.length > 0) {
+        for (const trip of existingTrips) {
+          const tripStart = new Date(trip.start_date);
+          const tripEnd = new Date(trip.end_date);
+          const newStart = new Date(startDate);
+          const newEnd = new Date(endDate);
+          
+          // Controllo sovrapposizione date
+          if ((newStart <= tripEnd && newEnd >= tripStart)) {
+            conflicts.push(`Conflitto critico: esiste già una trasferta a ${trip.destination} dal ${trip.start_date} al ${trip.end_date}`);
+          }
+        }
+      }
+
+      // 2. CONTROLLO FERIE APPROVATE (Conflitto critico - richiedere conferma admin)
+      const { data: approvedVacations } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved')
+        .eq('type', 'ferie');
+
+      if (approvedVacations && approvedVacations.length > 0) {
+        for (const vacation of approvedVacations) {
+          if (vacation.date_from && vacation.date_to) {
+            const vacStart = new Date(vacation.date_from);
+            const vacEnd = new Date(vacation.date_to);
+            const newStart = new Date(startDate);
+            const newEnd = new Date(endDate);
+            
+            if ((newStart <= vacEnd && newEnd >= vacStart)) {
+              conflicts.push(`Conflitto critico: esistono ferie approvate dal ${vacation.date_from} al ${vacation.date_to}. Le trasferte sostituiranno le ferie - richiedere conferma admin`);
+            }
+          }
+        }
+      }
+
+      // 3. CONTROLLO MALATTIE E PRESENZE (Warning - verranno sostituite)
+      const { data: existingAttendances } = await supabase
+        .from('unified_attendances')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      if (existingAttendances && existingAttendances.length > 0) {
+        const sickDays = existingAttendances.filter(att => att.is_sick_leave);
+        const normalDays = existingAttendances.filter(att => !att.is_sick_leave && !att.is_business_trip);
+        
+        if (sickDays.length > 0) {
+          warnings.push(`Avviso: ${sickDays.length} giorno/i di malattia verranno sostituiti dalla trasferta`);
+        }
+        
+        if (normalDays.length > 0) {
+          warnings.push(`Avviso: ${normalDays.length} presenza/e normale/i verranno sostituite dalla trasferta`);
+        }
+      }
+
+      console.log('✅ Validazione trasferta completata:', { conflicts: conflicts.length, warnings: warnings.length });
+      
+      return {
+        isValid: conflicts.length === 0,
+        conflicts,
+        warnings
+      };
+
+    } catch (error) {
+      console.error('❌ Errore durante la validazione trasferta:', error);
+      return {
+        isValid: false,
+        conflicts: ['Errore durante la validazione dei conflitti'],
+        warnings: []
+      };
     }
   };
 
@@ -124,6 +221,23 @@ export const useBusinessTrips = () => {
 
       const createdTrips = [];
 
+      // Validazione anti-conflitto per ogni utente
+      for (const targetUserId of targetUserIds) {
+        console.log(`🔐 VALIDAZIONE ANTI-CONFLITTO per utente ${targetUserId}`);
+        
+        const validation = await validateBusinessTripDates(targetUserId, tripData.start_date, tripData.end_date);
+        
+        if (!validation.isValid) {
+          const conflictMessages = validation.conflicts.join('; ');
+          throw new Error(`Conflitti rilevati per la trasferta: ${conflictMessages}`);
+        }
+        
+        // Se ci sono warnings, li logghiamo ma procediamo
+        if (validation.warnings.length > 0) {
+          console.warn('⚠️ Warnings per trasferta:', validation.warnings);
+        }
+      }
+
       // Crea una trasferta per ogni utente selezionato
       for (const targetUserId of targetUserIds) {
         // Crea la trasferta (sempre approvata)
@@ -186,13 +300,13 @@ export const useBusinessTrips = () => {
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       toast({
         title: "Trasferte create",
-        description: `${trips.length} trasferta/e creata/e con successo. Le presenze sono state registrate automaticamente per i giorni lavorativi configurati`,
+        description: `${trips.length} trasferta/e creata/e con successo con validazione anti-conflitto. Le presenze sono state registrate automaticamente per i giorni lavorativi configurati`,
       });
     },
     onError: (error: any) => {
       console.error('Create trip error:', error);
       toast({
-        title: "Errore",
+        title: "Trasferta non consentita",
         description: error.message || "Errore nella creazione della trasferta",
         variant: "destructive",
       });
@@ -322,5 +436,6 @@ export const useBusinessTrips = () => {
     deleteTrip: deleteTripMutation.mutate,
     isDeleting: deleteTripMutation.isPending,
     isWorkingDay, // Esportiamo la funzione per uso nei componenti
+    validateBusinessTripDates, // Esportiamo la funzione di validazione
   };
 };

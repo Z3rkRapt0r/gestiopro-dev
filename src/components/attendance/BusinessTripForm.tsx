@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plane, AlertCircle } from 'lucide-react';
+import { Plane, AlertCircle, AlertTriangle } from 'lucide-react';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
@@ -13,7 +13,7 @@ import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function BusinessTripForm() {
-  const { createTrip, isCreating } = useBusinessTrips();
+  const { createTrip, isCreating, validateBusinessTripDates } = useBusinessTrips();
   const { profile } = useAuth();
   const { employees } = useActiveEmployees();
   const { isValidDateForEmployee } = useWorkingDaysTracking();
@@ -25,14 +25,16 @@ export default function BusinessTripForm() {
     reason: '',
   });
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [conflictWarnings, setConflictWarnings] = useState<string[]>([]);
 
-  const validateDates = (startDate: string, endDate: string) => {
+  const validateDates = async (startDate: string, endDate: string) => {
     if (!startDate || !profile?.id || !employees) return true;
 
     // Valida data di inizio
     const startValidation = isValidDateForEmployee(profile.id, startDate, employees);
     if (!startValidation.isValid) {
       setValidationError(startValidation.message || 'Data di inizio non valida');
+      setConflictWarnings([]);
       return false;
     }
 
@@ -41,6 +43,34 @@ export default function BusinessTripForm() {
       const endValidation = isValidDateForEmployee(profile.id, endDate, employees);
       if (!endValidation.isValid) {
         setValidationError(endValidation.message?.replace('la data selezionata', 'la data di fine') || 'Data di fine non valida');
+        setConflictWarnings([]);
+        return false;
+      }
+    }
+
+    // Validazione anti-conflitto trasferte
+    if (startDate && endDate) {
+      try {
+        console.log('🔍 Controllo conflitti trasferta nel form...');
+        const validation = await validateBusinessTripDates(profile.id, startDate, endDate);
+        
+        if (!validation.isValid) {
+          setValidationError(validation.conflicts.join('; '));
+          setConflictWarnings([]);
+          return false;
+        }
+        
+        if (validation.warnings.length > 0) {
+          setConflictWarnings(validation.warnings);
+          console.log('⚠️ Warnings trovati:', validation.warnings);
+        } else {
+          setConflictWarnings([]);
+        }
+        
+      } catch (error) {
+        console.error('❌ Errore validazione trasferta:', error);
+        setValidationError('Errore durante la validazione dei conflitti');
+        setConflictWarnings([]);
         return false;
       }
     }
@@ -58,11 +88,12 @@ export default function BusinessTripForm() {
     validateDates(startDate, endDate);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Verifica finale della validazione
-    if (!validateDates(formData.start_date, formData.end_date)) {
+    const isValid = await validateDates(formData.start_date, formData.end_date);
+    if (!isValid) {
       return;
     }
     
@@ -74,6 +105,7 @@ export default function BusinessTripForm() {
       reason: '',
     });
     setValidationError(null);
+    setConflictWarnings([]);
   };
 
   return (
@@ -90,6 +122,20 @@ export default function BusinessTripForm() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{validationError}</AlertDescription>
+            </Alert>
+          )}
+
+          {conflictWarnings.length > 0 && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1">
+                  <div className="font-medium">Attenzione - Conflitti rilevati:</div>
+                  {conflictWarnings.map((warning, index) => (
+                    <div key={index} className="text-sm">{warning}</div>
+                  ))}
+                </div>
+              </AlertDescription>
             </Alert>
           )}
 
