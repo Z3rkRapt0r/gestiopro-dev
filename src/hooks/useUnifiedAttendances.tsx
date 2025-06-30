@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -38,8 +37,27 @@ export const useUnifiedAttendances = () => {
   const validateEmployeeStatusForManual = async (userId: string, date: string, isAdmin: boolean, isSickLeave: boolean) => {
     console.log('🔍 Validazione stato per inserimento manuale:', { userId, date, isAdmin, isSickLeave });
 
-    // Se è malattia, controlliamo solo conflitti con ferie/permessi
+    // Se è malattia, controlliamo trasferte, ferie e permessi
     if (isSickLeave) {
+      // PRIORITÀ ASSOLUTA: Controllo trasferte approvate
+      const { data: approvedBusinessTrips } = await supabase
+        .from('business_trips')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved');
+
+      if (approvedBusinessTrips && approvedBusinessTrips.length > 0) {
+        for (const trip of approvedBusinessTrips) {
+          const checkDate = new Date(date);
+          const startDate = new Date(trip.start_date);
+          const endDate = new Date(trip.end_date);
+          
+          if (checkDate >= startDate && checkDate <= endDate) {
+            throw new Error(`Impossibile registrare malattia: il dipendente è in trasferta a ${trip.destination} dal ${trip.start_date} al ${trip.end_date}. Le trasferte hanno priorità assoluta.`);
+          }
+        }
+      }
+
       // Controllo ferie approvate
       const { data: approvedVacations } = await supabase
         .from('leave_requests')
@@ -61,10 +79,29 @@ export const useUnifiedAttendances = () => {
           }
         }
       }
-      return; // Per la malattia, dopo il controllo ferie, possiamo procedere
+      return; // Per la malattia, dopo i controlli trasferte e ferie, possiamo procedere
     }
 
     // Per presenze normali, controlli completi
+    // PRIORITÀ ASSOLUTA: Controllo trasferte approvate
+    const { data: approvedBusinessTrips } = await supabase
+      .from('business_trips')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'approved');
+
+    if (approvedBusinessTrips && approvedBusinessTrips.length > 0) {
+      for (const trip of approvedBusinessTrips) {
+        const checkDate = new Date(date);
+        const startDate = new Date(trip.start_date);
+        const endDate = new Date(trip.end_date);
+        
+        if (checkDate >= startDate && checkDate <= endDate) {
+          throw new Error(`Conflitto critico: il dipendente è in trasferta a ${trip.destination} dal ${trip.start_date} al ${trip.end_date}. Non è possibile registrare presenze normali durante le trasferte.`);
+        }
+      }
+    }
+
     // Controllo malattia esistente
     const { data: sickLeave } = await supabase
       .from('unified_attendances')
@@ -242,8 +279,8 @@ export const useUnifiedAttendances = () => {
       toast({
         title: "Presenza salvata",
         description: data.is_sick_leave ? 
-          "La malattia è stata registrata con controlli anti-conflitto" : 
-          "La presenza manuale è stata registrata con controlli anti-conflitto",
+          "La malattia è stata registrata con controlli anti-conflitto incluse le trasferte" : 
+          "La presenza manuale è stata registrata con controlli anti-conflitto incluse le trasferte",
       });
     },
     onError: (error: any) => {
