@@ -10,6 +10,8 @@ import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceStats';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
+import { useLeaveRequests } from '@/hooks/useLeaveRequests';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { getEmployeeStatusForDate, formatHireDate } from '@/utils/employeeStatusUtils';
 import type { Attendance } from '@/hooks/useAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
@@ -87,6 +89,8 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
   const { leaveBalance } = useEmployeeLeaveBalanceStats(employee?.id);
   const { businessTrips } = useBusinessTrips();
+  const { leaveRequests } = useLeaveRequests();
+  const { attendances: unifiedAttendances } = useUnifiedAttendances();
 
   // Funzione per verificare se un giorno è lavorativo
   const isWorkingDay = (date: Date) => {
@@ -132,6 +136,30 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
           businessTripDates.push(new Date(d));
         }
+      }
+    });
+  }
+
+  // Ottieni le date delle ferie per questo dipendente
+  const leaveDates = [];
+  if (leaveRequests) {
+    leaveRequests.forEach(request => {
+      if (request.user_id === employee.id && request.status === 'approved' && request.type === 'ferie' && request.date_from && request.date_to) {
+        const startDate = new Date(request.date_from);
+        const endDate = new Date(request.date_to);
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          leaveDates.push(new Date(d));
+        }
+      }
+    });
+  }
+
+  // Ottieni le date di malattia per questo dipendente
+  const sickLeaveDates = [];
+  if (unifiedAttendances) {
+    unifiedAttendances.forEach(attendance => {
+      if (attendance.user_id === employee.id && attendance.is_sick_leave) {
+        sickLeaveDates.push(new Date(attendance.date));
       }
     });
   }
@@ -209,8 +237,64 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
 
   const selectedDateBusinessTrip = selectedDate ? getBusinessTripForDate(selectedDate) : null;
 
+  // Calcola le statistiche per il riepilogo
+  const presentDaysCount = attendanceDates.length;
+  const absentDaysCount = absentDates.length;
+  const sickLeaveDaysCount = sickLeaveDates.length;
+  const leaveDaysCount = leaveDates.length;
+  const businessTripDaysCount = businessTripDates.length;
+
   return (
     <div className="space-y-6">
+      {/* Riepilogo Statistico */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarIcon className="w-4 h-4" />
+            Riepilogo Presenze Anno {new Date().getFullYear()}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-xs font-medium text-green-700">Presenti</span>
+              </div>
+              <div className="text-lg font-bold text-green-700">{presentDaysCount}</div>
+            </div>
+            <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span className="text-xs font-medium text-red-700">Assenti</span>
+              </div>
+              <div className="text-lg font-bold text-red-700">{absentDaysCount}</div>
+            </div>
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span className="text-xs font-medium text-blue-700">In Ferie</span>
+              </div>
+              <div className="text-lg font-bold text-blue-700">{leaveDaysCount}</div>
+            </div>
+            <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                <span className="text-xs font-medium text-purple-700">Malattia</span>
+              </div>
+              <div className="text-lg font-bold text-purple-700">{sickLeaveDaysCount}</div>
+            </div>
+            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <span className="text-xs font-medium text-yellow-700">Trasferte</span>
+              </div>
+              <div className="text-lg font-bold text-yellow-700">{businessTripDaysCount}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Sezione Bilanci Ferie e Permessi */}
       {leaveBalance && (
         <Card>
@@ -286,7 +370,9 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                 modifiers={{
                   present: attendanceDates,
                   absent: absentDates,
-                  businessTrip: businessTripDates
+                  businessTrip: businessTripDates,
+                  leave: leaveDates,
+                  sickLeave: sickLeaveDates
                 }}
                 modifiersStyles={{
                   present: {
@@ -303,6 +389,16 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                     backgroundColor: '#fef3c7',
                     color: '#92400e',
                     fontWeight: 'bold'
+                  },
+                  leave: {
+                    backgroundColor: '#dbeafe',
+                    color: '#1e40af',
+                    fontWeight: 'bold'
+                  },
+                  sickLeave: {
+                    backgroundColor: '#e0e7ff',
+                    color: '#7c3aed',
+                    fontWeight: 'bold'
                   }
                 }}
                 className="rounded-md border w-fit"
@@ -312,6 +408,14 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 bg-green-200 rounded"></div>
                 <span>Giorni di presenza</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-blue-200 rounded"></div>
+                <span>Giorni in ferie</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 bg-purple-200 rounded"></div>
+                <span>Giorni di malattia</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 bg-yellow-200 rounded"></div>
