@@ -97,10 +97,21 @@ const getAttendanceTimeRange = (att: AttendanceData) => {
 
 // Funzione per ottenere l'orario del permesso
 const getPermissionTimeRange = (att: AttendanceData) => {
-  if (att.permission_leave && att.permission_leave.time_from && att.permission_leave.time_to) {
-    const timeFrom = safeFormatTime(att.permission_leave.time_from);
-    const timeTo = safeFormatTime(att.permission_leave.time_to);
-    return `${timeFrom}-${timeTo}`;
+  console.log('🔍 Debug permesso per data:', att.date, 'permission_leave:', att.permission_leave);
+  
+  if (att.permission_leave) {
+    // Se ha orari specifici
+    if (att.permission_leave.time_from && att.permission_leave.time_to) {
+      const timeFrom = safeFormatTime(att.permission_leave.time_from);
+      const timeTo = safeFormatTime(att.permission_leave.time_to);
+      console.log('📅 Permesso con orari:', timeFrom, '-', timeTo);
+      return `${timeFrom}-${timeTo}`;
+    }
+    // Se è un permesso dell'intera giornata (senza orari)
+    else {
+      console.log('📅 Permesso intera giornata');
+      return 'Intera giornata';
+    }
   }
   return '';
 };
