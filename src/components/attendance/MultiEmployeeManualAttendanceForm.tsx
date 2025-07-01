@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
 import { UserPlus, AlertCircle } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
@@ -217,61 +216,28 @@ export default function MultiEmployeeManualAttendanceForm() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-            {/* Selezione dipendenti */}
-            <div className="space-y-3">
-              <Label>Seleziona Dipendenti *</Label>
-              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                {employees?.length ? (
-                  employees.map((employee) => {
-                    const hasConflict = bulkValidationResults[employee.id] && !bulkValidationResults[employee.id].isValid;
-                    const isSelected = formData.selected_user_ids.includes(employee.id);
-                    return (
-                      <div 
-                        key={employee.id} 
-                        className={`p-3 rounded-lg border shadow-sm cursor-pointer transition-colors ${
-                          isSelected 
-                            ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-100' 
-                            : hasConflict 
-                              ? 'bg-red-50 border-red-200' 
-                              : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                        } ${hasConflict ? 'opacity-50' : ''}`}
-                        onClick={() => !hasConflict && handleEmployeeToggle(employee.id, !isSelected)}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1 space-y-1.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <Checkbox
-                                id={employee.id}
-                                checked={isSelected}
-                                onCheckedChange={(checked) => !hasConflict && handleEmployeeToggle(employee.id, checked as boolean)}
-                                disabled={hasConflict}
-                                className="h-4 w-4"
-                              />
-                              <span className="font-semibold text-sm">
-                                {employee.first_name} {employee.last_name}
-                              </span>
-                              {isSelected && (
-                                <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs px-1.5 py-0.5">
-                                  Selezionato
-                                </Badge>
-                              )}
-                              {hasConflict && (
-                                <Badge variant="outline" className="bg-red-50 text-red-700 text-xs px-1.5 py-0.5">
-                                  Conflitto
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {employee.email}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-gray-500 text-sm">Nessun dipendente disponibile</p>
-                )}
+            {/* Selezione dipendenti - Mobile optimized */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">Seleziona Dipendenti</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 sm:max-h-64 overflow-y-auto border rounded-md p-4 bg-slate-50">
+                {employees?.map((employee) => {
+                  const hasConflict = bulkValidationResults[employee.id] && !bulkValidationResults[employee.id].isValid;
+                  return (
+                    <div key={employee.id} className={`flex items-center space-x-3 py-2 ${hasConflict ? 'text-red-600' : ''}`}>
+                      <Checkbox
+                        id={employee.id}
+                        checked={formData.selected_user_ids.includes(employee.id)}
+                        onCheckedChange={(checked) => handleEmployeeToggle(employee.id, checked as boolean)}
+                        disabled={hasConflict}
+                        className="h-5 w-5"
+                      />
+                      <Label htmlFor={employee.id} className="text-sm sm:text-base leading-tight cursor-pointer flex-1">
+                        <div className="font-medium">{employee.first_name} {employee.last_name}</div>
+                        {hasConflict && <div className="text-xs text-red-500">conflitto</div>}
+                      </Label>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
