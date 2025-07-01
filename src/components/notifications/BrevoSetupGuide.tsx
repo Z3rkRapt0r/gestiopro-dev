@@ -20,14 +20,7 @@ const BrevoSetupGuide = () => {
   };
 
   if (apiKey) {
-    return (
-      <Alert className="mb-4 border-green-200 bg-green-50">
-        <Mail className="h-4 w-4 text-green-600" />
-        <AlertDescription className="text-green-700">
-          Brevo è configurato correttamente. Puoi inviare notifiche email ai tuoi dipendenti.
-        </AlertDescription>
-      </Alert>
-    );
+    return null;
   }
 
   return (
