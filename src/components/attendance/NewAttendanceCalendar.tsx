@@ -15,8 +15,11 @@ export default function NewAttendanceCalendar() {
   }, [queryClient]);
 
   return (
-    <div className="space-y-6">
-      <NewDailyAttendanceCalendar />
+    <div className="space-y-6 lg:space-y-8">
+      {/* Desktop optimized layout */}
+      <div className="w-full">
+        <NewDailyAttendanceCalendar />
+      </div>
     </div>
   );
 }

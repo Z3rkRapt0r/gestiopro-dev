@@ -1,91 +1,29 @@
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User } from 'lucide-react';
-import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
-import { useActiveEmployees } from '@/hooks/useActiveEmployees';
-import NewEmployeeAttendanceCalendar from './NewEmployeeAttendanceCalendar';
+import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import OperatorAttendanceSection from './OperatorAttendanceSection';
 
 export default function OperatorCalendarSection() {
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
-  const { attendances, isLoading } = useUnifiedAttendances();
-  const { employees, loading: employeesLoading } = useActiveEmployees();
+  const queryClient = useQueryClient();
 
-  const selectedEmployee = employees?.find(emp => emp.id === selectedEmployeeId);
-  const employeeAttendances = attendances?.filter(att => att.user_id === selectedEmployeeId) || [];
-
-  if (isLoading || employeesLoading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-gray-100 animate-pulse rounded"></div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!employees || employees.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
-            Calendario Presenze per Operatore
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-gray-500">
-            <User className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p>Nessun dipendente trovato</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Aggiorna i dati quando il componente si monta
+  useEffect(() => {
+    console.log('Sezione calendario operatore montata, invalidando tutte le query...');
+    queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+    queryClient.invalidateQueries({ queryKey: ['attendances'] });
+    queryClient.invalidateQueries({ queryKey: ['profiles'] });
+  }, [queryClient]);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="w-5 h-5" />
-            Calendario Presenze per Operatore
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Seleziona Operatore</label>
-            <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-              <SelectTrigger className="w-full max-w-md">
-                <SelectValue placeholder="Scegli un operatore..." />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((employee) => (
-                  <SelectItem key={employee.id} value={employee.id}>
-                    <div className="flex items-center gap-2">
-                      <span>{employee.first_name} {employee.last_name} ({employee.email})</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <div className="space-y-6 lg:space-y-8">
+      {/* Desktop optimized container */}
+      <div className="w-full max-w-none">
+        <div className="bg-background rounded-lg lg:rounded-xl border border-muted/60 shadow-sm">
+          <div className="p-4 lg:p-6 xl:p-8">
+            <OperatorAttendanceSection />
           </div>
-
-          {selectedEmployee && (
-            <div className="mt-6">
-              <NewEmployeeAttendanceCalendar
-                employee={selectedEmployee}
-                attendances={employeeAttendances}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
