@@ -2,7 +2,6 @@
 import { useState } from "react";
 import NotificationForm from "@/components/notifications/NotificationForm";
 import SentNotificationsHistory from "@/components/notifications/SentNotificationsHistory";
-import BrevoSetupGuide from "@/components/notifications/BrevoSetupGuide";
 
 const AdminSendNotificationPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -14,8 +13,6 @@ const AdminSendNotificationPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <BrevoSetupGuide />
-      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6">
           <div>
