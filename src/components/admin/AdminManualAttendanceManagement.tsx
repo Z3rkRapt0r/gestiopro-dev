@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useManualAttendanceConflicts } from '@/hooks/useManualAttendanceConflicts';
+import { usePermissionWarnings } from '@/hooks/usePermissionWarnings';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import { UserPlus, Calendar as CalendarIcon, Users, Trash2, AlertCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
@@ -31,6 +32,9 @@ export default function AdminManualAttendanceManagement() {
 
   // Usa il nuovo hook per i conflitti
   const { conflictDates, isLoading: isCalculatingConflicts, isDateDisabled } = useManualAttendanceConflicts(selectedEmployees);
+  
+  // Hook per avvisi sui permessi
+  const { permissionWarnings, hasPermissionWarnings } = usePermissionWarnings(selectedEmployees, startDate);
 
   const handleEmployeeToggle = (employeeId: string) => {
     setSelectedEmployees(prev => 
@@ -271,6 +275,20 @@ export default function AdminManualAttendanceManagement() {
             {conflictDates.length > 0 && selectedEmployees.length > 0 && (
               <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
                 ⚠️ {conflictDates.length} date disabilitate per conflitti con presenze, malattie, trasferte o ferie esistenti
+              </div>
+            )}
+
+            {hasPermissionWarnings && (
+              <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
+                ℹ️ Attenzione - Permessi esistenti:
+                <ul className="list-disc list-inside mt-1">
+                  {permissionWarnings.map((warning, index) => (
+                    <li key={index}>{warning}</li>
+                  ))}
+                </ul>
+                <div className="text-xs mt-1 text-blue-500">
+                  Puoi comunque registrare la presenza (es. dopo l'orario del permesso)
+                </div>
               </div>
             )}
 

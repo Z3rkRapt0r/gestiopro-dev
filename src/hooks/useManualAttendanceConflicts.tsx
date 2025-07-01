@@ -43,7 +43,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
           }
         }
 
-        // 2. CONTROLLO TUTTI I CONGEDI APPROVATI (FERIE, PERMESSI)
+        // 2. CONTROLLO SOLO FERIE APPROVATE (PERMESSI NON BLOCCANO PIÙ LE PRESENZE)
         const { data: approvedLeaveRequests } = await supabase
           .from('leave_requests')
           .select('type, date_from, date_to, day')
@@ -52,6 +52,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
 
         if (approvedLeaveRequests) {
           for (const leave of approvedLeaveRequests) {
+            // Solo le ferie bloccano le presenze manuali
             if (leave.type === 'ferie' && leave.date_from && leave.date_to) {
               const startDate = new Date(leave.date_from);
               const endDate = new Date(leave.date_to);
@@ -61,10 +62,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
                 conflictDates.add(format(day, 'yyyy-MM-dd'));
               });
             }
-            
-            if (leave.type === 'permesso' && leave.day) {
-              conflictDates.add(format(new Date(leave.day), 'yyyy-MM-dd'));
-            }
+            // PERMESSI RIMOSSI: non bloccano più le presenze manuali
           }
         }
 
@@ -96,7 +94,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
-      console.log('📅 Date con conflitti trovate per presenze/malattie:', conflictDateObjects.length);
+      console.log('📅 Date con conflitti trovate per presenze/malattie (esclusi permessi):', conflictDateObjects.length);
       setConflictDates(conflictDateObjects);
       
     } catch (error) {
