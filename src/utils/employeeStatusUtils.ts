@@ -29,10 +29,24 @@ export interface StatusCheckParams {
 export const getEmployeeStatusForDate = async (params: StatusCheckParams): Promise<EmployeeStatusResult> => {
   const { employee, date, hasAttendance, isOnApprovedLeave, isOnBusinessTrip, isOnSickLeave = false, shouldTrackEmployeeOnDate } = params;
   
-  // Check if not yet hired
+  // Check if not yet hired - normalize dates to compare only day/month/year
   if (employee.tracking_start_type === 'from_hire_date' && employee.hire_date) {
     const hireDate = new Date(employee.hire_date);
-    if (date < hireDate) {
+    
+    // Normalize both dates to midnight for accurate comparison
+    const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const normalizedHireDate = new Date(hireDate.getFullYear(), hireDate.getMonth(), hireDate.getDate());
+    
+    // Debug logging
+    console.log('🔍 DEBUG getEmployeeStatusForDate - Date comparison:', {
+      employee: `${employee.first_name} ${employee.last_name}`,
+      checkDate: format(normalizedDate, 'yyyy-MM-dd'),
+      hireDate: format(normalizedHireDate, 'yyyy-MM-dd'),
+      isBeforeHireDate: normalizedDate < normalizedHireDate
+    });
+    
+    // Only show "Non ancora assunto" for dates BEFORE the hire date
+    if (normalizedDate < normalizedHireDate) {
       return {
         status: 'not_hired_yet',
         displayText: 'Non ancora assunto',
