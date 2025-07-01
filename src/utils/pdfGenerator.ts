@@ -62,20 +62,56 @@ const safeFormatDate = (dateStr: string | null) => {
 const safeFormatTime = (timeStr: string | null) => {
   if (!timeStr) return '';
   
+  console.log('safeFormatTime input:', timeStr, typeof timeStr);
+  
   try {
-    const date = typeof timeStr === 'string' ? parseISO(timeStr) : new Date(timeStr);
-    if (!isValid(date)) return '';
-    return format(date, 'HH:mm', { locale: it });
+    // Handle different time formats
+    if (typeof timeStr === 'string') {
+      // Handle PostgreSQL time format (HH:mm:ss)
+      if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
+        return timeStr.slice(0, 5); // Return HH:mm
+      }
+      
+      // Handle HH:mm format
+      if (/^\d{2}:\d{2}$/.test(timeStr)) {
+        return timeStr;
+      }
+      
+      // Handle ISO datetime format
+      const date = parseISO(timeStr);
+      if (isValid(date)) {
+        return format(date, 'HH:mm', { locale: it });
+      }
+    }
+    
+    // Fallback for other formats
+    const date = new Date(timeStr);
+    if (isValid(date)) {
+      return format(date, 'HH:mm', { locale: it });
+    }
+    
+    console.warn('Unable to parse time:', timeStr);
+    return '';
   } catch (error) {
+    console.error('Error formatting time:', error, timeStr);
     return '';
   }
 };
 
 // Funzione per ottenere la visualizzazione degli orari di timbratura
 const getAttendanceTimeDisplay = (att: AttendanceData, attendanceSettings?: AttendanceSettings | null) => {
+  console.log('getAttendanceTimeDisplay - att:', {
+    check_in_time: att.check_in_time,
+    check_out_time: att.check_out_time,
+    is_late: att.is_late,
+    employee_name: att.employee_name
+  });
+  console.log('getAttendanceTimeDisplay - settings:', attendanceSettings);
+  
   // Se è assenza per ferie, malattia, trasferta o permesso, non mostrare orari
   if (att.is_sick_leave || att.is_business_trip || att.vacation_leave || 
       (att.permission_leave && !att.permission_leave.time_from && !att.permission_leave.time_to)) {
+    console.log('Skipping time display for absence type');
     return '';
   }
   
@@ -83,22 +119,36 @@ const getAttendanceTimeDisplay = (att: AttendanceData, attendanceSettings?: Atte
   const checkOutTime = safeFormatTime(att.check_out_time);
   const lateIndicator = att.is_late ? ' ⚠️' : '';
   
-  if (!checkInTime && !checkOutTime) return '';
+  console.log('Formatted times:', { checkInTime, checkOutTime, lateIndicator });
+  
+  if (!checkInTime && !checkOutTime) {
+    console.log('No check-in or check-out time available');
+    return '';
+  }
   
   // Se checkout è disabilitato, mostra solo check-in
   if (attendanceSettings?.checkout_enabled === false) {
-    return checkInTime ? `${checkInTime}${lateIndicator}` : '';
+    const result = checkInTime ? `${checkInTime}${lateIndicator}` : '';
+    console.log('Checkout disabled, returning:', result);
+    return result;
   }
   
   // Se checkout è abilitato, mostra entrambi se disponibili
   if (checkInTime && checkOutTime) {
-    return `${checkInTime}-${checkOutTime}${lateIndicator}`;
+    const result = `${checkInTime}-${checkOutTime}${lateIndicator}`;
+    console.log('Both times available, returning:', result);
+    return result;
   } else if (checkInTime) {
-    return `${checkInTime}${lateIndicator}`;
+    const result = `${checkInTime}${lateIndicator}`;
+    console.log('Only check-in available, returning:', result);
+    return result;
   } else if (checkOutTime) {
-    return `--:--${checkOutTime}${lateIndicator}`;
+    const result = `--:--${checkOutTime}${lateIndicator}`;
+    console.log('Only check-out available, returning:', result);
+    return result;
   }
   
+  console.log('No valid time configuration found');
   return '';
 };
 

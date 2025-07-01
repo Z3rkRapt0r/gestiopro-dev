@@ -61,9 +61,32 @@ const safeFormatTime = (timeStr: string | null) => {
   if (!timeStr) return '';
   
   try {
-    const date = typeof timeStr === 'string' ? parseISO(timeStr) : new Date(timeStr);
-    if (!isValid(date)) return '';
-    return format(date, 'HH:mm', { locale: it });
+    // Handle different time formats
+    if (typeof timeStr === 'string') {
+      // Handle PostgreSQL time format (HH:mm:ss)
+      if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
+        return timeStr.slice(0, 5); // Return HH:mm
+      }
+      
+      // Handle HH:mm format
+      if (/^\d{2}:\d{2}$/.test(timeStr)) {
+        return timeStr;
+      }
+      
+      // Handle ISO datetime format
+      const date = parseISO(timeStr);
+      if (isValid(date)) {
+        return format(date, 'HH:mm', { locale: it });
+      }
+    }
+    
+    // Fallback for other formats
+    const date = new Date(timeStr);
+    if (isValid(date)) {
+      return format(date, 'HH:mm', { locale: it });
+    }
+    
+    return '';
   } catch (error) {
     return '';
   }
