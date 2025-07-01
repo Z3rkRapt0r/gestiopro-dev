@@ -13,6 +13,8 @@ interface AttendanceData {
   is_manual: boolean;
   is_business_trip: boolean;
   is_sick_leave: boolean;
+  is_late: boolean;
+  late_minutes: number;
   notes?: string | null;
   employee_name: string;
   employee_email: string;
@@ -29,12 +31,17 @@ interface EmployeeData {
   email: string | null;
 }
 
+interface AttendanceSettings {
+  checkout_enabled: boolean;
+}
+
 interface ExportParams {
   data: AttendanceData[];
   dateFrom: Date;
   dateTo: Date;
   exportType: 'general' | 'operator';
   selectedEmployee?: EmployeeData | null;
+  attendanceSettings?: AttendanceSettings | null;
 }
 
 // Funzione per formattare in modo sicuro le date
@@ -49,6 +56,50 @@ const safeFormatDate = (dateStr: string | null) => {
     console.error('Errore formattazione data:', error, dateStr);
     return 'Data non valida';
   }
+};
+
+// Funzione per formattare in modo sicuro gli orari
+const safeFormatTime = (timeStr: string | null) => {
+  if (!timeStr) return '';
+  
+  try {
+    const date = typeof timeStr === 'string' ? parseISO(timeStr) : new Date(timeStr);
+    if (!isValid(date)) return '';
+    return format(date, 'HH:mm', { locale: it });
+  } catch (error) {
+    return '';
+  }
+};
+
+// Funzione per ottenere la visualizzazione degli orari di timbratura
+const getAttendanceTimeDisplay = (att: AttendanceData, attendanceSettings?: AttendanceSettings | null) => {
+  // Se è assenza per ferie, malattia, trasferta o permesso, non mostrare orari
+  if (att.is_sick_leave || att.is_business_trip || att.vacation_leave || 
+      (att.permission_leave && !att.permission_leave.time_from && !att.permission_leave.time_to)) {
+    return '';
+  }
+  
+  const checkInTime = safeFormatTime(att.check_in_time);
+  const checkOutTime = safeFormatTime(att.check_out_time);
+  const lateIndicator = att.is_late ? ' ⚠️' : '';
+  
+  if (!checkInTime && !checkOutTime) return '';
+  
+  // Se checkout è disabilitato, mostra solo check-in
+  if (attendanceSettings?.checkout_enabled === false) {
+    return checkInTime ? `${checkInTime}${lateIndicator}` : '';
+  }
+  
+  // Se checkout è abilitato, mostra entrambi se disponibili
+  if (checkInTime && checkOutTime) {
+    return `${checkInTime}-${checkOutTime}${lateIndicator}`;
+  } else if (checkInTime) {
+    return `${checkInTime}${lateIndicator}`;
+  } else if (checkOutTime) {
+    return `--:--${checkOutTime}${lateIndicator}`;
+  }
+  
+  return '';
 };
 
 // Funzione per determinare lo stato di presenza
@@ -85,7 +136,8 @@ export const generateAttendancePDF = async ({
   dateFrom,
   dateTo,
   exportType,
-  selectedEmployee
+  selectedEmployee,
+  attendanceSettings
 }: ExportParams) => {
   try {
     console.log('Inizializzazione PDF con dati:', data.length, 'record');
@@ -119,10 +171,10 @@ export const generateAttendancePDF = async ({
       safeFormatDate(att.date),
       att.employee_name || 'N/A',
       getAttendanceStatus(att),
-      att.notes || ''
+      getAttendanceTimeDisplay(att, attendanceSettings)
     ]);
     
-    const tableHeaders = [['Data', 'Nome Dipendente', 'Stato Presenza', 'Note']];
+    const tableHeaders = [['Data', 'Nome Dipendente', 'Stato Presenza', 'Orario Timbratura']];
     
     console.log('Creazione tabella con', tableData.length, 'righe');
     
@@ -146,8 +198,18 @@ export const generateAttendancePDF = async ({
       columnStyles: {
         0: { cellWidth: 30 }, // Data
         1: { cellWidth: 50 }, // Nome Dipendente
-        2: { cellWidth: 40 }, // Stato Presenza
-        3: { cellWidth: 70 }, // Note
+        2: { cellWidth: 50 }, // Stato Presenza
+        3: { cellWidth: 40 }, // Orario Timbratura
+      },
+      didParseCell: function(data) {
+        // Evidenzia le righe con ritardi
+        if (data.section === 'body') {
+          const rowIndex = data.row.index;
+          const attendanceRecord = data[rowIndex];
+          if (attendanceRecord && attendanceRecord.is_late) {
+            data.cell.styles.fillColor = [255, 245, 157]; // Giallo chiaro per i ritardi
+          }
+        }
       },
       margin: { top: 55, left: 20, right: 20 },
     });

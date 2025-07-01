@@ -12,6 +12,7 @@ import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useAuth } from '@/hooks/useAuth';
+import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { generateAttendancePDF } from '@/utils/pdfGenerator';
@@ -49,6 +50,7 @@ export default function AttendanceExportSection() {
   
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
+  const { settings: attendanceSettings } = useAttendanceSettings();
   
   // Fetch leave requests for the export period
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
@@ -217,6 +219,8 @@ export default function AttendanceExportSection() {
               is_manual: attendance?.is_manual || false,
               is_business_trip: attendance?.is_business_trip || false,
               is_sick_leave: attendance?.is_sick_leave || false,
+              is_late: attendance?.is_late || false,
+              late_minutes: attendance?.late_minutes || 0,
               notes: attendance?.notes || '',
               employee_name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
               employee_email: employee.email || 'N/A',
@@ -251,7 +255,8 @@ export default function AttendanceExportSection() {
           dateFrom: from,
           dateTo: to,
           exportType,
-          selectedEmployee: selectedEmployeeData
+          selectedEmployee: selectedEmployeeData,
+          attendanceSettings
         });
         
         toast({
@@ -264,7 +269,8 @@ export default function AttendanceExportSection() {
           dateFrom: from,
           dateTo: to,
           exportType,
-          selectedEmployee: selectedEmployee ? employees?.find(emp => emp.id === selectedEmployee) : null
+          selectedEmployee: selectedEmployee ? employees?.find(emp => emp.id === selectedEmployee) : null,
+          attendanceSettings
         });
         
         toast({
