@@ -12,6 +12,7 @@ import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
+import ConflictSummaryCard from './ConflictSummaryCard';
 
 export default function NewManualAttendanceForm() {
   const { createManualAttendance, isCreating } = useUnifiedAttendances();
@@ -34,9 +35,11 @@ export default function NewManualAttendanceForm() {
   const conflictType = formData.is_sick_leave ? 'sick_leave' : 
                       formData.is_permission ? 'permesso' : 'attendance';
 
-  // Usa il sistema anti-conflitto
+  // Usa il sistema anti-conflitto migliorato
   const { 
-    conflictDates, 
+    conflictDates,
+    conflictDetails,
+    conflictSummary,
     isLoading: isCalculatingConflicts, 
     isDateDisabled,
     validateSickLeaveRange,
@@ -118,6 +121,7 @@ export default function NewManualAttendanceForm() {
 
   const handleEmployeeChange = async (userId: string) => {
     setFormData(prev => ({ ...prev, user_id: userId }));
+    setValidationError(null);
     
     // Valida immediatamente se ci sono date selezionate
     if (formData.date) {
@@ -160,6 +164,18 @@ export default function NewManualAttendanceForm() {
     if (formData.user_id && formData.date) {
       await validateConflicts(formData.date, formData.date_to, formData.user_id);
     }
+  };
+
+  // Trova il nome del dipendente selezionato
+  const selectedEmployee = employees?.find(emp => emp.id === formData.user_id);
+  const employeeName = selectedEmployee 
+    ? `${selectedEmployee.first_name} ${selectedEmployee.last_name}` 
+    : undefined;
+
+  // Verifica se una data è disabilitata
+  const isDateInputDisabled = (dateValue: string) => {
+    if (!dateValue) return false;
+    return isDateDisabled(new Date(dateValue));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -259,7 +275,7 @@ export default function NewManualAttendanceForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -284,6 +300,16 @@ export default function NewManualAttendanceForm() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Riepilogo conflitti proattivo */}
+            {formData.user_id && (
+              <ConflictSummaryCard
+                summary={conflictSummary}
+                details={conflictDetails}
+                employeeName={employeeName}
+                isLoading={isCalculatingConflicts}
+              />
+            )}
 
             {/* Tipo di inserimento */}
             <div className="space-y-3">
@@ -310,20 +336,6 @@ export default function NewManualAttendanceForm() {
               </div>
             </div>
 
-            {/* Indicatore di calcolo conflitti */}
-            {formData.user_id && isCalculatingConflicts && (
-              <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                🔍 Calcolo conflitti in corso...
-              </div>
-            )}
-
-            {/* Indicatore conflitti trovati */}
-            {formData.user_id && conflictDates.length > 0 && (
-              <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
-                ⚠️ {conflictDates.length} date disabilitate per conflitti esistenti
-              </div>
-            )}
-
             {validationError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -343,8 +355,12 @@ export default function NewManualAttendanceForm() {
                       console.log('Data inizio malattia selezionata:', e.target.value);
                       handleDateChange('date', e.target.value);
                     }}
+                    className={isDateInputDisabled(formData.date) ? 'border-red-300 bg-red-50' : ''}
                     required
                   />
+                  {isDateInputDisabled(formData.date) && (
+                    <p className="text-xs text-red-600 mt-1">⚠️ Data con conflitti</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="date_to">Data Fine</Label>
@@ -357,8 +373,12 @@ export default function NewManualAttendanceForm() {
                       console.log('Data fine malattia selezionata:', e.target.value);
                       handleDateChange('date_to', e.target.value);
                     }}
+                    className={isDateInputDisabled(formData.date_to) ? 'border-red-300 bg-red-50' : ''}
                     required
                   />
+                  {isDateInputDisabled(formData.date_to) && (
+                    <p className="text-xs text-red-600 mt-1">⚠️ Data con conflitti</p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -372,8 +392,12 @@ export default function NewManualAttendanceForm() {
                     console.log('Data selezionata dal picker:', e.target.value);
                     handleDateChange('date', e.target.value);
                   }}
+                  className={isDateInputDisabled(formData.date) ? 'border-red-300 bg-red-50' : ''}
                   required
                 />
+                {isDateInputDisabled(formData.date) && (
+                  <p className="text-xs text-red-600 mt-1">⚠️ Data con conflitti</p>
+                )}
               </div>
             )}
 

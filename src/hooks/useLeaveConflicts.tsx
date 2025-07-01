@@ -7,14 +7,48 @@ export interface LeaveValidationResult {
   conflicts: string[];
 }
 
+export interface ConflictSummary {
+  totalConflicts: number;
+  businessTrips: number;
+  vacations: number;
+  permissions: number;
+  sickLeaves: number;
+  attendances: number;
+}
+
+export interface ConflictDetail {
+  date: string;
+  type: 'business_trip' | 'vacation' | 'permission' | 'sick_leave' | 'attendance';
+  description: string;
+  severity: 'critical' | 'warning';
+}
+
 export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' | 'permesso' | 'sick_leave' | 'attendance') => {
   const [conflictDates, setConflictDates] = useState<Date[]>([]);
+  const [conflictDetails, setConflictDetails] = useState<ConflictDetail[]>([]);
+  const [conflictSummary, setConflictSummary] = useState<ConflictSummary>({
+    totalConflicts: 0,
+    businessTrips: 0,
+    vacations: 0,
+    permissions: 0,
+    sickLeaves: 0,
+    attendances: 0
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const calculateConflicts = useCallback(async (userId?: string, type?: string) => {
     if (!userId) {
       setConflictDates([]);
+      setConflictDetails([]);
+      setConflictSummary({
+        totalConflicts: 0,
+        businessTrips: 0,
+        vacations: 0,
+        permissions: 0,
+        sickLeaves: 0,
+        attendances: 0
+      });
       setIsLoading(false);
       return;
     }
@@ -22,15 +56,24 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     setIsLoading(true);
     setError(null);
     
-    console.log('🔍 Calcolo conflitti per caricamento manuale:', { userId, type });
+    console.log('🔍 Calcolo conflitti proattivo per:', { userId, type });
     
     const conflictDates = new Set<string>();
+    const details: ConflictDetail[] = [];
+    const summary: ConflictSummary = {
+      totalConflicts: 0,
+      businessTrips: 0,
+      vacations: 0,
+      permissions: 0,
+      sickLeaves: 0,
+      attendances: 0
+    };
     
     try {
       // 1. CONTROLLO TRASFERTE APPROVATE (sempre conflitti critici)
       const { data: existingTrips } = await supabase
         .from('business_trips')
-        .select('start_date, end_date')
+        .select('start_date, end_date, destination')
         .eq('user_id', userId)
         .eq('status', 'approved');
 
@@ -41,8 +84,17 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
           const allDays = eachDayOfInterval({ start: startDate, end: endDate });
           
           allDays.forEach(day => {
-            conflictDates.add(format(day, 'yyyy-MM-dd'));
+            const dateStr = format(day, 'yyyy-MM-dd');
+            conflictDates.add(dateStr);
+            details.push({
+              date: dateStr,
+              type: 'business_trip',
+              description: `Trasferta a ${trip.destination}`,
+              severity: 'critical'
+            });
           });
+          
+          summary.businessTrips += allDays.length;
         }
       }
 
@@ -63,8 +115,17 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
           const allDays = eachDayOfInterval({ start: startDate, end: endDate });
           
           allDays.forEach(day => {
-            conflictDates.add(format(day, 'yyyy-MM-dd'));
+            const dateStr = format(day, 'yyyy-MM-dd');
+            conflictDates.add(dateStr);
+            details.push({
+              date: dateStr,
+              type: 'vacation',
+              description: 'Ferie approvate',
+              severity: 'critical'
+            });
           });
+          
+          summary.vacations += allDays.length;
         }
       }
 
@@ -72,7 +133,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
       if (type === 'permesso' || type === 'sick_leave' || type === 'attendance') {
         const { data: approvedPermissions } = await supabase
           .from('leave_requests')
-          .select('day')
+          .select('day, time_from, time_to')
           .eq('user_id', userId)
           .eq('status', 'approved')
           .eq('type', 'permesso')
@@ -80,8 +141,22 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
 
         if (approvedPermissions) {
           approvedPermissions.forEach(permission => {
-            conflictDates.add(format(new Date(permission.day), 'yyyy-MM-dd'));
+            const dateStr = format(new Date(permission.day), 'yyyy-MM-dd');
+            conflictDates.add(dateStr);
+            
+            const timeInfo = permission.time_from && permission.time_to 
+              ? ` (${permission.time_from}-${permission.time_to})` 
+              : ' (giornaliero)';
+            
+            details.push({
+              date: dateStr,
+              type: 'permission',
+              description: `Permesso approvato${timeInfo}`,
+              severity: 'critical'
+            });
           });
+          
+          summary.permissions += approvedPermissions.length;
         }
       }
 
@@ -94,8 +169,17 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
 
       if (sickLeaveAttendances) {
         sickLeaveAttendances.forEach(attendance => {
-          conflictDates.add(format(new Date(attendance.date), 'yyyy-MM-dd'));
+          const dateStr = format(new Date(attendance.date), 'yyyy-MM-dd');
+          conflictDates.add(dateStr);
+          details.push({
+            date: dateStr,
+            type: 'sick_leave',
+            description: 'Giorno di malattia registrato',
+            severity: 'critical'
+          });
         });
+        
+        summary.sickLeaves += sickLeaveAttendances.length;
       }
 
       // 5. CONTROLLO PRESENZE ESISTENTI (solo per nuove presenze)
@@ -108,21 +192,46 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
 
         if (existingAttendances) {
           existingAttendances.forEach(attendance => {
-            conflictDates.add(format(new Date(attendance.date), 'yyyy-MM-dd'));
+            const dateStr = format(new Date(attendance.date), 'yyyy-MM-dd');
+            conflictDates.add(dateStr);
+            details.push({
+              date: dateStr,
+              type: 'attendance',
+              description: 'Presenza già registrata',
+              severity: 'warning'
+            });
           });
+          
+          summary.attendances += existingAttendances.length;
         }
       }
+
+      // Calcola totale unico (alcune date potrebbero avere conflitti multipli)
+      summary.totalConflicts = conflictDates.size;
 
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
-      console.log('📅 Date con conflitti trovate per caricamento manuale:', conflictDateObjects.length);
+      console.log('📅 Riepilogo conflitti calcolati:', summary);
+      console.log('📋 Dettagli conflitti:', details.length);
+      
       setConflictDates(conflictDateObjects);
+      setConflictDetails(details);
+      setConflictSummary(summary);
       
     } catch (error) {
-      console.error('❌ Errore nel calcolo conflitti per caricamento manuale:', error);
+      console.error('❌ Errore nel calcolo conflitti:', error);
       setError('Errore nel calcolo dei conflitti');
       setConflictDates([]);
+      setConflictDetails([]);
+      setConflictSummary({
+        totalConflicts: 0,
+        businessTrips: 0,
+        vacations: 0,
+        permissions: 0,
+        sickLeaves: 0,
+        attendances: 0
+      });
     } finally {
       setIsLoading(false);
     }
@@ -141,6 +250,11 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
       format(date, 'yyyy-MM-dd') === format(conflictDate, 'yyyy-MM-dd')
     );
   }, [conflictDates]);
+
+  const getConflictDetailsForDate = useCallback((date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return conflictDetails.filter(detail => detail.date === dateStr);
+  }, [conflictDetails]);
 
   // Funzione di validazione specifica per ferie
   const validateVacationDates = async (userId: string, startDate: string, endDate: string): Promise<LeaveValidationResult> => {
@@ -467,9 +581,12 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
 
   return {
     conflictDates,
+    conflictDetails,
+    conflictSummary,
     isLoading,
     error,
     isDateDisabled,
+    getConflictDetailsForDate,
     validateVacationDates,
     validatePermissionDate,
     validateSickLeaveRange,
