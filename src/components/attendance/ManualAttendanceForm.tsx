@@ -1,29 +1,25 @@
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, AlertCircle, Clock } from 'lucide-react';
+import { UserPlus, AlertCircle } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
-import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
-import { calculateManualDelay, getToleranceWarning, isWorkingDay } from '@/utils/attendanceUtils';
 
 export default function ManualAttendanceForm() {
   const { createManualAttendance, isCreating, attendances } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { leaveRequests } = useLeaveRequests();
   const { isValidDateForEmployee } = useWorkingDaysTracking();
-  const { workSchedule } = useWorkSchedules();
   
   const [formData, setFormData] = useState({
     user_id: '',
@@ -33,9 +29,6 @@ export default function ManualAttendanceForm() {
     notes: '',
   });
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [manualLateFlag, setManualLateFlag] = useState(false);
-  const [toleranceWarning, setToleranceWarning] = useState<string | null>(null);
-  const [calculatedDelay, setCalculatedDelay] = useState({ isLate: false, lateMinutes: 0 });
 
   // Usa il sistema anti-conflitto per presenze
   const { 
@@ -44,20 +37,6 @@ export default function ManualAttendanceForm() {
     isDateDisabled,
     validateAttendanceEntry
   } = useLeaveConflicts(formData.user_id, 'attendance');
-
-  // Calcola automaticamente il ritardo quando cambiano orario o data
-  useEffect(() => {
-    if (formData.check_in_time && formData.date && workSchedule) {
-      const delay = calculateManualDelay(formData.check_in_time, formData.date, workSchedule);
-      setCalculatedDelay(delay);
-      
-      const warning = getToleranceWarning(formData.check_in_time, formData.date, workSchedule);
-      setToleranceWarning(warning?.message || null);
-    } else {
-      setCalculatedDelay({ isLate: false, lateMinutes: 0 });
-      setToleranceWarning(null);
-    }
-  }, [formData.check_in_time, formData.date, workSchedule]);
 
   // Funzione per validare la data rispetto alla logica di tracking
   const validateDate = (selectedDate: string, employeeId: string) => {
@@ -157,17 +136,6 @@ export default function ManualAttendanceForm() {
     }
   };
 
-  // Verifica se la data è un giorno non lavorativo
-  const checkNonWorkingDay = (date: string) => {
-    if (!date || !workSchedule) return null;
-    
-    const selectedDate = new Date(date);
-    if (!isWorkingDay(selectedDate, workSchedule)) {
-      return '⚠️ La data selezionata non è configurata come giorno lavorativo';
-    }
-    return null;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -182,12 +150,6 @@ export default function ManualAttendanceForm() {
       return;
     }
     
-    // Determina se il dipendente è in ritardo (calcolo automatico o flag manuale)
-    const finalIsLate = manualLateFlag || calculatedDelay.isLate;
-    const finalLateMinutes = manualLateFlag ? 
-      (calculatedDelay.lateMinutes > 0 ? calculatedDelay.lateMinutes : 1) : 
-      calculatedDelay.lateMinutes;
-    
     // Costruiamo gli orari mantenendo la data e l'orario esatti senza conversioni di fuso orario
     const attendanceData = {
       user_id: formData.user_id,
@@ -195,11 +157,9 @@ export default function ManualAttendanceForm() {
       check_in_time: formData.check_in_time ? `${formData.date}T${formData.check_in_time}:00` : null,
       check_out_time: formData.check_out_time ? `${formData.date}T${formData.check_out_time}:00` : null,
       notes: formData.notes,
-      is_late: finalIsLate,
-      late_minutes: finalLateMinutes,
     };
 
-    console.log('Dati presenza manuale con calcolo ritardo:', attendanceData);
+    console.log('Dati presenza manuale (timestamp locali):', attendanceData);
     createManualAttendance(attendanceData);
     setFormData({
       user_id: '',
@@ -209,8 +169,6 @@ export default function ManualAttendanceForm() {
       notes: '',
     });
     setValidationError(null);
-    setManualLateFlag(false);
-    setToleranceWarning(null);
   };
 
   // Calcola dipendenti esclusi per mostrare l'avviso
@@ -290,26 +248,6 @@ export default function ManualAttendanceForm() {
               </Alert>
             )}
 
-            {/* Avviso giorno non lavorativo */}
-            {formData.date && checkNonWorkingDay(formData.date) && (
-              <Alert variant="destructive" className="text-sm">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="break-words">
-                  {checkNonWorkingDay(formData.date)}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Avviso tolleranza superata */}
-            {toleranceWarning && (
-              <Alert className="text-sm bg-yellow-50 border-yellow-200">
-                <Clock className="h-4 w-4 text-yellow-600" />
-                <AlertDescription className="break-words text-yellow-800">
-                  {toleranceWarning}
-                </AlertDescription>
-              </Alert>
-            )}
-
             {excludedEmployees.length > 0 && formData.date && (
               <Alert className="text-sm">
                 <AlertCircle className="h-4 w-4" />
@@ -349,12 +287,6 @@ export default function ManualAttendanceForm() {
                   onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
                   className="mt-1 h-11 sm:h-10"
                 />
-                {/* Indicatore calcolo automatico ritardo */}
-                {formData.check_in_time && calculatedDelay.isLate && (
-                  <div className="mt-1 text-xs text-orange-600">
-                    Ritardo calcolato: {calculatedDelay.lateMinutes} minuti
-                  </div>
-                )}
               </div>
               <div>
                 <Label htmlFor="check_out" className="text-sm sm:text-base">Orario Uscita</Label>
@@ -366,18 +298,6 @@ export default function ManualAttendanceForm() {
                   className="mt-1 h-11 sm:h-10"
                 />
               </div>
-            </div>
-
-            {/* Checkbox per flag manuale ritardo */}
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="manual_late"
-                checked={manualLateFlag}
-                onCheckedChange={(checked) => setManualLateFlag(checked === true)}
-              />
-              <Label htmlFor="manual_late" className="text-sm">
-                Segna come "Dipendente in ritardo" indipendentemente dall'orario
-              </Label>
             </div>
 
             <div>
@@ -393,14 +313,7 @@ export default function ManualAttendanceForm() {
 
             <Button 
               type="submit" 
-              disabled={
-                isCreating || 
-                !formData.user_id || 
-                !formData.date || 
-                !!validationError || 
-                isCalculatingConflicts ||
-                !!checkNonWorkingDay(formData.date)
-              } 
+              disabled={isCreating || !formData.user_id || !formData.date || !!validationError || isCalculatingConflicts} 
               className="w-full h-11 sm:h-10 text-base sm:text-sm"
             >
               {isCreating ? 'Salvando...' : 'Salva Presenza'}

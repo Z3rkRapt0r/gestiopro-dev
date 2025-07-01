@@ -57,12 +57,6 @@ export default function AttendanceCheckInOut() {
     if (!employeeStatus?.canCheckIn || employeeStatus.conflictPriority > 0) {
       return;
     }
-    
-    // NUOVO: Blocco timbrature in giorni non lavorativi
-    if (!isWorkingDay()) {
-      return;
-    }
-    
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         position => {
@@ -321,19 +315,11 @@ export default function AttendanceCheckInOut() {
             <div className="space-y-3">
               <Button 
                 onClick={handleCheckIn} 
-                disabled={
-                  isCheckingIn || 
-                  !employeeStatus?.canCheckIn || 
-                  statusLoading || 
-                  (employeeStatus?.conflictPriority ?? 0) > 0 ||
-                  !isWorkingDay()
-                } 
+                disabled={isCheckingIn || !employeeStatus?.canCheckIn || statusLoading || (employeeStatus?.conflictPriority ?? 0) > 0} 
                 className="w-full min-h-[44px] text-sm sm:text-base" 
-                variant={employeeStatus?.canCheckIn && isWorkingDay() ? "default" : "secondary"}
+                variant={employeeStatus?.canCheckIn ? "default" : "secondary"}
               >
-                {isCheckingIn ? 'Registrando entrata...' : 
-                 !isWorkingDay() ? 'Giorno non lavorativo' :
-                 !employeeStatus?.canCheckIn ? 'Presenza non consentita' : 'Registra Entrata'}
+                {isCheckingIn ? 'Registrando entrata...' : !employeeStatus?.canCheckIn ? 'Presenza non consentita' : 'Registra Entrata'}
               </Button>
               
               {/* Indicatore di priorità del conflitto */}
