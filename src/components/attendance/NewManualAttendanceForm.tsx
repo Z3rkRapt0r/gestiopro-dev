@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { UserPlus, AlertCircle } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
@@ -284,20 +284,43 @@ export default function NewManualAttendanceForm() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="employee">Dipendente</Label>
-              <Select value={formData.user_id} onValueChange={handleEmployeeChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona dipendente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees?.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
-                      {employee.first_name} {employee.last_name} ({employee.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <Label>Dipendente *</Label>
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {employees?.length ? (
+                  employees.map((employee) => (
+                    <div 
+                      key={employee.id} 
+                      className={`p-3 rounded-lg border shadow-sm cursor-pointer transition-colors ${
+                        formData.user_id === employee.id 
+                          ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-100' 
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      }`}
+                      onClick={() => handleEmployeeChange(employee.id)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 space-y-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-sm">
+                              {employee.first_name} {employee.last_name}
+                            </span>
+                            {formData.user_id === employee.id && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs px-1.5 py-0.5">
+                                Selezionato
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {employee.email}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">Nessun dipendente disponibile</p>
+                )}
+              </div>
             </div>
 
             {/* Riepilogo conflitti proattivo */}
