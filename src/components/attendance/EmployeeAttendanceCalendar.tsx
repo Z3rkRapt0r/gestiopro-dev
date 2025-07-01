@@ -10,6 +10,7 @@ import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceStats';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
+import { getEmployeeStatusForDate, formatHireDate } from '@/utils/employeeStatusUtils';
 import type { Attendance } from '@/hooks/useAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 
@@ -17,6 +18,68 @@ interface EmployeeAttendanceCalendarProps {
   employee: EmployeeProfile;
   attendances: Attendance[];
 }
+
+// Component interno per visualizzare lo stato del dipendente
+const EmployeeStatusCard = ({ employee, selectedDate, hasAttendance }: { 
+  employee: EmployeeProfile; 
+  selectedDate: Date | undefined; 
+  hasAttendance: boolean; 
+}) => {
+  const [statusInfo, setStatusInfo] = useState<{
+    displayText: string;
+    className: string;
+    iconColor: string;
+    description: string;
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (!selectedDate) return;
+
+    const getStatus = async () => {
+      const status = await getEmployeeStatusForDate({
+        employee,
+        date: selectedDate,
+        hasAttendance,
+        isOnApprovedLeave: false, // Per semplicità, qui non gestiamo le ferie
+        isOnBusinessTrip: false, // Per semplicità, qui non gestiamo le trasferte
+      });
+
+      let description = '';
+      if (status.status === 'not_hired_yet') {
+        description = `Il dipendente è stato assunto il ${formatHireDate(employee.hire_date!)}`;
+      } else if (status.status === 'absent') {
+        description = employee.tracking_start_type === 'from_year_start' 
+          ? 'Dipendente esistente - presenza da caricare manualmente'
+          : 'Nessuna presenza registrata per questo giorno lavorativo';
+      }
+
+      setStatusInfo({
+        displayText: status.displayText,
+        className: status.className,
+        iconColor: status.iconColor,
+        description
+      });
+    };
+
+    getStatus();
+  }, [employee, selectedDate, hasAttendance]);
+
+  if (!statusInfo) return null;
+
+  return (
+    <div className={`p-3 rounded-lg border ${statusInfo.className}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-2 h-2 ${statusInfo.iconColor} rounded-full`}></div>
+        <span className="font-semibold text-sm">
+          {statusInfo.displayText}
+        </span>
+      </div>
+      <p className="text-xs">
+        {statusInfo.description}
+      </p>
+    </div>
+  );
+};
 
 export default function EmployeeAttendanceCalendar({ employee, attendances }: EmployeeAttendanceCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -368,25 +431,11 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                 </div>
               </div>
             ) : (
-              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span className="font-semibold text-red-700 text-sm">
-                    {selectedDate && employee.tracking_start_type === 'from_hire_date' && employee.hire_date && selectedDate < new Date(employee.hire_date)
-                      ? 'Non ancora assunto'
-                      : 'Assente'
-                    }
-                  </span>
-                </div>
-                <p className="text-xs text-red-600">
-                  {selectedDate && employee.tracking_start_type === 'from_hire_date' && employee.hire_date && selectedDate < new Date(employee.hire_date)
-                    ? `Il dipendente è stato assunto il ${format(new Date(employee.hire_date), 'dd/MM/yyyy')}`
-                    : employee.tracking_start_type === 'from_year_start' 
-                      ? 'Dipendente esistente - presenza da caricare manualmente'
-                      : 'Nessuna presenza registrata per questo giorno lavorativo'
-                  }
-                </p>
-              </div>
+              <EmployeeStatusCard 
+                employee={employee}
+                selectedDate={selectedDate}
+                hasAttendance={!!selectedDateAttendance}
+              />
             )}
           </CardContent>
         </Card>

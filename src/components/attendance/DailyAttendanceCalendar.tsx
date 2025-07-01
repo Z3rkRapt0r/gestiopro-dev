@@ -9,6 +9,7 @@ import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
+import { getEmployeeStatusForDate, formatHireDate } from '@/utils/employeeStatusUtils';
 import LeaveEmployeesSection from './sections/LeaveEmployeesSection';
 
 export default function DailyAttendanceCalendar() {
@@ -154,20 +155,44 @@ export default function DailyAttendanceCalendar() {
     })
     .filter(emp => emp !== null);
 
-  // Ottieni i dipendenti assenti (escludendo quelli in ferie approvate)
-  const absentEmployees = relevantEmployeesForDate.filter(emp => {
-    const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time);
-    const isOnApprovedLeave = isEmployeeOnApprovedLeave(emp.id, selectedDateStr);
-    return !hasAttendance && !isOnApprovedLeave;
-  });
+  // Ottieni i dipendenti assenti e non ancora assunti utilizzando la funzione helper unificata
+  const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
+  const [notYetHiredEmployees, setNotYetHiredEmployees] = useState<any[]>([]);
 
-  console.log('❌ Dipendenti assenti per il', selectedDateStr, ':', absentEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
+  React.useEffect(() => {
+    if (!selectedDate || !employees) return;
 
-  // Ottieni i dipendenti non ancora assunti per questa data
-  const notYetHiredEmployees = employees?.filter(emp => 
-    selectedDate && emp.hire_date && emp.tracking_start_type === 'from_hire_date' && 
-    new Date(selectedDate) < new Date(emp.hire_date)
-  ) || [];
+    const categorizeEmployees = async () => {
+      const absent = [];
+      const notHired = [];
+
+      for (const emp of employees) {
+        const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id && att.check_in_time);
+        const isOnApprovedLeave = isEmployeeOnApprovedLeave(emp.id, selectedDateStr);
+        const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
+        
+        const status = await getEmployeeStatusForDate({
+          employee: emp,
+          date: selectedDate,
+          hasAttendance,
+          isOnApprovedLeave,
+          isOnBusinessTrip: false, // Per ora non gestiamo le trasferte qui
+          shouldTrackEmployeeOnDate: shouldTrack
+        });
+
+        if (status.status === 'not_hired_yet') {
+          notHired.push(emp);
+        } else if (status.status === 'absent' && shouldTrack && !isOnApprovedLeave) {
+          absent.push(emp);
+        }
+      }
+
+      setAbsentEmployees(absent);
+      setNotYetHiredEmployees(notHired);
+    };
+
+    categorizeEmployees();
+  }, [selectedDate, selectedDateStr, employees, selectedDateAttendances]);
 
   // Ottieni le date con presenze per evidenziarle nel calendario
   const datesWithAttendance = attendances?.filter(att => att.check_in_time).map(att => new Date(att.date)) || [];
