@@ -14,6 +14,10 @@ interface AttendanceData {
   notes?: string | null;
   employee_name: string;
   employee_email: string;
+  // Enhanced leave data
+  leave_requests?: any[];
+  vacation_leave?: any;
+  permission_leave?: any;
 }
 
 interface EmployeeData {
@@ -47,8 +51,29 @@ const safeFormatDate = (dateStr: string | null) => {
 
 // Funzione per determinare lo stato di presenza
 const getAttendanceStatus = (att: AttendanceData) => {
+  // Priority order: Malattia > Trasferta > Ferie > Permesso + Presenza/Assenza > Presente/Assente
+  
   if (att.is_sick_leave) return 'Malattia';
   if (att.is_business_trip) return 'Trasferta';
+  
+  // Check for vacation
+  if (att.vacation_leave) return 'Ferie';
+  
+  // Check for permission with time range
+  if (att.permission_leave && att.permission_leave.time_from && att.permission_leave.time_to) {
+    const hasAttendance = att.check_in_time || att.check_out_time;
+    const permissionTime = `${att.permission_leave.time_from.slice(0,5)}-${att.permission_leave.time_to.slice(0,5)}`;
+    return hasAttendance 
+      ? `Presente + Permesso (${permissionTime})`
+      : `Assente + Permesso (${permissionTime})`;
+  }
+  
+  // Full day permission (rare case)
+  if (att.permission_leave && !att.permission_leave.time_from && !att.permission_leave.time_to) {
+    return 'Permesso';
+  }
+  
+  // Regular attendance
   if (att.check_in_time || att.check_out_time) return 'Presente';
   return 'Assente';
 };

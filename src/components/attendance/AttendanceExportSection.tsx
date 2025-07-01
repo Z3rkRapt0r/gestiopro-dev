@@ -12,6 +12,7 @@ import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { generateAttendancePDF } from '@/utils/pdfGenerator';
 import { generateAttendanceExcel } from '@/utils/excelGenerator';
@@ -48,6 +49,10 @@ export default function AttendanceExportSection() {
   
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
+  
+  // Fetch leave requests for the export period
+  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+  const [isLoadingLeaves, setIsLoadingLeaves] = useState(false);
   const { profile } = useAuth();
   const { toast } = useToast();
 
@@ -124,6 +129,17 @@ export default function AttendanceExportSection() {
     setIsExporting(true);
 
     try {
+      // Fetch leave requests for the period
+      setIsLoadingLeaves(true);
+      const { data: leaveRequestsData } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('status', 'approved')
+        .or(`and(date_from.gte.${format(from, 'yyyy-MM-dd')},date_from.lte.${format(to, 'yyyy-MM-dd')}),and(date_to.gte.${format(from, 'yyyy-MM-dd')},date_to.lte.${format(to, 'yyyy-MM-dd')}),and(day.gte.${format(from, 'yyyy-MM-dd')},day.lte.${format(to, 'yyyy-MM-dd')})`);
+      
+      setLeaveRequests(leaveRequestsData || []);
+      setIsLoadingLeaves(false);
+
       // Filtra i dati in base ai parametri
       let filteredData = attendances?.filter(att => {
         try {
@@ -146,20 +162,76 @@ export default function AttendanceExportSection() {
         }
       }) || [];
 
-      // Aggiungi informazioni dipendente ai dati e valida tutti i campi
-      const enrichedData = filteredData.map(att => {
-        const employee = employees?.find(emp => emp.id === att.user_id);
-        return {
-          ...att,
-          employee_name: employee ? `${employee.first_name || ''} ${employee.last_name || ''}`.trim() : 'N/A',
-          employee_email: employee?.email || 'N/A',
-          notes: att.notes || '',
-          // Aggiungi funzioni helper per la formattazione sicura
-          safeFormatDate: () => safeFormatDate(att.date),
-          safeFormatCheckIn: () => safeFormatDateTime(att.check_in_time, 'HH:mm'),
-          safeFormatCheckOut: () => safeFormatDateTime(att.check_out_time, 'HH:mm')
-        };
-      });
+      // Create a comprehensive dataset that includes all dates in range for selected employees
+      const allEmployeeIds = exportType === 'operator' ? [selectedEmployee] : 
+        (employees?.map(emp => emp.id) || []);
+      
+      const dateRange = [];
+      const currentDate = new Date(from);
+      while (currentDate <= to) {
+        dateRange.push(format(currentDate, 'yyyy-MM-dd'));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Create combined data including leave requests
+      const enrichedData = [];
+      
+      for (const employeeId of allEmployeeIds) {
+        const employee = employees?.find(emp => emp.id === employeeId);
+        if (!employee) continue;
+        
+        for (const dateStr of dateRange) {
+          // Find attendance record for this date/employee
+          const attendance = filteredData.find(att => 
+            att.user_id === employeeId && att.date === dateStr
+          );
+          
+          // Find leave requests for this date/employee
+          const leaveForDate = (leaveRequestsData || []).filter(leave => {
+            if (leave.user_id !== employeeId) return false;
+            
+            // Check vacation/permission ranges
+            if (leave.type === 'ferie' && leave.date_from && leave.date_to) {
+              const leaveStart = new Date(leave.date_from);
+              const leaveEnd = new Date(leave.date_to);
+              const checkDate = new Date(dateStr);
+              return checkDate >= leaveStart && checkDate <= leaveEnd;
+            }
+            
+            // Check permission single day
+            if (leave.type === 'permesso' && leave.day) {
+              return leave.day === dateStr;
+            }
+            
+            return false;
+          });
+
+          // Only include dates with attendance or leave data
+          if (attendance || leaveForDate.length > 0) {
+            enrichedData.push({
+              id: attendance?.id || `virtual-${employeeId}-${dateStr}`,
+              user_id: employeeId,
+              date: dateStr,
+              check_in_time: attendance?.check_in_time || null,
+              check_out_time: attendance?.check_out_time || null,
+              is_manual: attendance?.is_manual || false,
+              is_business_trip: attendance?.is_business_trip || false,
+              is_sick_leave: attendance?.is_sick_leave || false,
+              notes: attendance?.notes || '',
+              employee_name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
+              employee_email: employee.email || 'N/A',
+              // Leave data
+              leave_requests: leaveForDate,
+              vacation_leave: leaveForDate.find(l => l.type === 'ferie'),
+              permission_leave: leaveForDate.find(l => l.type === 'permesso'),
+              // Helper functions
+              safeFormatDate: () => safeFormatDate(dateStr),
+              safeFormatCheckIn: () => safeFormatDateTime(attendance?.check_in_time, 'HH:mm'),
+              safeFormatCheckOut: () => safeFormatDateTime(attendance?.check_out_time, 'HH:mm')
+            });
+          }
+        }
+      }
 
       if (enrichedData.length === 0) {
         toast({
@@ -212,7 +284,7 @@ export default function AttendanceExportSection() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingLeaves) {
     return (
       <Card>
         <CardContent className="p-6">
