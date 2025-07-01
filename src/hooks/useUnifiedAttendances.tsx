@@ -217,6 +217,8 @@ export const useUnifiedAttendances = () => {
       check_out_time: string | null;
       notes: string | null;
       is_sick_leave?: boolean;
+      is_late?: boolean;
+      late_minutes?: number;
     }) => {
       console.log('🔐 CREAZIONE PRESENZA MANUALE con validazione anti-conflitto:', attendanceData);
       
@@ -250,6 +252,8 @@ export const useUnifiedAttendances = () => {
         is_manual: true,
         is_business_trip: false,
         is_sick_leave: attendanceData.is_sick_leave || false,
+        is_late: attendanceData.is_late || false,
+        late_minutes: attendanceData.late_minutes || 0,
         created_by: user?.id,
       };
 

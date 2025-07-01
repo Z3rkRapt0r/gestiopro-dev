@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGPSValidation } from './useGPSValidation';
 import { useWorkSchedules } from './useWorkSchedules';
 import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
+import { isWorkingDay } from '@/utils/attendanceUtils';
 
 export const useAttendanceOperations = () => {
   const { toast } = useToast();
@@ -56,6 +57,14 @@ export const useAttendanceOperations = () => {
   // Funzione per validare lo stato del dipendente prima di procedere
   const validateEmployeeStatus = async (userId: string, date: string) => {
     console.log('🔍 Validazione stato dipendente per:', { userId, date });
+
+    // NUOVO: Verifica giorni lavorativi
+    if (workSchedule) {
+      const selectedDate = new Date(date);
+      if (!isWorkingDay(selectedDate, workSchedule)) {
+        throw new Error('Non è possibile registrare presenza: oggi non è configurato come giorno lavorativo');
+      }
+    }
 
     // Controllo malattia
     const { data: sickLeave } = await supabase
