@@ -51,28 +51,24 @@ const safeFormatDate = (dateStr: string | null) => {
   }
 };
 
-// Funzione per formattare gli orari in modo sicuro
-const safeFormatTime = (timeStr: string | null) => {
-  if (!timeStr) return '';
-  try {
-    // Se è già in formato HH:mm, restituiscilo così com'è
-    if (timeStr.match(/^\d{2}:\d{2}$/)) return timeStr;
-    // Se è un datetime ISO, estraete solo l'orario
-    const date = parseISO(timeStr);
-    if (isValid(date)) {
-      return format(date, 'HH:mm');
-    }
-    return '';
-  } catch (error) {
-    return '';
-  }
-};
-
-// Funzione per determinare lo stato base di presenza
-const getBaseAttendanceStatus = (att: AttendanceData) => {
+// Funzione per determinare lo stato di presenza
+const getAttendanceStatus = (att: AttendanceData) => {
+  // Priority order: Malattia > Trasferta > Ferie > Permesso + Presenza/Assenza > Presente/Assente
+  
   if (att.is_sick_leave) return 'Malattia';
   if (att.is_business_trip) return 'Trasferta';
+  
+  // Check for vacation
   if (att.vacation_leave) return 'Ferie';
+  
+  // Check for permission with time range
+  if (att.permission_leave && att.permission_leave.time_from && att.permission_leave.time_to) {
+    const hasAttendance = att.check_in_time || att.check_out_time;
+    const permissionTime = `${att.permission_leave.time_from.slice(0,5)}-${att.permission_leave.time_to.slice(0,5)}`;
+    return hasAttendance 
+      ? `Presente + Permesso (${permissionTime})`
+      : `Assente + Permesso (${permissionTime})`;
+  }
   
   // Full day permission (rare case)
   if (att.permission_leave && !att.permission_leave.time_from && !att.permission_leave.time_to) {
@@ -82,38 +78,6 @@ const getBaseAttendanceStatus = (att: AttendanceData) => {
   // Regular attendance
   if (att.check_in_time || att.check_out_time) return 'Presente';
   return 'Assente';
-};
-
-// Funzione per ottenere l'orario di timbratura
-const getAttendanceTimeRange = (att: AttendanceData) => {
-  const checkIn = safeFormatTime(att.check_in_time);
-  const checkOut = safeFormatTime(att.check_out_time);
-  
-  if (checkIn && checkOut) return `${checkIn}-${checkOut}`;
-  if (checkIn) return `${checkIn}-`;
-  if (checkOut) return `-${checkOut}`;
-  return '';
-};
-
-// Funzione per ottenere l'orario del permesso
-const getPermissionTimeRange = (att: AttendanceData) => {
-  console.log('🔍 Debug permesso per data:', att.date, 'permission_leave:', att.permission_leave);
-  
-  if (att.permission_leave) {
-    // Se ha orari specifici
-    if (att.permission_leave.time_from && att.permission_leave.time_to) {
-      const timeFrom = safeFormatTime(att.permission_leave.time_from);
-      const timeTo = safeFormatTime(att.permission_leave.time_to);
-      console.log('📅 Permesso con orari:', timeFrom, '-', timeTo);
-      return `${timeFrom}-${timeTo}`;
-    }
-    // Se è un permesso dell'intera giornata (senza orari)
-    else {
-      console.log('📅 Permesso intera giornata');
-      return 'Intera giornata';
-    }
-  }
-  return '';
 };
 
 export const generateAttendancePDF = async ({
@@ -154,12 +118,11 @@ export const generateAttendancePDF = async ({
     const tableData = data.map(att => [
       safeFormatDate(att.date),
       att.employee_name || 'N/A',
-      getBaseAttendanceStatus(att),
-      getAttendanceTimeRange(att),
-      getPermissionTimeRange(att)
+      getAttendanceStatus(att),
+      att.notes || ''
     ]);
     
-    const tableHeaders = [['Data', 'Nome Dipendente', 'Stato Presenza', 'Orario Timbratura', 'Permesso']];
+    const tableHeaders = [['Data', 'Nome Dipendente', 'Stato Presenza', 'Note']];
     
     console.log('Creazione tabella con', tableData.length, 'righe');
     
@@ -181,11 +144,10 @@ export const generateAttendancePDF = async ({
         fillColor: [245, 245, 245],
       },
       columnStyles: {
-        0: { cellWidth: 25 }, // Data
-        1: { cellWidth: 45 }, // Nome Dipendente
-        2: { cellWidth: 35 }, // Stato Presenza
-        3: { cellWidth: 35 }, // Orario Timbratura
-        4: { cellWidth: 30 }, // Permesso
+        0: { cellWidth: 30 }, // Data
+        1: { cellWidth: 50 }, // Nome Dipendente
+        2: { cellWidth: 40 }, // Stato Presenza
+        3: { cellWidth: 70 }, // Note
       },
       margin: { top: 55, left: 20, right: 20 },
     });
