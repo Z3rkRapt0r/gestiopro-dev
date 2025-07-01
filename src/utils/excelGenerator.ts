@@ -49,24 +49,28 @@ const safeFormatDate = (dateStr: string | null) => {
   }
 };
 
-// Funzione per determinare lo stato di presenza
-const getAttendanceStatus = (att: AttendanceData) => {
-  // Priority order: Malattia > Trasferta > Ferie > Permesso + Presenza/Assenza > Presente/Assente
-  
+// Funzione per formattare gli orari in modo sicuro
+const safeFormatTime = (timeStr: string | null) => {
+  if (!timeStr) return '';
+  try {
+    // Se è già in formato HH:mm, restituiscilo così com'è
+    if (timeStr.match(/^\d{2}:\d{2}$/)) return timeStr;
+    // Se è un datetime ISO, estraete solo l'orario
+    const date = parseISO(timeStr);
+    if (isValid(date)) {
+      return format(date, 'HH:mm');
+    }
+    return '';
+  } catch (error) {
+    return '';
+  }
+};
+
+// Funzione per determinare lo stato base di presenza
+const getBaseAttendanceStatus = (att: AttendanceData) => {
   if (att.is_sick_leave) return 'Malattia';
   if (att.is_business_trip) return 'Trasferta';
-  
-  // Check for vacation
   if (att.vacation_leave) return 'Ferie';
-  
-  // Check for permission with time range
-  if (att.permission_leave && att.permission_leave.time_from && att.permission_leave.time_to) {
-    const hasAttendance = att.check_in_time || att.check_out_time;
-    const permissionTime = `${att.permission_leave.time_from.slice(0,5)}-${att.permission_leave.time_to.slice(0,5)}`;
-    return hasAttendance 
-      ? `Presente + Permesso (${permissionTime})`
-      : `Assente + Permesso (${permissionTime})`;
-  }
   
   // Full day permission (rare case)
   if (att.permission_leave && !att.permission_leave.time_from && !att.permission_leave.time_to) {
@@ -78,6 +82,27 @@ const getAttendanceStatus = (att: AttendanceData) => {
   return 'Assente';
 };
 
+// Funzione per ottenere l'orario di timbratura
+const getAttendanceTimeRange = (att: AttendanceData) => {
+  const checkIn = safeFormatTime(att.check_in_time);
+  const checkOut = safeFormatTime(att.check_out_time);
+  
+  if (checkIn && checkOut) return `${checkIn}-${checkOut}`;
+  if (checkIn) return `${checkIn}-`;
+  if (checkOut) return `-${checkOut}`;
+  return '';
+};
+
+// Funzione per ottenere l'orario del permesso
+const getPermissionTimeRange = (att: AttendanceData) => {
+  if (att.permission_leave && att.permission_leave.time_from && att.permission_leave.time_to) {
+    const timeFrom = safeFormatTime(att.permission_leave.time_from);
+    const timeTo = safeFormatTime(att.permission_leave.time_to);
+    return `${timeFrom}-${timeTo}`;
+  }
+  return '';
+};
+
 export const generateAttendanceExcel = async ({
   data,
   dateFrom,
@@ -85,13 +110,14 @@ export const generateAttendanceExcel = async ({
   exportType,
   selectedEmployee
 }: ExportParams) => {
-  const headers = ['Data', 'Nome Dipendente', 'Stato Presenza', 'Note'];
+  const headers = ['Data', 'Nome Dipendente', 'Stato Presenza', 'Orario Timbratura', 'Permesso'];
   
   const csvData = data.map(att => [
     safeFormatDate(att.date),
     att.employee_name,
-    getAttendanceStatus(att),
-    att.notes || ''
+    getBaseAttendanceStatus(att),
+    getAttendanceTimeRange(att),
+    getPermissionTimeRange(att)
   ]);
   
   // Aggiungi intestazione informativa
