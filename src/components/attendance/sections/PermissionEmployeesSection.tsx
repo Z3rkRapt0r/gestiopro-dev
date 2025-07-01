@@ -39,23 +39,21 @@ export default function PermissionEmployeesSection({
                       {employee.first_name} {employee.last_name}
                     </span>
                     <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs px-1.5 py-0.5">
-                      {employee.permissionType === 'orario' ? 'Permesso Orario' : 'Permesso Giornaliero'}
+                      Permesso Orario
                     </Badge>
                   </div>
                   
-                  {employee.permissionType === 'orario' && (
-                    <div className="text-xs text-blue-600 font-medium">
-                      {employee.permissionTimeFrom && employee.permissionTimeTo ? (
-                        `Orario: ${employee.permissionTimeFrom} - ${employee.permissionTimeTo}`
-                      ) : employee.attendance && employee.attendance.check_in_time && employee.attendance.check_out_time ? (
-                        `Orario: ${formatTime(employee.attendance.check_in_time)} - ${formatTime(employee.attendance.check_out_time)}`
-                      ) : employee.attendance && employee.attendance.notes && employee.attendance.notes.includes('(') ? (
-                        employee.attendance.notes
-                      ) : (
-                        'Permesso Orario'
-                      )}
-                    </div>
-                  )}
+                  <div className="text-xs text-blue-600 font-medium">
+                    {employee.permissionTimeFrom && employee.permissionTimeTo ? (
+                      `Orario: ${employee.permissionTimeFrom} - ${employee.permissionTimeTo}`
+                    ) : employee.attendance && employee.attendance.check_in_time && employee.attendance.check_out_time ? (
+                      `Orario: ${formatTime(employee.attendance.check_in_time)} - ${formatTime(employee.attendance.check_out_time)}`
+                    ) : employee.attendance && employee.attendance.notes && employee.attendance.notes.includes('(') ? (
+                      employee.attendance.notes
+                    ) : (
+                      'Permesso Orario'
+                    )}
+                  </div>
                   
                   {employee.leave?.note && (
                     <p className="text-xs text-gray-600">{employee.leave.note}</p>

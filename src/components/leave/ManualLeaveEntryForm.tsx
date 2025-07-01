@@ -24,7 +24,7 @@ interface ManualLeaveEntryFormProps {
 export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [leaveType, setLeaveType] = useState<"ferie" | "permesso">("ferie");
-  const [permissionType, setPermissionType] = useState<"giornaliero" | "orario">("giornaliero");
+  // Removed daily permission - only hourly permissions are supported
   
   // Date range for ferie or single date for permesso
   const [startDate, setStartDate] = useState<Date>();
@@ -93,8 +93,8 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
         const validation = await validatePermissionDate(
           employeeId,
           format(startDate, 'yyyy-MM-dd'),
-          permissionType === 'orario' ? timeFrom : undefined,
-          permissionType === 'orario' ? timeTo : undefined
+          timeFrom,
+          timeTo
         );
         
         if (!validation.isValid) {
@@ -156,14 +156,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     }
   };
 
-  const handlePermissionTypeChange = (newPermissionType: "giornaliero" | "orario") => {
-    setPermissionType(newPermissionType);
-    setValidationError(null);
-    // Ricontrolla i conflitti se è un permesso orario
-    if (selectedUserId && startDate && leaveType === 'permesso') {
-      validateConflicts(startDate, endDate, selectedUserId);
-    }
-  };
+  // Removed daily permission handler - only hourly permissions supported
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,19 +213,17 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
         return;
       }
 
-      if (permissionType === "orario") {
-        if (!timeFrom || !timeTo) {
-          alert("Inserisci orario di inizio e fine per il permesso orario");
-          return;
-        }
+      if (!timeFrom || !timeTo) {
+        alert("Inserisci orario di inizio e fine per il permesso");
+        return;
       }
 
       insertMutation.mutate({
         user_id: selectedUserId,
         type: "permesso",
         day: format(startDate, 'yyyy-MM-dd'),
-        time_from: permissionType === "orario" ? timeFrom : null,
-        time_to: permissionType === "orario" ? timeTo : null,
+        time_from: timeFrom,
+        time_to: timeTo,
         note: note || null,
         status: "approved"
       }, {
@@ -375,19 +366,6 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
             </div>
           ) : (
             <>
-              {/* Tipo permesso */}
-              <div className="space-y-2">
-                <Label>Tipo permesso</Label>
-                <Select value={permissionType} onValueChange={handlePermissionTypeChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="giornaliero">Giornaliero</SelectItem>
-                    <SelectItem value="orario">Orario</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               {/* Data permesso */}
               <div className="space-y-2">
@@ -419,39 +397,37 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                 </Popover>
               </div>
 
-              {/* Orari per permesso orario */}
-              {permissionType === "orario" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="timeFrom">Ora inizio *</Label>
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="timeFrom"
-                        type="time"
-                        value={timeFrom}
-                        onChange={(e) => setTimeFrom(e.target.value)}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timeTo">Ora fine *</Label>
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="timeTo"
-                        type="time"
-                        value={timeTo}
-                        onChange={(e) => setTimeTo(e.target.value)}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+              {/* Orari obbligatori per permesso */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="timeFrom">Ora inizio *</Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="timeFrom"
+                      type="time"
+                      value={timeFrom}
+                      onChange={(e) => setTimeFrom(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
                   </div>
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label htmlFor="timeTo">Ora fine *</Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="timeTo"
+                      type="time"
+                      value={timeTo}
+                      onChange={(e) => setTimeTo(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
             </>
           )}
 

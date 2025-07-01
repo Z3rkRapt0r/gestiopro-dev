@@ -220,14 +220,13 @@ export default function NewManualAttendanceForm() {
         createManualAttendance(attendanceData);
       }
     } else if (formData.is_permission) {
-      // Gestione permesso
-      let notesText = 'Permesso';
-      if (formData.permission_time_from && formData.permission_time_to) {
-        notesText = `Permesso (${formData.permission_time_from}-${formData.permission_time_to})`;
-      } else {
-        notesText = 'Permesso'; // Permesso giornaliero
+      // Gestione permesso orario (obbligatorio)
+      if (!formData.permission_time_from || !formData.permission_time_to) {
+        alert("Inserisci orario di inizio e fine per il permesso");
+        return;
       }
       
+      let notesText = `Permesso (${formData.permission_time_from}-${formData.permission_time_to})`;
       if (formData.notes) {
         notesText += ` - ${formData.notes}`;
       }
@@ -404,31 +403,30 @@ export default function NewManualAttendanceForm() {
             {formData.is_permission && (
               <div className="space-y-4">
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="text-sm font-medium text-blue-700 mb-2">Tipo di Permesso:</div>
+                  <div className="text-sm font-medium text-blue-700 mb-2">Permesso Orario</div>
                   <div className="text-xs text-blue-600">
-                    • Lascia vuoti gli orari per un permesso giornaliero<br/>
-                    • Inserisci orari specifici per un permesso orario
+                    Inserisci orario di inizio e fine del permesso (entrambi obbligatori)
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="permission_from">Dalle ore (opzionale)</Label>
+                    <Label htmlFor="permission_from">Dalle ore *</Label>
                     <Input
                       id="permission_from"
                       type="time"
                       value={formData.permission_time_from}
                       onChange={(e) => setFormData(prev => ({ ...prev, permission_time_from: e.target.value }))}
-                      placeholder="Lascia vuoto per permesso giornaliero"
+                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="permission_to">Alle ore (opzionale)</Label>
+                    <Label htmlFor="permission_to">Alle ore *</Label>
                     <Input
                       id="permission_to"
                       type="time"
                       value={formData.permission_time_to}
                       onChange={(e) => setFormData(prev => ({ ...prev, permission_time_to: e.target.value }))}
-                      placeholder="Lascia vuoto per permesso giornaliero"
+                      required
                     />
                   </div>
                 </div>

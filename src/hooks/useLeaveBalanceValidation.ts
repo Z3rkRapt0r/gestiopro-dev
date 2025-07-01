@@ -93,13 +93,17 @@ export function useLeaveBalanceValidation() {
       let requestedHours = 0;
       
       if (timeFrom && timeTo) {
-        // Permesso orario
+        // Permesso orario (only type supported now)
         const startTime = new Date(`1970-01-01T${timeFrom}:00`);
         const endTime = new Date(`1970-01-01T${timeTo}:00`);
         requestedHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-      } else if (day) {
-        // Permesso giornaliero = 8 ore
-        requestedHours = 8;
+      } else {
+        // No time specified = invalid permission request
+        return {
+          ...balanceValidation,
+          exceedsPermissionLimit: true,
+          errorMessage: "Orario di inizio e fine sono obbligatori per i permessi"
+        };
       }
 
       const exceedsLimit = requestedHours > balanceValidation.remainingPermissionHours;
