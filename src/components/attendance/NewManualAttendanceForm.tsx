@@ -285,33 +285,19 @@ export default function NewManualAttendanceForm() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label>Dipendenti (seleziona uno)</Label>
-              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                {employees?.map((employee) => (
-                  <div key={employee.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={employee.id}
-                      checked={formData.user_id === employee.id}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          handleEmployeeChange(employee.id);
-                        } else {
-                          handleEmployeeChange('');
-                        }
-                      }}
-                    />
-                    <Label htmlFor={employee.id} className="text-sm font-normal cursor-pointer">
-                      {employee.first_name} {employee.last_name}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-              {formData.user_id && (
-                <div className="text-sm text-blue-600 mt-1">
-                  1 dipendente selezionato
-                  {isCalculatingConflicts && <span className="ml-2 text-orange-600">(Calcolo conflitti...)</span>}
-                </div>
-              )}
+              <Label htmlFor="employee">Dipendente</Label>
+              <Select value={formData.user_id} onValueChange={handleEmployeeChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona dipendente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees?.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.first_name} {employee.last_name} ({employee.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Riepilogo conflitti proattivo */}
