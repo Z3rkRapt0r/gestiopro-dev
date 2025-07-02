@@ -11,6 +11,7 @@ import AdminDocumentsSection from './AdminDocumentsSection';
 import NotificationsSection from './NotificationsSection';
 import AdminSettingsSection from '../admin/AdminSettingsSection';
 import AdminLeaveApprovalsSection from '../leave/AdminLeaveApprovalsSection';
+import AdminOvertimeSection from '../overtime/AdminOvertimeSection';
 
 // Import new modern components
 import ModernAdminSidebar from './ModernAdminSidebar';
@@ -20,6 +21,7 @@ const tabTitles = {
   dashboard: 'Dashboard',
   employees: 'Gestione Dipendenti',
   attendance: 'Gestione Presenze',
+  overtime: 'Gestione Straordinari',
   leaves: 'Gestione Permessi',
   documents: 'Gestione Documenti',
   notifications: 'Centro Notifiche',
@@ -64,6 +66,8 @@ export default function ModernAdminDashboard() {
         return <AdminEmployeesSection />;
       case 'attendance':
         return <AdminAttendanceSection />;
+      case 'overtime':
+        return <AdminOvertimeSection />;
       case 'leaves':
         return <AdminLeaveApprovalsSection />;
       case 'documents':

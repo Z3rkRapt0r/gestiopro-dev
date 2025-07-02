@@ -44,6 +44,14 @@ const menuItems = [
     textColor: 'text-orange-700'
   },
   {
+    id: 'overtime',
+    label: 'Straordinari',
+    icon: Clock,
+    color: 'from-orange-500 to-amber-500',
+    bgColor: 'bg-orange-50',
+    textColor: 'text-orange-700'
+  },
+  {
     id: 'leaves',
     label: 'Permessi',
     icon: Calendar,
