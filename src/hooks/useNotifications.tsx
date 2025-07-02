@@ -12,6 +12,7 @@ interface Notification {
   body?: string;
   attachment_url?: string;
   type: 'document' | 'system' | 'message' | 'announcement';
+  category?: string;
   is_read: boolean;
   created_by: string | null;
   created_at: string;
@@ -43,7 +44,7 @@ export const useNotifications = () => {
       // Ora prendiamo solo quelle per questo utente
       const { data, error } = await supabase
         .from('notifications')
-        .select('id, user_id, title, message, body, attachment_url, type, is_read, created_by, created_at')
+        .select('id, user_id, title, message, body, attachment_url, type, category, is_read, created_by, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 

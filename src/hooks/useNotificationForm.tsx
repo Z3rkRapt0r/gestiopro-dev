@@ -74,6 +74,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
         title: subject,
         message: shortText,
         type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
+        category: topic || "system", // Store original topic for accurate categorization
         body,
         attachment_url,
         created_by: profile?.id,
@@ -107,6 +108,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
               title: subject,
               message: shortText,
               type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
+              category: topic || "system", // Store original topic for accurate categorization
               body,
               attachment_url,
               created_by: profile?.id,
@@ -146,6 +148,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
             title: subject,
             message: shortText,
             type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
+            category: topic || "system", // Store original topic for accurate categorization
             body,
             attachment_url,
             created_by: profile?.id,
@@ -175,6 +178,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
           title: subject,
           message: shortText,
           type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
+          category: topic || "system", // Store original topic for accurate categorization
           body,
           attachment_url,
           created_by: profile?.id,

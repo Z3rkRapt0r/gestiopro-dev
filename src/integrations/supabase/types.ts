@@ -802,6 +802,7 @@ export type Database = {
         Row: {
           attachment_url: string | null
           body: string | null
+          category: string | null
           created_at: string | null
           created_by: string | null
           id: string
@@ -814,6 +815,7 @@ export type Database = {
         Insert: {
           attachment_url?: string | null
           body?: string | null
+          category?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
@@ -826,6 +828,7 @@ export type Database = {
         Update: {
           attachment_url?: string | null
           body?: string | null
+          category?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string

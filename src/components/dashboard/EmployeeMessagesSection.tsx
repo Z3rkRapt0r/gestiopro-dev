@@ -34,23 +34,24 @@ const EmployeeMessagesSection = () => {
   );
   const unreadMessages = myMessages.filter((n) => !n.is_read);
 
-  // Raggruppa i messaggi per categoria (dal database sent_notifications per ottenere il topic originale)
+  // Raggruppa i messaggi per categoria utilizzando il campo category dal database
   const messagesByCategory = useMemo(() => {
     const grouped = myMessages.reduce((acc, msg) => {
-      // For messages, we need to map them to categories based on common patterns
-      // Since we're storing as "message" type, we'll need to determine category from content or create a mapping
-      let category = "system";
+      // Use the category field from database, fallback to system
+      let category = msg.category || "system";
       
-      // Simple heuristic to categorize messages - in production you might want to store category separately
-      if (msg.title.toLowerCase().includes('aziendal') || msg.message.toLowerCase().includes('aziendal')) {
-        category = 'Aggiornamenti aziendali';
-      } else if (msg.title.toLowerCase().includes('important') || msg.message.toLowerCase().includes('important') || 
-                 msg.title.toLowerCase().includes('comunicazione')) {
-        category = 'Comunicazioni importanti';
-      } else if (msg.title.toLowerCase().includes('evento') || msg.message.toLowerCase().includes('evento')) {
-        category = 'Eventi';
-      } else if (msg.title.toLowerCase().includes('sicurezza') || msg.message.toLowerCase().includes('sicurezza')) {
-        category = 'Avvisi sicurezza';
+      // Handle legacy messages without category using simple heuristics for backward compatibility
+      if (!msg.category && category === "system") {
+        if (msg.title.toLowerCase().includes('aziendal') || msg.message.toLowerCase().includes('aziendal')) {
+          category = 'Aggiornamenti aziendali';
+        } else if (msg.title.toLowerCase().includes('important') || msg.message.toLowerCase().includes('important') || 
+                   msg.title.toLowerCase().includes('comunicazione')) {
+          category = 'Comunicazioni importanti';
+        } else if (msg.title.toLowerCase().includes('evento') || msg.message.toLowerCase().includes('evento')) {
+          category = 'Eventi';
+        } else if (msg.title.toLowerCase().includes('sicurezza') || msg.message.toLowerCase().includes('sicurezza')) {
+          category = 'Avvisi sicurezza';
+        }
       }
       
       if (!acc[category]) {
@@ -332,17 +333,21 @@ interface MessageCardProps {
 }
 
 function MessageCard({ message, onMarkAsRead, getTypeIcon }: MessageCardProps) {
-  // Determina la categoria del messaggio per l'icona
-  let category = "system";
-  if (message.title.toLowerCase().includes('aziendal') || message.message.toLowerCase().includes('aziendal')) {
-    category = 'Aggiornamenti aziendali';
-  } else if (message.title.toLowerCase().includes('important') || message.message.toLowerCase().includes('important') || 
-             message.title.toLowerCase().includes('comunicazione')) {
-    category = 'Comunicazioni importanti';
-  } else if (message.title.toLowerCase().includes('evento') || message.message.toLowerCase().includes('evento')) {
-    category = 'Eventi';
-  } else if (message.title.toLowerCase().includes('sicurezza') || message.message.toLowerCase().includes('sicurezza')) {
-    category = 'Avvisi sicurezza';
+  // Use the category field from database, fallback to system with legacy heuristics
+  let category = message.category || "system";
+  
+  // Handle legacy messages without category using simple heuristics for backward compatibility
+  if (!message.category && category === "system") {
+    if (message.title.toLowerCase().includes('aziendal') || message.message.toLowerCase().includes('aziendal')) {
+      category = 'Aggiornamenti aziendali';
+    } else if (message.title.toLowerCase().includes('important') || message.message.toLowerCase().includes('important') || 
+               message.title.toLowerCase().includes('comunicazione')) {
+      category = 'Comunicazioni importanti';
+    } else if (message.title.toLowerCase().includes('evento') || message.message.toLowerCase().includes('evento')) {
+      category = 'Eventi';
+    } else if (message.title.toLowerCase().includes('sicurezza') || message.message.toLowerCase().includes('sicurezza')) {
+      category = 'Avvisi sicurezza';
+    }
   }
 
   return (
