@@ -40,6 +40,7 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
         .from('sent_notifications')
         .select('*')
         .eq('admin_id', profile.id)
+        .neq('type', 'document') // Exclude document notifications from admin history
         .order('created_at', { ascending: false })
         .limit(50);
 

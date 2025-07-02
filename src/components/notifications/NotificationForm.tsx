@@ -32,14 +32,14 @@ const NotificationForm = ({ onCreated }: Props) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // NEW: Use subject as provided by user (if any) - no longer use topic as fallback
+    // Ensure manual admin notifications are typed as "message" for employee message center
     await sendNotification({
       recipientId: recipientId === "ALL" ? null : recipientId,
       subject: subject.trim(), // Use subject as-is (can be empty)
       shortText,
       body: undefined,
       file: null,
-      topic,
+      topic: "message", // Force manual notifications to be "message" type
     });
     setSubject("");
     setShortText("");

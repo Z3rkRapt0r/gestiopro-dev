@@ -20,9 +20,9 @@ const EmployeeMessagesSection = () => {
   const { profile } = useAuth();
   const { notifications, markAsRead, markAllAsRead, loading } = useNotifications();
 
-  // Solo messaggi per l'utente loggato
+  // Messaggi per l'utente loggato (include messaggi manuali e comunicazioni admin)
   const myMessages = notifications.filter(
-    (n) => n.user_id === profile?.id && n.type === "message"
+    (n) => n.user_id === profile?.id && (n.type === "message" || n.type === "system" || n.type === "announcement")
   );
   const unreadMessages = myMessages.filter((n) => !n.is_read);
 
