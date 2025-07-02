@@ -17,13 +17,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
+import { useOvertimeConflicts } from '@/hooks/useOvertimeConflicts';
 
 const overtimeSchema = z.object({
   user_id: z.string().min(1, 'Seleziona un dipendente'),
   date: z.date({
     required_error: 'Seleziona una data',
   }),
-  hours: z.number().min(0.1, 'Le ore devono essere maggiori di 0').max(24, 'Le ore non possono superare 24'),
+  hours: z.number().int('Le ore devono essere un numero intero').min(1, 'Le ore devono essere almeno 1').max(24, 'Le ore non possono superare 24'),
   notes: z.string().optional(),
 });
 
@@ -48,6 +49,8 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
       notes: '',
     },
   });
+
+  const { isDateDisabled, isLoading: conflictsLoading } = useOvertimeConflicts(form.watch('user_id'));
 
   const onSubmit = async (data: OvertimeFormData) => {
     if (!profile?.id) {
@@ -190,13 +193,25 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
                         selected={field.value}
                         onSelect={field.onChange}
                         disabled={(date) =>
-                          date > new Date() || date < new Date("1900-01-01")
+                          date > new Date() || 
+                          date < new Date("1900-01-01") ||
+                          isDateDisabled(date)
                         }
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
                   <FormMessage />
+                  {conflictsLoading && (
+                    <p className="text-sm text-orange-600 mt-1">
+                      Controllo conflitti in corso...
+                    </p>
+                  )}
+                  {form.watch('user_id') && !conflictsLoading && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Le date con ferie, permessi, malattie o trasferte sono disabilitate
+                    </p>
+                  )}
                 </FormItem>
               )}
             />
@@ -206,16 +221,16 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
               name="hours"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ore Straordinarie</FormLabel>
+                  <FormLabel>Ore Straordinarie (numero intero)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.5"
-                      min="0.1"
+                      step="1"
+                      min="1"
                       max="24"
-                      placeholder="es. 2.5"
+                      placeholder="es. 3"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormMessage />
