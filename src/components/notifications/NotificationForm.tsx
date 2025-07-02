@@ -32,14 +32,14 @@ const NotificationForm = ({ onCreated }: Props) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Ensure manual admin notifications are typed as "message" for employee message center
+    // Send notification with original topic for proper categorization
     await sendNotification({
       recipientId: recipientId === "ALL" ? null : recipientId,
       subject: subject.trim(), // Use subject as-is (can be empty)
       shortText,
       body: undefined,
       file: null,
-      topic: "message", // Force manual notifications to be "message" type
+      topic, // Use original topic for categorization
     });
     setSubject("");
     setShortText("");

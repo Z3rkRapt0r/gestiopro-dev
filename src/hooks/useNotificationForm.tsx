@@ -69,10 +69,11 @@ export const useNotificationForm = (onCreated?: () => void) => {
         console.log('File uploaded successfully:', attachment_url);
       }
 
+      // For notifications table, use "message" for manual admin notifications to appear in employee message center
       const notificationData = {
         title: subject,
         message: shortText,
-        type: topic || "system",
+        type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
         body,
         attachment_url,
         created_by: profile?.id,
@@ -101,16 +102,16 @@ export const useNotificationForm = (onCreated?: () => void) => {
 
           console.log('Found admin profiles:', adminProfiles);
 
-          const notificationsToInsert = (adminProfiles || []).map(p => ({
-            user_id: p.id,
-            title: subject,
-            message: shortText,
-            type: topic || "system",
-            body,
-            attachment_url,
-            created_by: profile?.id,
-            is_read: false
-          }));
+            const notificationsToInsert = (adminProfiles || []).map(p => ({
+              user_id: p.id,
+              title: subject,
+              message: shortText,
+              type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
+              body,
+              attachment_url,
+              created_by: profile?.id,
+              is_read: false
+            }));
 
           if (notificationsToInsert.length > 0) {
             const { data: insertData, error: insertError } = await supabase
@@ -144,7 +145,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
             user_id: p.id,
             title: subject,
             message: shortText,
-            type: topic || "system",
+            type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
             body,
             attachment_url,
             created_by: profile?.id,
@@ -173,7 +174,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
           user_id: recipientId,
           title: subject,
           message: shortText,
-          type: topic || "system",
+          type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
           body,
           attachment_url,
           created_by: profile?.id,
@@ -206,7 +207,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
             title: subject,
             message: shortText,
             body,
-            type: topic || "system",
+            type: topic || "system", // Keep original topic for admin categorization
             attachment_url
           });
 
