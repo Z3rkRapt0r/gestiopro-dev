@@ -20,6 +20,8 @@ interface SentNotification {
   type: string;
   attachment_url?: string;
   created_at: string;
+  recipient_first_name?: string;
+  recipient_last_name?: string;
 }
 
 const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
@@ -36,6 +38,7 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
     setLoading(true);
     
     try {
+      // First fetch sent notifications
       const { data, error } = await supabase
         .from('sent_notifications')
         .select('*')
@@ -50,7 +53,28 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
       }
 
       console.log("SentNotificationsHistory: fetched sent notifications", data?.length || 0);
-      setNotifications(data || []);
+      
+      // Fetch recipient names for notifications that have recipient_id
+      const notificationsWithRecipients = await Promise.all(
+        (data || []).map(async (notification) => {
+          if (notification.recipient_id) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('id', notification.recipient_id)
+              .single();
+            
+            return {
+              ...notification,
+              recipient_first_name: profile?.first_name,
+              recipient_last_name: profile?.last_name
+            };
+          }
+          return notification;
+        })
+      );
+      
+      setNotifications(notificationsWithRecipients);
     } catch (error) {
       console.error('Error in fetchSentNotifications:', error);
     } finally {
@@ -227,12 +251,17 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <span>{formatRelativeDate(notification.created_at)}</span>
                       <div className="flex items-center gap-2">
-                        <Badge 
-                          variant="outline"
-                          className="text-xs"
-                        >
-                          {notification.recipient_id ? "Singolo" : "Tutti"}
-                        </Badge>
+                         <Badge 
+                           variant="outline"
+                           className="text-xs"
+                         >
+                           {notification.recipient_id 
+                             ? (notification.recipient_first_name && notification.recipient_last_name)
+                               ? `${notification.recipient_first_name} ${notification.recipient_last_name}`
+                               : "Utente rimosso"
+                             : "Tutti"
+                           }
+                         </Badge>
                       </div>
                     </div>
                   </div>
@@ -272,12 +301,17 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>{formatRelativeDate(notification.created_at)}</span>
                           <div className="flex items-center gap-2">
-                            <Badge 
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {notification.recipient_id ? "Singolo" : "Tutti"}
-                            </Badge>
+                             <Badge 
+                               variant="outline"
+                               className="text-xs"
+                             >
+                               {notification.recipient_id 
+                                 ? (notification.recipient_first_name && notification.recipient_last_name)
+                                   ? `${notification.recipient_first_name} ${notification.recipient_last_name}`
+                                   : "Utente rimosso"
+                                 : "Tutti"
+                               }
+                             </Badge>
                           </div>
                         </div>
                       </div>
