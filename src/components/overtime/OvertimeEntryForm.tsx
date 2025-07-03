@@ -192,11 +192,13 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) =>
-                          date > new Date() || 
-                          date < new Date("1900-01-01") ||
-                          isDateDisabled(date)
-                        }
+                        disabled={(date) => {
+                          const employee = employees?.find(emp => emp.id === form.watch('user_id'));
+                          const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                          return date > new Date() || 
+                                 (hireDate && date < hireDate) ||
+                                 isDateDisabled(date);
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
