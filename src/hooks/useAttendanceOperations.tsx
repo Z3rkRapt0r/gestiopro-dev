@@ -57,17 +57,17 @@ export const useAttendanceOperations = () => {
   const validateEmployeeStatus = async (userId: string, date: string) => {
     console.log('🔍 Validazione stato dipendente per:', { userId, date });
 
-    // Controllo malattia
-    const { data: sickLeave } = await supabase
-      .from('unified_attendances')
+    // Controllo malattia dalla nuova tabella sick_leaves
+    const { data: sickLeaves } = await supabase
+      .from('sick_leaves')
       .select('*')
       .eq('user_id', userId)
-      .eq('date', date)
-      .eq('is_sick_leave', true)
-      .single();
+      .lte('start_date', date)
+      .gte('end_date', date);
 
-    if (sickLeave) {
-      throw new Error('Non è possibile registrare presenza: il dipendente è in malattia');
+    if (sickLeaves && sickLeaves.length > 0) {
+      const sickLeave = sickLeaves[0];
+      throw new Error(`Non è possibile registrare presenza: il dipendente è in malattia dal ${sickLeave.start_date} al ${sickLeave.end_date} (Codice: ${sickLeave.reference_code || 'N/A'})`);
     }
 
     // Controllo ferie approvate

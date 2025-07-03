@@ -59,24 +59,25 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
       // 5. Già presente (priorità 1) - NON BLOCCA DATE
 
       // 1. CONTROLLO MALATTIA - Priorità massima, BLOCCA DATE
-      const { data: sickLeave } = await supabase
-        .from('unified_attendances')
+      const { data: sickLeaves } = await supabase
+        .from('sick_leaves')
         .select('*')
         .eq('user_id', targetUserId)
-        .eq('date', targetDate)
-        .eq('is_sick_leave', true)
-        .single();
+        .lte('start_date', targetDate)
+        .gte('end_date', targetDate);
 
-      if (sickLeave) {
+      if (sickLeaves && sickLeaves.length > 0) {
+        const sickLeave = sickLeaves[0];
         currentStatus = 'sick';
         conflictPriority = 5;
         allowPermissionOverlap = false;
         hasHardBlock = true;
-        blockingReasons.push('Il dipendente è registrato come in malattia per questa data');
+        blockingReasons.push(`Il dipendente è in malattia dal ${sickLeave.start_date} al ${sickLeave.end_date} (${sickLeave.reference_code || 'Codice non disponibile'})`);
         statusDetails = {
           type: 'Malattia',
-          startDate: targetDate,
-          notes: sickLeave.notes || undefined
+          startDate: sickLeave.start_date,
+          endDate: sickLeave.end_date,
+          notes: `${sickLeave.reference_code || ''} - ${sickLeave.notes || ''}`.trim()
         };
       }
 
