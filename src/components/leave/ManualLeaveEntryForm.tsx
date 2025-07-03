@@ -326,7 +326,11 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
-                      disabled={(date) => date < new Date() || isDateDisabled(date)}
+                      disabled={(date) => {
+                        const employee = employees?.find(emp => emp.id === selectedUserId);
+                        const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                        return (hireDate && date < hireDate) || isDateDisabled(date);
+                      }}
                       locale={it}
                       initialFocus
                       className={cn("p-3 pointer-events-auto")}
@@ -355,7 +359,12 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       mode="single"
                       selected={endDate}
                       onSelect={handleEndDateChange}
-                      disabled={(date) => date < (startDate || new Date()) || isDateDisabled(date)}
+                      disabled={(date) => {
+                        const employee = employees?.find(emp => emp.id === selectedUserId);
+                        const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                        const minDate = startDate || hireDate;
+                        return (minDate && date < minDate) || isDateDisabled(date);
+                      }}
                       locale={it}
                       initialFocus
                       className={cn("p-3 pointer-events-auto")}
@@ -388,7 +397,11 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
-                      disabled={(date) => date < new Date() || isDateDisabled(date)}
+                      disabled={(date) => {
+                        const employee = employees?.find(emp => emp.id === selectedUserId);
+                        const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                        return (hireDate && date < hireDate) || isDateDisabled(date);
+                      }}
                       locale={it}
                       initialFocus
                       className={cn("p-3 pointer-events-auto")}
