@@ -187,8 +187,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 5. CONTROLLO PRESENZE ESISTENTI (solo per nuove presenze)
-      if (type === 'attendance') {
+      // 5. CONTROLLO PRESENZE ESISTENTI (per nuove presenze e malattie)
+      if (type === 'attendance' || type === 'sick_leave') {
         const { data: existingAttendances } = await supabase
           .from('unified_attendances')
           .select('date')
@@ -202,12 +202,33 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
             details.push({
               date: dateStr,
               type: 'attendance',
-              description: 'Presenza già registrata',
-              severity: 'warning'
+              description: type === 'sick_leave' ? 'Presenza già registrata - impossibile registrare malattia' : 'Presenza già registrata',
+              severity: type === 'sick_leave' ? 'critical' : 'warning'
             });
           });
           
           summary.attendances += existingAttendances.length;
+        }
+
+        // Controllo presenze manuali
+        const { data: existingManualAttendances } = await supabase
+          .from('manual_attendances')
+          .select('date')
+          .eq('user_id', userId);
+
+        if (existingManualAttendances) {
+          existingManualAttendances.forEach(attendance => {
+            const dateStr = format(new Date(attendance.date), 'yyyy-MM-dd');
+            conflictDates.add(dateStr);
+            details.push({
+              date: dateStr,
+              type: 'attendance',
+              description: type === 'sick_leave' ? 'Presenza manuale già registrata - impossibile registrare malattia' : 'Presenza manuale già registrata',
+              severity: type === 'sick_leave' ? 'critical' : 'warning'
+            });
+          });
+          
+          summary.attendances += existingManualAttendances.length;
         }
       }
 
@@ -476,6 +497,45 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
           
           if ((newStart <= vacEnd && newEnd >= vacStart)) {
             conflicts.push(`Conflitto critico: esistono ferie approvate dal ${format(vacStart, 'dd/MM/yyyy')} al ${format(vacEnd, 'dd/MM/yyyy')}`);
+          }
+        }
+      }
+
+      // 3. CONTROLLO PRESENZE ESISTENTI (da unified_attendances)
+      const { data: existingAttendances } = await supabase
+        .from('unified_attendances')
+        .select('date')
+        .eq('user_id', userId)
+        .eq('is_sick_leave', false);
+
+      if (existingAttendances && existingAttendances.length > 0) {
+        for (const attendance of existingAttendances) {
+          const attendanceDate = format(new Date(attendance.date), 'yyyy-MM-dd');
+          const newStart = new Date(startDate);
+          const newEnd = new Date(finalEndDate);
+          const attDate = new Date(attendanceDate);
+          
+          if (attDate >= newStart && attDate <= newEnd) {
+            conflicts.push(`Conflitto critico: esiste una presenza registrata il ${format(attDate, 'dd/MM/yyyy')}`);
+          }
+        }
+      }
+
+      // 4. CONTROLLO PRESENZE MANUALI (da manual_attendances)
+      const { data: existingManualAttendances } = await supabase
+        .from('manual_attendances')
+        .select('date')
+        .eq('user_id', userId);
+
+      if (existingManualAttendances && existingManualAttendances.length > 0) {
+        for (const attendance of existingManualAttendances) {
+          const attendanceDate = format(new Date(attendance.date), 'yyyy-MM-dd');
+          const newStart = new Date(startDate);
+          const newEnd = new Date(finalEndDate);
+          const attDate = new Date(attendanceDate);
+          
+          if (attDate >= newStart && attDate <= newEnd) {
+            conflicts.push(`Conflitto critico: esiste una presenza manuale registrata il ${format(attDate, 'dd/MM/yyyy')}`);
           }
         }
       }
