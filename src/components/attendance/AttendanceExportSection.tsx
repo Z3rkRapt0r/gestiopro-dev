@@ -220,8 +220,8 @@ export default function AttendanceExportSection() {
             overtime.user_id === employeeId && overtime.date === dateStr
           );
 
-          // Only include dates with attendance or leave data
-          if (attendance || leaveForDate.length > 0) {
+          // Only include dates with attendance, leave data or overtime
+          if (attendance || leaveForDate.length > 0 || overtimeForDate) {
             enrichedData.push({
               id: attendance?.id || `virtual-${employeeId}-${dateStr}`,
               user_id: employeeId,

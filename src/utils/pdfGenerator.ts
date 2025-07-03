@@ -120,7 +120,7 @@ const getAttendanceTimeDisplay = (att: AttendanceData, attendanceSettings?: Atte
   
   const checkInTime = safeFormatTime(att.check_in_time);
   const checkOutTime = safeFormatTime(att.check_out_time);
-  const lateIndicator = att.is_late ? ' ⚠️' : '';
+  const lateIndicator = att.is_late ? ' (in ritardo)' : '';
   
   console.log('Formatted times:', { checkInTime, checkOutTime, lateIndicator });
   
