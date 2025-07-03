@@ -22,6 +22,9 @@ interface AttendanceData {
   leave_requests?: any[];
   vacation_leave?: any;
   permission_leave?: any;
+  // Overtime data
+  overtime_hours?: number | null;
+  overtime_notes?: string | null;
 }
 
 interface EmployeeData {
@@ -181,6 +184,12 @@ const getAttendanceStatus = (att: AttendanceData) => {
   return 'Assente';
 };
 
+// Funzione per formattare le ore straordinarie
+const getOvertimeDisplay = (overtimeHours: number | null) => {
+  if (!overtimeHours || overtimeHours === 0) return '-';
+  return `${overtimeHours} ore`;
+};
+
 export const generateAttendancePDF = async ({
   data,
   dateFrom,
@@ -221,10 +230,11 @@ export const generateAttendancePDF = async ({
       safeFormatDate(att.date),
       att.employee_name || 'N/A',
       getAttendanceStatus(att),
-      getAttendanceTimeDisplay(att, attendanceSettings)
+      getAttendanceTimeDisplay(att, attendanceSettings),
+      getOvertimeDisplay(att.overtime_hours)
     ]);
     
-    const tableHeaders = [['Data', 'Nome Dipendente', 'Stato Presenza', 'Orario Timbratura']];
+    const tableHeaders = [['Data', 'Nome Dipendente', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
     
     console.log('Creazione tabella con', tableData.length, 'righe');
     
@@ -246,10 +256,11 @@ export const generateAttendancePDF = async ({
         fillColor: [245, 245, 245],
       },
       columnStyles: {
-        0: { cellWidth: 30 }, // Data
-        1: { cellWidth: 50 }, // Nome Dipendente
-        2: { cellWidth: 50 }, // Stato Presenza
-        3: { cellWidth: 40 }, // Orario Timbratura
+        0: { cellWidth: 25 }, // Data
+        1: { cellWidth: 45 }, // Nome Dipendente
+        2: { cellWidth: 45 }, // Stato Presenza
+        3: { cellWidth: 35 }, // Orario Timbratura
+        4: { cellWidth: 30 }, // Straordinari
       },
       didParseCell: function(data) {
         // Evidenzia le righe con ritardi

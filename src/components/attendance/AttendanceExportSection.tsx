@@ -139,6 +139,13 @@ export default function AttendanceExportSection() {
         .eq('status', 'approved')
         .or(`and(date_from.gte.${format(from, 'yyyy-MM-dd')},date_from.lte.${format(to, 'yyyy-MM-dd')}),and(date_to.gte.${format(from, 'yyyy-MM-dd')},date_to.lte.${format(to, 'yyyy-MM-dd')}),and(day.gte.${format(from, 'yyyy-MM-dd')},day.lte.${format(to, 'yyyy-MM-dd')})`);
       
+      // Fetch overtime records for the period
+      const { data: overtimeData } = await supabase
+        .from('overtime_records')
+        .select('user_id, date, hours, notes')
+        .gte('date', format(from, 'yyyy-MM-dd'))
+        .lte('date', format(to, 'yyyy-MM-dd'));
+      
       setLeaveRequests(leaveRequestsData || []);
       setIsLoadingLeaves(false);
 
@@ -208,6 +215,11 @@ export default function AttendanceExportSection() {
             return false;
           });
 
+          // Find overtime for this date/employee
+          const overtimeForDate = (overtimeData || []).find(overtime => 
+            overtime.user_id === employeeId && overtime.date === dateStr
+          );
+
           // Only include dates with attendance or leave data
           if (attendance || leaveForDate.length > 0) {
             enrichedData.push({
@@ -228,6 +240,9 @@ export default function AttendanceExportSection() {
               leave_requests: leaveForDate,
               vacation_leave: leaveForDate.find(l => l.type === 'ferie'),
               permission_leave: leaveForDate.find(l => l.type === 'permesso'),
+              // Overtime data
+              overtime_hours: overtimeForDate?.hours || null,
+              overtime_notes: overtimeForDate?.notes || null,
               // Helper functions
               safeFormatDate: () => safeFormatDate(dateStr),
               safeFormatCheckIn: () => safeFormatDateTime(attendance?.check_in_time, 'HH:mm'),
