@@ -224,35 +224,33 @@ export default function AttendanceExportSection() {
           const sickLeavesForDate = getSickLeavesForDate(dateStr);
           const isSickLeave = sickLeavesForDate.some(sl => sl.user_id === employeeId);
 
-          // Only include dates with attendance, leave data, overtime, or sick leave
-          if (attendance || leaveForDate.length > 0 || overtimeForDate || isSickLeave) {
-            enrichedData.push({
-              id: attendance?.id || `virtual-${employeeId}-${dateStr}`,
-              user_id: employeeId,
-              date: dateStr,
-              check_in_time: attendance?.check_in_time || null,
-              check_out_time: attendance?.check_out_time || null,
-              is_manual: attendance?.is_manual || false,
-              is_business_trip: attendance?.is_business_trip || false,
-              is_sick_leave: isSickLeave, // Use new sick leave data
-              is_late: attendance?.is_late || false,
-              late_minutes: attendance?.late_minutes || 0,
-              notes: attendance?.notes || '',
-              employee_name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
-              employee_email: employee.email || 'N/A',
-              // Leave data
-              leave_requests: leaveForDate,
-              vacation_leave: leaveForDate.find(l => l.type === 'ferie'),
-              permission_leave: leaveForDate.find(l => l.type === 'permesso'),
-              // Overtime data
-              overtime_hours: overtimeForDate?.hours || null,
-              overtime_notes: overtimeForDate?.notes || null,
-              // Helper functions
-              safeFormatDate: () => safeFormatDate(dateStr),
-              safeFormatCheckIn: () => safeFormatDateTime(attendance?.check_in_time, 'HH:mm'),
-              safeFormatCheckOut: () => safeFormatDateTime(attendance?.check_out_time, 'HH:mm')
-            });
-          }
+          // Include all dates in range to show absences
+          enrichedData.push({
+            id: attendance?.id || `virtual-${employeeId}-${dateStr}`,
+            user_id: employeeId,
+            date: dateStr,
+            check_in_time: attendance?.check_in_time || null,
+            check_out_time: attendance?.check_out_time || null,
+            is_manual: attendance?.is_manual || false,
+            is_business_trip: attendance?.is_business_trip || false,
+            is_sick_leave: isSickLeave, // Use new sick leave data
+            is_late: attendance?.is_late || false,
+            late_minutes: attendance?.late_minutes || 0,
+            notes: attendance?.notes || '',
+            employee_name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
+            employee_email: employee.email || 'N/A',
+            // Leave data
+            leave_requests: leaveForDate,
+            vacation_leave: leaveForDate.find(l => l.type === 'ferie'),
+            permission_leave: leaveForDate.find(l => l.type === 'permesso'),
+            // Overtime data
+            overtime_hours: overtimeForDate?.hours || null,
+            overtime_notes: overtimeForDate?.notes || null,
+            // Helper functions
+            safeFormatDate: () => safeFormatDate(dateStr),
+            safeFormatCheckIn: () => safeFormatDateTime(attendance?.check_in_time, 'HH:mm'),
+            safeFormatCheckOut: () => safeFormatDateTime(attendance?.check_out_time, 'HH:mm')
+          });
         }
       }
 
