@@ -6,7 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, AlertCircle } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { UserPlus, AlertCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
@@ -216,16 +219,65 @@ export default function ManualAttendanceForm() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            {/* DIPENDENTE PRIMA DELLA DATA */}
             <div>
-              <Label htmlFor="date" className="text-sm sm:text-base">Data</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleDateChange(e.target.value)}
-                required
-                className="mt-1 h-11 sm:h-10"
-              />
+              <Label htmlFor="employee" className="text-sm sm:text-base">Dipendente</Label>
+              <Select value={formData.user_id} onValueChange={handleEmployeeChange}>
+                <SelectTrigger className="mt-1 h-11 sm:h-10">
+                  <SelectValue placeholder="Seleziona dipendente" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  {(employees || []).map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                        <span className="font-medium">{employee.first_name} {employee.last_name}</span>
+                        <span className="text-xs text-muted-foreground">({employee.email})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* DATE PICKER AVANZATO CON BLOCCO CONFLITTI */}
+            <div>
+              <Label className="text-sm sm:text-base">Data</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "mt-1 w-full h-11 sm:h-10 justify-start text-left font-normal",
+                      !formData.date && "text-muted-foreground"
+                    )}
+                    disabled={!formData.user_id}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.date ? format(new Date(formData.date), 'dd/MM/yyyy') : <span>Seleziona data</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.date ? new Date(formData.date) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        const dateString = format(date, 'yyyy-MM-dd');
+                        handleDateChange(dateString);
+                      }
+                    }}
+                     disabled={(date) => {
+                       if (!formData.user_id) return true;
+                       return isDateDisabled && isDateDisabled(date);
+                     }}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              {!formData.user_id && (
+                <p className="text-xs text-muted-foreground mt-1">Seleziona prima un dipendente</p>
+              )}
             </div>
 
             {/* Indicatori di calcolo conflitti - Mobile optimized */}
@@ -258,24 +310,14 @@ export default function ManualAttendanceForm() {
               </Alert>
             )}
 
-            <div>
-              <Label htmlFor="employee" className="text-sm sm:text-base">Dipendente</Label>
-              <Select value={formData.user_id} onValueChange={handleEmployeeChange}>
-                <SelectTrigger className="mt-1 h-11 sm:h-10">
-                  <SelectValue placeholder="Seleziona dipendente" />
-                </SelectTrigger>
-                <SelectContent className="bg-white">
-                  {availableEmployees?.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                        <span className="font-medium">{employee.first_name} {employee.last_name}</span>
-                        <span className="text-xs text-muted-foreground">({employee.email})</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {availableEmployees.length < (employees?.length || 0) && formData.date && (
+              <Alert className="text-sm">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Alcuni dipendenti sono stati filtrati automaticamente (in ferie, malattia o permessi)
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
