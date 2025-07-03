@@ -2,6 +2,8 @@
 import { useAdminStats } from "@/hooks/useAdminStats";
 import ModernStatsCards from "./ModernStatsCards";
 import UpcomingLeavesSection from "./UpcomingLeavesSection";
+import TodayAttendanceSummary from "./TodayAttendanceSummary";
+import PunctualityChart from "./PunctualityChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Users, TrendingUp, Activity } from "lucide-react";
@@ -69,8 +71,13 @@ const AdminDashboardOverview = () => {
       {/* Modern Stats Cards */}
       <ModernStatsCards stats={stats} />
 
-      {/* Quick Insights Section - Mobile responsive grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+      {/* Today Attendance Summary */}
+      <TodayAttendanceSummary />
+
+      {/* Punctuality Chart and Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <PunctualityChart />
+        
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold text-blue-800">Tasso di Presenza</CardTitle>
@@ -84,7 +91,10 @@ const AdminDashboardOverview = () => {
             </CardDescription>
           </CardContent>
         </Card>
+      </div>
 
+      {/* Additional Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold text-emerald-800">Efficienza Team</CardTitle>
@@ -99,7 +109,7 @@ const AdminDashboardOverview = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300 sm:col-span-2 lg:col-span-1">
+        <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold text-purple-800">Soddisfazione</CardTitle>
             <Activity className="h-4 w-4 text-purple-600" />
