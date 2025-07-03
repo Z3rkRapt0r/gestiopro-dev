@@ -50,7 +50,7 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
     },
   });
 
-  const { isDateDisabled, isLoading: conflictsLoading } = useOvertimeConflicts(form.watch('user_id'));
+  const { conflictDates, isDateDisabled, isLoading: conflictsLoading } = useOvertimeConflicts(form.watch('user_id'));
 
   const onSubmit = async (data: OvertimeFormData) => {
     if (!profile?.id) {
@@ -189,14 +189,23 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
+                        key={`${form.watch('user_id')}-${conflictDates.length}-${conflictsLoading}`}
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) =>
-                          date > new Date() || 
-                          date < new Date("1900-01-01") ||
-                          isDateDisabled(date)
-                        }
+                        disabled={(date) => {
+                          console.log('🔍 [OvertimeCalendar] Checking date:', format(date, 'yyyy-MM-dd'), {
+                            isAfterToday: date > new Date(),
+                            isBefore1900: date < new Date("1900-01-01"),
+                            conflictDatesCount: conflictDates.length,
+                            conflictsLoading,
+                            isConflictDate: isDateDisabled(date)
+                          });
+                          
+                          return date > new Date() || 
+                                 date < new Date("1900-01-01") ||
+                                 (!conflictsLoading && isDateDisabled(date));
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
@@ -209,7 +218,7 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
                   )}
                   {form.watch('user_id') && !conflictsLoading && (
                     <p className="text-sm text-gray-600 mt-1">
-                      Le date con ferie, permessi, malattie o trasferte sono disabilitate
+                      Le date con ferie, permessi, malattie o trasferte sono disabilitate ({conflictDates.length} conflitti trovati)
                     </p>
                   )}
                 </FormItem>
