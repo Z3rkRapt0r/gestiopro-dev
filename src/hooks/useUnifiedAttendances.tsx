@@ -12,7 +12,6 @@ export interface UnifiedAttendance {
   check_out_time: string | null;
   is_business_trip: boolean;
   is_manual: boolean;
-  is_sick_leave: boolean;
   is_late: boolean;
   late_minutes: number;
   notes?: string | null;
@@ -34,55 +33,9 @@ export const useUnifiedAttendances = () => {
   const queryClient = useQueryClient();
 
   // Funzione per validare lo stato del dipendente prima di inserimenti manuali
-  const validateEmployeeStatusForManual = async (userId: string, date: string, isAdmin: boolean, isSickLeave: boolean) => {
-    console.log('🔍 Validazione stato per inserimento manuale:', { userId, date, isAdmin, isSickLeave });
+  const validateEmployeeStatusForManual = async (userId: string, date: string, isAdmin: boolean) => {
+    console.log('🔍 Validazione stato per inserimento manuale:', { userId, date, isAdmin });
 
-    // Se è malattia, controlliamo trasferte, ferie e permessi
-    if (isSickLeave) {
-      // PRIORITÀ ASSOLUTA: Controllo trasferte approvate
-      const { data: approvedBusinessTrips } = await supabase
-        .from('business_trips')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'approved');
-
-      if (approvedBusinessTrips && approvedBusinessTrips.length > 0) {
-        for (const trip of approvedBusinessTrips) {
-          const checkDate = new Date(date);
-          const startDate = new Date(trip.start_date);
-          const endDate = new Date(trip.end_date);
-          
-          if (checkDate >= startDate && checkDate <= endDate) {
-            throw new Error(`Impossibile registrare malattia: il dipendente è in trasferta a ${trip.destination} dal ${trip.start_date} al ${trip.end_date}. Le trasferte hanno priorità assoluta.`);
-          }
-        }
-      }
-
-      // Controllo ferie approvate
-      const { data: approvedVacations } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'approved')
-        .eq('type', 'ferie');
-
-      if (approvedVacations) {
-        for (const vacation of approvedVacations) {
-          if (vacation.date_from && vacation.date_to) {
-            const checkDate = new Date(date);
-            const startDate = new Date(vacation.date_from);
-            const endDate = new Date(vacation.date_to);
-            
-            if (checkDate >= startDate && checkDate <= endDate) {
-              throw new Error(`Conflitto: il dipendente è già in ferie dal ${vacation.date_from} al ${vacation.date_to}. Le ferie hanno priorità sulla malattia.`);
-            }
-          }
-        }
-      }
-      return; // Per la malattia, dopo i controlli trasferte e ferie, possiamo procedere
-    }
-
-    // Per presenze normali, controlli completi
     // PRIORITÀ ASSOLUTA: Controllo trasferte approvate
     const { data: approvedBusinessTrips } = await supabase
       .from('business_trips')
@@ -102,13 +55,13 @@ export const useUnifiedAttendances = () => {
       }
     }
 
-    // Controllo malattia esistente
+    // Controllo malattia nella nuova tabella dedicata
     const { data: sickLeave } = await supabase
-      .from('unified_attendances')
+      .from('sick_leaves')
       .select('*')
       .eq('user_id', userId)
-      .eq('date', date)
-      .eq('is_sick_leave', true)
+      .lte('start_date', date)
+      .gte('end_date', date)
       .single();
 
     if (sickLeave) {
@@ -216,7 +169,6 @@ export const useUnifiedAttendances = () => {
       check_in_time: string | null;
       check_out_time: string | null;
       notes: string | null;
-      is_sick_leave?: boolean;
     }) => {
       console.log('🔐 CREAZIONE PRESENZA MANUALE con validazione anti-conflitto:', attendanceData);
       
@@ -225,13 +177,12 @@ export const useUnifiedAttendances = () => {
       await validateEmployeeStatusForManual(
         attendanceData.user_id, 
         attendanceData.date, 
-        isAdmin, 
-        attendanceData.is_sick_leave || false
+        isAdmin
       );
       
       // Genera il path organizzativo italiano
       const attendanceDate = new Date(attendanceData.date);
-      const operationType = attendanceData.is_sick_leave ? 'malattia' : 'presenza_manuale';
+      const operationType = 'presenza_manuale';
       const operationPath = await generateOperationPath(operationType, attendanceData.user_id, attendanceDate);
       const readableId = generateReadableId(operationType, attendanceDate, attendanceData.user_id);
 
@@ -249,7 +200,6 @@ export const useUnifiedAttendances = () => {
         notes: attendanceData.notes ? `${attendanceData.notes} - ${readableId}` : readableId,
         is_manual: true,
         is_business_trip: false,
-        is_sick_leave: attendanceData.is_sick_leave || false,
         created_by: user?.id,
       };
 
@@ -278,9 +228,7 @@ export const useUnifiedAttendances = () => {
       console.log('✅ SUCCESS CALLBACK - Presenza salvata con validazione anti-conflitto');
       toast({
         title: "Presenza salvata",
-        description: data.is_sick_leave ? 
-          "La malattia è stata registrata con controlli anti-conflitto incluse le trasferte" : 
-          "La presenza manuale è stata registrata con controlli anti-conflitto incluse le trasferte",
+        description: "La presenza manuale è stata registrata con controlli anti-conflitto incluse le trasferte",
       });
     },
     onError: (error: any) => {

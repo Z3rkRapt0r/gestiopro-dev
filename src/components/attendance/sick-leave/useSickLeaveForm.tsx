@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { useUnifiedAttendances } from "@/hooks/useUnifiedAttendances";
+import { useSickLeaves } from "@/hooks/useSickLeaves";
 import { useSickLeaveValidation } from "./useSickLeaveValidation";
 import { SickLeaveFormData } from "./types";
 
@@ -10,7 +10,7 @@ export function useSickLeaveForm(onSuccess?: () => void) {
   const [endDate, setEndDate] = useState<Date>();
   const [notes, setNotes] = useState<string>("");
 
-  const { createManualAttendance } = useUnifiedAttendances();
+  const { createSickLeave, verifyDates } = useSickLeaves();
   
   const {
     validationError,
@@ -86,39 +86,35 @@ export function useSickLeaveForm(onSuccess?: () => void) {
       return;
     }
 
-    // Generatore di date basato su stringhe pure (senza oggetti Date intermedi)
-    const generateDateStrings = (startDateStr: string, endDateStr: string) => {
-      const dates = [];
-      let currentDateStr = startDateStr;
-      
-      while (currentDateStr <= endDateStr) {
-        dates.push(currentDateStr);
-        
-        // Incrementa la data come stringa (senza timezone issues)
-        const [year, month, day] = currentDateStr.split('-').map(Number);
-        const nextDay = day + 1;
-        const nextDate = new Date(year, month - 1, nextDay);
-        currentDateStr = format(nextDate, 'yyyy-MM-dd');
-      }
-      
-      return dates;
-    };
-
-    // Genera tutte le date da registrare usando solo stringhe
+    // Usa la nuova tabella dedicata con approccio periodo-based
     const startDateString = format(startDate, 'yyyy-MM-dd');
     const endDateString = format(endDate || startDate, 'yyyy-MM-dd');
-    const datesToProcess = generateDateStrings(startDateString, endDateString);
+    
+    console.log('🏥 Registrando malattia nella tabella dedicata:', {
+      selectedUserId,
+      startDateString,
+      endDateString,
+      notes
+    });
 
-    // Crea un record di presenza per ogni giorno di malattia
-    for (const dateStr of datesToProcess) {
-      await createManualAttendance({
-        user_id: selectedUserId,
-        date: dateStr,
-        check_in_time: null,
-        check_out_time: null,
-        is_sick_leave: true,
-        notes: notes || `Malattia registrata manualmente${datesToProcess.length > 1 ? ` (dal ${format(startDate, 'dd/MM/yyyy')} al ${format(endDate || startDate, 'dd/MM/yyyy')})` : ''}`,
-      });
+    // Crea un singolo record nella tabella sick_leaves (gestione periodo-based)
+    await createSickLeave({
+      user_id: selectedUserId,
+      start_date: startDateString,
+      end_date: endDateString,
+      notes: notes || `Malattia registrata manualmente${endDate ? ` (dal ${format(startDate, 'dd/MM/yyyy')} al ${format(endDate, 'dd/MM/yyyy')})` : ''}`,
+    });
+
+    // Verifica immediatamente l'integrità delle date inserite
+    try {
+      const verification = await verifyDates(selectedUserId, startDateString, endDateString);
+      console.log('✅ VERIFICA POST-INSERIMENTO:', verification);
+      
+      if (!verification.is_valid) {
+        alert(`⚠️ ATTENZIONE: Verifica date - Giorni attesi: ${verification.expected_days}, giorni effettivi: ${verification.actual_days}`);
+      }
+    } catch (error) {
+      console.error('Errore verifica post-inserimento:', error);
     }
 
     // Reset form
