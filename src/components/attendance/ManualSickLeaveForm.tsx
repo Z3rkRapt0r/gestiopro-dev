@@ -156,8 +156,8 @@ export function ManualSickLeaveForm({ onSuccess }: ManualSickLeaveFormProps) {
     const dates = [];
     
     while (currentDate <= finalEndDate) {
-      dates.push(format(currentDate, 'yyyy-MM-dd'));
-      currentDate.setDate(currentDate.getDate() + 1);
+      dates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }
 
     try {
