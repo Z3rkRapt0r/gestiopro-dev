@@ -86,19 +86,20 @@ export function useSickLeaveForm(onSuccess?: () => void) {
       return;
     }
 
-    // Genera tutte le date da registrare come malattia
+    // Genera tutte le date da registrare come malattia usando solo stringhe
     const startDateString = format(startDate, 'yyyy-MM-dd');
     const endDateString = format(endDate || startDate, 'yyyy-MM-dd');
+    
+    // Calcola i giorni da startDate a endDate inclusi
+    const startMs = new Date(startDateString + 'T00:00:00').getTime();
+    const endMs = new Date(endDateString + 'T00:00:00').getTime();
+    const dayDiff = Math.floor((endMs - startMs) / (1000 * 60 * 60 * 24)) + 1;
+    
     const dates = [];
-    
-    // Genera date usando solo stringhe, come nel sistema ferie
-    const start = new Date(startDateString);
-    const end = new Date(endDateString);
-    const currentDate = new Date(start);
-    
-    while (currentDate <= end) {
+    for (let i = 0; i < dayDiff; i++) {
+      const currentMs = startMs + (i * 1000 * 60 * 60 * 24);
+      const currentDate = new Date(currentMs);
       dates.push(format(currentDate, 'yyyy-MM-dd'));
-      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     try {
