@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -187,25 +187,34 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
-                        key={`${form.watch('user_id')}-${conflictDates.length}-${conflictsLoading}`}
+                        key={`overtime-calendar-${form.watch('user_id')}-${conflictDates.length}`}
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) => {
-                          console.log('🔍 [OvertimeCalendar] Checking date:', format(date, 'yyyy-MM-dd'), {
-                            isAfterToday: date > new Date(),
-                            isBefore1900: date < new Date("1900-01-01"),
-                            conflictDatesCount: conflictDates.length,
+                        disabled={useMemo(() => (date: Date) => {
+                          const today = new Date();
+                          today.setHours(23, 59, 59, 999); // Fine della giornata di oggi
+                          const minDate = new Date("1900-01-01");
+                          
+                          const isAfterToday = date > today;
+                          const isBefore1900 = date < minDate;
+                          const isConflictDate = !conflictsLoading && isDateDisabled(date);
+                          
+                          const finalResult = isAfterToday || isBefore1900 || isConflictDate;
+                          
+                          console.log(`🔍 [OvertimeCalendar] ${format(date, 'yyyy-MM-dd')} -> DISABLED: ${finalResult ? 'YES' : 'NO'}`, {
+                            isAfterToday,
+                            isBefore1900,
+                            isConflictDate,
                             conflictsLoading,
-                            isConflictDate: isDateDisabled(date)
+                            conflictCount: conflictDates.length,
+                            finalResult
                           });
                           
-                          return date > new Date() || 
-                                 date < new Date("1900-01-01") ||
-                                 (!conflictsLoading && isDateDisabled(date));
-                        }}
+                          return finalResult;
+                        }, [conflictDates, conflictsLoading, isDateDisabled])}
                         initialFocus
                       />
                     </PopoverContent>

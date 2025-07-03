@@ -103,16 +103,22 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
   }, [selectedEmployeeId, calculateConflicts]);
 
   const isDateDisabled = useCallback((date: Date) => {
+    if (!date || conflictDates.length === 0) {
+      return false;
+    }
+    
     const dateStr = format(date, 'yyyy-MM-dd');
     const isDisabled = conflictDates.some(conflictDate => {
       const conflictDateStr = format(conflictDate, 'yyyy-MM-dd');
       return dateStr === conflictDateStr;
     });
     
-    console.log(`🔍 [isDateDisabled] Checking ${dateStr}:`, {
-      conflictDatesCount: conflictDates.length,
+    // Debug logging migliorato - mostra valori espliciti
+    console.log(`🔍 [isDateDisabled] ${dateStr} -> DISABLED: ${isDisabled ? 'YES' : 'NO'}`, {
+      inputDate: dateStr,
+      conflictCount: conflictDates.length,
       conflictDates: conflictDates.map(d => format(d, 'yyyy-MM-dd')),
-      isDisabled
+      result: isDisabled
     });
     
     return isDisabled;
