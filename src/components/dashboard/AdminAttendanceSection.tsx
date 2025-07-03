@@ -5,11 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import NewAttendanceCalendar from '@/components/attendance/NewAttendanceCalendar';
 import AdminBusinessTripsManagement from '@/components/admin/AdminBusinessTripsManagement';
 import AttendanceExportSection from '@/components/attendance/AttendanceExportSection';
-import ManualAttendanceSection from '@/components/attendance/ManualAttendanceSection';
+import AttendanceManualForm from '@/components/attendance/AttendanceManualForm';
+import { ManualSickLeaveForm } from '@/components/attendance/ManualSickLeaveForm';
 import OperatorCalendarSection from '@/components/attendance/OperatorCalendarSection';
 import AttendanceArchiveSection from '@/components/attendance/AttendanceArchiveSection';
 import SickLeaveArchiveSection from '@/components/attendance/SickLeaveArchiveSection';
-import { Calendar, User, Plus, Briefcase, Archive, FileText, Download } from 'lucide-react';
+import { Calendar, User, Plus, Heart, Briefcase, Archive, FileText, Download } from 'lucide-react';
 
 export default function AdminAttendanceSection() {
   const [activeTab, setActiveTab] = useState("calendar");
@@ -59,11 +60,18 @@ export default function AdminAttendanceSection() {
                   <span>Cal. Operatore</span>
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="manual" 
+                  value="sick-form" 
+                  className="flex-shrink-0 flex items-center gap-1 px-2 py-1.5 text-xs whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm rounded transition-all duration-200"
+                >
+                  <Heart className="h-3 w-3 flex-shrink-0" />
+                  <span>Form Malattie</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="attendance-form" 
                   className="flex-shrink-0 flex items-center gap-1 px-2 py-1.5 text-xs whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm rounded transition-all duration-200"
                 >
                   <Plus className="h-3 w-3 flex-shrink-0" />
-                  <span>Inserimento</span>
+                  <span>Form Presenze</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="business-trips" 
@@ -115,11 +123,19 @@ export default function AdminAttendanceSection() {
               </TabsTrigger>
               
               <TabsTrigger 
-                value="manual" 
+                value="sick-form" 
+                className="flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs lg:text-sm font-medium whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:scale-105 rounded-lg transition-all duration-200 hover:bg-background/50 hover:shadow-sm group flex-1 min-w-0"
+              >
+                <Heart className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0 group-data-[state=active]:text-primary" />
+                <span className="truncate">Form Malattie</span>
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="attendance-form" 
                 className="flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs lg:text-sm font-medium whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:scale-105 rounded-lg transition-all duration-200 hover:bg-background/50 hover:shadow-sm group flex-1 min-w-0"
               >
                 <Plus className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0 group-data-[state=active]:text-primary" />
-                <span className="truncate">Inserimento Presenza</span>
+                <span className="truncate">Form Presenze</span>
               </TabsTrigger>
               
               <TabsTrigger 
@@ -171,9 +187,15 @@ export default function AdminAttendanceSection() {
             </div>
           </TabsContent>
 
-          <TabsContent value="manual" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+          <TabsContent value="sick-form" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
             <div className="bg-gradient-to-br from-background to-muted/20 rounded-lg p-3 lg:p-4 shadow-sm border border-muted/40">
-              <ManualAttendanceSection />
+              <ManualSickLeaveForm />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="attendance-form" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+            <div className="bg-gradient-to-br from-background to-muted/20 rounded-lg p-3 lg:p-4 shadow-sm border border-muted/40">
+              <AttendanceManualForm />
             </div>
           </TabsContent>
 
