@@ -44,13 +44,13 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
     resolver: zodResolver(overtimeSchema),
     defaultValues: {
       user_id: '',
-      date: new Date(),
+      date: undefined,
       hours: 0,
       notes: '',
     },
   });
 
-  const { isDateDisabled, isLoading: conflictsLoading } = useOvertimeConflicts(form.watch('user_id'));
+  const { conflictDates, isDateDisabled, isLoading: conflictsLoading } = useOvertimeConflicts(form.watch('user_id'));
 
   const onSubmit = async (data: OvertimeFormData) => {
     if (!profile?.id) {
@@ -209,9 +209,9 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
                       Controllo conflitti in corso...
                     </p>
                   )}
-                  {form.watch('user_id') && !conflictsLoading && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      Le date con ferie, permessi, malattie o trasferte sono disabilitate
+                  {form.watch('user_id') && !conflictsLoading && conflictDates.length > 0 && (
+                    <p className="text-sm text-orange-600 mt-1">
+                      ⚠️ {conflictDates.length} date disabilitate per conflitti con presenze, malattie, trasferte o ferie esistenti
                     </p>
                   )}
                 </FormItem>
