@@ -86,37 +86,39 @@ export function useSickLeaveForm(onSuccess?: () => void) {
       return;
     }
 
-    // Usa LA STESSA LOGICA IDENTICA del sistema ferie che funziona
-    const startDateFormatted = format(startDate, 'yyyy-MM-dd');
-    const endDateFormatted = format(endDate || startDate, 'yyyy-MM-dd');
-    
-    // Se è un solo giorno
-    if (!endDate || startDateFormatted === endDateFormatted) {
+    // Generatore di date basato su stringhe pure (senza oggetti Date intermedi)
+    const generateDateStrings = (startDateStr: string, endDateStr: string) => {
+      const dates = [];
+      let currentDateStr = startDateStr;
+      
+      while (currentDateStr <= endDateStr) {
+        dates.push(currentDateStr);
+        
+        // Incrementa la data come stringa (senza timezone issues)
+        const [year, month, day] = currentDateStr.split('-').map(Number);
+        const nextDay = day + 1;
+        const nextDate = new Date(year, month - 1, nextDay);
+        currentDateStr = format(nextDate, 'yyyy-MM-dd');
+      }
+      
+      return dates;
+    };
+
+    // Genera tutte le date da registrare usando solo stringhe
+    const startDateString = format(startDate, 'yyyy-MM-dd');
+    const endDateString = format(endDate || startDate, 'yyyy-MM-dd');
+    const datesToProcess = generateDateStrings(startDateString, endDateString);
+
+    // Crea un record di presenza per ogni giorno di malattia
+    for (const dateStr of datesToProcess) {
       await createManualAttendance({
         user_id: selectedUserId,
-        date: startDateFormatted,
+        date: dateStr,
         check_in_time: null,
         check_out_time: null,
         is_sick_leave: true,
-        notes: notes || "Malattia registrata manualmente",
+        notes: notes || `Malattia registrata manualmente${datesToProcess.length > 1 ? ` (dal ${format(startDate, 'dd/MM/yyyy')} al ${format(endDate || startDate, 'dd/MM/yyyy')})` : ''}`,
       });
-    } else {
-      // Se sono più giorni, crea un record per ogni giorno
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const current = new Date(start);
-      
-      while (current <= end) {
-        await createManualAttendance({
-          user_id: selectedUserId,
-          date: format(current, 'yyyy-MM-dd'),
-          check_in_time: null,
-          check_out_time: null,
-          is_sick_leave: true,
-          notes: notes || `Malattia registrata manualmente (dal ${format(startDate, 'dd/MM/yyyy')} al ${format(endDate, 'dd/MM/yyyy')})`,
-        });
-        current.setDate(current.getDate() + 1);
-      }
     }
 
     // Reset form
