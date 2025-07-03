@@ -184,6 +184,23 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     });
   };
 
+  // Ottieni i dettagli delle ferie per la data selezionata
+  const getLeaveRequestForDate = (date: Date) => {
+    if (!leaveRequests) return null;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return leaveRequests.find(request => {
+      if (request.user_id !== employee.id || request.status !== 'approved' || request.type !== 'ferie') return false;
+      if (!request.date_from || !request.date_to) return false;
+      return dateStr >= request.date_from && dateStr <= request.date_to;
+    });
+  };
+
+  // Ottieni i dettagli della malattia per la data selezionata
+  const getSickLeaveForDate = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return userSickLeaves.find(sickDay => sickDay.date === dateStr);
+  };
+
   // Genera le date che dovrebbero essere mostrate come assenti (rosse) dall'inizio dell'anno
   const getAbsentDates = async () => {
     const dates = [];
@@ -231,6 +248,8 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   };
 
   const selectedDateBusinessTrip = selectedDate ? getBusinessTripForDate(selectedDate) : null;
+  const selectedDateLeave = selectedDate ? getLeaveRequestForDate(selectedDate) : null;
+  const selectedDateSickLeave = selectedDate ? getSickLeaveForDate(selectedDate) : null;
 
   // Calcola le statistiche per il riepilogo
   const presentDaysCount = attendanceDates.length;
@@ -272,12 +291,12 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
               </div>
               <div className="text-lg font-bold text-blue-700">{leaveDaysCount}</div>
             </div>
-            <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                <span className="text-xs font-medium text-purple-700">Malattia</span>
+                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                <span className="text-xs font-medium text-orange-700">Malattia</span>
               </div>
-              <div className="text-lg font-bold text-purple-700">{sickLeaveDaysCount}</div>
+              <div className="text-lg font-bold text-orange-700">{sickLeaveDaysCount}</div>
             </div>
             <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
               <div className="flex items-center gap-2 mb-1">
@@ -391,8 +410,8 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                     fontWeight: 'bold'
                   },
                   sickLeave: {
-                    backgroundColor: '#e0e7ff',
-                    color: '#7c3aed',
+                    backgroundColor: '#fed7aa',
+                    color: '#ea580c',
                     fontWeight: 'bold'
                   }
                 }}
@@ -409,7 +428,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                 <span>Giorni in ferie</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <div className="w-3 h-3 bg-purple-200 rounded"></div>
+                <div className="w-3 h-3 bg-orange-200 rounded"></div>
                 <span>Giorni di malattia</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
@@ -501,6 +520,60 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                       <span className="text-gray-600">Motivo:</span>
                       <div className="font-medium text-yellow-700">
                         {selectedDateBusinessTrip.reason}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : selectedDateSickLeave ? (
+              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span className="font-semibold text-orange-700 text-sm">In Malattia</span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="text-gray-600">Periodo:</span>
+                    <div className="font-medium text-orange-700">
+                      {selectedDateSickLeave.profiles?.first_name} {selectedDateSickLeave.profiles?.last_name}
+                    </div>
+                  </div>
+                  {selectedDateSickLeave.reference_code && (
+                    <div>
+                      <span className="text-gray-600">Codice:</span>
+                      <div className="font-medium text-orange-700">
+                        {selectedDateSickLeave.reference_code}
+                      </div>
+                    </div>
+                  )}
+                  {selectedDateSickLeave.notes && (
+                    <div>
+                      <span className="text-gray-600">Note:</span>
+                      <div className="font-medium text-orange-700">
+                        {selectedDateSickLeave.notes}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : selectedDateLeave ? (
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="font-semibold text-blue-700 text-sm">In Ferie</span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="text-gray-600">Periodo:</span>
+                    <div className="font-medium text-blue-700">
+                      {format(new Date(selectedDateLeave.date_from!), 'dd/MM/yyyy')} - {format(new Date(selectedDateLeave.date_to!), 'dd/MM/yyyy')}
+                    </div>
+                  </div>
+                  {selectedDateLeave.note && (
+                    <div>
+                      <span className="text-gray-600">Note:</span>
+                      <div className="font-medium text-blue-700">
+                        {selectedDateLeave.note}
                       </div>
                     </div>
                   )}
