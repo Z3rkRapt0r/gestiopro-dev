@@ -86,48 +86,48 @@ export function useSickLeaveForm(onSuccess?: () => void) {
       return;
     }
 
-    // Genera tutte le date da registrare come malattia usando solo stringhe
-    const startDateString = format(startDate, 'yyyy-MM-dd');
-    const endDateString = format(endDate || startDate, 'yyyy-MM-dd');
+    // Usa LA STESSA LOGICA IDENTICA del sistema ferie che funziona
+    const startDateFormatted = format(startDate, 'yyyy-MM-dd');
+    const endDateFormatted = format(endDate || startDate, 'yyyy-MM-dd');
     
-    // Calcola i giorni da startDate a endDate inclusi
-    const startMs = new Date(startDateString + 'T00:00:00').getTime();
-    const endMs = new Date(endDateString + 'T00:00:00').getTime();
-    const dayDiff = Math.floor((endMs - startMs) / (1000 * 60 * 60 * 24)) + 1;
-    
-    const dates = [];
-    for (let i = 0; i < dayDiff; i++) {
-      const currentMs = startMs + (i * 1000 * 60 * 60 * 24);
-      const currentDate = new Date(currentMs);
-      dates.push(format(currentDate, 'yyyy-MM-dd'));
-    }
-
-    try {
-      // Crea un record di presenza per ogni giorno di malattia
-      for (const dateStr of dates) {
+    // Se è un solo giorno
+    if (!endDate || startDateFormatted === endDateFormatted) {
+      await createManualAttendance({
+        user_id: selectedUserId,
+        date: startDateFormatted,
+        check_in_time: null,
+        check_out_time: null,
+        is_sick_leave: true,
+        notes: notes || "Malattia registrata manualmente",
+      });
+    } else {
+      // Se sono più giorni, crea un record per ogni giorno
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const current = new Date(start);
+      
+      while (current <= end) {
         await createManualAttendance({
           user_id: selectedUserId,
-          date: dateStr,
+          date: format(current, 'yyyy-MM-dd'),
           check_in_time: null,
           check_out_time: null,
           is_sick_leave: true,
-          notes: notes || `Malattia registrata manualmente${dates.length > 1 ? ` (dal ${format(startDate, 'dd/MM/yyyy')} al ${format(endDate || startDate, 'dd/MM/yyyy')})` : ''}`,
+          notes: notes || `Malattia registrata manualmente (dal ${format(startDate, 'dd/MM/yyyy')} al ${format(endDate, 'dd/MM/yyyy')})`,
         });
+        current.setDate(current.getDate() + 1);
       }
-
-      // Reset form
-      setSelectedUserId("");
-      setStartDate(undefined);
-      setEndDate(undefined);
-      setNotes("");
-      setValidationError(null);
-      onSuccess?.();
-      
-      alert(`Malattia registrata con successo per ${dates.length} giorno/i`);
-    } catch (error) {
-      console.error('Errore nella registrazione malattia:', error);
-      alert('Errore nella registrazione della malattia');
     }
+
+    // Reset form
+    setSelectedUserId("");
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setNotes("");
+    setValidationError(null);
+    onSuccess?.();
+    
+    alert("Malattia registrata con successo");
   };
 
   const formData: SickLeaveFormData = {
