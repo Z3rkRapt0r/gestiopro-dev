@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -50,7 +50,7 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
     },
   });
 
-  const { conflictDates, isDateDisabled, isLoading: conflictsLoading } = useOvertimeConflicts(form.watch('user_id'));
+  const { isDateDisabled, isLoading: conflictsLoading } = useOvertimeConflicts(form.watch('user_id'));
 
   const onSubmit = async (data: OvertimeFormData) => {
     if (!profile?.id) {
@@ -187,34 +187,16 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                     <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
-                        key={`overtime-calendar-${form.watch('user_id')}-${conflictDates.length}`}
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={useMemo(() => (date: Date) => {
-                          const today = new Date();
-                          today.setHours(23, 59, 59, 999); // Fine della giornata di oggi
-                          const minDate = new Date("1900-01-01");
-                          
-                          const isAfterToday = date > today;
-                          const isBefore1900 = date < minDate;
-                          const isConflictDate = !conflictsLoading && isDateDisabled(date);
-                          
-                          const finalResult = isAfterToday || isBefore1900 || isConflictDate;
-                          
-                          console.log(`🔍 [OvertimeCalendar] ${format(date, 'yyyy-MM-dd')} -> DISABLED: ${finalResult ? 'YES' : 'NO'}`, {
-                            isAfterToday,
-                            isBefore1900,
-                            isConflictDate,
-                            conflictsLoading,
-                            conflictCount: conflictDates.length,
-                            finalResult
-                          });
-                          
-                          return finalResult;
-                        }, [conflictDates, conflictsLoading, isDateDisabled])}
+                        disabled={(date) =>
+                          date > new Date() || 
+                          date < new Date("1900-01-01") ||
+                          isDateDisabled(date)
+                        }
                         initialFocus
                       />
                     </PopoverContent>
@@ -227,7 +209,7 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
                   )}
                   {form.watch('user_id') && !conflictsLoading && (
                     <p className="text-sm text-gray-600 mt-1">
-                      Le date con ferie, permessi, malattie o trasferte sono disabilitate ({conflictDates.length} conflitti trovati)
+                      Le date con ferie, permessi, malattie o trasferte sono disabilitate
                     </p>
                   )}
                 </FormItem>
