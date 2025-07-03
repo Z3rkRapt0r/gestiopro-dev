@@ -12,6 +12,7 @@ import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
+import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
 import { formatTime, isWorkingDay } from '@/utils/attendanceUtils';
 import AttendanceCalendarSidebar from './calendar/AttendanceCalendarSidebar';
 import PresentEmployeesSection from './sections/PresentEmployeesSection';
@@ -32,6 +33,7 @@ export default function NewDailyAttendanceCalendar() {
   const { leaveRequests } = useLeaveRequests();
   const { businessTrips } = useBusinessTrips();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
+  const { getSickLeavesForDate, isUserSickOnDate } = useSickLeavesForCalendars();
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
 
@@ -47,6 +49,14 @@ export default function NewDailyAttendanceCalendar() {
       
       const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id);
       if (isOnLeave) continue;
+      
+      // Verifica se è in malattia usando il nuovo hook
+      const isSick = isUserSickOnDate(emp.id, selectedDateStr);
+      if (isSick) continue;
+      
+      // Verifica se è in trasferta
+      const isOnBusinessTrip = onBusinessTripEmployees.some(empTrip => empTrip.id === emp.id);
+      if (isOnBusinessTrip) continue;
       
       const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
       if (shouldTrack && isWorkingDay(selectedDate, workSchedule)) {
@@ -232,17 +242,28 @@ export default function NewDailyAttendanceCalendar() {
 
   console.log('👥 Dipendenti presenti finali:', presentEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
 
-  // Dipendenti in malattia
-  const sickEmployees = selectedDateAttendances
-    .filter(att => att.is_sick_leave)
-    .map(att => {
-      const employee = employees?.find(emp => emp.id === att.user_id);
-      return {
-        ...employee,
-        attendance: att,
-      };
-    })
-    .filter(emp => emp.id);
+  // Dipendenti in malattia - NUOVA LOGICA con tabella sick_leaves
+  const sickLeaveDays = getSickLeavesForDate(selectedDateStr);
+  const sickEmployees = sickLeaveDays.map(sickDay => {
+    const employee = employees?.find(emp => emp.id === sickDay.user_id);
+    // Cerca una presenza manuale eventualmente registrata per questo giorno di malattia
+    const attendance = selectedDateAttendances.find(att => 
+      att.user_id === sickDay.user_id && att.is_sick_leave
+    );
+    
+    return {
+      ...employee,
+      attendance: attendance || {
+        notes: sickDay.notes,
+        date: sickDay.date,
+        user_id: sickDay.user_id,
+        is_sick_leave: true
+      },
+      sickLeaveId: sickDay.sick_leave_id,
+    };
+  }).filter(emp => emp.id);
+
+  console.log('🤒 Dipendenti in malattia dalla nuova tabella:', sickEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
 
   // Dipendenti in ferie
   const onLeaveEmployees = [];

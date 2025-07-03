@@ -11,6 +11,7 @@ import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useRealisticAttendanceStats } from '@/hooks/useRealisticAttendanceStats';
 import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceStats';
+import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
 import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 
@@ -26,6 +27,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   const { leaveRequests } = useLeaveRequests();
   const stats = useRealisticAttendanceStats(employee, attendances, workSchedule);
   const { leaveBalance } = useEmployeeLeaveBalanceStats(employee?.id);
+  const { getSickLeavesForUser, isUserSickOnDate } = useSickLeavesForCalendars();
 
   // Funzione per verificare se un giorno è lavorativo
   const isWorkingDay = (date: Date) => {
@@ -115,15 +117,16 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
     return uniqueDates;
   }, [attendances, leaveRequests, employee?.id]);
 
-  // Date con presenze per il calendario
+  // Date con malattie per il calendario - NUOVA LOGICA con tabella sick_leaves
   const sickLeaveDates = useMemo(() => {
-    return attendances
-      .filter(att => att.is_sick_leave)
-      .map(att => {
-        const [year, month, day] = att.date.split('-').map(Number);
-        return new Date(year, month - 1, day);
-      });
-  }, [attendances]);
+    if (!employee?.id) return [];
+    
+    const sickDays = getSickLeavesForUser(employee.id);
+    return sickDays.map(sickDay => {
+      const [year, month, day] = sickDay.date.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    });
+  }, [employee?.id, getSickLeavesForUser]);
 
   // Calcola i giorni di assenza dall'inizio dell'anno (o dalla data di assunzione se più tarda) escludendo le ferie approvate
   const absentDates = useMemo(() => {
@@ -150,8 +153,11 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
         const hasAttendance = attendances.some(att => att.date === dateStr);
         const isOnApprovedLeave = isDateInApprovedLeave(tempDate);
         
-        // Se è un giorno lavorativo, non ha presenza, non è in ferie approvate e la data è passata
-        if (isWorkingDay(tempDate) && !hasAttendance && !isOnApprovedLeave && tempDate < currentDate) {
+        // Verifica se è in malattia usando il nuovo hook
+        const isSick = isUserSickOnDate(employee.id, dateStr);
+        
+        // Se è un giorno lavorativo, non ha presenza, non è in ferie approvate, non è in malattia e la data è passata
+        if (isWorkingDay(tempDate) && !hasAttendance && !isOnApprovedLeave && !isSick && tempDate < currentDate) {
           absentDates.push(new Date(tempDate));
         }
       }

@@ -115,18 +115,23 @@ export const useBusinessTrips = () => {
         }
       }
 
-      // 3. CONTROLLO MALATTIE (da unified_attendances con is_sick_leave = true)
-      const { data: sickLeaveAttendances } = await supabase
-        .from('unified_attendances')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_sick_leave', true)
-        .gte('date', startDate)
-        .lte('date', endDate);
+      // 3. CONTROLLO MALATTIE (da tabella sick_leaves)
+      const { data: sickLeaves } = await supabase
+        .from('sick_leaves')
+        .select('start_date, end_date, notes')
+        .eq('user_id', userId);
 
-      if (sickLeaveAttendances && sickLeaveAttendances.length > 0) {
-        const sickDays = sickLeaveAttendances.map(att => format(new Date(att.date), 'dd/MM/yyyy')).join(', ');
-        conflicts.push(`Conflitto critico: esistono giorni di malattia registrati nelle seguenti date: ${sickDays}`);
+      if (sickLeaves && sickLeaves.length > 0) {
+        for (const sickLeave of sickLeaves) {
+          const sickStart = new Date(sickLeave.start_date);
+          const sickEnd = new Date(sickLeave.end_date);
+          const newStart = new Date(startDate);
+          const newEnd = new Date(endDate);
+          
+          if ((newStart <= sickEnd && newEnd >= sickStart)) {
+            conflicts.push(`Conflitto critico: esiste un periodo di malattia dal ${format(sickStart, 'dd/MM/yyyy')} al ${format(sickEnd, 'dd/MM/yyyy')}`);
+          }
+        }
       }
 
       console.log('✅ Validazione trasferta completata:', { 

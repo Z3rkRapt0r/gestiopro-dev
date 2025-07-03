@@ -160,26 +160,31 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 4. CONTROLLO MALATTIE (conflitti critici per tutti i tipi)
-      const { data: sickLeaveAttendances } = await supabase
-        .from('unified_attendances')
-        .select('date')
-        .eq('user_id', userId)
-        .eq('is_sick_leave', true);
+      // 4. CONTROLLO MALATTIE (da tabella sick_leaves - conflitti critici per tutti i tipi)
+      const { data: sickLeaves } = await supabase
+        .from('sick_leaves')
+        .select('start_date, end_date, notes')
+        .eq('user_id', userId);
 
-      if (sickLeaveAttendances) {
-        sickLeaveAttendances.forEach(attendance => {
-          const dateStr = format(new Date(attendance.date), 'yyyy-MM-dd');
-          conflictDates.add(dateStr);
-          details.push({
-            date: dateStr,
-            type: 'sick_leave',
-            description: 'Giorno di malattia registrato',
-            severity: 'critical'
+      if (sickLeaves) {
+        for (const sickLeave of sickLeaves) {
+          const startDate = new Date(sickLeave.start_date);
+          const endDate = new Date(sickLeave.end_date);
+          const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+          
+          allDays.forEach(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            conflictDates.add(dateStr);
+            details.push({
+              date: dateStr,
+              type: 'sick_leave',
+              description: `Malattia registrata${sickLeave.notes ? ` - ${sickLeave.notes}` : ''}`,
+              severity: 'critical'
+            });
           });
-        });
-        
-        summary.sickLeaves += sickLeaveAttendances.length;
+          
+          summary.sickLeaves += allDays.length;
+        }
       }
 
       // 5. CONTROLLO PRESENZE ESISTENTI (solo per nuove presenze)
@@ -306,18 +311,23 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 3. CONTROLLO MALATTIE
-      const { data: sickLeaveAttendances } = await supabase
-        .from('unified_attendances')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_sick_leave', true)
-        .gte('date', startDate)
-        .lte('date', endDate);
+      // 3. CONTROLLO MALATTIE (da tabella sick_leaves)
+      const { data: sickLeaves } = await supabase
+        .from('sick_leaves')
+        .select('start_date, end_date, notes')
+        .eq('user_id', userId);
 
-      if (sickLeaveAttendances && sickLeaveAttendances.length > 0) {
-        const sickDays = sickLeaveAttendances.map(att => format(new Date(att.date), 'dd/MM/yyyy')).join(', ');
-        conflicts.push(`Conflitto critico: esistono giorni di malattia nelle seguenti date: ${sickDays}`);
+      if (sickLeaves && sickLeaves.length > 0) {
+        for (const sickLeave of sickLeaves) {
+          const sickStart = new Date(sickLeave.start_date);
+          const sickEnd = new Date(sickLeave.end_date);
+          const newStart = new Date(startDate);
+          const newEnd = new Date(endDate);
+          
+          if ((newStart <= sickEnd && newEnd >= sickStart)) {
+            conflicts.push(`Conflitto critico: esiste un periodo di malattia dal ${format(sickStart, 'dd/MM/yyyy')} al ${format(sickEnd, 'dd/MM/yyyy')}`);
+          }
+        }
       }
 
       return {
@@ -390,16 +400,19 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 4. CONTROLLO MALATTIE
-      const { data: sickLeaveAttendances } = await supabase
-        .from('unified_attendances')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_sick_leave', true)
-        .eq('date', date);
+      // 4. CONTROLLO MALATTIE (da tabella sick_leaves)
+      const { data: sickLeaves } = await supabase
+        .from('sick_leaves')
+        .select('start_date, end_date, notes')
+        .eq('user_id', userId);
 
-      if (sickLeaveAttendances && sickLeaveAttendances.length > 0) {
-        conflicts.push(`Conflitto critico: esiste un giorno di malattia registrato il ${format(targetDate, 'dd/MM/yyyy')}`);
+      if (sickLeaves && sickLeaves.length > 0) {
+        for (const sickLeave of sickLeaves) {
+          if (date >= sickLeave.start_date && date <= sickLeave.end_date) {
+            conflicts.push(`Conflitto critico: esiste un periodo di malattia che include il ${format(targetDate, 'dd/MM/yyyy')}`);
+            break;
+          }
+        }
       }
 
       return {
@@ -519,16 +532,19 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         conflicts.push(`Conflitto critico: esistono ferie approvate che includono il ${format(targetDate, 'dd/MM/yyyy')}`);
       }
 
-      // 3. CONTROLLO MALATTIE
-      const { data: sickLeaveAttendances } = await supabase
-        .from('unified_attendances')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_sick_leave', true)
-        .eq('date', date);
+      // 3. CONTROLLO MALATTIE (da tabella sick_leaves)
+      const { data: sickLeaves } = await supabase
+        .from('sick_leaves')
+        .select('start_date, end_date, notes')
+        .eq('user_id', userId);
 
-      if (sickLeaveAttendances && sickLeaveAttendances.length > 0) {
-        conflicts.push(`Conflitto critico: esiste un giorno di malattia registrato il ${format(targetDate, 'dd/MM/yyyy')}`);
+      if (sickLeaves && sickLeaves.length > 0) {
+        for (const sickLeave of sickLeaves) {
+          if (date >= sickLeave.start_date && date <= sickLeave.end_date) {
+            conflicts.push(`Conflitto critico: esiste un periodo di malattia che include il ${format(targetDate, 'dd/MM/yyyy')}`);
+            break;
+          }
+        }
       }
 
       // 4. CONTROLLO PERMESSI GIORNALIERI

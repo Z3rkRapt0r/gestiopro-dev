@@ -9,6 +9,7 @@ interface Employee {
   attendance: {
     notes?: string;
   };
+  sickLeaveId?: string;
 }
 
 interface SickEmployeesSectionProps {
@@ -38,9 +39,12 @@ export default function SickEmployeesSection({
                       Malattia
                     </Badge>
                   </div>
-                  {employee.attendance.notes && (
-                    <p className="text-xs text-gray-600">{employee.attendance.notes}</p>
-                  )}
+                   {employee.attendance?.notes && (
+                     <p className="text-xs text-gray-600">{employee.attendance.notes}</p>
+                   )}
+                   {employee.sickLeaveId && (
+                     <p className="text-xs text-orange-600">ID Malattia: {employee.sickLeaveId.slice(0, 8)}...</p>
+                   )}
                 </div>
               </div>
             </div>
