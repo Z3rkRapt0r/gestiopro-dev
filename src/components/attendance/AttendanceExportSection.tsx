@@ -16,8 +16,8 @@ import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { generateAttendancePDF } from '@/utils/pdfGenerator';
-import { generateAttendanceExcel } from '@/utils/excelGenerator';
 import { useToast } from '@/hooks/use-toast';
+import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
 
 type PeriodType = 'custom' | 'month' | 'year';
 
@@ -45,12 +45,12 @@ export default function AttendanceExportSection() {
   const [dateTo, setDateTo] = useState<Date>();
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [format_type, setFormatType] = useState<'excel' | 'pdf'>('excel');
   const [isExporting, setIsExporting] = useState(false);
   
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { settings: attendanceSettings } = useAttendanceSettings();
+  const { getSickLeavesForDate } = useSickLeavesForCalendars();
   
   // Fetch leave requests for the export period
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
@@ -220,8 +220,12 @@ export default function AttendanceExportSection() {
             overtime.user_id === employeeId && overtime.date === dateStr
           );
 
-          // Only include dates with attendance, leave data or overtime
-          if (attendance || leaveForDate.length > 0 || overtimeForDate) {
+          // Find sick leaves for this date/employee
+          const sickLeavesForDate = getSickLeavesForDate(dateStr);
+          const isSickLeave = sickLeavesForDate.some(sl => sl.user_id === employeeId);
+
+          // Only include dates with attendance, leave data, overtime, or sick leave
+          if (attendance || leaveForDate.length > 0 || overtimeForDate || isSickLeave) {
             enrichedData.push({
               id: attendance?.id || `virtual-${employeeId}-${dateStr}`,
               user_id: employeeId,
@@ -230,7 +234,7 @@ export default function AttendanceExportSection() {
               check_out_time: attendance?.check_out_time || null,
               is_manual: attendance?.is_manual || false,
               is_business_trip: attendance?.is_business_trip || false,
-              is_sick_leave: attendance?.is_sick_leave || false,
+              is_sick_leave: isSickLeave, // Use new sick leave data
               is_late: attendance?.is_late || false,
               late_minutes: attendance?.late_minutes || 0,
               notes: attendance?.notes || '',
@@ -261,38 +265,22 @@ export default function AttendanceExportSection() {
         return;
       }
 
-      if (format_type === 'pdf') {
-        const selectedEmployeeData = selectedEmployee ? 
-          employees?.find(emp => emp.id === selectedEmployee) : null;
-        
-        await generateAttendancePDF({
-          data: enrichedData,
-          dateFrom: from,
-          dateTo: to,
-          exportType,
-          selectedEmployee: selectedEmployeeData,
-          attendanceSettings
-        });
-        
-        toast({
-          title: "Successo",
-          description: `PDF generato con successo per ${enrichedData.length} record`
-        });
-      } else {
-        await generateAttendanceExcel({
-          data: enrichedData,
-          dateFrom: from,
-          dateTo: to,
-          exportType,
-          selectedEmployee: selectedEmployee ? employees?.find(emp => emp.id === selectedEmployee) : null,
-          attendanceSettings
-        });
-        
-        toast({
-          title: "Successo",
-          description: `Excel generato con successo per ${enrichedData.length} record`
-        });
-      }
+      const selectedEmployeeData = selectedEmployee ? 
+        employees?.find(emp => emp.id === selectedEmployee) : null;
+      
+      await generateAttendancePDF({
+        data: enrichedData,
+        dateFrom: from,
+        dateTo: to,
+        exportType,
+        selectedEmployee: selectedEmployeeData,
+        attendanceSettings
+      });
+      
+      toast({
+        title: "Successo",
+        description: `PDF generato con successo per ${enrichedData.length} record`
+      });
     } catch (error) {
       console.error('Errore durante l\'esportazione:', error);
       toast({
@@ -509,30 +497,6 @@ export default function AttendanceExportSection() {
             </div>
           )}
 
-          {/* Formato di esportazione */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Formato</label>
-            <Select value={format_type} onValueChange={(value: 'excel' | 'pdf') => setFormatType(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="excel">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-green-600" />
-                    Excel (.xlsx)
-                  </div>
-                </SelectItem>
-                <SelectItem value="pdf">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-red-600" />
-                    PDF (.pdf)
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Pulsante esportazione */}
           <Button 
             onClick={handleExport} 
@@ -544,7 +508,7 @@ export default function AttendanceExportSection() {
             }
           >
             <Download className="w-4 h-4 mr-2" />
-            {isExporting ? 'Esportazione in corso...' : `Esporta ${format_type.toUpperCase()}`}
+            {isExporting ? 'Esportazione in corso...' : 'Esporta PDF'}
           </Button>
 
           {/* Anteprima dati */}
@@ -559,7 +523,7 @@ export default function AttendanceExportSection() {
                   {exportType === 'operator' && selectedEmployee && (
                     <div>Operatore: {employees?.find(e => e.id === selectedEmployee)?.first_name} {employees?.find(e => e.id === selectedEmployee)?.last_name}</div>
                   )}
-                  <div>Formato: {format_type.toUpperCase()}</div>
+                  <div>Formato: PDF</div>
                   <div>Filtro Periodo: {
                     periodType === 'custom' ? 'Personalizzato' :
                     periodType === 'month' ? `${MONTHS[parseInt(selectedMonth)].label} ${selectedYear}` : 
