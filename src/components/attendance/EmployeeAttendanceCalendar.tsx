@@ -119,7 +119,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   };
 
   // Ottieni le presenze per la data selezionata
-  const selectedDateStr = selectedDate?.toISOString().split('T')[0];
+  const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined;
   const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
 
   // Ottieni le date con presenze (escludendo ferie)
@@ -222,7 +222,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
       const shouldShow = await shouldShowAsAbsent(d);
       if (shouldShow) {
         // Verifica se NON ha presenza per questa data E non è in trasferta
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = format(d, 'yyyy-MM-dd');
         const hasAttendance = attendances.some(att => att.date === dateStr && att.check_in_time);
         const isBusinessTrip = isOnBusinessTrip(d);
         if (!hasAttendance && !isBusinessTrip) {
