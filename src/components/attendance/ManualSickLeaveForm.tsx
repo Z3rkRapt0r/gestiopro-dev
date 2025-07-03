@@ -153,13 +153,16 @@ export function ManualSickLeaveForm({ onSuccess }: ManualSickLeaveFormProps) {
     // Genera tutte le date da registrare come malattia
     const startDateString = format(startDate, 'yyyy-MM-dd');
     const endDateString = format(endDate || startDate, 'yyyy-MM-dd');
-    const currentDate = new Date(startDateString + 'T12:00:00');
-    const finalEndDate = new Date(endDateString + 'T12:00:00');
     const dates = [];
     
-    while (currentDate <= finalEndDate) {
-      dates.push(currentDate.toISOString().split('T')[0]);
-      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    // Genera date usando solo stringhe, come nel sistema ferie
+    const start = new Date(startDateString);
+    const end = new Date(endDateString);
+    const currentDate = new Date(start);
+    
+    while (currentDate <= end) {
+      dates.push(format(currentDate, 'yyyy-MM-dd'));
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     try {
@@ -171,7 +174,7 @@ export function ManualSickLeaveForm({ onSuccess }: ManualSickLeaveFormProps) {
           check_in_time: null,
           check_out_time: null,
           is_sick_leave: true,
-          notes: notes || `Malattia registrata manualmente${dates.length > 1 ? ` (dal ${format(startDate, 'dd/MM/yyyy')} al ${format(finalEndDate, 'dd/MM/yyyy')})` : ''}`,
+          notes: notes || `Malattia registrata manualmente${dates.length > 1 ? ` (dal ${format(startDate, 'dd/MM/yyyy')} al ${format(endDate || startDate, 'dd/MM/yyyy')})` : ''}`,
         });
       }
 
