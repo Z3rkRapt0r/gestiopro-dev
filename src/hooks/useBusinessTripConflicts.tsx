@@ -69,17 +69,22 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
           }
         }
 
-        // 3. CONTROLLO MALATTIE (da unified_attendances)
-        const { data: sickLeaveAttendances } = await supabase
-          .from('unified_attendances')
-          .select('date')
-          .eq('user_id', userId)
-          .eq('is_sick_leave', true);
+        // 3. CONTROLLO MALATTIE (dalla tabella dedicata)
+        const { data: sickLeaves } = await supabase
+          .from('sick_leaves')
+          .select('start_date, end_date')
+          .eq('user_id', userId);
 
-        if (sickLeaveAttendances) {
-          sickLeaveAttendances.forEach(attendance => {
-            conflictDates.add(format(new Date(attendance.date), 'yyyy-MM-dd'));
-          });
+        if (sickLeaves) {
+          for (const sickLeave of sickLeaves) {
+            const startDate = new Date(sickLeave.start_date);
+            const endDate = new Date(sickLeave.end_date);
+            const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+            
+            allDays.forEach(day => {
+              conflictDates.add(format(day, 'yyyy-MM-dd'));
+            });
+          }
         }
       }
 

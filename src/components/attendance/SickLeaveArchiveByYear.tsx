@@ -5,8 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { User2, Calendar, Cross, Trash2, CalendarDays } from "lucide-react";
-import { UnifiedAttendance } from "@/hooks/useUnifiedAttendances";
+import { format } from "date-fns";
 import { useSickLeaveArchive } from "@/hooks/useSickLeaveArchive";
+
+interface SickLeaveDay {
+  id: string;
+  user_id: string;
+  date: string;
+  notes: string | null;
+  sick_leave_id: string;
+  profiles?: any;
+}
 
 interface SickLeaveArchiveByYearProps {
   employee: {
@@ -15,7 +24,7 @@ interface SickLeaveArchiveByYearProps {
     last_name: string | null;
     email: string | null;
   };
-  sickLeaves: UnifiedAttendance[];
+  sickLeaves: SickLeaveDay[];
 }
 
 export default function SickLeaveArchiveByYear({
@@ -34,12 +43,12 @@ export default function SickLeaveArchiveByYear({
     : employee.email || "Dipendente sconosciuto";
 
   // Funzione per determinare l'anno di una malattia
-  const getSickLeaveYear = (sl: UnifiedAttendance): number => {
+  const getSickLeaveYear = (sl: SickLeaveDay): number => {
     return new Date(sl.date).getFullYear();
   };
 
   // Funzione per determinare il mese di una malattia
-  const getSickLeaveMonth = (sl: UnifiedAttendance): number => {
+  const getSickLeaveMonth = (sl: SickLeaveDay): number => {
     return new Date(sl.date).getMonth() + 1;
   };
 
@@ -57,10 +66,10 @@ export default function SickLeaveArchiveByYear({
     }
     acc[year].push(sl);
     return acc;
-  }, {} as Record<number, UnifiedAttendance[]>);
+  }, {} as Record<number, SickLeaveDay[]>);
 
   // Raggruppa le malattie per mese
-  const groupSickLeavesByMonth = (sickLeaves: UnifiedAttendance[]) => {
+  const groupSickLeavesByMonth = (sickLeaves: SickLeaveDay[]) => {
     return sickLeaves.reduce((acc, sl) => {
       const month = getSickLeaveMonth(sl);
       if (!acc[month]) {
@@ -68,7 +77,7 @@ export default function SickLeaveArchiveByYear({
       }
       acc[month].push(sl);
       return acc;
-    }, {} as Record<number, UnifiedAttendance[]>);
+    }, {} as Record<number, SickLeaveDay[]>);
   };
 
   // Ordina gli anni dal più recente al più vecchio
@@ -79,7 +88,7 @@ export default function SickLeaveArchiveByYear({
     period,
     variant = "outline"
   }: {
-    sickLeaves: UnifiedAttendance[];
+    sickLeaves: SickLeaveDay[];
     period: string;
     variant?: "outline" | "destructive";
   }) => {
@@ -207,20 +216,20 @@ export default function SickLeaveArchiveByYear({
                                             <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
                                               Malattia
                                             </Badge>
-                                            <div className="text-xs text-muted-foreground">
-                                              {new Date(sl.created_at).toLocaleDateString('it-IT')}
-                                            </div>
+                                             <div className="text-xs text-muted-foreground">
+                                               {format(new Date(sl.date), 'dd/MM/yyyy')}
+                                             </div>
                                             
                                             {isAdmin && (
-                                              <Button 
-                                                size="sm" 
-                                                variant="outline" 
-                                                onClick={() => deleteSickLeave(sl.id)}
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 ml-2" 
-                                                title="Elimina giorno di malattia"
-                                              >
-                                                <Trash2 className="w-3 h-3" />
-                                              </Button>
+                                             <Button 
+                                                 size="sm" 
+                                                 variant="outline" 
+                                                 onClick={() => deleteSickLeave(sl.sick_leave_id)}
+                                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 ml-2" 
+                                                 title="Elimina periodo di malattia"
+                                               >
+                                                 <Trash2 className="w-3 h-3" />
+                                               </Button>
                                             )}
                                           </div>
                                         </div>
