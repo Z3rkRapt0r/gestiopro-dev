@@ -12,6 +12,7 @@ export interface UnifiedAttendance {
   check_out_time: string | null;
   is_business_trip: boolean;
   is_manual: boolean;
+  is_sick_leave?: boolean; // Temporaneo per compatibilità - usa la tabella sick_leaves
   is_late: boolean;
   late_minutes: number;
   notes?: string | null;
