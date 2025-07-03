@@ -10,6 +10,7 @@ export interface SickLeaveEntry {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  reference_code?: string;
   profiles?: {
     id: string;
     first_name: string | null;
@@ -23,6 +24,8 @@ export interface SickLeaveDay {
   date: string; // formato YYYY-MM-DD
   sick_leave_id: string;
   notes: string | null;
+  reference_code?: string;
+  created_at: string;
   profiles?: {
     id: string;
     first_name: string | null;
@@ -91,15 +94,17 @@ export const useSickLeavesForCalendars = () => {
       // Genera tutti i giorni del periodo
       const allDays = eachDayOfInterval({ start: startDate, end: endDate });
       
-      allDays.forEach((day) => {
-        sickDays.push({
-          user_id: sickLeave.user_id,
-          date: format(day, 'yyyy-MM-dd'),
-          sick_leave_id: sickLeave.id,
-          notes: sickLeave.notes,
-          profiles: sickLeave.profiles,
+        allDays.forEach((day) => {
+          sickDays.push({
+            user_id: sickLeave.user_id,
+            date: format(day, 'yyyy-MM-dd'),
+            sick_leave_id: sickLeave.id,
+            notes: sickLeave.notes,
+            reference_code: sickLeave.reference_code,
+            created_at: sickLeave.created_at,
+            profiles: sickLeave.profiles,
+          });
         });
-      });
     });
 
     console.log('📅 Expanded sick leave days:', sickDays.length);

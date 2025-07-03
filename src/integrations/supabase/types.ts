@@ -972,6 +972,7 @@ export type Database = {
           end_date: string
           id: string
           notes: string | null
+          reference_code: string | null
           start_date: string
           updated_at: string | null
           user_id: string
@@ -982,6 +983,7 @@ export type Database = {
           end_date: string
           id?: string
           notes?: string | null
+          reference_code?: string | null
           start_date: string
           updated_at?: string | null
           user_id: string
@@ -992,6 +994,7 @@ export type Database = {
           end_date?: string
           id?: string
           notes?: string | null
+          reference_code?: string | null
           start_date?: string
           updated_at?: string | null
           user_id?: string
@@ -1223,6 +1226,10 @@ export type Database = {
       delete_user_completely: {
         Args: { user_uuid: string }
         Returns: Json
+      }
+      generate_sick_leave_reference_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_all_users_storage_stats: {
         Args: Record<PropertyKey, never>

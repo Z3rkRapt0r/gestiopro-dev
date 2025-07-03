@@ -13,6 +13,7 @@ export interface SickLeave {
   created_by?: string;
   created_at: string;
   updated_at: string;
+  reference_code?: string;
   profiles?: {
     id: string;
     first_name: string | null;

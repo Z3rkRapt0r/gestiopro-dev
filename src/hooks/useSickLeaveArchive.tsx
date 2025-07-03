@@ -17,14 +17,16 @@ export const useSickLeaveArchive = () => {
 
   // Espandi le malattie da periodi a giorni singoli per la visualizzazione archivio
   const expandSickLeavesToDays = (sickLeaves: SickLeave[]) => {
-    const expandedDays: Array<{ 
-      id: string; 
-      user_id: string; 
-      date: string; 
-      notes: string | null; 
-      sick_leave_id: string;
-      profiles?: any;
-    }> = [];
+  const expandedDays: Array<{ 
+    id: string; 
+    user_id: string; 
+    date: string; 
+    notes: string | null; 
+    sick_leave_id: string;
+    reference_code?: string;
+    created_at: string;
+    profiles?: any;
+  }> = [];
 
     sickLeaves.forEach(sickLeave => {
       const startDate = new Date(sickLeave.start_date);
@@ -38,6 +40,8 @@ export const useSickLeaveArchive = () => {
           date: format(day, 'yyyy-MM-dd'),
           notes: sickLeave.notes,
           sick_leave_id: sickLeave.id,
+          reference_code: sickLeave.reference_code,
+          created_at: sickLeave.created_at,
           profiles: sickLeave.profiles,
         });
       });

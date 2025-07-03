@@ -14,6 +14,8 @@ interface SickLeaveDay {
   date: string;
   notes: string | null;
   sick_leave_id: string;
+  reference_code?: string;
+  created_at: string;
   profiles?: any;
 }
 
@@ -191,49 +193,66 @@ export default function SickLeaveArchiveByYear({
                                       </div>
                                     </div>
                                     <div className="p-3 space-y-2">
-                                      {monthSickLeaves.map(sl => (
-                                        <div key={sl.id} className="flex items-center justify-between p-3 bg-white rounded-lg hover:bg-red-50 transition-colors">
-                                          <div className="flex items-center gap-3">
-                                            <div className="flex flex-col">
-                                              <div className="flex items-center gap-2">
-                                                <Cross className="w-4 h-4 text-red-600" />
-                                                <div className="text-sm">
-                                                  <div>{sl.date}</div>
-                                                  <div className="text-xs text-muted-foreground">
-                                                    Giorno di malattia
+                                      {(() => {
+                                        // Raggruppa per sick_leave_id per mostrare i periodi completi
+                                        const sickLeaveGroups = monthSickLeaves.reduce((acc, sl) => {
+                                          if (!acc[sl.sick_leave_id]) {
+                                            acc[sl.sick_leave_id] = {
+                                              ...sl,
+                                              days: []
+                                            };
+                                          }
+                                          acc[sl.sick_leave_id].days.push(sl.date);
+                                          return acc;
+                                        }, {} as Record<string, any>);
+
+                                        return Object.values(sickLeaveGroups).map((sickLeaveGroup: any) => (
+                                          <div key={sickLeaveGroup.sick_leave_id} className="flex items-center justify-between p-3 bg-white rounded-lg hover:bg-red-50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                              <div className="flex flex-col">
+                                                <div className="flex items-center gap-2">
+                                                  <Cross className="w-4 h-4 text-red-600" />
+                                                  <div className="text-sm">
+                                                    <div className="font-medium">{sickLeaveGroup.reference_code || 'MAL-LEGACY'}</div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                      Inserita il {format(new Date(sickLeaveGroup.created_at), 'dd/MM/yyyy')}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                      {sickLeaveGroup.days.length === 1 
+                                                        ? `Giorno: ${format(new Date(sickLeaveGroup.days[0]), 'dd/MM/yyyy')}`
+                                                        : `Dal ${format(new Date(Math.min(...sickLeaveGroup.days.map(d => new Date(d).getTime()))), 'dd/MM/yyyy')} al ${format(new Date(Math.max(...sickLeaveGroup.days.map(d => new Date(d).getTime()))), 'dd/MM/yyyy')}`
+                                                      } ({sickLeaveGroup.days.length} giorni)
+                                                    </div>
                                                   </div>
                                                 </div>
                                               </div>
                                             </div>
-                                          </div>
-                                          
-                                          <div className="flex items-center gap-2">
-                                            {sl.notes && (
-                                              <div className="text-xs text-muted-foreground max-w-48 truncate" title={sl.notes}>
-                                                "{sl.notes}"
-                                              </div>
-                                            )}
-                                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                                              Malattia
-                                            </Badge>
-                                             <div className="text-xs text-muted-foreground">
-                                               {format(new Date(sl.date), 'dd/MM/yyyy')}
-                                             </div>
                                             
-                                            {isAdmin && (
-                                             <Button 
-                                                 size="sm" 
-                                                 variant="outline" 
-                                                 onClick={() => deleteSickLeave(sl.sick_leave_id)}
-                                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 ml-2" 
-                                                 title="Elimina periodo di malattia"
-                                               >
-                                                 <Trash2 className="w-3 h-3" />
-                                               </Button>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                              {sickLeaveGroup.notes && (
+                                                <div className="text-xs text-muted-foreground max-w-48 truncate" title={sickLeaveGroup.notes}>
+                                                  "{sickLeaveGroup.notes}"
+                                                </div>
+                                              )}
+                                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                                Malattia
+                                              </Badge>
+                                              
+                                              {isAdmin && (
+                                               <Button 
+                                                   size="sm" 
+                                                   variant="outline" 
+                                                   onClick={() => deleteSickLeave(sickLeaveGroup.sick_leave_id)}
+                                                   className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 ml-2" 
+                                                   title="Elimina periodo di malattia"
+                                                 >
+                                                   <Trash2 className="w-3 h-3" />
+                                                 </Button>
+                                              )}
+                                            </div>
                                           </div>
-                                        </div>
-                                      ))}
+                                        ));
+                                      })()}
                                     </div>
                                   </div>
                                 );
