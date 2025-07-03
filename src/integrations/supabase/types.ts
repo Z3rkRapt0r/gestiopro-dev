@@ -965,6 +965,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sick_leaves: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          end_date: string
+          id: string
+          notes: string | null
+          start_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          end_date: string
+          id?: string
+          notes?: string | null
+          start_date: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          notes?: string | null
+          start_date?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sick_leaves_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sick_leaves_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       unified_attendances: {
         Row: {
           check_in_time: string | null
@@ -1155,6 +1203,15 @@ export type Database = {
       }
     }
     Functions: {
+      check_sick_leave_overlaps: {
+        Args: {
+          p_user_id: string
+          p_start_date: string
+          p_end_date: string
+          p_exclude_id?: string
+        }
+        Returns: Json
+      }
       clear_user_data: {
         Args: { user_uuid: string }
         Returns: Json
@@ -1215,6 +1272,10 @@ export type Database = {
       should_track_employee_on_date: {
         Args: { target_user_id: string; check_date: string }
         Returns: boolean
+      }
+      verify_sick_leave_dates: {
+        Args: { p_user_id: string; p_start_date: string; p_end_date: string }
+        Returns: Json
       }
       verify_user_data_exists: {
         Args: { user_uuid: string }
