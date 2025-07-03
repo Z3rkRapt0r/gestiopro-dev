@@ -13,12 +13,13 @@ import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { getEmployeeStatusForDate, formatHireDate } from '@/utils/employeeStatusUtils';
-import type { Attendance } from '@/hooks/useAttendances';
+import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
+import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
 
 interface EmployeeAttendanceCalendarProps {
   employee: EmployeeProfile;
-  attendances: Attendance[];
+  attendances: UnifiedAttendance[];
 }
 
 // Component interno per visualizzare lo stato del dipendente
@@ -90,7 +91,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   const { leaveBalance } = useEmployeeLeaveBalanceStats(employee?.id);
   const { businessTrips } = useBusinessTrips();
   const { leaveRequests } = useLeaveRequests();
-  const { attendances: unifiedAttendances } = useUnifiedAttendances();
+  const { getSickLeavesForUser } = useSickLeavesForCalendars();
 
   // Funzione per verificare se un giorno è lavorativo
   const isWorkingDay = (date: Date) => {
@@ -154,15 +155,9 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
     });
   }
 
-  // Ottieni le date di malattia per questo dipendente
-  const sickLeaveDates = [];
-  if (unifiedAttendances) {
-    unifiedAttendances.forEach(attendance => {
-      if (attendance.user_id === employee.id && attendance.is_sick_leave) {
-        sickLeaveDates.push(new Date(attendance.date));
-      }
-    });
-  }
+  // Ottieni le date di malattia per questo dipendente usando il nuovo hook
+  const userSickLeaves = getSickLeavesForUser(employee.id);
+  const sickLeaveDates = userSickLeaves.map(sickDay => new Date(sickDay.date));
 
   // Verifica se la data selezionata è in trasferta
   const isOnBusinessTrip = (date: Date) => {

@@ -66,17 +66,22 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
         }
       }
 
-      // 3. CONTROLLO MALATTIE
+      // 3. CONTROLLO MALATTIE (dalla nuova tabella dedicata)
       const { data: sickLeaves } = await supabase
-        .from('unified_attendances')
-        .select('date')
-        .eq('user_id', userId)
-        .eq('is_sick_leave', true);
+        .from('sick_leaves')
+        .select('start_date, end_date')
+        .eq('user_id', userId);
 
       if (sickLeaves) {
-        sickLeaves.forEach(sick => {
-          conflictDates.add(format(new Date(sick.date), 'yyyy-MM-dd'));
-        });
+        for (const sickLeave of sickLeaves) {
+          const startDate = new Date(sickLeave.start_date);
+          const endDate = new Date(sickLeave.end_date);
+          const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+          
+          allDays.forEach(day => {
+            conflictDates.add(format(day, 'yyyy-MM-dd'));
+          });
+        }
       }
 
       // Converti le date string in oggetti Date

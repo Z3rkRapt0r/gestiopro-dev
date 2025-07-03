@@ -1,13 +1,14 @@
 
-import { useUnifiedAttendances, UnifiedAttendance } from './useUnifiedAttendances';
+import { useSickLeaves, SickLeave } from './useSickLeaves';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
+import { format, eachDayOfInterval } from 'date-fns';
 
 export const useSickLeaveArchive = () => {
-  const { attendances, isLoading } = useUnifiedAttendances();
+  const { sickLeaves, isLoading } = useSickLeaves();
   const { toast } = useToast();
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -15,36 +16,64 @@ export const useSickLeaveArchive = () => {
 
   const isAdmin = profile?.role === 'admin';
 
-  // Filtra solo le malattie
-  const sickLeaveAttendances = attendances?.filter(
-    att => att.is_sick_leave
-  ) || [];
+  // Espandi le malattie da periodi a giorni singoli per la visualizzazione archivio
+  const expandSickLeavesToDays = (sickLeaves: SickLeave[]) => {
+    const expandedDays: Array<{ 
+      id: string; 
+      user_id: string; 
+      date: string; 
+      notes: string | null; 
+      sick_leave_id: string;
+      profiles?: any;
+    }> = [];
+
+    sickLeaves.forEach(sickLeave => {
+      const startDate = new Date(sickLeave.start_date);
+      const endDate = new Date(sickLeave.end_date);
+      const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+      
+      allDays.forEach(day => {
+        expandedDays.push({
+          id: `${sickLeave.id}-${format(day, 'yyyy-MM-dd')}`, // ID univoco per ogni giorno
+          user_id: sickLeave.user_id,
+          date: format(day, 'yyyy-MM-dd'),
+          notes: sickLeave.notes,
+          sick_leave_id: sickLeave.id,
+          profiles: sickLeave.profiles,
+        });
+      });
+    });
+
+    return expandedDays;
+  };
+
+  const sickLeaveDays = expandSickLeavesToDays(sickLeaves || []);
 
   // Raggruppa le malattie per dipendente
-  const sickLeavesByEmployee = sickLeaveAttendances.reduce((acc, attendance) => {
-    const employeeKey = attendance.user_id;
+  const sickLeavesByEmployee = sickLeaveDays.reduce((acc, day) => {
+    const employeeKey = day.user_id;
     if (!acc[employeeKey]) {
       acc[employeeKey] = {
         employee: {
-          id: attendance.user_id,
-          first_name: attendance.profiles?.first_name || null,
-          last_name: attendance.profiles?.last_name || null,
-          email: attendance.profiles?.email || null,
+          id: day.user_id,
+          first_name: day.profiles?.first_name || null,
+          last_name: day.profiles?.last_name || null,
+          email: day.profiles?.email || null,
         },
         sickLeaves: []
       };
     }
-    acc[employeeKey].sickLeaves.push(attendance);
+    acc[employeeKey].sickLeaves.push(day);
     return acc;
-  }, {} as Record<string, { employee: any; sickLeaves: UnifiedAttendance[] }>);
+  }, {} as Record<string, { employee: any; sickLeaves: any[] }>);
 
-  // Elimina singola malattia
+  // Elimina singola malattia (periodo completo)
   const deleteSickLeave = useMutation({
     mutationFn: async (sickLeaveId: string) => {
-      console.log('🗑️ Eliminando malattia dall\'archivio:', sickLeaveId);
+      console.log('🗑️ Eliminando periodo di malattia dall\'archivio:', sickLeaveId);
       
       const { error } = await supabase
-        .from('unified_attendances')
+        .from('sick_leaves')
         .delete()
         .eq('id', sickLeaveId);
 
@@ -53,10 +82,11 @@ export const useSickLeaveArchive = () => {
       return sickLeaveId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['sick-leaves'] });
+      queryClient.invalidateQueries({ queryKey: ['sick-leaves-for-calendars'] });
       toast({
-        title: "Malattia eliminata",
-        description: "Il giorno di malattia è stato rimosso dall'archivio",
+        title: "Periodo di malattia eliminato",
+        description: "Il periodo di malattia è stato rimosso dall'archivio",
       });
     },
     onError: (error: any) => {
@@ -69,26 +99,29 @@ export const useSickLeaveArchive = () => {
     },
   });
 
-  // Eliminazione massiva
-  const handleBulkDelete = async (sickLeaves: UnifiedAttendance[], period: string) => {
+  // Eliminazione massiva (raggruppa per periodo e elimina i periodi completi)
+  const handleBulkDelete = async (sickLeaveDays: any[], period: string) => {
     setBulkDeleteLoading(true);
     try {
-      console.log('🗑️ Eliminazione massiva malattie:', sickLeaves.length, 'per periodo:', period);
+      console.log('🗑️ Eliminazione massiva periodi malattia per:', period);
       
-      const ids = sickLeaves.map(sl => sl.id);
+      // Raggruppa i giorni per sick_leave_id per eliminare i periodi completi
+      const sickLeaveIds = [...new Set(sickLeaveDays.map(day => day.sick_leave_id))];
+      
       const { error } = await supabase
-        .from('unified_attendances')
+        .from('sick_leaves')
         .delete()
-        .in('id', ids);
+        .in('id', sickLeaveIds);
 
       if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['sick-leaves'] });
+      queryClient.invalidateQueries({ queryKey: ['sick-leaves-for-calendars'] });
       toast({
-        title: "Malattie eliminate",
-        description: `${sickLeaves.length} giorni di malattia del ${period} sono stati eliminati dall'archivio`,
+        title: "Periodi di malattia eliminati",
+        description: `${sickLeaveIds.length} periodo/i di malattia del ${period} sono stati eliminati dall'archivio`,
       });
-    } catch (error: any) {
+    } catch (error: any) => {
       console.error('❌ Errore eliminazione massiva malattie:', error);
       toast({
         title: "Errore eliminazione",

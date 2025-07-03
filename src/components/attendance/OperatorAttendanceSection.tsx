@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User } from 'lucide-react';
-import { useAttendances } from '@/hooks/useAttendances';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import EmployeeAttendanceCalendar from './EmployeeAttendanceCalendar';
 
 export default function OperatorAttendanceSection() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
-  const { attendances, isLoading } = useAttendances();
+  const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
 
   const selectedEmployee = employees?.find(emp => emp.id === selectedEmployeeId);
