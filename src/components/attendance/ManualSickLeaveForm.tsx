@@ -150,20 +150,14 @@ export function ManualSickLeaveForm({ onSuccess }: ManualSickLeaveFormProps) {
       return;
     }
 
-    // Genera tutte le date da registrare come malattia usando UTC per evitare problemi di fuso orario
+    // Genera tutte le date da registrare come malattia
     const finalEndDate = endDate || startDate;
+    const currentDate = new Date(startDate);
     const dates = [];
     
-    // Usa UTC per evitare problemi di fuso orario e DST
-    const startStr = format(startDate, 'yyyy-MM-dd');
-    const endStr = format(finalEndDate, 'yyyy-MM-dd');
-    
-    const currentDate = new Date(startStr + 'T12:00:00.000Z');
-    const finalDate = new Date(endStr + 'T12:00:00.000Z');
-    
-    while (currentDate <= finalDate) {
+    while (currentDate <= finalEndDate) {
       dates.push(format(currentDate, 'yyyy-MM-dd'));
-      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     try {
