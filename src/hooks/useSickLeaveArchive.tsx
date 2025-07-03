@@ -1,4 +1,3 @@
-
 import { useSickLeaves, SickLeave } from './useSickLeaves';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,7 +120,7 @@ export const useSickLeaveArchive = () => {
         title: "Periodi di malattia eliminati",
         description: `${sickLeaveIds.length} periodo/i di malattia del ${period} sono stati eliminati dall'archivio`,
       });
-    } catch (error: any) => {
+    } catch (error: any) {
       console.error('❌ Errore eliminazione massiva malattie:', error);
       toast({
         title: "Errore eliminazione",
