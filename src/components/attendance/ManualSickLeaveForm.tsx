@@ -151,8 +151,10 @@ export function ManualSickLeaveForm({ onSuccess }: ManualSickLeaveFormProps) {
     }
 
     // Genera tutte le date da registrare come malattia
-    const finalEndDate = endDate || startDate;
-    const currentDate = new Date(startDate);
+    const startDateString = format(startDate, 'yyyy-MM-dd');
+    const endDateString = format(endDate || startDate, 'yyyy-MM-dd');
+    const currentDate = new Date(startDateString + 'T12:00:00');
+    const finalEndDate = new Date(endDateString + 'T12:00:00');
     const dates = [];
     
     while (currentDate <= finalEndDate) {
