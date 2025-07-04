@@ -14,10 +14,10 @@ export default function EmployeeAttendanceSection() {
   }, [queryClient]);
 
   return (
-    <div className="max-w-6xl mx-auto py-8 space-y-6">
+    <div className="max-w-2xl mx-auto py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6 px-4">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Le Mie Presenze</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Le Mie Presenze</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Registra la tua presenza
         </p>
       </div>

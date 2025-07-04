@@ -117,28 +117,29 @@ const EmployeeMessagesSection = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-          <MessageSquare className="h-7 w-7 text-green-600" />
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-green-600" />
           Centro Messaggi
         </h2>
         {unreadMessages.length > 0 && (
-          <Button variant="outline" onClick={markAllAsRead}>
+          <Button variant="outline" onClick={markAllAsRead} className="w-full sm:w-auto min-h-[44px] text-sm sm:text-base">
             <CheckCircle className="mr-2 h-4 w-4" />
-            Segna tutti come letti ({unreadMessages.length})
+            <span className="hidden sm:inline">Segna tutti come letti</span>
+            <span className="sm:hidden">Segna letti</span> ({unreadMessages.length})
           </Button>
         )}
       </div>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
             Filtri e Ricerca
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -146,14 +147,14 @@ const EmployeeMessagesSection = () => {
                   placeholder="Cerca messaggi..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 min-h-[44px] text-sm sm:text-base"
                 />
               </div>
             </div>
             <select
               value={filterRead}
               onChange={(e) => setFilterRead(e.target.value)}
-              className="w-full sm:w-48 border rounded p-2"
+              className="w-full sm:w-48 border rounded p-2 min-h-[44px] text-sm sm:text-base"
             >
               <option value="all">Tutti</option>
               <option value="unread">Non letti</option>
@@ -164,34 +165,36 @@ const EmployeeMessagesSection = () => {
       </Card>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="p-4 sm:p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="all" className="flex items-center gap-1 text-xs">
-                <Send className="w-3 h-3" />
-                Tutti ({myMessages.length})
-              </TabsTrigger>
-              <TabsTrigger value="Aggiornamenti aziendali" className="flex items-center gap-1 text-xs">
-                <Building2 className="w-3 h-3" />
-                Aziendali ({categoryCounts['Aggiornamenti aziendali'] || 0})
-              </TabsTrigger>
-              <TabsTrigger value="Comunicazioni importanti" className="flex items-center gap-1 text-xs">
-                <AlertTriangle className="w-3 h-3" />
-                Importanti ({categoryCounts['Comunicazioni importanti'] || 0})
-              </TabsTrigger>
-              <TabsTrigger value="Eventi" className="flex items-center gap-1 text-xs">
-                <Calendar className="w-3 h-3" />
-                Eventi ({categoryCounts.Eventi || 0})
-              </TabsTrigger>
-              <TabsTrigger value="Avvisi sicurezza" className="flex items-center gap-1 text-xs">
-                <Shield className="w-3 h-3" />
-                Sicurezza ({categoryCounts['Avvisi sicurezza'] || 0})
-              </TabsTrigger>
-              <TabsTrigger value="system" className="flex items-center gap-1 text-xs">
-                <Settings className="w-3 h-3" />
-                Sistema ({categoryCounts.system || 0})
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto mb-4">
+              <TabsList className="inline-flex w-max min-w-full gap-1 p-1 h-auto bg-muted rounded-lg">
+                <TabsTrigger value="all" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
+                  <Send className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Tutti</span> ({myMessages.length})
+                </TabsTrigger>
+                <TabsTrigger value="Aggiornamenti aziendali" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
+                  <Building2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Aziendali</span><span className="sm:hidden">Azien.</span> ({categoryCounts['Aggiornamenti aziendali'] || 0})
+                </TabsTrigger>
+                <TabsTrigger value="Comunicazioni importanti" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
+                  <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Importanti</span><span className="sm:hidden">Import.</span> ({categoryCounts['Comunicazioni importanti'] || 0})
+                </TabsTrigger>
+                <TabsTrigger value="Eventi" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+                  Eventi ({categoryCounts.Eventi || 0})
+                </TabsTrigger>
+                <TabsTrigger value="Avvisi sicurezza" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
+                  <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Sicurezza</span><span className="sm:hidden">Sicur.</span> ({categoryCounts['Avvisi sicurezza'] || 0})
+                </TabsTrigger>
+                <TabsTrigger value="system" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
+                  <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
+                  Sistema ({categoryCounts.system || 0})
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="all" className="mt-4">
               <MessagesList 
@@ -352,28 +355,30 @@ function MessageCard({ message, onMarkAsRead, getTypeIcon }: MessageCardProps) {
 
   return (
     <Card
-      className={`flex w-full items-start gap-4 p-4 cursor-pointer border
+      className={`flex w-full items-start gap-3 sm:gap-4 p-3 sm:p-4 cursor-pointer border min-h-[44px]
         ${!message.is_read ? 'border-green-500 bg-green-50' : ''}
         hover:shadow-md transition-shadow`}
       onClick={() => onMarkAsRead(message.id, message.is_read)}
     >
       <div className="flex-shrink-0 mt-1">
-        <div className={`h-7 w-7 flex items-center justify-center ${!message.is_read ? 'text-green-600' : 'text-gray-400'}`}>
+        <div className={`h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center ${!message.is_read ? 'text-green-600' : 'text-gray-400'}`}>
           {getTypeIcon(category)}
         </div>
       </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-gray-900">{message.title}</span>
-          {!message.is_read && (
-            <Badge variant="outline" className="ml-2 text-green-800 border-green-600">Non letto</Badge>
-          )}
-          <Badge variant="secondary" className="text-xs ml-auto">
-            {getNotificationTypeLabel(category)}
-          </Badge>
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <span className="font-semibold text-gray-900 text-sm sm:text-base truncate">{message.title}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {!message.is_read && (
+              <Badge variant="outline" className="text-xs text-green-800 border-green-600 whitespace-nowrap">Non letto</Badge>
+            )}
+            <Badge variant="secondary" className="text-xs whitespace-nowrap">
+              {getNotificationTypeLabel(category)}
+            </Badge>
+          </div>
         </div>
-        <div className="text-gray-700">{message.message}</div>
-        <div className="mt-1 text-sm text-gray-500">{formatRelativeDate(message.created_at)}</div>
+        <div className="text-gray-700 text-sm sm:text-base mt-1 line-clamp-2">{message.message}</div>
+        <div className="mt-1 text-xs sm:text-sm text-gray-500">{formatRelativeDate(message.created_at)}</div>
       </div>
     </Card>
   );
