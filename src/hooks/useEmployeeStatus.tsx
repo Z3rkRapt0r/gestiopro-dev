@@ -162,15 +162,26 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
           const permission = approvedPermissions[0];
           
           if (permission.time_from && permission.time_to) {
+            // Helper per convertire "HH:mm:ss" in minuti dall'inizio della giornata
+            const timeToMinutes = (timeString: string): number => {
+              const [hours, minutes] = timeString.split(':').map(Number);
+              return hours * 60 + minutes;
+            };
+            
             // Per permessi orari, controlla se l'orario attuale è dentro il range
             const currentTime = new Date();
-            const currentTimeString = format(currentTime, 'HH:mm');
+            const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+            const permissionStartMinutes = timeToMinutes(permission.time_from);
+            const permissionEndMinutes = timeToMinutes(permission.time_to);
             
-            const isWithinPermissionTime = currentTimeString >= permission.time_from && 
-                                          currentTimeString <= permission.time_to;
+            const isWithinPermissionTime = currentMinutes >= permissionStartMinutes && 
+                                          currentMinutes <= permissionEndMinutes;
             
             console.log('🕐 Controllo permesso orario:', {
-              currentTime: currentTimeString,
+              currentMinutes,
+              permissionStartMinutes,
+              permissionEndMinutes,
+              currentTime: format(currentTime, 'HH:mm:ss'),
               permissionStart: permission.time_from,
               permissionEnd: permission.time_to,
               isWithinRange: isWithinPermissionTime
