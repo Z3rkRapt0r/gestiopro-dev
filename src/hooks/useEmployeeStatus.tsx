@@ -160,21 +160,42 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
 
         if (approvedPermissions && approvedPermissions.length > 0) {
           const permission = approvedPermissions[0];
-          currentStatus = 'permission';
-          conflictPriority = 3;
-          // allowPermissionOverlap rimane true - i permessi possono sovrapporsi
-          // hasHardBlock rimane false - non blocca le date
           
           if (permission.time_from && permission.time_to) {
-            blockingReasons.push(`Il dipendente ha un permesso orario dalle ${permission.time_from} alle ${permission.time_to}`);
-            statusDetails = {
-              type: 'Permesso orario',
-              startDate: permission.day,
-              timeFrom: permission.time_from,
-              timeTo: permission.time_to,
-              notes: permission.note || undefined
-            };
+            // Per permessi orari, controlla se l'orario attuale è dentro il range
+            const currentTime = new Date();
+            const currentTimeString = format(currentTime, 'HH:mm');
+            
+            const isWithinPermissionTime = currentTimeString >= permission.time_from && 
+                                          currentTimeString <= permission.time_to;
+            
+            console.log('🕐 Controllo permesso orario:', {
+              currentTime: currentTimeString,
+              permissionStart: permission.time_from,
+              permissionEnd: permission.time_to,
+              isWithinRange: isWithinPermissionTime
+            });
+            
+            if (isWithinPermissionTime) {
+              // Solo se siamo dentro il range del permesso, blocca
+              currentStatus = 'permission';
+              conflictPriority = 3;
+              blockingReasons.push(`Il dipendente ha un permesso orario attivo dalle ${permission.time_from} alle ${permission.time_to}`);
+              statusDetails = {
+                type: 'Permesso orario attivo',
+                startDate: permission.day,
+                timeFrom: permission.time_from,
+                timeTo: permission.time_to,
+                notes: permission.note || undefined
+              };
+            } else {
+              // Permesso orario scaduto, non bloccare
+              console.log('✅ Permesso orario scaduto, check-in permesso');
+            }
           } else {
+            // Permesso giornaliero - blocca sempre per tutto il giorno
+            currentStatus = 'permission';
+            conflictPriority = 3;
             blockingReasons.push('Il dipendente ha un permesso giornaliero per oggi');
             statusDetails = {
               type: 'Permesso giornaliero',
