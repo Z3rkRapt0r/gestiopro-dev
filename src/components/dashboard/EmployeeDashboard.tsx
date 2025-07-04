@@ -175,7 +175,7 @@ export default function EmployeeDashboard() {
                 </div>
               </div>
               
-              <div className="flex-1 p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-slate-50/50 to-white">
+              <div className="flex-1 bg-gradient-to-br from-slate-50/50 to-white">
                 <div className="animate-fade-in">
                   {renderContent()}
                 </div>
