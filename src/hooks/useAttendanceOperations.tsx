@@ -104,8 +104,28 @@ export const useAttendanceOperations = () => {
     if (approvedPermissions && approvedPermissions.length > 0) {
       const permission = approvedPermissions[0];
       if (permission.time_from && permission.time_to) {
-        throw new Error(`Non è possibile registrare presenza: il dipendente ha un permesso orario dalle ${permission.time_from} alle ${permission.time_to}`);
+        // Helper per convertire "HH:mm:ss" in minuti dall'inizio della giornata
+        const timeToMinutes = (timeString: string): number => {
+          const [hours, minutes] = timeString.split(':').map(Number);
+          return hours * 60 + minutes;
+        };
+        
+        // Per permessi orari, controlla se l'orario attuale è dentro il range
+        const currentTime = new Date();
+        const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+        const permissionStartMinutes = timeToMinutes(permission.time_from);
+        const permissionEndMinutes = timeToMinutes(permission.time_to);
+        
+        const isWithinPermissionTime = currentMinutes >= permissionStartMinutes && 
+                                      currentMinutes <= permissionEndMinutes;
+        
+        // Blocca SOLO se è ancora dentro il range del permesso
+        if (isWithinPermissionTime) {
+          throw new Error(`Non è possibile registrare presenza: il dipendente ha un permesso orario attivo dalle ${permission.time_from} alle ${permission.time_to}`);
+        }
+        // Se il permesso è scaduto, non bloccare
       } else {
+        // Permesso giornaliero - blocca sempre
         throw new Error('Non è possibile registrare presenza: il dipendente ha un permesso giornaliero');
       }
     }
