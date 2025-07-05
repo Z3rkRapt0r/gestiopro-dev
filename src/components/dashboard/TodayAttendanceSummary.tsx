@@ -78,6 +78,11 @@ const TodayAttendanceSummary = () => {
   const formatTime = (timeString?: string) => {
     if (!timeString) return '--:--';
     try {
+      // Se è già in formato HH:mm, restituisci direttamente
+      if (timeString.match(/^\d{2}:\d{2}$/)) {
+        return timeString;
+      }
+      // Altrimenti prova a parsare come Date
       return new Date(timeString).toLocaleTimeString('it-IT', {
         hour: '2-digit',
         minute: '2-digit'

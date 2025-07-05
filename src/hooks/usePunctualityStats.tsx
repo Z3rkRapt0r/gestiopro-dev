@@ -63,8 +63,7 @@ export const usePunctualityStats = (period: 'week' | 'month' = 'week') => {
           date,
           check_in_time,
           is_late,
-          late_minutes,
-          profiles:user_id (first_name, last_name)
+          late_minutes
         `)
         .gte('date', startDateStr)
         .lte('date', endDateStr)

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Building, User, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
+import { useNotifications } from "@/hooks/useNotifications";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -13,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useState } from "react";
 
 interface DashboardHeaderProps {
   title: string;
@@ -22,6 +24,11 @@ interface DashboardHeaderProps {
 const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
   const { profile, signOut } = useAuth();
   const { settings, loading } = useDashboardSettings();
+  const { notifications, markAsRead } = useNotifications();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  
+  // Calcola le notifiche non lette
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   if (loading) {
     return (
@@ -88,15 +95,66 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
           {/* User Section */}
           <div className="flex items-center space-x-4">
             {/* Notification Bell */}
-            <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl">
-              <Bell className="h-5 w-5 text-slate-600" />
-              <Badge 
-                variant="destructive" 
-                className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-              >
-                3
-              </Badge>
-            </Button>
+            <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl">
+                  <Bell className="h-5 w-5 text-slate-600" />
+                  {unreadCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                    >
+                      {unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-80 p-0" align="end" forceMount>
+                <DropdownMenuLabel className="p-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold">Notifiche</span>
+                    {unreadCount > 0 && (
+                      <Badge variant="secondary">{unreadCount} nuove</Badge>
+                    )}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      Nessuna notifica
+                    </div>
+                  ) : (
+                    notifications.slice(0, 5).map((notification) => (
+                      <DropdownMenuItem 
+                        key={notification.id} 
+                        className="p-4 cursor-pointer hover:bg-gray-50"
+                        onClick={() => {
+                          if (!notification.is_read) {
+                            markAsRead(notification.id);
+                          }
+                        }}
+                      >
+                        <div className="flex flex-col space-y-1 w-full">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{notification.title}</span>
+                            {!notification.is_read && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-600 line-clamp-2">
+                            {notification.message}
+                          </p>
+                          <span className="text-xs text-gray-400">
+                            {new Date(notification.created_at).toLocaleDateString('it-IT')}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* User Dropdown */}
             <DropdownMenu>
