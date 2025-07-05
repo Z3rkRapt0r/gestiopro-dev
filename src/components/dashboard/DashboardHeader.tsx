@@ -29,6 +29,24 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
   
   // Calcola le notifiche non lette
   const unreadCount = notifications.filter(n => !n.is_read).length;
+  
+  // Funzione per ottenere l'icona in base al tipo di notifica
+  const getNotificationIcon = (type: string) => {
+    switch (true) {
+      case type === 'document':
+      case type?.toLowerCase().includes('document'):
+        return '📄';
+      case type?.toLowerCase().includes('ferie'):
+        return '🏖️';
+      case type?.toLowerCase().includes('permess'):
+        return '🕐';
+      case type === 'leave_request':
+      case type?.toLowerCase().includes('leave'):
+        return '📅';
+      default:
+        return '🔔';
+    }
+  };
 
   if (loading) {
     return (
@@ -109,7 +127,7 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-80 p-0" align="end" forceMount>
+              <DropdownMenuContent className="w-96 p-0 max-h-96 overflow-hidden" align="end" forceMount>
                 <DropdownMenuLabel className="p-4 pb-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold">Notifiche</span>
@@ -119,35 +137,62 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <div className="max-h-80 overflow-y-auto">
+                <div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                   {notifications.length === 0 ? (
                     <div className="p-4 text-center text-gray-500 text-sm">
-                      Nessuna notifica
+                      <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>Nessuna notifica</p>
                     </div>
                   ) : (
-                    notifications.slice(0, 5).map((notification) => (
+                    notifications.slice(0, 8).map((notification) => (
                       <DropdownMenuItem 
                         key={notification.id} 
-                        className="p-4 cursor-pointer hover:bg-gray-50"
+                        className="p-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                         onClick={() => {
                           if (!notification.is_read) {
                             markAsRead(notification.id);
                           }
+                          setNotificationsOpen(false);
                         }}
                       >
-                        <div className="flex flex-col space-y-1 w-full">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{notification.title}</span>
-                            {!notification.is_read && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            )}
+                        <div className="flex items-start space-x-3 w-full">
+                          <div className="flex-shrink-0 mt-1">
+                            <span className="text-lg">
+                              {getNotificationIcon(notification.type || 'system')}
+                            </span>
                           </div>
-                          <p className="text-xs text-gray-600 line-clamp-2">
-                            {notification.message}
-                          </p>
-                          <span className="text-xs text-gray-400">
-                            {new Date(notification.created_at).toLocaleDateString('it-IT')}
-                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-900 truncate">
+                                {notification.title}
+                              </span>
+                              {!notification.is_read && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 ml-2"></div>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-600 line-clamp-2 mb-1">
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-400">
+                                {new Date(notification.created_at).toLocaleDateString('it-IT', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              {(notification.category?.includes('ferie') || notification.category?.includes('permessi') || 
+                                notification.title?.toLowerCase().includes('ferie') || 
+                                notification.title?.toLowerCase().includes('permess')) && (
+                                <div className="flex items-center space-x-1">
+                                  <span className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded-full">
+                                    In attesa
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </DropdownMenuItem>
                     ))

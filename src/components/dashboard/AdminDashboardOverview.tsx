@@ -65,12 +65,8 @@ const AdminDashboardOverview = () => {
       {/* Today Attendance Summary */}
       <TodayAttendanceSummary />
 
-      {/* Punctuality Chart and Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PunctualityChart />
-        
-        
-      </div>
+      {/* Punctuality Chart - Full Width */}
+      <PunctualityChart />
 
       {/* Additional Insights */}
       
