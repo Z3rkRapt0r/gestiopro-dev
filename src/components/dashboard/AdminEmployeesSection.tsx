@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -186,7 +185,7 @@ export default function AdminEmployeesSection() {
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle className="text-xl font-semibold text-slate-900">
-                  Aggiungi Nuovo Dipendente
+                  Nuovo Dipendente
                 </DialogTitle>
               </DialogHeader>
               <CreateEmployeeForm 
