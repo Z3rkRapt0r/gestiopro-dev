@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
+import { useCompanyHolidays } from './useCompanyHolidays';
 
 export interface LeaveValidationResult {
   isValid: boolean;
@@ -9,6 +10,7 @@ export interface LeaveValidationResult {
 
 export interface ConflictSummary {
   totalConflicts: number;
+  companyHolidays: number;
   businessTrips: number;
   vacations: number;
   permissions: number;
@@ -18,7 +20,7 @@ export interface ConflictSummary {
 
 export interface ConflictDetail {
   date: string;
-  type: 'business_trip' | 'vacation' | 'permission' | 'sick_leave' | 'attendance';
+  type: 'company_holiday' | 'business_trip' | 'vacation' | 'permission' | 'sick_leave' | 'attendance';
   description: string;
   severity: 'critical' | 'warning';
 }
@@ -28,6 +30,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
   const [conflictDetails, setConflictDetails] = useState<ConflictDetail[]>([]);
   const [conflictSummary, setConflictSummary] = useState<ConflictSummary>({
     totalConflicts: 0,
+    companyHolidays: 0,
     businessTrips: 0,
     vacations: 0,
     permissions: 0,
@@ -37,12 +40,16 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Hook per i giorni festivi
+  const { holidays, isHoliday } = useCompanyHolidays();
+
   const calculateConflicts = useCallback(async (userId?: string, type?: string) => {
     if (!userId) {
       setConflictDates([]);
       setConflictDetails([]);
       setConflictSummary({
         totalConflicts: 0,
+        companyHolidays: 0,
         businessTrips: 0,
         vacations: 0,
         permissions: 0,
@@ -62,6 +69,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     const details: ConflictDetail[] = [];
     const summary: ConflictSummary = {
       totalConflicts: 0,
+      companyHolidays: 0,
       businessTrips: 0,
       vacations: 0,
       permissions: 0,
@@ -70,7 +78,24 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     };
     
     try {
-      // 1. CONTROLLO TRASFERTE APPROVATE (sempre conflitti critici)
+      // 1. CONTROLLO GIORNI FESTIVI (SEMPRE CRITICI - PRIORITÀ MASSIMA)
+      if (holidays && holidays.length > 0) {
+        holidays.forEach(holiday => {
+          const dateStr = holiday.date;
+          conflictDates.add(dateStr);
+          details.push({
+            date: dateStr,
+            type: 'company_holiday',
+            description: `Giorno festivo: ${holiday.name}`,
+            severity: 'critical'
+          });
+        });
+        
+        summary.companyHolidays = holidays.length;
+        console.log('🎄 Giorni festivi trovati:', summary.companyHolidays);
+      }
+
+      // 2. CONTROLLO TRASFERTE APPROVATE (sempre conflitti critici)
       const { data: existingTrips } = await supabase
         .from('business_trips')
         .select('start_date, end_date, destination')
@@ -98,7 +123,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 2. CONTROLLO FERIE APPROVATE (conflitti critici per tutti i tipi)
+      // 3. CONTROLLO FERIE APPROVATE (conflitti critici per tutti i tipi)
       const { data: approvedVacations } = await supabase
         .from('leave_requests')
         .select('date_from, date_to')
@@ -129,7 +154,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 3. CONTROLLO PERMESSI APPROVATI (conflitti per permessi, malattie e presenze)
+      // 4. CONTROLLO PERMESSI APPROVATI (conflitti per permessi, malattie e presenze)
       if (type === 'permesso' || type === 'sick_leave' || type === 'attendance') {
         const { data: approvedPermissions } = await supabase
           .from('leave_requests')
@@ -160,7 +185,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 4. CONTROLLO MALATTIE (da tabella sick_leaves - conflitti critici per tutti i tipi)
+      // 5. CONTROLLO MALATTIE (da tabella sick_leaves - conflitti critici per tutti i tipi)
       const { data: sickLeaves } = await supabase
         .from('sick_leaves')
         .select('start_date, end_date, notes')
@@ -187,7 +212,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 5. CONTROLLO PRESENZE ESISTENTI (per nuove presenze e malattie)
+      // 6. CONTROLLO PRESENZE ESISTENTI (per nuove presenze e malattie)
       if (type === 'attendance' || type === 'sick_leave') {
         const { data: existingAttendances } = await supabase
           .from('unified_attendances')
@@ -239,7 +264,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
       console.log('📅 Riepilogo conflitti calcolati:', summary);
-      console.log('📋 Dettagli conflitti:', details.length);
+      console.log('📋 Dettagli confletti:', details.length);
       
       setConflictDates(conflictDateObjects);
       setConflictDetails(details);
@@ -252,6 +277,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
       setConflictDetails([]);
       setConflictSummary({
         totalConflicts: 0,
+        companyHolidays: 0,
         businessTrips: 0,
         vacations: 0,
         permissions: 0,
@@ -261,7 +287,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [holidays]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -272,10 +298,16 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
   }, [selectedUserId, leaveType, calculateConflicts]);
 
   const isDateDisabled = useCallback((date: Date) => {
+    // Prima controlla se è un giorno festivo (priorità massima)
+    if (isHoliday(date)) {
+      return true;
+    }
+    
+    // Poi controlla altri conflitti
     return conflictDates.some(conflictDate => 
       format(date, 'yyyy-MM-dd') === format(conflictDate, 'yyyy-MM-dd')
     );
-  }, [conflictDates]);
+  }, [conflictDates, isHoliday]);
 
   const getConflictDetailsForDate = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -289,7 +321,19 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     const conflicts: string[] = [];
     
     try {
-      // 1. CONTROLLO TRASFERTE SOVRAPPOSTE
+      // 1. CONTROLLO GIORNI FESTIVI (PRIORITÀ MASSIMA)
+      if (holidays && holidays.length > 0) {
+        const holidaysInRange = holidays.filter(holiday => {
+          const holidayDate = holiday.date;
+          return holidayDate >= startDate && holidayDate <= endDate;
+        });
+        
+        holidaysInRange.forEach(holiday => {
+          conflicts.push(`Conflitto critico: ${format(new Date(holiday.date), 'dd/MM/yyyy')} è un giorno festivo (${holiday.name})`);
+        });
+      }
+
+      // 2. CONTROLLO TRASFERTE SOVRAPPOSTE
       const { data: existingTrips } = await supabase
         .from('business_trips')
         .select('*')
@@ -309,7 +353,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 2. CONTROLLO ALTRE FERIE APPROVATE
+      // 3. CONTROLLO ALTRE FERIE APPROVATE
       const { data: existingVacations } = await supabase
         .from('leave_requests')
         .select('*')
@@ -332,7 +376,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 3. CONTROLLO MALATTIE (da tabella sick_leaves)
+      // 4. CONTROLLO MALATTIE (da tabella sick_leaves)
       const { data: sickLeaves } = await supabase
         .from('sick_leaves')
         .select('start_date, end_date, notes')
@@ -374,7 +418,13 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     try {
       const targetDate = new Date(date);
 
-      // 1. CONTROLLO TRASFERTE
+      // 1. CONTROLLO GIORNI FESTIVI (PRIORITÀ MASSIMA)
+      if (isHoliday(targetDate)) {
+        const holiday = holidays?.find(h => h.date === date);
+        conflicts.push(`Conflitto critico: ${format(targetDate, 'dd/MM/yyyy')} è un giorno festivo${holiday ? ` (${holiday.name})` : ''}`);
+      }
+
+      // 2. CONTROLLO TRASFERTE
       const { data: existingTrips } = await supabase
         .from('business_trips')
         .select('*')
@@ -389,7 +439,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 2. CONTROLLO FERIE
+      // 3. CONTROLLO FERIE
       const { data: existingVacations } = await supabase
         .from('leave_requests')
         .select('*')
@@ -403,7 +453,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         conflicts.push(`Conflitto critico: esistono ferie approvate che includono il ${format(targetDate, 'dd/MM/yyyy')}`);
       }
 
-      // 3. CONTROLLO ALTRI PERMESSI NELLA STESSA DATA
+      // 4. CONTROLLO ALTRI PERMESSI NELLA STESSA DATA
       const { data: existingPermissions } = await supabase
         .from('leave_requests')
         .select('*')
@@ -421,7 +471,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 4. CONTROLLO MALATTIE (da tabella sick_leaves)
+      // 5. CONTROLLO MALATTIE (da tabella sick_leaves)
       const { data: sickLeaves } = await supabase
         .from('sick_leaves')
         .select('start_date, end_date, notes')
@@ -458,7 +508,19 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     const finalEndDate = endDate || startDate;
     
     try {
-      // 1. CONTROLLO TRASFERTE SOVRAPPOSTE
+      // 1. CONTROLLO GIORNI FESTIVI (PRIORITÀ MASSIMA)
+      if (holidays && holidays.length > 0) {
+        const holidaysInRange = holidays.filter(holiday => {
+          const holidayDate = holiday.date;
+          return holidayDate >= startDate && holidayDate <= finalEndDate;
+        });
+        
+        holidaysInRange.forEach(holiday => {
+          conflicts.push(`Conflitto critico: ${format(new Date(holiday.date), 'dd/MM/yyyy')} è un giorno festivo (${holiday.name})`);
+        });
+      }
+
+      // 2. CONTROLLO TRASFERTE SOVRAPPOSTE
       const { data: existingTrips } = await supabase
         .from('business_trips')
         .select('*')
@@ -478,7 +540,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 2. CONTROLLO FERIE APPROVATE
+      // 3. CONTROLLO FERIE APPROVATE
       const { data: existingVacations } = await supabase
         .from('leave_requests')
         .select('*')
@@ -501,7 +563,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 3. CONTROLLO PRESENZE ESISTENTI (da unified_attendances)
+      // 4. CONTROLLO PRESENZE ESISTENTI (da unified_attendances)
       const { data: existingAttendances } = await supabase
         .from('unified_attendances')
         .select('date')
@@ -521,7 +583,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 4. CONTROLLO PRESENZE MANUALI (da manual_attendances)
+      // 5. CONTROLLO PRESENZE MANUALI (da manual_attendances)
       const { data: existingManualAttendances } = await supabase
         .from('manual_attendances')
         .select('date')
@@ -563,7 +625,13 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     try {
       const targetDate = new Date(date);
 
-      // 1. CONTROLLO TRASFERTE
+      // 1. CONTROLLO GIORNI FESTIVI (PRIORITÀ MASSIMA)
+      if (isHoliday(targetDate)) {
+        const holiday = holidays?.find(h => h.date === date);
+        conflicts.push(`Conflitto critico: ${format(targetDate, 'dd/MM/yyyy')} è un giorno festivo${holiday ? ` (${holiday.name})` : ''}`);
+      }
+
+      // 2. CONTROLLO TRASFERTE
       const { data: existingTrips } = await supabase
         .from('business_trips')
         .select('*')
@@ -578,7 +646,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 2. CONTROLLO FERIE
+      // 3. CONTROLLO FERIE
       const { data: existingVacations } = await supabase
         .from('leave_requests')
         .select('*')
@@ -592,7 +660,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         conflicts.push(`Conflitto critico: esistono ferie approvate che includono il ${format(targetDate, 'dd/MM/yyyy')}`);
       }
 
-      // 3. CONTROLLO MALATTIE (da tabella sick_leaves)
+      // 4. CONTROLLO MALATTIE (da tabella sick_leaves)
       const { data: sickLeaves } = await supabase
         .from('sick_leaves')
         .select('start_date, end_date, notes')
@@ -607,7 +675,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 4. CONTROLLO PERMESSI GIORNALIERI
+      // 5. CONTROLLO PERMESSI GIORNALIERI
       const { data: existingPermissions } = await supabase
         .from('leave_requests')
         .select('*')

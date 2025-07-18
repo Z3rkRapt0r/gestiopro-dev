@@ -1,11 +1,16 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
+import { useCompanyHolidays } from './useCompanyHolidays';
 
 export const useOvertimeConflicts = (selectedEmployeeId: string) => {
   const [conflictDates, setConflictDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Hook per i giorni festivi
+  const { holidays, isHoliday } = useCompanyHolidays();
 
   const calculateConflicts = useCallback(async (userId: string) => {
     if (!userId) {
@@ -22,7 +27,15 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
     const conflictDates = new Set<string>();
     
     try {
-      // 1. CONTROLLO TRASFERTE APPROVATE
+      // 1. CONTROLLO GIORNI FESTIVI (PRIORITÀ MASSIMA - BLOCCO ASSOLUTO)
+      if (holidays && holidays.length > 0) {
+        holidays.forEach(holiday => {
+          conflictDates.add(holiday.date);
+        });
+        console.log('🎄 Giorni festivi bloccati per straordinari:', holidays.length);
+      }
+
+      // 2. CONTROLLO TRASFERTE APPROVATE
       const { data: businessTrips } = await supabase
         .from('business_trips')
         .select('start_date, end_date')
@@ -41,7 +54,7 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
         }
       }
 
-      // 2. CONTROLLO FERIE E PERMESSI APPROVATI
+      // 3. CONTROLLO FERIE E PERMESSI APPROVATI
       const { data: leaveRequests } = await supabase
         .from('leave_requests')
         .select('type, date_from, date_to, day')
@@ -66,7 +79,7 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
         }
       }
 
-      // 3. CONTROLLO MALATTIE (dalla nuova tabella dedicata)
+      // 4. CONTROLLO MALATTIE (dalla tabella dedicata)
       const { data: sickLeaves } = await supabase
         .from('sick_leaves')
         .select('start_date, end_date')
@@ -87,7 +100,7 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
-      console.log('📅 Date con conflitti trovate:', conflictDateObjects.length);
+      console.log('📅 Date con conflitti trovate (inclusi giorni festivi):', conflictDateObjects.length);
       setConflictDates(conflictDateObjects);
       
     } catch (error) {
@@ -97,7 +110,7 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [holidays]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -108,10 +121,16 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
   }, [selectedEmployeeId, calculateConflicts]);
 
   const isDateDisabled = useCallback((date: Date) => {
+    // Prima controlla se è un giorno festivo (priorità massima)
+    if (isHoliday(date)) {
+      return true;
+    }
+    
+    // Poi controlla altri conflitti
     return conflictDates.some(conflictDate => 
       format(date, 'yyyy-MM-dd') === format(conflictDate, 'yyyy-MM-dd')
     );
-  }, [conflictDates]);
+  }, [conflictDates, isHoliday]);
 
   return {
     conflictDates,
