@@ -7,51 +7,14 @@ import { it } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
-  conflictDates?: {
-    [date: string]: {
-      type: 'business_trip' | 'approved_leave' | 'existing_permission' | 'sick_leave' | 'existing_attendance';
-      description: string;
-      severity: 'critical' | 'warning' | 'info';
-    };
-  };
-};
+export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  conflictDates = {},
   ...props
 }: CalendarProps) {
-  const getConflictClass = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    const conflict = conflictDates[dateStr];
-    
-    if (!conflict) return '';
-    
-    switch (conflict.type) {
-      case 'business_trip':
-        return 'bg-red-500 text-white hover:bg-red-600 border-red-600';
-      case 'approved_leave':
-        return 'bg-orange-500 text-white hover:bg-orange-600 border-orange-600';
-      case 'existing_permission':
-        return 'bg-yellow-500 text-white hover:bg-yellow-600 border-yellow-600';
-      case 'sick_leave':
-        return 'bg-purple-500 text-white hover:bg-purple-600 border-purple-600';
-      case 'existing_attendance':
-        return 'bg-blue-400 text-white hover:bg-blue-500 border-blue-500';
-      default:
-        return '';
-    }
-  };
-
-  const getConflictTooltip = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    const conflict = conflictDates[dateStr];
-    return conflict?.description || '';
-  };
-
   return (
     <DayPicker
       locale={it}
@@ -95,24 +58,6 @@ function Calendar({
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
-        Day: ({ date, ...dayProps }) => {
-          const conflictClass = getConflictClass(date);
-          const tooltip = getConflictTooltip(date);
-          
-          return (
-            <button
-              {...dayProps}
-              className={cn(
-                buttonVariants({ variant: "ghost" }),
-                "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 border border-transparent",
-                conflictClass
-              )}
-              title={tooltip}
-            >
-              {date.getDate()}
-            </button>
-          );
-        },
       }}
       {...props}
     />

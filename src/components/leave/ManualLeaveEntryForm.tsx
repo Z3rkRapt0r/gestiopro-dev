@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Clock, User, AlertCircle } from "lucide-react";
+import { CalendarIcon, Clock, User, AlertCircle, Info } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useLeaveRequests } from "@/hooks/useLeaveRequests";
@@ -14,7 +15,7 @@ import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { useLeaveConflicts } from "@/hooks/useLeaveConflicts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import { ConflictCalendar } from "./ConflictCalendar";
+import { Calendar } from "@/components/ui/calendar";
 
 interface ManualLeaveEntryFormProps {
   onSuccess?: () => void;
@@ -37,9 +38,8 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const { employees } = useActiveEmployees();
   const { insertMutation } = useLeaveRequests();
   
-  // Usa il nuovo hook per i conflitti
+  // Usa il nuovo hook per i conflitti con calcolo preventivo
   const { 
-    conflictDates, 
     isLoading: isCalculatingConflicts, 
     isDateDisabled,
     validateVacationDates,
@@ -280,16 +280,12 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
 
           {/* Indicatore di calcolo conflitti */}
           {selectedUserId && isCalculatingConflicts && (
-            <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-              🔍 Calcolo conflitti in corso...
-            </div>
-          )}
-
-          {/* Indicatore conflitti trovati */}
-          {selectedUserId && conflictDates.length > 0 && (
-            <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
-              ⚠️ {conflictDates.length} date disabilitate per conflitti esistenti
-            </div>
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-700">
+                🔍 Verifica disponibilità date in corso...
+              </AlertDescription>
+            </Alert>
           )}
 
           {validationError && (
@@ -318,18 +314,16 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <ConflictCalendar
+                    <Calendar
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
-                      userId={selectedUserId}
-                      leaveType="ferie"
                       disabled={(date) => {
                         const employee = employees?.find(emp => emp.id === selectedUserId);
                         const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                        return hireDate && date < hireDate;
+                        if (hireDate && date < hireDate) return true;
+                        return isDateDisabled(date);
                       }}
-                      showLegend={false}
                     />
                   </PopoverContent>
                 </Popover>
@@ -351,19 +345,17 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <ConflictCalendar
+                    <Calendar
                       mode="single"
                       selected={endDate}
                       onSelect={handleEndDateChange}
-                      userId={selectedUserId}
-                      leaveType="ferie"
                       disabled={(date) => {
                         const employee = employees?.find(emp => emp.id === selectedUserId);
                         const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
                         const minDate = startDate || hireDate;
-                        return minDate && date < minDate;
+                        if (minDate && date < minDate) return true;
+                        return isDateDisabled(date);
                       }}
-                      showLegend={false}
                     />
                   </PopoverContent>
                 </Popover>
@@ -388,18 +380,16 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <ConflictCalendar
+                    <Calendar
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
-                      userId={selectedUserId}
-                      leaveType="permesso"
                       disabled={(date) => {
                         const employee = employees?.find(emp => emp.id === selectedUserId);
                         const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                        return hireDate && date < hireDate;
+                        if (hireDate && date < hireDate) return true;
+                        return isDateDisabled(date);
                       }}
-                      showLegend={false}
                     />
                   </PopoverContent>
                 </Popover>
@@ -437,17 +427,6 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                 </div>
               </div>
             </>
-          )}
-
-          {/* Legenda conflitti */}
-          {selectedUserId && (
-            <ConflictCalendar
-              mode="single"
-              userId={selectedUserId}
-              leaveType={leaveType}
-              className="hidden"
-              showLegend={true}
-            />
           )}
 
           {/* Note */}
