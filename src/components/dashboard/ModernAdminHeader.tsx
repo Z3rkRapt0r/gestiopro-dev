@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -12,12 +11,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { 
-  Bell, 
   User, 
   LogOut
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDashboardSettings } from '@/hooks/useDashboardSettings';
 
 interface ModernAdminHeaderProps {
   title: string;
@@ -25,7 +22,6 @@ interface ModernAdminHeaderProps {
 
 export default function ModernAdminHeader({ title }: ModernAdminHeaderProps) {
   const { profile, signOut } = useAuth();
-  const { settings } = useDashboardSettings();
 
   const userInitials = profile?.first_name && profile?.last_name 
     ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
@@ -46,19 +42,8 @@ export default function ModernAdminHeader({ title }: ModernAdminHeaderProps) {
           </div>
         </div>
 
-        {/* Right Section - Notifications & User Menu */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10">
-            <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
-            <Badge 
-              variant="destructive" 
-              className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center text-xs animate-pulse"
-            >
-              3
-            </Badge>
-          </Button>
-
+        {/* Right Section - User Menu */}
+        <div className="flex items-center">
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -96,10 +81,6 @@ export default function ModernAdminHeader({ title }: ModernAdminHeaderProps) {
               <DropdownMenuItem className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 <span>Profilo</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer">
-                <Bell className="mr-2 h-4 w-4" />
-                <span>Notifiche</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Clock, User, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
@@ -16,6 +14,7 @@ import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { useLeaveConflicts } from "@/hooks/useLeaveConflicts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { ConflictCalendar } from "./ConflictCalendar";
 
 interface ManualLeaveEntryFormProps {
   onSuccess?: () => void;
@@ -24,7 +23,6 @@ interface ManualLeaveEntryFormProps {
 export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [leaveType, setLeaveType] = useState<"ferie" | "permesso">("ferie");
-  // Removed daily permission - only hourly permissions are supported
   
   // Date range for ferie or single date for permesso
   const [startDate, setStartDate] = useState<Date>();
@@ -155,8 +153,6 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
       validateConflicts(startDate, endDate, selectedUserId);
     }
   };
-
-  // Removed daily permission handler - only hourly permissions supported
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,18 +318,18 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                    <ConflictCalendar
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
+                      userId={selectedUserId}
+                      leaveType="ferie"
                       disabled={(date) => {
                         const employee = employees?.find(emp => emp.id === selectedUserId);
                         const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                        return (hireDate && date < hireDate) || isDateDisabled(date);
+                        return hireDate && date < hireDate;
                       }}
-                      locale={it}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
+                      showLegend={false}
                     />
                   </PopoverContent>
                 </Popover>
@@ -355,19 +351,19 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                    <ConflictCalendar
                       mode="single"
                       selected={endDate}
                       onSelect={handleEndDateChange}
+                      userId={selectedUserId}
+                      leaveType="ferie"
                       disabled={(date) => {
                         const employee = employees?.find(emp => emp.id === selectedUserId);
                         const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
                         const minDate = startDate || hireDate;
-                        return (minDate && date < minDate) || isDateDisabled(date);
+                        return minDate && date < minDate;
                       }}
-                      locale={it}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
+                      showLegend={false}
                     />
                   </PopoverContent>
                 </Popover>
@@ -375,7 +371,6 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
             </div>
           ) : (
             <>
-
               {/* Data permesso */}
               <div className="space-y-2">
                 <Label>Data permesso *</Label>
@@ -393,18 +388,18 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                    <ConflictCalendar
                       mode="single"
                       selected={startDate}
                       onSelect={handleStartDateChange}
+                      userId={selectedUserId}
+                      leaveType="permesso"
                       disabled={(date) => {
                         const employee = employees?.find(emp => emp.id === selectedUserId);
                         const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                        return (hireDate && date < hireDate) || isDateDisabled(date);
+                        return hireDate && date < hireDate;
                       }}
-                      locale={it}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
+                      showLegend={false}
                     />
                   </PopoverContent>
                 </Popover>
@@ -442,6 +437,17 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                 </div>
               </div>
             </>
+          )}
+
+          {/* Legenda conflitti */}
+          {selectedUserId && (
+            <ConflictCalendar
+              mode="single"
+              userId={selectedUserId}
+              leaveType={leaveType}
+              className="hidden"
+              showLegend={true}
+            />
           )}
 
           {/* Note */}

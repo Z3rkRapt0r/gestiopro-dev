@@ -1,10 +1,8 @@
 
 import { Button } from "@/components/ui/button";
-import { LogOut, Building, User, Bell } from "lucide-react";
+import { LogOut, Building, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
-import { useNotifications } from "@/hooks/useNotifications";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -14,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState, useEffect } from "react";
 
 interface DashboardHeaderProps {
   title: string;
@@ -24,40 +21,7 @@ interface DashboardHeaderProps {
 const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
   const { profile, signOut } = useAuth();
   const { settings, loading } = useDashboardSettings();
-  const { notifications, markAsRead, loading: notificationsLoading } = useNotifications();
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   
-  // Debug logging per la campanella
-  useEffect(() => {
-    console.log('🔔 DashboardHeader: Debug info', {
-      profile: profile ? { id: profile.id, email: profile.email } : null,
-      notificationsCount: notifications.length,
-      notificationsLoading,
-      notifications: notifications
-    });
-  }, [profile, notifications, notificationsLoading]);
-  
-  // Calcola le notifiche non lette
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-  
-  // Funzione per ottenere l'icona in base al tipo di notifica
-  const getNotificationIcon = (type: string) => {
-    switch (true) {
-      case type === 'document':
-      case type?.toLowerCase().includes('document'):
-        return '📄';
-      case type?.toLowerCase().includes('ferie'):
-        return '🏖️';
-      case type?.toLowerCase().includes('permess'):
-        return '🕐';
-      case type === 'leave_request':
-      case type?.toLowerCase().includes('leave'):
-        return '📅';
-      default:
-        return '🔔';
-    }
-  };
-
   if (loading) {
     return (
       <header className="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/60 sticky top-0 z-50">
@@ -121,112 +85,7 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
           </div>
           
           {/* User Section */}
-          <div className="flex items-center space-x-4">
-            {/* Notification Bell */}
-            <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl">
-                  <Bell className="h-5 w-5 text-slate-600" />
-                  {unreadCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                    >
-                      {unreadCount}
-                    </Badge>
-                  )}
-                  {notificationsLoading && (
-                    <div className="absolute -top-1 -right-1 h-3 w-3 bg-blue-500 rounded-full animate-pulse"></div>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-96 p-0 max-h-96 overflow-hidden" align="end" forceMount>
-                <DropdownMenuLabel className="p-4 pb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">Notifiche</span>
-                    {unreadCount > 0 && (
-                      <Badge variant="secondary">{unreadCount} nuove</Badge>
-                    )}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                  {notificationsLoading ? (
-                    <div className="p-4 text-center text-gray-500 text-sm">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                      <p>Caricamento notifiche...</p>
-                    </div>
-                  ) : notifications.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500 text-sm">
-                      <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>Nessuna notifica</p>
-                      <p className="text-xs mt-1">Le notifiche appariranno qui quando disponibili</p>
-                    </div>
-                  ) : (
-                    notifications.slice(0, 8).map((notification) => (
-                      <DropdownMenuItem 
-                        key={notification.id} 
-                        className="p-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                        onClick={() => {
-                          if (!notification.is_read) {
-                            markAsRead(notification.id);
-                          }
-                          setNotificationsOpen(false);
-                        }}
-                      >
-                        <div className="flex items-start space-x-3 w-full">
-                          <div className="flex-shrink-0 mt-1">
-                            <span className="text-lg">
-                              {getNotificationIcon(notification.type || 'system')}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-gray-900 truncate">
-                                {notification.title}
-                              </span>
-                              {!notification.is_read && (
-                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 ml-2"></div>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-600 line-clamp-2 mb-1">
-                              {notification.message}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-400">
-                                {new Date(notification.created_at).toLocaleDateString('it-IT', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                              {(notification.category?.includes('ferie') || notification.category?.includes('permessi') || 
-                                notification.title?.toLowerCase().includes('ferie') || 
-                                notification.title?.toLowerCase().includes('permess')) && (
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded-full">
-                                    In attesa
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </DropdownMenuItem>
-                    ))
-                  )}
-                </div>
-                {notifications.length > 8 && (
-                  <div className="p-2 border-t">
-                    <Button variant="ghost" size="sm" className="w-full text-xs">
-                      Vedi tutte le notifiche
-                    </Button>
-                  </div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
+          <div className="flex items-center">
             {/* User Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -264,10 +123,6 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
                 <DropdownMenuItem className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   <span>Profilo</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer">
-                  <Bell className="mr-2 h-4 w-4" />
-                  <span>Notifiche ({notifications.length})</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 

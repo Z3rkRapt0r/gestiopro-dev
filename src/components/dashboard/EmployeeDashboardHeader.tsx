@@ -1,10 +1,9 @@
 
 import { Button } from "@/components/ui/button";
-import { LogOut, Building, User, Bell } from "lucide-react";
+import { LogOut, Building, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { useEmployeeLogoSettings } from "@/hooks/useEmployeeLogoSettings";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -66,18 +65,7 @@ const EmployeeDashboardHeader = () => {
           </div>
           
           {/* User Section */}
-          <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
-            {/* Notification Bell */}
-            <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl">
-              <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
-              <Badge 
-                variant="destructive" 
-                className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center text-xs"
-              >
-                2
-              </Badge>
-            </Button>
-
+          <div className="flex items-center flex-shrink-0">
             {/* User Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -115,10 +103,6 @@ const EmployeeDashboardHeader = () => {
                 <DropdownMenuItem className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   <span>Profilo</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer">
-                  <Bell className="mr-2 h-4 w-4" />
-                  <span>Notifiche</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysValidation } from '@/hooks/useWorkingDaysValidation';
@@ -24,6 +22,7 @@ import { useEmployeeStatus } from '@/hooks/useEmployeeStatus';
 import { useAuth } from '@/hooks/useAuth';
 import WorkingDaysPreview from './WorkingDaysPreview';
 import { LeaveRequestFormValidation } from './LeaveRequestFormValidation';
+import { ConflictCalendar } from './ConflictCalendar';
 
 const leaveRequestSchema = z.object({
   type: z.enum(['ferie', 'permesso']),
@@ -118,15 +117,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     }
     
     return errors;
-  };
-
-  const isDateDisabled = (date: Date, type: string): boolean => {
-    if (!isWorkingDay(date)) return true;
-    
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const { employeeStatus } = useEmployeeStatus(profile?.id, dateStr);
-    
-    return employeeStatus?.hasHardBlock || false;
   };
 
   const onSubmit = (data: LeaveRequestFormData) => {
@@ -265,7 +255,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             </Alert>
           )}
 
-          {/* Avviso status dipendente - SOLO per hard blocks */}
+          {/* Status warnings */}
           {employeeStatus && employeeStatus.hasHardBlock && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -356,13 +346,13 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
+                              <ConflictCalendar
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={(date) => isDateDisabled(date, watchedType)}
-                                initialFocus
-                                className="pointer-events-auto"
+                                userId={profile?.id}
+                                leaveType="ferie"
+                                showLegend={false}
                               />
                             </PopoverContent>
                           </Popover>
@@ -397,17 +387,17 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
+                              <ConflictCalendar
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
+                                userId={profile?.id}
+                                leaveType="ferie"
                                 disabled={(date) => {
-                                  if (isDateDisabled(date, watchedType)) return true;
                                   if (watchedDateFrom && date < watchedDateFrom) return true;
                                   return false;
                                 }}
-                                initialFocus
-                                className="pointer-events-auto"
+                                showLegend={false}
                               />
                             </PopoverContent>
                           </Popover>
@@ -416,6 +406,17 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                       )}
                     />
                   </div>
+
+                  {/* Legenda conflitti per ferie */}
+                  {profile?.id && (
+                    <ConflictCalendar
+                      mode="single"
+                      userId={profile.id}
+                      leaveType="ferie"
+                      className="hidden"
+                      showLegend={true}
+                    />
+                  )}
 
                   {/* Preview conteggio giorni lavorativi per ferie */}
                   <WorkingDaysPreview 
@@ -454,13 +455,13 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
+                            <ConflictCalendar
                               mode="single"
                               selected={field.value}
                               onSelect={field.onChange}
-                              disabled={(date) => isDateDisabled(date, watchedType)}
-                              initialFocus
-                              className="pointer-events-auto"
+                              userId={profile?.id}
+                              leaveType="permesso"
+                              showLegend={false}
                             />
                           </PopoverContent>
                         </Popover>
@@ -468,6 +469,17 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                       </FormItem>
                     )}
                   />
+
+                  {/* Legenda conflitti per permessi */}
+                  {profile?.id && (
+                    <ConflictCalendar
+                      mode="single"
+                      userId={profile.id}
+                      leaveType="permesso"
+                      className="hidden"
+                      showLegend={true}
+                    />
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <FormField
