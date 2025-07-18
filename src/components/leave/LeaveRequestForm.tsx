@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -52,6 +51,18 @@ interface LeaveRequestFormProps {
   onSuccess?: () => void;
 }
 
+// Hook personalizzato per debounce dei validation
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const { profile } = useAuth();
   const { insertMutation } = useLeaveRequests();
@@ -76,6 +87,10 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const watchedTimeFrom = form.watch('time_from');
   const watchedTimeTo = form.watch('time_to');
 
+  // Debounce dei valori per evitare validazioni eccessive
+  const debouncedTimeFrom = useDebounce(watchedTimeFrom, 300);
+  const debouncedTimeTo = useDebounce(watchedTimeTo, 300);
+
   // Hook per gestire i conflitti con calcolo preventivo
   const { 
     isLoading: isCalculatingConflicts, 
@@ -88,7 +103,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   
   const { employeeStatus } = useEmployeeStatus(profile?.id, targetDate);
 
-  // Validazione in tempo reale dei bilanci
+  // Validazione in tempo reale dei bilanci (con debounce)
   useEffect(() => {
     if (watchedType && ((watchedType === 'ferie' && watchedDateFrom && watchedDateTo) || 
                         (watchedType === 'permesso' && watchedDay))) {
@@ -98,8 +113,8 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
         watchedDateFrom,
         watchedDateTo,
         watchedDay,
-        watchedTimeFrom,
-        watchedTimeTo
+        debouncedTimeFrom,
+        debouncedTimeTo
       );
       
       if (!validation.hasBalance || validation.exceedsVacationLimit || validation.exceedsPermissionLimit) {
@@ -108,7 +123,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
         setBalanceValidationErrors([]);
       }
     }
-  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, validateLeaveRequest]);
+  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, debouncedTimeFrom, debouncedTimeTo, validateLeaveRequest]);
 
   const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
@@ -134,13 +149,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     
     if (!formValidationState.isValid) {
       setShowValidationErrors(true);
-      console.log('Invio bloccato per validazione form:', formValidationState.message);
       return;
     }
 
     if (balanceValidationErrors.length > 0) {
       setShowValidationErrors(true);
-      console.log('Invio bloccato per bilanci:', balanceValidationErrors);
       return;
     }
 
@@ -165,7 +178,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
 
     if (employeeStatus && employeeStatus.hasHardBlock) {
       setShowValidationErrors(true);
-      console.log('Invio bloccato per hard block:', employeeStatus.blockingReasons);
       return;
     }
 
@@ -177,7 +189,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       day: data.day ? format(data.day, 'yyyy-MM-dd') : undefined,
     };
 
-    console.log('Invio richiesta:', payload);
     insertMutation.mutate(payload, {
       onSuccess: () => {
         form.reset();
@@ -204,7 +215,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       endDate={validationEndDate}
       singleDay={watchedType === 'permesso' ? validationStartDate : undefined}
       onValidationChange={(isValid, message) => {
-        console.log('Validazione cambiata:', { isValid, message });
         setFormValidationState({ isValid, message: message || '' });
       }}
     >
@@ -213,7 +223,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
           <CardTitle className="text-lg sm:text-xl">Nuova Richiesta</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6">
-          {/* Informazioni sui bilanci disponibili */}
           {leaveBalance && (
             <Alert className="border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
@@ -229,7 +238,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             </Alert>
           )}
 
-          {/* Informazioni sui giorni lavorativi */}
           {workingDaysLabels.length > 0 && (
             <Alert className="border-blue-200 bg-blue-50">
               <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
@@ -243,7 +251,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             </Alert>
           )}
 
-          {/* Indicatore calcolo conflitti */}
           {isCalculatingConflicts && (
             <Alert className="border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
@@ -253,7 +260,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             </Alert>
           )}
 
-          {/* Errori di validazione */}
           {showValidationErrors && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -273,7 +279,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             </Alert>
           )}
 
-          {/* Status warnings */}
           {employeeStatus && employeeStatus.hasHardBlock && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -297,7 +302,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             </Alert>
           )}
 
-          {/* Avviso per permessi sovrapposti - INFO, non blocca */}
           {employeeStatus && employeeStatus.currentStatus === 'permission' && !employeeStatus.hasHardBlock && (
             <Alert className="border-orange-200 bg-orange-50">
               <Info className="h-4 w-4 text-orange-600 flex-shrink-0" />
@@ -420,7 +424,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                     />
                   </div>
 
-                  {/* Preview conteggio giorni lavorativi per ferie */}
                   <WorkingDaysPreview 
                     startDate={watchedDateFrom}
                     endDate={watchedDateTo}
@@ -480,8 +483,10 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                           <FormControl>
                             <Input 
                               type="time" 
-                              {...field} 
+                              {...field}
                               className="h-12 sm:h-10 text-base sm:text-sm"
+                              placeholder="HH:MM"
+                              step="300"
                             />
                           </FormControl>
                           <FormMessage />
@@ -498,8 +503,10 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                           <FormControl>
                             <Input 
                               type="time" 
-                              {...field} 
+                              {...field}
                               className="h-12 sm:h-10 text-base sm:text-sm"
+                              placeholder="HH:MM"
+                              step="300"
                             />
                           </FormControl>
                           <FormMessage />
@@ -508,7 +515,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                     />
                   </div>
 
-                  {/* Validazione per permessi in giorni non lavorativi */}
                   {watchedDay && !isWorkingDay(watchedDay) && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4 flex-shrink-0" />

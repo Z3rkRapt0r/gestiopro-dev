@@ -21,6 +21,18 @@ interface ManualLeaveEntryFormProps {
   onSuccess?: () => void;
 }
 
+// Hook personalizzato per debounce
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [leaveType, setLeaveType] = useState<"ferie" | "permesso">("ferie");
@@ -35,10 +47,14 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [note, setNote] = useState<string>("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Debounce degli orari per evitare validazioni eccessive
+  const debouncedTimeFrom = useDebounce(timeFrom, 400);
+  const debouncedTimeTo = useDebounce(timeTo, 400);
+
   const { employees } = useActiveEmployees();
   const { insertMutation } = useLeaveRequests();
   
-  // Usa il nuovo hook per i conflitti con calcolo preventivo
+  // Usa il hook per i conflitti con calcolo preventivo
   const { 
     isLoading: isCalculatingConflicts, 
     isDateDisabled,
@@ -69,13 +85,12 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     return true;
   };
 
-  // Validazione anti-conflitto completa
+  // Validazione anti-conflitto completa (con debounce per gli orari)
   const validateConflicts = async (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
 
     try {
       if (leaveType === 'ferie' && endDate) {
-        console.log('🔍 Controllo conflitti per ferie...');
         const validation = await validateVacationDates(
           employeeId, 
           format(startDate, 'yyyy-MM-dd'),
@@ -87,12 +102,11 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           return false;
         }
       } else if (leaveType === 'permesso') {
-        console.log('🔍 Controllo conflitti per permesso...');
         const validation = await validatePermissionDate(
           employeeId,
           format(startDate, 'yyyy-MM-dd'),
-          timeFrom,
-          timeTo
+          debouncedTimeFrom,
+          debouncedTimeTo
         );
         
         if (!validation.isValid) {
@@ -112,6 +126,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
 
   const handleEmployeeChange = (userId: string) => {
     setSelectedUserId(userId);
+    setValidationError(null);
     // Valida immediatamente se ci sono date selezionate
     validateDatesAgainstHireDate(startDate, endDate, userId);
     if (startDate) {
@@ -126,7 +141,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     const isHireDateValid = validateDatesAgainstHireDate(date, endDate, selectedUserId);
     if (!isHireDateValid) return;
     
-    // Poi controlla i conflitti
+    // Poi controlla i conflitti (con debounce automatico per orari)
     if (selectedUserId && date) {
       await validateConflicts(date, endDate, selectedUserId);
     }
@@ -153,6 +168,13 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
       validateConflicts(startDate, endDate, selectedUserId);
     }
   };
+
+  // Validazione in tempo reale per gli orari (con debounce)
+  React.useEffect(() => {
+    if (leaveType === 'permesso' && selectedUserId && startDate && debouncedTimeFrom && debouncedTimeTo) {
+      validateConflicts(startDate, endDate, selectedUserId);
+    }
+  }, [debouncedTimeFrom, debouncedTimeTo, leaveType, selectedUserId, startDate, endDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -395,7 +417,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                 </Popover>
               </div>
 
-              {/* Orari obbligatori per permesso */}
+              {/* Orari ottimizzati per permesso */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="timeFrom">Ora inizio *</Label>
@@ -407,6 +429,8 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       value={timeFrom}
                       onChange={(e) => setTimeFrom(e.target.value)}
                       className="pl-10"
+                      placeholder="HH:MM"
+                      step="300"
                       required
                     />
                   </div>
@@ -421,6 +445,8 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       value={timeTo}
                       onChange={(e) => setTimeTo(e.target.value)}
                       className="pl-10"
+                      placeholder="HH:MM"
+                      step="300"
                       required
                     />
                   </div>
