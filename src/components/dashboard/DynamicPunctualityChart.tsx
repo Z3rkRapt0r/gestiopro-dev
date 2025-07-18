@@ -164,14 +164,14 @@ const DynamicPunctualityChart = ({ dailyData, period }: DynamicPunctualityChartP
               stroke="#10b981" 
               strokeDasharray="5 5" 
               strokeWidth={1}
-              label={{ value: "90%", position: "topRight", fontSize: 10, fill: "#10b981" }}
+              label={{ value: "90%", position: "top", fontSize: 10, fill: "#10b981" }}
             />
             <ReferenceLine 
               y={PUNCTUALITY_THRESHOLDS.good} 
               stroke="#f59e0b" 
               strokeDasharray="5 5" 
               strokeWidth={1}
-              label={{ value: "70%", position: "topRight", fontSize: 10, fill: "#f59e0b" }}
+              label={{ value: "70%", position: "top", fontSize: 10, fill: "#f59e0b" }}
             />
             
             <XAxis 
