@@ -165,7 +165,7 @@ const SimplePunctualityChart = () => {
         <Tabs defaultValue="generale" className="w-full">
           <TabsList className="grid w-full grid-cols-auto">
             <TabsTrigger value="generale">Puntualità Generale</TabsTrigger>
-            {stats.employeeDailyStats.map((employee) => (
+            {stats.employeeDailyStats?.map((employee) => (
               <TabsTrigger 
                 key={employee.employeeId} 
                 value={employee.employeeId}
@@ -183,7 +183,7 @@ const SimplePunctualityChart = () => {
             />
           </TabsContent>
 
-          {stats.employeeDailyStats.map((employee) => (
+          {stats.employeeDailyStats?.map((employee) => (
             <TabsContent key={employee.employeeId} value={employee.employeeId} className="mt-6">
               <EmployeePunctualityChart 
                 employeeData={employee}

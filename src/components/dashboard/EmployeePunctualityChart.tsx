@@ -142,7 +142,7 @@ const EmployeePunctualityChart = ({ employeeData, period }: EmployeePunctualityC
               />
               <Bar 
                 dataKey="statusValue" 
-                fill={(entry: any) => entry.color}
+                fill="#6b7280"
                 radius={[2, 2, 0, 0]}
               />
             </BarChart>
