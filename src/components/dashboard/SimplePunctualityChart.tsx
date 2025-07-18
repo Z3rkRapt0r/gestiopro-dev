@@ -1,12 +1,13 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePunctualityStats } from '@/hooks/usePunctualityStats';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Clock, TrendingUp, TrendingDown, Calendar, AlertTriangle } from 'lucide-react';
+import GeneralPunctualityChart from './GeneralPunctualityChart';
+import EmployeePunctualityChart from './EmployeePunctualityChart';
 
 const SimplePunctualityChart = () => {
   const [period, setPeriod] = useState<'week' | 'month'>('week');
@@ -59,19 +60,6 @@ const SimplePunctualityChart = () => {
     );
   }
 
-  // Prepara i dati per il grafico a linee con colori basati sulla puntualità
-  const chartData = stats.byEmployee.map((emp, index) => ({
-    index: index + 1,
-    name: `${emp.firstName} ${emp.lastName}`.length > 15 
-      ? `${emp.firstName} ${emp.lastName.charAt(0)}.`
-      : `${emp.firstName} ${emp.lastName}`,
-    fullName: `${emp.firstName} ${emp.lastName}`,
-    punctuality: emp.punctualityPercentage,
-    color: emp.punctualityPercentage >= 90 ? '#10b981' : 
-           emp.punctualityPercentage >= 70 ? '#f59e0b' : '#ef4444'
-  }));
-
-  // Logica sofisticata per dipendenti che necessitano attenzione
   const calculateCriticalScore = (emp: any) => {
     const lateWeight = 0.4;
     const delayWeight = 0.35;
@@ -90,17 +78,16 @@ const SimplePunctualityChart = () => {
 
   const worstPerformers = stats.byEmployee
     .filter(emp => {
-      // Criteri sofisticati per identificare dipendenti problematici
-      return emp.totalDays >= 5 && // Minimo giorni lavorativi
-             emp.lateDays > 0 && // Deve avere ritardi effettivi
-             (emp.punctualityPercentage < 90 || emp.averageDelay > 10); // Soglie multiple
+      return emp.totalDays >= 5 && 
+             emp.lateDays > 0 && 
+             (emp.punctualityPercentage < 90 || emp.averageDelay > 10);
     })
     .map(emp => ({
       ...emp,
       criticalScore: calculateCriticalScore(emp),
       criticality: getCriticalityLevel(calculateCriticalScore(emp))
     }))
-    .sort((a, b) => b.criticalScore - a.criticalScore) // Ordina per criticità
+    .sort((a, b) => b.criticalScore - a.criticalScore)
     .slice(0, 5);
 
   return (
@@ -174,56 +161,37 @@ const SimplePunctualityChart = () => {
           </div>
         </div>
 
-        {/* Grafico linee colorate */}
-        <div className="bg-gray-50 rounded-xl p-4">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4 text-center">
-            Puntualità per Dipendente
-          </h4>
-          <div className="mb-4 flex justify-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-1 bg-green-500 rounded"></div>
-              <span>Ottima (≥90%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-1 bg-yellow-500 rounded"></div>
-              <span>Buona (70-89%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-1 bg-red-500 rounded"></div>
-              <span>Critica (&lt;70%)</span>
-            </div>
-          </div>
-          <div className="h-80 lg:h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 11 }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis 
-                  domain={[0, 100]}
-                  tick={{ fontSize: 12 }}
-                  label={{ value: 'Puntualità (%)', angle: -90, position: 'insideLeft' }}
-                />
-                {chartData.map((entry, index) => (
-                  <Line
-                    key={`line-${index}`}
-                    type="monotone"
-                    dataKey="punctuality"
-                    stroke={entry.color}
-                    strokeWidth={3}
-                    dot={{ fill: entry.color, strokeWidth: 2, r: 6 }}
-                    activeDot={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        {/* Tabs per Generale e Dipendenti */}
+        <Tabs defaultValue="generale" className="w-full">
+          <TabsList className="grid w-full grid-cols-auto">
+            <TabsTrigger value="generale">Puntualità Generale</TabsTrigger>
+            {stats.employeeDailyStats.map((employee) => (
+              <TabsTrigger 
+                key={employee.employeeId} 
+                value={employee.employeeId}
+                className="text-xs"
+              >
+                {employee.firstName} {employee.lastName.charAt(0)}.
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="generale" className="mt-6">
+            <GeneralPunctualityChart 
+              dailyData={stats.dailyData}
+              period={period}
+            />
+          </TabsContent>
+
+          {stats.employeeDailyStats.map((employee) => (
+            <TabsContent key={employee.employeeId} value={employee.employeeId} className="mt-6">
+              <EmployeePunctualityChart 
+                employeeData={employee}
+                period={period}
+              />
+            </TabsContent>
+          ))}
+        </Tabs>
 
         {/* Dipendenti con maggiori ritardi */}
         {worstPerformers.length > 0 && (
