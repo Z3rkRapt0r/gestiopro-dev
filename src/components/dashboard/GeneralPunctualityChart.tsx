@@ -11,6 +11,14 @@ interface GeneralPunctualityChartProps {
 }
 
 const GeneralPunctualityChart = ({ dailyData, period }: GeneralPunctualityChartProps) => {
+  if (!dailyData || dailyData.length === 0) {
+    return (
+      <div className="bg-gray-50 rounded-xl p-4 text-center">
+        <p className="text-gray-500">Nessun dato disponibile per il periodo selezionato</p>
+      </div>
+    );
+  }
+
   const chartData = dailyData.map(day => ({
     ...day,
     formattedDate: format(new Date(day.date), period === 'week' ? 'EEE dd/MM' : 'dd/MM', { locale: it }),
