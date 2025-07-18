@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -140,14 +141,14 @@ const TodayAttendanceSummary = () => {
   return (
     <Card className="bg-white/80 backdrop-blur-sm shadow-lg border border-slate-200/60">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Riepilogo Presenze - {format(new Date(), 'EEEE dd MMMM', { locale: it })}
           </CardTitle>
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-gray-500" />
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-wrap">
               <Button
                 variant={filter === 'all' ? 'default' : 'outline'}
                 size="sm"
@@ -221,7 +222,7 @@ const TodayAttendanceSummary = () => {
           {filteredSummary.map((item) => (
             <div 
               key={item.employee.id} 
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-2 lg:gap-3"
             >
               <div className="flex items-center gap-3">
                 {getStatusIcon(item.status, item.justification)}
@@ -235,7 +236,7 @@ const TodayAttendanceSummary = () => {
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-3">
                 {item.attendanceTime && (
                   <div className="text-sm text-gray-600 flex items-center gap-1">
                     <Clock className="h-3 w-3" />
@@ -249,12 +250,14 @@ const TodayAttendanceSummary = () => {
                 )}
                 
                 {item.details && (
-                  <div className="text-sm text-gray-600 max-w-48 truncate" title={item.details}>
+                  <div className="text-sm text-gray-600 break-words" title={item.details}>
                     {item.details}
                   </div>
                 )}
                 
-                {getStatusBadge(item.status, item.justification, item.isLate)}
+                <div className="flex-shrink-0">
+                  {getStatusBadge(item.status, item.justification, item.isLate)}
+                </div>
               </div>
             </div>
           ))}
