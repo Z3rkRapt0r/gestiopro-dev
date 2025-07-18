@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,18 +52,6 @@ interface LeaveRequestFormProps {
   onSuccess?: () => void;
 }
 
-// Hook personalizzato per debounce dei validation
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
 export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const { profile } = useAuth();
   const { insertMutation } = useLeaveRequests();
@@ -87,10 +76,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const watchedTimeFrom = form.watch('time_from');
   const watchedTimeTo = form.watch('time_to');
 
-  // Debounce dei valori per evitare validazioni eccessive
-  const debouncedTimeFrom = useDebounce(watchedTimeFrom, 300);
-  const debouncedTimeTo = useDebounce(watchedTimeTo, 300);
-
   // Hook per gestire i conflitti con calcolo preventivo
   const { 
     isLoading: isCalculatingConflicts, 
@@ -103,27 +88,31 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   
   const { employeeStatus } = useEmployeeStatus(profile?.id, targetDate);
 
-  // Validazione in tempo reale dei bilanci (con debounce)
+  // Validazione in tempo reale dei bilanci (con debounce ottimizzato)
   useEffect(() => {
-    if (watchedType && ((watchedType === 'ferie' && watchedDateFrom && watchedDateTo) || 
-                        (watchedType === 'permesso' && watchedDay))) {
-      
-      const validation = validateLeaveRequest(
-        watchedType,
-        watchedDateFrom,
-        watchedDateTo,
-        watchedDay,
-        debouncedTimeFrom,
-        debouncedTimeTo
-      );
-      
-      if (!validation.hasBalance || validation.exceedsVacationLimit || validation.exceedsPermissionLimit) {
-        setBalanceValidationErrors([validation.errorMessage || 'Bilancio insufficiente']);
-      } else {
-        setBalanceValidationErrors([]);
+    const timeoutId = setTimeout(() => {
+      if (watchedType && ((watchedType === 'ferie' && watchedDateFrom && watchedDateTo) || 
+                          (watchedType === 'permesso' && watchedDay))) {
+        
+        const validation = validateLeaveRequest(
+          watchedType,
+          watchedDateFrom,
+          watchedDateTo,
+          watchedDay,
+          watchedTimeFrom,
+          watchedTimeTo
+        );
+        
+        if (!validation.hasBalance || validation.exceedsVacationLimit || validation.exceedsPermissionLimit) {
+          setBalanceValidationErrors([validation.errorMessage || 'Bilancio insufficiente']);
+        } else {
+          setBalanceValidationErrors([]);
+        }
       }
-    }
-  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, debouncedTimeFrom, debouncedTimeTo, validateLeaveRequest]);
+    }, 500); // Debounce solo per validazione, non per input
+
+    return () => clearTimeout(timeoutId);
+  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, validateLeaveRequest]);
 
   const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
@@ -483,7 +472,9 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                           <FormControl>
                             <Input 
                               type="time" 
-                              {...field}
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
                               className="h-12 sm:h-10 text-base sm:text-sm"
                               placeholder="HH:MM"
                               step="300"
@@ -503,7 +494,9 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                           <FormControl>
                             <Input 
                               type="time" 
-                              {...field}
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
                               className="h-12 sm:h-10 text-base sm:text-sm"
                               placeholder="HH:MM"
                               step="300"

@@ -21,18 +21,6 @@ interface ManualLeaveEntryFormProps {
   onSuccess?: () => void;
 }
 
-// Hook personalizzato per debounce
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
-
-  React.useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
 export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [leaveType, setLeaveType] = useState<"ferie" | "permesso">("ferie");
@@ -46,10 +34,6 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [timeTo, setTimeTo] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  // Debounce degli orari per evitare validazioni eccessive
-  const debouncedTimeFrom = useDebounce(timeFrom, 400);
-  const debouncedTimeTo = useDebounce(timeTo, 400);
 
   const { employees } = useActiveEmployees();
   const { insertMutation } = useLeaveRequests();
@@ -85,7 +69,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     return true;
   };
 
-  // Validazione anti-conflitto completa (con debounce per gli orari)
+  // Validazione anti-conflitto completa
   const validateConflicts = async (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
 
@@ -105,8 +89,8 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
         const validation = await validatePermissionDate(
           employeeId,
           format(startDate, 'yyyy-MM-dd'),
-          debouncedTimeFrom,
-          debouncedTimeTo
+          timeFrom,
+          timeTo
         );
         
         if (!validation.isValid) {
@@ -141,7 +125,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     const isHireDateValid = validateDatesAgainstHireDate(date, endDate, selectedUserId);
     if (!isHireDateValid) return;
     
-    // Poi controlla i conflitti (con debounce automatico per orari)
+    // Poi controlla i conflitti
     if (selectedUserId && date) {
       await validateConflicts(date, endDate, selectedUserId);
     }
@@ -169,12 +153,30 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     }
   };
 
-  // Validazione in tempo reale per gli orari (con debounce)
-  React.useEffect(() => {
-    if (leaveType === 'permesso' && selectedUserId && startDate && debouncedTimeFrom && debouncedTimeTo) {
-      validateConflicts(startDate, endDate, selectedUserId);
+  // Gestori personalizzati per input time (senza debounce)
+  const handleTimeFromChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTimeFrom(value);
+    
+    // Validazione differita per evitare interferenze con l'input
+    if (value && timeTo && selectedUserId && startDate) {
+      setTimeout(() => {
+        validateConflicts(startDate, endDate, selectedUserId);
+      }, 500);
     }
-  }, [debouncedTimeFrom, debouncedTimeTo, leaveType, selectedUserId, startDate, endDate]);
+  };
+
+  const handleTimeToChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTimeTo(value);
+    
+    // Validazione differita per evitare interferenze con l'input
+    if (timeFrom && value && selectedUserId && startDate) {
+      setTimeout(() => {
+        validateConflicts(startDate, endDate, selectedUserId);
+      }, 500);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -427,7 +429,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       id="timeFrom"
                       type="time"
                       value={timeFrom}
-                      onChange={(e) => setTimeFrom(e.target.value)}
+                      onChange={handleTimeFromChange}
                       className="pl-10"
                       placeholder="HH:MM"
                       step="300"
@@ -443,7 +445,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
                       id="timeTo"
                       type="time"
                       value={timeTo}
-                      onChange={(e) => setTimeTo(e.target.value)}
+                      onChange={handleTimeToChange}
                       className="pl-10"
                       placeholder="HH:MM"
                       step="300"
