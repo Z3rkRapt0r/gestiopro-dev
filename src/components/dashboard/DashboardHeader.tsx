@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface DashboardHeaderProps {
   title: string;
@@ -24,8 +24,18 @@ interface DashboardHeaderProps {
 const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
   const { profile, signOut } = useAuth();
   const { settings, loading } = useDashboardSettings();
-  const { notifications, markAsRead } = useNotifications();
+  const { notifications, markAsRead, loading: notificationsLoading } = useNotifications();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  
+  // Debug logging per la campanella
+  useEffect(() => {
+    console.log('🔔 DashboardHeader: Debug info', {
+      profile: profile ? { id: profile.id, email: profile.email } : null,
+      notificationsCount: notifications.length,
+      notificationsLoading,
+      notifications: notifications
+    });
+  }, [profile, notifications, notificationsLoading]);
   
   // Calcola le notifiche non lette
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -125,6 +135,9 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
                       {unreadCount}
                     </Badge>
                   )}
+                  {notificationsLoading && (
+                    <div className="absolute -top-1 -right-1 h-3 w-3 bg-blue-500 rounded-full animate-pulse"></div>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-96 p-0 max-h-96 overflow-hidden" align="end" forceMount>
@@ -138,10 +151,16 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                  {notifications.length === 0 ? (
+                  {notificationsLoading ? (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p>Caricamento notifiche...</p>
+                    </div>
+                  ) : notifications.length === 0 ? (
                     <div className="p-4 text-center text-gray-500 text-sm">
                       <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p>Nessuna notifica</p>
+                      <p className="text-xs mt-1">Le notifiche appariranno qui quando disponibili</p>
                     </div>
                   ) : (
                     notifications.slice(0, 8).map((notification) => (
@@ -198,6 +217,13 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
                     ))
                   )}
                 </div>
+                {notifications.length > 8 && (
+                  <div className="p-2 border-t">
+                    <Button variant="ghost" size="sm" className="w-full text-xs">
+                      Vedi tutte le notifiche
+                    </Button>
+                  </div>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -241,7 +267,7 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="cursor-pointer">
                   <Bell className="mr-2 h-4 w-4" />
-                  <span>Notifiche</span>
+                  <span>Notifiche ({notifications.length})</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 

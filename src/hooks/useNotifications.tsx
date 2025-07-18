@@ -26,20 +26,20 @@ export const useNotifications = () => {
 
   const fetchNotifications = async () => {
     if (!user) {
-      console.log('useNotifications: No user found, skipping fetch');
+      console.log('🔔 useNotifications: No user found, skipping fetch');
       return;
     }
 
     setLoading(true);
     try {
-      console.log('Fetching notifications for user:', user.id);
+      console.log('🔔 Fetching notifications for user:', user.id);
       
       // Prima verifichiamo se ci sono notifiche nella tabella
       const { data: allNotifications, error: allError } = await supabase
         .from('notifications')
         .select('*');
         
-      console.log('All notifications in database:', allNotifications);
+      console.log('🔔 All notifications in database:', allNotifications);
       
       // Ora prendiamo solo quelle per questo utente
       const { data, error } = await supabase
@@ -49,11 +49,22 @@ export const useNotifications = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching user notifications:', error);
+        console.error('🔔 Error fetching user notifications:', error);
+        console.error('🔔 Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return;
       }
 
-      console.log('User specific notifications:', data);
+      console.log('🔔 User specific notifications:', data);
+      console.log('🔔 Current user auth info:', {
+        id: user.id,
+        email: user.email,
+        role: user.role
+      });
 
       // Ensure type is properly typed
       const typedNotifications: Notification[] = (data || []).map(notification => ({
@@ -61,10 +72,11 @@ export const useNotifications = () => {
         type: notification.type as Notification['type'] || 'system'
       }));
 
-      console.log('Typed notifications:', typedNotifications);
+      console.log('🔔 Typed notifications:', typedNotifications);
+      console.log('🔔 Notifications count:', typedNotifications.length);
       setNotifications(typedNotifications);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('🔔 Error fetching notifications:', error);
     } finally {
       setLoading(false);
     }
@@ -79,7 +91,7 @@ export const useNotifications = () => {
     if (!user) return { error: 'User not authenticated' };
 
     try {
-      console.log('Creating notification:', { userId, title, message, type });
+      console.log('🔔 Creating notification:', { userId, title, message, type });
       
       const { error } = await supabase
         .from('notifications')
@@ -92,11 +104,11 @@ export const useNotifications = () => {
         });
 
       if (error) {
-        console.error('Error creating notification:', error);
+        console.error('🔔 Error creating notification:', error);
         throw error;
       }
 
-      console.log('Notification created successfully');
+      console.log('🔔 Notification created successfully');
       toast({
         title: "Successo",
         description: "Notifica inviata correttamente",
@@ -105,7 +117,7 @@ export const useNotifications = () => {
       await fetchNotifications();
       return { error: null };
     } catch (error: any) {
-      console.error('Error creating notification:', error);
+      console.error('🔔 Error creating notification:', error);
       toast({
         title: "Errore",
         description: error.message || "Errore durante l'invio della notifica",
@@ -117,7 +129,7 @@ export const useNotifications = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      console.log('Marking notification as read:', notificationId);
+      console.log('🔔 Marking notification as read:', notificationId);
       
       const { error } = await supabase
         .from('notifications')
@@ -125,7 +137,7 @@ export const useNotifications = () => {
         .eq('id', notificationId);
 
       if (error) {
-        console.error('Error marking notification as read:', error);
+        console.error('🔔 Error marking notification as read:', error);
         throw error;
       }
 
@@ -137,9 +149,9 @@ export const useNotifications = () => {
         )
       );
       
-      console.log('Notification marked as read successfully');
+      console.log('🔔 Notification marked as read successfully');
     } catch (error: any) {
-      console.error('Error marking notification as read:', error);
+      console.error('🔔 Error marking notification as read:', error);
     }
   };
 
@@ -147,7 +159,7 @@ export const useNotifications = () => {
     if (!user) return;
 
     try {
-      console.log('Marking all notifications as read for user:', user.id);
+      console.log('🔔 Marking all notifications as read for user:', user.id);
       
       const { error } = await supabase
         .from('notifications')
@@ -156,7 +168,7 @@ export const useNotifications = () => {
         .eq('is_read', false);
 
       if (error) {
-        console.error('Error marking all notifications as read:', error);
+        console.error('🔔 Error marking all notifications as read:', error);
         throw error;
       }
 
@@ -169,18 +181,40 @@ export const useNotifications = () => {
         description: "Tutte le notifiche sono state segnate come lette",
       });
       
-      console.log('All notifications marked as read successfully');
+      console.log('🔔 All notifications marked as read successfully');
     } catch (error: any) {
-      console.error('Error marking all notifications as read:', error);
+      console.error('🔔 Error marking all notifications as read:', error);
     }
   };
 
   useEffect(() => {
     if (user) {
-      console.log('useNotifications: User found, fetching notifications for:', user.id);
+      console.log('🔔 useNotifications: User found, fetching notifications for:', user.id);
       fetchNotifications();
+
+      // Ascolta i cambiamenti in tempo reale
+      const channel = supabase
+        .channel('notifications-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('🔔 Real-time notification change:', payload);
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } else {
-      console.log('useNotifications: No user, clearing notifications');
+      console.log('🔔 useNotifications: No user, clearing notifications');
       setNotifications([]);
     }
   }, [user]);

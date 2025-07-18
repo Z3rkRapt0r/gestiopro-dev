@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { usePunctualityStats } from '@/hooks/usePunctualityStats';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Clock, TrendingUp, TrendingDown, Calendar, AlertTriangle } from 'lucide-react';
 
 const SimplePunctualityChart = () => {
@@ -59,44 +59,17 @@ const SimplePunctualityChart = () => {
     );
   }
 
-  const chartData = stats.byEmployee.map(emp => ({
+  // Prepara i dati per il grafico a linee con colori basati sulla puntualità
+  const chartData = stats.byEmployee.map((emp, index) => ({
+    index: index + 1,
     name: `${emp.firstName} ${emp.lastName}`.length > 15 
       ? `${emp.firstName} ${emp.lastName.charAt(0)}.`
       : `${emp.firstName} ${emp.lastName}`,
     fullName: `${emp.firstName} ${emp.lastName}`,
-    puntuale: emp.punctualDays,
-    ritardo: emp.lateDays,
-    percentuale: emp.punctualityPercentage,
-    ritardoMedio: emp.averageDelay,
+    punctuality: emp.punctualityPercentage,
+    color: emp.punctualityPercentage >= 90 ? '#10b981' : 
+           emp.punctualityPercentage >= 70 ? '#f59e0b' : '#ef4444'
   }));
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white p-4 border rounded-lg shadow-lg border-gray-200">
-          <p className="font-semibold text-gray-900 mb-2">{data.fullName}</p>
-          <div className="space-y-1 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-              <span>Puntuale: {data.puntuale} giorni</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span>In ritardo: {data.ritardo} giorni</span>
-            </div>
-            <div className="border-t pt-1 mt-2">
-              <p className="font-medium">Puntualità: {data.percentuale}%</p>
-              {data.ritardoMedio > 0 && (
-                <p className="text-orange-600">Ritardo medio: {data.ritardoMedio.toFixed(0)}min</p>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
 
   // Logica sofisticata per dipendenti che necessitano attenzione
   const calculateCriticalScore = (emp: any) => {
@@ -201,29 +174,53 @@ const SimplePunctualityChart = () => {
           </div>
         </div>
 
-        {/* Grafico principale */}
+        {/* Grafico linee colorate */}
         <div className="bg-gray-50 rounded-xl p-4">
           <h4 className="text-lg font-semibold text-gray-800 mb-4 text-center">
             Puntualità per Dipendente
           </h4>
+          <div className="mb-4 flex justify-center gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-1 bg-green-500 rounded"></div>
+              <span>Ottima (≥90%)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-1 bg-yellow-500 rounded"></div>
+              <span>Buona (70-89%)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-1 bg-red-500 rounded"></div>
+              <span>Critica (<70%)</span>
+            </div>
+          </div>
           <div className="h-80 lg:h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                layout="horizontal"
-                margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
-              >
-                <XAxis type="number" tick={{ fontSize: 12 }} />
-                <YAxis 
+              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
                   dataKey="name" 
-                  type="category" 
                   tick={{ fontSize: 11 }}
-                  width={60}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
                 />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="puntuale" stackId="a" fill="#10b981" name="Puntuale" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="ritardo" stackId="a" fill="#ef4444" name="In ritardo" radius={[0, 4, 4, 0]} />
-              </BarChart>
+                <YAxis 
+                  domain={[0, 100]}
+                  tick={{ fontSize: 12 }}
+                  label={{ value: 'Puntualità (%)', angle: -90, position: 'insideLeft' }}
+                />
+                {chartData.map((entry, index) => (
+                  <Line
+                    key={`line-${index}`}
+                    type="monotone"
+                    dataKey="punctuality"
+                    stroke={entry.color}
+                    strokeWidth={3}
+                    dot={{ fill: entry.color, strokeWidth: 2, r: 6 }}
+                    activeDot={false}
+                  />
+                ))}
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
