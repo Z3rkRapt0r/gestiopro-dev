@@ -98,8 +98,36 @@ const SimplePunctualityChart = () => {
     return null;
   };
 
+  // Logica sofisticata per dipendenti che necessitano attenzione
+  const calculateCriticalScore = (emp: any) => {
+    const lateWeight = 0.4;
+    const delayWeight = 0.35;
+    const punctualityWeight = 0.25;
+    
+    return (emp.lateDays * lateWeight) + 
+           (emp.averageDelay * delayWeight) + 
+           ((100 - emp.punctualityPercentage) * punctualityWeight);
+  };
+
+  const getCriticalityLevel = (score: number) => {
+    if (score > 15) return { level: 'critico', color: 'bg-red-100 text-red-800', emoji: '🔴' };
+    if (score >= 8) return { level: 'attenzione', color: 'bg-orange-100 text-orange-800', emoji: '🟠' };
+    return { level: 'monitoraggio', color: 'bg-yellow-100 text-yellow-800', emoji: '🟡' };
+  };
+
   const worstPerformers = stats.byEmployee
-    .filter(emp => emp.punctualityPercentage < 90)
+    .filter(emp => {
+      // Criteri sofisticati per identificare dipendenti problematici
+      return emp.totalDays >= 5 && // Minimo giorni lavorativi
+             emp.lateDays > 0 && // Deve avere ritardi effettivi
+             (emp.punctualityPercentage < 90 || emp.averageDelay > 10); // Soglie multiple
+    })
+    .map(emp => ({
+      ...emp,
+      criticalScore: calculateCriticalScore(emp),
+      criticality: getCriticalityLevel(calculateCriticalScore(emp))
+    }))
+    .sort((a, b) => b.criticalScore - a.criticalScore) // Ordina per criticità
     .slice(0, 5);
 
   return (
@@ -218,7 +246,13 @@ const SimplePunctualityChart = () => {
                       {emp.lateDays} ritardi su {emp.totalDays} giorni
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                   <div className="flex items-center gap-2">
+                    <Badge 
+                      className={`text-xs ${emp.criticality.color}`}
+                      variant="outline"
+                    >
+                      {emp.criticality.emoji} {emp.criticality.level}
+                    </Badge>
                     <Badge 
                       variant="destructive"
                       className="text-xs"
@@ -230,6 +264,9 @@ const SimplePunctualityChart = () => {
                         {emp.averageDelay.toFixed(0)}min
                       </span>
                     )}
+                    <span className="text-xs text-gray-400 font-mono">
+                      Score: {emp.criticalScore.toFixed(1)}
+                    </span>
                   </div>
                 </div>
               ))}
