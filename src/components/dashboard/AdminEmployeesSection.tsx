@@ -40,12 +40,11 @@ import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import CreateEmployeeForm from './CreateEmployeeForm';
 import EditEmployeeForm from './EditEmployeeForm';
 import UserStorageStatsDialog from './UserStorageStatsDialog';
-import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function AdminEmployeesSection() {
-  const { employees, loading } = useActiveEmployees();
+  const { employees, loading, refreshEmployees } = useActiveEmployees();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [employeeToRemove, setEmployeeToRemove] = useState<any>(null);
@@ -55,7 +54,6 @@ export default function AdminEmployeesSection() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isStorageStatsDialogOpen, setIsStorageStatsDialogOpen] = useState(false);
   
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const filteredEmployees = employees?.filter(employee =>
@@ -101,7 +99,8 @@ export default function AdminEmployeesSection() {
         className: "bg-green-50 border-green-200 text-green-800",
       });
 
-      await refreshData();
+      // Refresh the employees list directly using the hook method
+      refreshEmployees();
     } catch (error: any) {
       console.error('Error removing employee:', error);
       toast({
@@ -115,13 +114,9 @@ export default function AdminEmployeesSection() {
     }
   };
 
-  const refreshData = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['active-employees'] });
-  };
-
   const handleCreateEmployeeSuccess = async () => {
     setIsCreateDialogOpen(false);
-    await refreshData();
+    refreshEmployees();
     toast({
       title: "Successo",
       description: "Dipendente aggiunto con successo",
@@ -132,7 +127,7 @@ export default function AdminEmployeesSection() {
   const handleEditEmployeeSuccess = async () => {
     setIsEditDialogOpen(false);
     setSelectedEmployee(null);
-    await refreshData();
+    refreshEmployees();
     toast({
       title: "Successo", 
       description: "Dipendente aggiornato con successo",
