@@ -9,7 +9,6 @@ import AdminLeaveApprovalsSection from '../leave/AdminLeaveApprovalsSection';
 import AdminDocumentsSection from './AdminDocumentsSection';
 import AdminNotificationsSection from './AdminNotificationsSection';
 import AdminSettingsSection from '../admin/AdminSettingsSection';
-import ManualAttendanceSection from '../attendance/ManualAttendanceSection';
 import AdminBusinessTripsManagement from '../admin/AdminBusinessTripsManagement';
 import AdminSickLeavesManagement from '../admin/AdminSickLeavesManagement';
 import AdminOvertimeSection from '../overtime/AdminOvertimeSection';
@@ -19,7 +18,6 @@ const sectionTitles: Record<string, string> = {
   overview: 'Panoramica',
   employees: 'Dipendenti',
   'attendance-overview': 'Panoramica Presenze',
-  'manual-attendance': 'Presenze Manuali',
   'business-trips': 'Trasferte',
   'sick-leaves': 'Malattie',
   overtime: 'Straordinari',
@@ -41,8 +39,6 @@ export default function ModernAdminDashboard() {
         return <AdminEmployeesSection />;
       case 'attendance-overview':
         return <AdminAttendanceSection />;
-      case 'manual-attendance':
-        return <ManualAttendanceSection />;
       case 'business-trips':
         return <AdminBusinessTripsManagement />;
       case 'sick-leaves':
