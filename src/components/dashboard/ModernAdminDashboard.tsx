@@ -15,6 +15,21 @@ import AdminSickLeavesManagement from '../admin/AdminSickLeavesManagement';
 import AdminOvertimeSection from '../overtime/AdminOvertimeSection';
 import AdminHolidaysManagement from '../admin/AdminHolidaysManagement';
 
+const sectionTitles: Record<string, string> = {
+  overview: 'Panoramica',
+  employees: 'Dipendenti',
+  'attendance-overview': 'Panoramica Presenze',
+  'manual-attendance': 'Presenze Manuali',
+  'business-trips': 'Trasferte',
+  'sick-leaves': 'Malattie',
+  overtime: 'Straordinari',
+  'company-holidays': 'Giorni Festivi',
+  'leave-approvals': 'Approvazioni Ferie',
+  documents: 'Documenti',
+  notifications: 'Notifiche',
+  settings: 'Impostazioni'
+};
+
 export default function ModernAdminDashboard() {
   const [activeSection, setActiveSection] = useState('overview');
 
@@ -58,7 +73,7 @@ export default function ModernAdminDashboard() {
         />
         
         <div className="flex-1 flex flex-col overflow-hidden">
-          <ModernAdminHeader />
+          <ModernAdminHeader title={sectionTitles[activeSection] || 'Dashboard'} />
           
           <main className="flex-1 overflow-y-auto p-6">
             {renderActiveSection()}

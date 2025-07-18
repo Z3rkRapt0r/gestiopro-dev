@@ -142,6 +142,7 @@ export const useAttendances = () => {
     isCheckingOut: attendanceOperations.isCheckingOut,
     isDeleting: deleteAttendance.isPending,
     getTodayAttendance,
+    todayAttendance: getTodayAttendance(),
     adminSettings,
   };
 };

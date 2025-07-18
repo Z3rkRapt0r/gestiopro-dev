@@ -13,15 +13,20 @@ import { toast } from 'sonner';
 
 export default function AttendanceCheckInOut() {
   const { profile } = useAuth();
-  const { todayAttendance, checkIn, checkOut, isLoading } = useAttendances();
-  const { validateGPS, isValidating } = useGPSValidation();
+  const { attendances, checkIn, checkOut, isLoading } = useAttendances();
+  const { validateLocation } = useGPSValidation();
   const { checkAttendanceHoliday, getHolidayMessage } = useAttendanceHolidays();
   
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isValidating, setIsValidating] = useState(false);
   const [holidayCheck, setHolidayCheck] = useState<{
     isHoliday: boolean;
     message: string | null;
   }>({ isHoliday: false, message: null });
+
+  // Trova la presenza di oggi
+  const today = new Date().toISOString().split('T')[0];
+  const todayAttendance = attendances?.find(att => att.date === today && att.user_id === profile?.id);
 
   // Aggiorna l'orario ogni secondo
   useEffect(() => {
@@ -46,6 +51,54 @@ export default function AttendanceCheckInOut() {
     checkHoliday();
   }, [checkAttendanceHoliday]);
 
+  const validateGPS = async () => {
+    setIsValidating(true);
+    try {
+      return new Promise<{
+        isValid: boolean;
+        latitude?: number;
+        longitude?: number;
+        message?: string;
+      }>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          resolve({
+            isValid: false,
+            message: 'Geolocalizzazione non supportata dal browser'
+          });
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            const validation = validateLocation(latitude, longitude);
+            
+            resolve({
+              isValid: validation.isValid,
+              latitude,
+              longitude,
+              message: validation.message
+            });
+          },
+          (error) => {
+            console.error('Errore geolocalizzazione:', error);
+            resolve({
+              isValid: false,
+              message: 'Impossibile ottenere la posizione. Verifica le impostazioni del browser.'
+            });
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
+          }
+        );
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   const handleCheckIn = async () => {
     // Prima controlla se è un giorno festivo
     if (holidayCheck.isHoliday) {
@@ -61,8 +114,8 @@ export default function AttendanceCheckInOut() {
       }
 
       await checkIn({
-        latitude: gpsValidation.latitude,
-        longitude: gpsValidation.longitude,
+        latitude: gpsValidation.latitude!,
+        longitude: gpsValidation.longitude!,
       });
     } catch (error) {
       console.error('Errore durante il check-in:', error);
@@ -84,8 +137,8 @@ export default function AttendanceCheckInOut() {
       }
 
       await checkOut({
-        latitude: gpsValidation.latitude,
-        longitude: gpsValidation.longitude,
+        latitude: gpsValidation.latitude!,
+        longitude: gpsValidation.longitude!,
       });
     } catch (error) {
       console.error('Errore durante il check-out:', error);
