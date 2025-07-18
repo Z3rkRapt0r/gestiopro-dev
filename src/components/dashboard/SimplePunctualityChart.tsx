@@ -190,7 +190,7 @@ const SimplePunctualityChart = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-1 bg-red-500 rounded"></div>
-              <span>Critica (<70%)</span>
+              <span>Critica (&lt;70%)</span>
             </div>
           </div>
           <div className="h-80 lg:h-96">
