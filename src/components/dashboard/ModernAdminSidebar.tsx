@@ -1,163 +1,204 @@
-import { useState } from 'react';
-import {
-  BarChart3,
-  Users,
-  Calendar,
-  Briefcase,
-  Heart,
-  Clock,
-  FileText,
-  Bell,
-  Settings,
-  CalendarDays,
-  CheckCircle
-} from 'lucide-react';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils";
-import { useAuth } from '@/hooks/useAuth';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useNavigate } from 'react-router-dom';
 
-interface SidebarProps {
-  activeSection: string;
-  onSectionChange: (section: string) => void;
+import React from 'react';
+import { 
+  LayoutDashboard, 
+  Users, 
+  Clock, 
+  FileText, 
+  Bell, 
+  Settings,
+  Calendar,
+  Building
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useDashboardSettings } from '@/hooks/useDashboardSettings';
+
+interface ModernAdminSidebarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
 }
 
 const menuItems = [
-  { id: 'overview', label: 'Panoramica', icon: BarChart3 },
-  { id: 'employees', label: 'Dipendenti', icon: Users },
-  { id: 'attendance-overview', label: 'Panoramica Presenze', icon: Calendar },
-  { id: 'business-trips', label: 'Trasferte', icon: Briefcase },
-  { id: 'sick-leaves', label: 'Malattie', icon: Heart },
-  { id: 'overtime', label: 'Straordinari', icon: Clock },
-  { id: 'company-holidays', label: 'Giorni Festivi', icon: CalendarDays },
-  { id: 'leave-approvals', label: 'Approvazioni Ferie', icon: CheckCircle },
-  { id: 'documents', label: 'Documenti', icon: FileText },
-  { id: 'notifications', label: 'Notifiche', icon: Bell },
-  { id: 'settings', label: 'Impostazioni', icon: Settings },
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    color: 'from-blue-500 to-cyan-500',
+    bgColor: 'bg-blue-50',
+    textColor: 'text-blue-700'
+  },
+  {
+    id: 'employees',
+    label: 'Dipendenti',
+    icon: Users,
+    color: 'from-emerald-500 to-teal-500',
+    bgColor: 'bg-emerald-50',
+    textColor: 'text-emerald-700'
+  },
+  {
+    id: 'attendance',
+    label: 'Presenze',
+    icon: Clock,
+    color: 'from-orange-500 to-amber-500',
+    bgColor: 'bg-orange-50',
+    textColor: 'text-orange-700'
+  },
+  {
+    id: 'overtime',
+    label: 'Straordinari',
+    icon: Clock,
+    color: 'from-orange-500 to-amber-500',
+    bgColor: 'bg-orange-50',
+    textColor: 'text-orange-700'
+  },
+  {
+    id: 'leaves',
+    label: 'Permessi',
+    icon: Calendar,
+    color: 'from-purple-500 to-violet-500',
+    bgColor: 'bg-purple-50',
+    textColor: 'text-purple-700'
+  },
+  {
+    id: 'documents',
+    label: 'Documenti',
+    icon: FileText,
+    color: 'from-indigo-500 to-blue-500',
+    bgColor: 'bg-indigo-50',
+    textColor: 'text-indigo-700'
+  },
+  {
+    id: 'notifications',
+    label: 'Notifiche',
+    icon: Bell,
+    color: 'from-red-500 to-pink-500',
+    bgColor: 'bg-red-50',
+    textColor: 'text-red-700'
+  },
+  {
+    id: 'settings',
+    label: 'Impostazioni',
+    icon: Settings,
+    color: 'from-slate-500 to-gray-500',
+    bgColor: 'bg-slate-50',
+    textColor: 'text-slate-700'
+  }
 ];
 
-export default function ModernAdminSidebar({ activeSection, onSectionChange }: SidebarProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { signOut, user, loading } = useAuth();
-  const navigate = useNavigate();
-
-  const handleNavigation = (sectionId: string) => {
-    onSectionChange(sectionId);
-    setIsSidebarOpen(false); // Close sidebar after navigation
-  };
+export default function ModernAdminSidebar({ 
+  activeTab, 
+  setActiveTab
+}: ModernAdminSidebarProps) {
+  const { settings, loading } = useDashboardSettings();
 
   return (
     <>
-      {/* Mobile Sidebar (Sheet) */}
-      <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden">
-            <BarChart3 className="h-5 w-5" />
-            <span className="sr-only">Apri menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 pt-6 w-72">
-          <SheetHeader className="px-6 pb-4">
-            <SheetTitle>Menu</SheetTitle>
-            <SheetDescription>
-              Naviga tra le sezioni
-            </SheetDescription>
-          </SheetHeader>
-          <div className="flex flex-col gap-0.5">
-            {menuItems.map((item) => (
-              <Button
-                key={item.id}
-                variant="ghost"
-                className={cn(
-                  "justify-start px-6",
-                  activeSection === item.id ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : "hover:bg-secondary/50"
-                )}
-                onClick={() => handleNavigation(item.id)}
-              >
-                <item.icon className="mr-2 h-4 w-4" />
-                <span>{item.label}</span>
-              </Button>
-            ))}
+      {/* Desktop Sidebar - Always visible */}
+      <div className="hidden lg:flex flex-col w-72 bg-white/90 backdrop-blur-xl border-r border-slate-200/60 shadow-xl">
+        {/* Header */}
+        <div className="p-6 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-white">
+          <div className="flex items-center space-x-3">
+            {settings.logo_url ? (
+              <img
+                src={settings.logo_url}
+                alt="Logo"
+                className="h-10 w-auto object-contain rounded-lg shadow-sm"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                <Building className="h-5 w-5 text-white" />
+              </div>
+            )}
+            <div>
+              <h2 className="font-bold text-slate-900 text-lg">
+                {settings.company_name || "Dashboard"}
+              </h2>
+              <p className="text-xs text-slate-500">Area Amministratore</p>
+            </div>
           </div>
-          <SheetHeader className="px-6 pt-8">
-            <SheetTitle>Account</SheetTitle>
-            <SheetDescription>
-              Gestisci il tuo account
-            </SheetDescription>
-          </SheetHeader>
-          <div className="flex flex-col gap-0.5">
-            <Button
-              variant="ghost"
-              className="justify-start px-6"
-              onClick={() => {
-                signOut();
-                setIsSidebarOpen(false);
-                navigate('/login');
-              }}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Esci</span>
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+        </div>
 
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:z-50 lg:w-64 bg-secondary border-r border-secondary-foreground/10">
-        <div className="flex items-center justify-center h-16 shrink-0 bg-background border-b border-secondary-foreground/10">
-          <span className="font-bold text-lg">Admin Dashboard</span>
-        </div>
-        <div className="flex-1 flex flex-col gap-0.5 p-2">
-          {menuItems.map((item) => (
-            <Button
-              key={item.id}
-              variant="ghost"
-              className={cn(
-                "justify-start",
-                activeSection === item.id ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : "hover:bg-secondary/50"
-              )}
-              onClick={() => handleNavigation(item.id)}
-            >
-              <item.icon className="mr-2 h-4 w-4" />
-              <span>{item.label}</span>
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-center justify-between h-16 shrink-0 bg-background border-t border-secondary-foreground/10 p-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2 w-full justify-start px-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.user_metadata?.avatar_url as string} />
-                  <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-medium">{user?.user_metadata?.full_name}</span>
-                  <span className="text-xs text-muted-foreground">{user?.email}</span>
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          {menuItems.map((item) => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  "w-full group relative transition-all duration-200 rounded-xl",
+                  isActive
+                    ? `${item.bgColor} ${item.textColor} shadow-lg scale-105`
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                )}
+              >
+                <div className="flex items-center space-x-3 p-3 rounded-xl transition-all duration-200">
+                  <div className={cn(
+                    "relative p-2 rounded-lg transition-all duration-200",
+                    isActive
+                      ? `bg-gradient-to-r ${item.color} shadow-lg`
+                      : "bg-slate-100 group-hover:bg-slate-200"
+                  )}>
+                    <Icon className={cn(
+                      "h-5 w-5 transition-colors duration-200",
+                      isActive ? "text-white" : "text-slate-600 group-hover:text-slate-700"
+                    )} />
+                  </div>
+                  
+                  <div className="flex-1 text-left">
+                    <span className="font-semibold text-sm">{item.label}</span>
+                  </div>
+
+                  {/* Active indicator */}
+                  {isActive && (
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      `bg-gradient-to-r ${item.color}`
+                    )} />
+                  )}
                 </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" forceMount>
-              <DropdownMenuLabel>Il mio account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => {
-                signOut();
-                navigate('/login');
-              }}>
-                Esci
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200/60 shadow-2xl z-50">
+        <div className="flex items-center justify-around py-2 px-4">
+          {menuItems.slice(0, 5).map((item) => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  "flex flex-col items-center p-2 rounded-xl transition-all duration-200 min-w-0 flex-1",
+                  isActive 
+                    ? `${item.textColor} ${item.bgColor} shadow-lg scale-105` 
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                <div className={cn(
+                  "p-2 rounded-lg transition-all duration-200 mb-1",
+                  isActive
+                    ? `bg-gradient-to-r ${item.color} shadow-md`
+                    : "bg-slate-100"
+                )}>
+                  <Icon className={cn(
+                    "h-4 w-4 transition-colors duration-200",
+                    isActive ? "text-white" : "text-slate-600"
+                  )} />
+                </div>
+                <span className="text-xs font-medium truncate">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </>

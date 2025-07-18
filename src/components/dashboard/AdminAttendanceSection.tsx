@@ -5,11 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import NewAttendanceCalendar from '@/components/attendance/NewAttendanceCalendar';
 import AdminBusinessTripsManagement from '@/components/admin/AdminBusinessTripsManagement';
 import AttendanceExportSection from '@/components/attendance/AttendanceExportSection';
+import AttendanceManualForm from '@/components/attendance/AttendanceManualForm';
 import { ManualSickLeaveForm } from '@/components/attendance/ManualSickLeaveForm';
 import OperatorCalendarSection from '@/components/attendance/OperatorCalendarSection';
 import AttendanceArchiveSection from '@/components/attendance/AttendanceArchiveSection';
 import SickLeaveArchiveSection from '@/components/attendance/SickLeaveArchiveSection';
-import { Calendar, User, Heart, Briefcase, Archive, FileText, Download } from 'lucide-react';
+import { Calendar, User, Plus, Heart, Briefcase, Archive, FileText, Download } from 'lucide-react';
 
 export default function AdminAttendanceSection() {
   const [activeTab, setActiveTab] = useState("calendar");
@@ -18,6 +19,7 @@ export default function AdminAttendanceSection() {
   // Aggiorna i dati quando si cambia tab
   useEffect(() => {
     console.log('Cambio tab presenze, invalidando tutte le query...');
+    // Invalida tutte le query principali per aggiornare i dati in tempo reale
     queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
     queryClient.invalidateQueries({ queryKey: ['attendances'] });
     queryClient.invalidateQueries({ queryKey: ['profiles'] });
@@ -37,7 +39,7 @@ export default function AdminAttendanceSection() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        {/* Compact tabs without Form Presenze */}
+        {/* Compact tabs with single row layout */}
         <div className="w-full mb-3 lg:mb-4">
           <TabsList className="w-full h-auto bg-muted/40 p-1 lg:p-2 rounded-lg shadow-sm border border-muted/60">
             {/* Mobile: horizontal scroll */}
@@ -63,6 +65,13 @@ export default function AdminAttendanceSection() {
                 >
                   <Heart className="h-3 w-3 flex-shrink-0" />
                   <span>Form Malattie</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="attendance-form" 
+                  className="flex-shrink-0 flex items-center gap-1 px-2 py-1.5 text-xs whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm rounded transition-all duration-200"
+                >
+                  <Plus className="h-3 w-3 flex-shrink-0" />
+                  <span>Form Presenze</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="business-trips" 
@@ -122,6 +131,14 @@ export default function AdminAttendanceSection() {
               </TabsTrigger>
               
               <TabsTrigger 
+                value="attendance-form" 
+                className="flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs lg:text-sm font-medium whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:scale-105 rounded-lg transition-all duration-200 hover:bg-background/50 hover:shadow-sm group flex-1 min-w-0"
+              >
+                <Plus className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0 group-data-[state=active]:text-primary" />
+                <span className="truncate">Form Presenze</span>
+              </TabsTrigger>
+              
+              <TabsTrigger 
                 value="business-trips" 
                 className="flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs lg:text-sm font-medium whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:scale-105 rounded-lg transition-all duration-200 hover:bg-background/50 hover:shadow-sm group flex-1 min-w-0"
               >
@@ -156,7 +173,7 @@ export default function AdminAttendanceSection() {
           </TabsList>
         </div>
 
-        {/* Content without Form Presenze tab */}
+        {/* Compact content with reduced spacing */}
         <div className="w-full">
           <TabsContent value="calendar" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
             <div className="bg-gradient-to-br from-background to-muted/20 rounded-lg p-3 lg:p-4 shadow-sm border border-muted/40">
@@ -173,6 +190,12 @@ export default function AdminAttendanceSection() {
           <TabsContent value="sick-form" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
             <div className="bg-gradient-to-br from-background to-muted/20 rounded-lg p-3 lg:p-4 shadow-sm border border-muted/40">
               <ManualSickLeaveForm />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="attendance-form" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+            <div className="bg-gradient-to-br from-background to-muted/20 rounded-lg p-3 lg:p-4 shadow-sm border border-muted/40">
+              <AttendanceManualForm />
             </div>
           </TabsContent>
 
