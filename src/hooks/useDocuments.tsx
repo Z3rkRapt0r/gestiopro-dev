@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { generateDocumentPath } from '@/utils/documentPathUtils';
+import { generateDocumentPath, getEmployeeDisplayName } from '@/utils/documentPathUtils';
 
 interface Document {
   id: string;
@@ -19,6 +18,8 @@ interface Document {
   is_personal: boolean;
   created_at: string;
   updated_at: string;
+  // Aggiunti per la gestione dei nomi
+  employee_display_name?: string;
 }
 
 export const useDocuments = () => {
@@ -52,8 +53,19 @@ export const useDocuments = () => {
         document_type: doc.document_type as Document['document_type']
       }));
 
-      console.log('Documenti caricati con struttura italiana esistente:', typedDocuments.length);
-      setDocuments(typedDocuments);
+      // Aggiungi i nomi dei dipendenti per la visualizzazione
+      const documentsWithNames = await Promise.all(
+        typedDocuments.map(async (doc) => {
+          if (doc.is_personal && doc.user_id) {
+            const displayName = await getEmployeeDisplayName(doc.user_id);
+            return { ...doc, employee_display_name: displayName };
+          }
+          return doc;
+        })
+      );
+
+      console.log('Documenti caricati con struttura UUID:', documentsWithNames.length);
+      setDocuments(documentsWithNames);
     } catch (error) {
       console.error('Error fetching documents:', error);
     } finally {
@@ -74,7 +86,7 @@ export const useDocuments = () => {
     const finalTargetUserId = targetUserId || user.id;
 
     try {
-      // Usa la struttura italiana esistente per i documenti
+      // Usa la nuova struttura con UUID per documenti personali
       const filePath = await generateDocumentPath(
         file,
         documentType,
@@ -82,7 +94,7 @@ export const useDocuments = () => {
         isPersonalDocument
       );
 
-      console.log('Upload documento con path italiano esistente:', filePath);
+      console.log('Upload documento con path UUID:', filePath);
 
       const { error: uploadError } = await supabase.storage
         .from('documents')
@@ -115,7 +127,7 @@ export const useDocuments = () => {
 
       toast({
         title: "Successo",
-        description: "Documento caricato nella struttura organizzativa italiana",
+        description: "Documento caricato con successo",
       });
 
       await fetchDocuments();
@@ -147,7 +159,7 @@ export const useDocuments = () => {
 
       toast({
         title: "Successo",
-        description: "Documento eliminato dalla struttura organizzativa italiana",
+        description: "Documento eliminato con successo",
       });
 
       await fetchDocuments();

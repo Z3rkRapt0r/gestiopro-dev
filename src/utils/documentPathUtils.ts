@@ -38,7 +38,7 @@ export const sanitizeForFilesystem = (text: string): string => {
 };
 
 /**
- * Genera il nome della cartella per un dipendente
+ * Genera il nome della cartella per un dipendente (solo per visualizzazione)
  */
 export const generateEmployeeFolderName = (
   firstName: string | null,
@@ -60,6 +60,7 @@ export const generateEmployeeFolderName = (
 
 /**
  * Genera il path completo per un documento
+ * AGGIORNATO: Per i documenti personali usa sempre l'UUID dell'utente come prima cartella
  */
 export const generateDocumentPath = async (
   file: File,
@@ -76,40 +77,18 @@ export const generateDocumentPath = async (
   const documentTypeFolder = DOCUMENT_TYPE_FOLDER_MAP[documentType] || 'Altri_Documenti';
   
   if (!isPersonalDocument) {
-    // Documenti aziendali
+    // Documenti aziendali - struttura invariata
     return `Documenti_Aziendali/${documentTypeFolder}/${year}/${month}/${fileName}`;
   }
   
-  // Documenti personali - ottieni i dati del dipendente
-  try {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('first_name, last_name, email')
-      .eq('id', targetUserId)
-      .single();
-    
-    if (error || !profile) {
-      console.warn('Impossibile ottenere il profilo del dipendente, uso fallback UUID');
-      return `Dipendente_${targetUserId.substring(0, 8)}/${documentTypeFolder}/${year}/${month}/${fileName}`;
-    }
-    
-    const employeeFolder = generateEmployeeFolderName(
-      profile.first_name,
-      profile.last_name,
-      profile.email,
-      targetUserId
-    );
-    
-    return `${employeeFolder}/${documentTypeFolder}/${year}/${month}/${fileName}`;
-    
-  } catch (error) {
-    console.error('Errore durante la generazione del path:', error);
-    return `Dipendente_${targetUserId.substring(0, 8)}/${documentTypeFolder}/${year}/${month}/${fileName}`;
-  }
+  // Documenti personali - usa sempre l'UUID dell'utente come prima cartella
+  // Questo è compatibile con le policy RLS che si aspettano auth.uid()::text = (storage.foldername(name))[1]
+  return `${targetUserId}/${documentTypeFolder}/${year}/${month}/${fileName}`;
 };
 
 /**
  * Estrae informazioni dal path di un documento
+ * AGGIORNATO: Gestisce sia i path vecchi (con nome leggibile) che quelli nuovi (con UUID)
  */
 export const parseDocumentPath = (filePath: string) => {
   const parts = filePath.split('/');
@@ -118,19 +97,52 @@ export const parseDocumentPath = (filePath: string) => {
     return {
       isCompanyDocument: true,
       employeeName: null,
+      employeeId: null,
       documentType: parts[1],
       year: parts[2],
       month: parts[3],
       fileName: parts[4]
     };
   } else {
+    // Determina se il primo segmento è un UUID o un nome leggibile
+    const firstPart = parts[0];
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(firstPart);
+    
     return {
       isCompanyDocument: false,
-      employeeName: parts[0]?.replace(/_/g, ' '),
+      employeeName: isUuid ? null : firstPart?.replace(/_/g, ' '), // Solo per path vecchi
+      employeeId: isUuid ? firstPart : null, // Solo per path nuovi
       documentType: parts[1],
       year: parts[2],
       month: parts[3],
       fileName: parts[4]
     };
+  }
+};
+
+/**
+ * Ottiene il nome leggibile del dipendente dal suo ID
+ */
+export const getEmployeeDisplayName = async (userId: string): Promise<string> => {
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, email')
+      .eq('id', userId)
+      .single();
+    
+    if (error || !profile) {
+      return `Dipendente_${userId.substring(0, 8)}`;
+    }
+    
+    return generateEmployeeFolderName(
+      profile.first_name,
+      profile.last_name,
+      profile.email,
+      userId
+    );
+  } catch (error) {
+    console.error('Errore durante il recupero del nome dipendente:', error);
+    return `Dipendente_${userId.substring(0, 8)}`;
   }
 };
