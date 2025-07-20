@@ -143,7 +143,7 @@ serve(async (req) => {
           templateCategory = 'amministratori';
         } else {
           templateType = 'permessi-richiesta';
-          templateCategory = 'dipendenti';
+          templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
         }
       } else if (lowerSubject.includes('ferie')) {
         if (lowerSubject.includes('approvata') || lowerSubject.includes('approvato')) {
@@ -154,7 +154,7 @@ serve(async (req) => {
           templateCategory = 'amministratori';
         } else {
           templateType = 'ferie-richiesta';
-          templateCategory = 'dipendenti';
+          templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
         }
       } else {
         // FIXED: For generic notifications, use correct logic
