@@ -491,7 +491,7 @@ export default function LeaveRequestForm({
               <FormField control={form.control} name="note" render={({
               field
             }) => <FormItem>
-                    <FormLabel className="text-sm sm:text-base">Note (opzionale)</FormLabel>
+                    <FormLabel className="text-sm sm:text-base"></FormLabel>
                     <FormControl>
                       <Textarea placeholder="Aggiungi dettagli sulla tua richiesta..." className="min-h-[100px] sm:min-h-[80px] text-base sm:text-sm resize-none" {...field} />
                     </FormControl>
