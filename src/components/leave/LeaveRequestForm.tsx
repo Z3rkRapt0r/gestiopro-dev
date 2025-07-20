@@ -23,6 +23,7 @@ import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceSta
 import { useEmployeeStatus } from '@/hooks/useEmployeeStatus';
 import { useAuth } from '@/hooks/useAuth';
 import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
+import { useLeaveRequestNotifications } from '@/hooks/useLeaveRequestNotifications';
 import WorkingDaysPreview from './WorkingDaysPreview';
 import { LeaveRequestFormValidation } from './LeaveRequestFormValidation';
 
@@ -56,8 +57,9 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const { profile } = useAuth();
   const { insertMutation } = useLeaveRequests();
   const { isWorkingDay, countWorkingDays, getWorkingDaysLabels } = useWorkingDaysValidation();
-  const { validateLeaveRequest } = useLeaveBalanceValidation();
+  const { validateLeaveRequest, balanceValidation } = useLeaveBalanceValidation();
   const { leaveBalance } = useEmployeeLeaveBalanceStats();
+  const { notifyAdmin } = useLeaveRequestNotifications();
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [balanceValidationErrors, setBalanceValidationErrors] = useState<string[]>([]);
   const [formValidationState, setFormValidationState] = useState({ isValid: true, message: '' });
@@ -88,11 +90,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   
   const { employeeStatus } = useEmployeeStatus(profile?.id, targetDate);
 
-  // Validazione in tempo reale dei bilanci (con debounce ottimizzato)
+  // VALIDAZIONE SALDO MIGLIORATA - Real-time e rigorosa
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (watchedType && ((watchedType === 'ferie' && watchedDateFrom && watchedDateTo) || 
-                          (watchedType === 'permesso' && watchedDay))) {
+                          (watchedType === 'permesso' && watchedDay && watchedTimeFrom && watchedTimeTo))) {
         
         const validation = validateLeaveRequest(
           watchedType,
@@ -103,13 +105,22 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
           watchedTimeTo
         );
         
-        if (!validation.hasBalance || validation.exceedsVacationLimit || validation.exceedsPermissionLimit) {
-          setBalanceValidationErrors([validation.errorMessage || 'Bilancio insufficiente']);
+        console.log('Validazione saldo:', validation);
+        
+        // CONTROLLO RIGOROSO: blocca sempre se insufficiente
+        if (!validation.hasBalance) {
+          setBalanceValidationErrors(['Nessun bilancio configurato per l\'anno corrente']);
+        } else if (validation.exceedsVacationLimit) {
+          setBalanceValidationErrors([validation.errorMessage || 'Giorni di ferie insufficienti']);
+        } else if (validation.exceedsPermissionLimit) {
+          setBalanceValidationErrors([validation.errorMessage || 'Ore di permesso insufficienti']);
         } else {
           setBalanceValidationErrors([]);
         }
+      } else {
+        setBalanceValidationErrors([]);
       }
-    }, 500); // Debounce solo per validazione, non per input
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, validateLeaveRequest]);
@@ -131,17 +142,36 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     return errors;
   };
 
-  const onSubmit = (data: LeaveRequestFormData) => {
+  // FUNZIONE MIGLIORATA PER BLOCCARE DATE PASSATE
+  const isDateDisabledWithPastCheck = (date: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    
+    // BLOCCA DATE PASSATE (permette solo oggi e futuro)
+    if (checkDate < today) {
+      return true;
+    }
+    
+    // Applica altri controlli (conflitti, festivi, ecc.)
+    return isDateDisabled(date);
+  };
+
+  const onSubmit = async (data: LeaveRequestFormData) => {
     if (!profile?.id) return;
     
+    console.log('Inizio invio richiesta:', data);
     setShowValidationErrors(false);
     
-    if (!formValidationState.isValid) {
+    // CONTROLLO FINALE SALDO PRIMA DELL'INVIO
+    if (balanceValidationErrors.length > 0) {
+      console.log('Invio bloccato per saldo insufficiente:', balanceValidationErrors);
       setShowValidationErrors(true);
       return;
     }
 
-    if (balanceValidationErrors.length > 0) {
+    if (!formValidationState.isValid) {
       setShowValidationErrors(true);
       return;
     }
@@ -178,10 +208,51 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       day: data.day ? format(data.day, 'yyyy-MM-dd') : undefined,
     };
 
+    console.log('Payload richiesta:', payload);
+
     insertMutation.mutate(payload, {
-      onSuccess: () => {
+      onSuccess: async (newRequest) => {
+        console.log('Richiesta creata con successo:', newRequest);
+        
+        // INVIO NOTIFICA ALL'AMMINISTRATORE
+        try {
+          const employeeName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Dipendente';
+          
+          let details = '';
+          if (data.type === 'ferie') {
+            details = `Dal: ${format(data.date_from!, 'dd/MM/yyyy')}\nAl: ${format(data.date_to!, 'dd/MM/yyyy')}`;
+          } else {
+            details = `Giorno: ${format(data.day!, 'dd/MM/yyyy')}\nOrario: ${data.time_from} - ${data.time_to}`;
+          }
+          
+          if (data.note) {
+            details += `\n\nNote del dipendente:\n${data.note}`;
+          }
+
+          console.log('Invio notifica admin con dettagli:', { employeeName, type: data.type, details });
+          
+          const notificationResult = await notifyAdmin({
+            requestId: newRequest.id,
+            employeeName,
+            type: data.type,
+            details,
+            employeeId: profile.id
+          });
+          
+          if (notificationResult.success) {
+            console.log('Notifica admin inviata con successo');
+          } else {
+            console.error('Errore invio notifica admin:', notificationResult.error);
+          }
+        } catch (error) {
+          console.error('Errore durante invio notifica:', error);
+        }
+        
         form.reset();
         if (onSuccess) onSuccess();
+      },
+      onError: (error) => {
+        console.error('Errore creazione richiesta:', error);
       }
     });
   };
@@ -194,7 +265,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const validationEndDate = watchedType === 'ferie' ? (watchedDateTo ? format(watchedDateTo, 'yyyy-MM-dd') : undefined) : 
                             watchedType === 'permesso' ? (watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined) : undefined;
 
-  const isFormBlocked = !formValidationState.isValid || balanceValidationErrors.length > 0;
+  // CONTROLLO FINALE PER DISABILITARE PULSANTE
+  const isFormBlocked = !formValidationState.isValid || 
+                        balanceValidationErrors.length > 0 ||
+                        (employeeStatus && employeeStatus.hasHardBlock);
+
   const isPendingRequest = !formValidationState.isValid && formValidationState.message.includes('richiesta in attesa');
 
   return (
@@ -255,7 +330,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
               <AlertDescription>
                 <div className="space-y-2">
                   {balanceValidationErrors.map((error, index) => (
-                    <p key={index} className="text-sm">{error}</p>
+                    <p key={index} className="text-sm font-medium">{error}</p>
                   ))}
                   {!formValidationState.isValid && formValidationState.message && (
                     <p className="text-sm">{formValidationState.message}</p>
@@ -263,6 +338,22 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                   {employeeStatus && employeeStatus.hasHardBlock && (
                     <p className="text-sm">Non puoi fare richieste per questo periodo: {employeeStatus.blockingReasons.join(', ')}</p>
                   )}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* ALERT PER SALDO INSUFFICIENTE */}
+          {balanceValidationErrors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <AlertDescription>
+                <div className="font-medium mb-2">❌ Saldo insufficiente:</div>
+                <div className="text-sm space-y-1">
+                  {balanceValidationErrors.map((error, index) => (
+                    <p key={index}>{error}</p>
+                  ))}
+                  <p className="mt-2 text-xs">Contatta l'amministratore per verificare il tuo bilancio annuale.</p>
                 </div>
               </AlertDescription>
             </Alert>
@@ -361,7 +452,8 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={isDateDisabled}
+                                disabled={isDateDisabledWithPastCheck}
+                                className="pointer-events-auto"
                               />
                             </PopoverContent>
                           </Popover>
@@ -402,8 +494,9 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                                 onSelect={field.onChange}
                                 disabled={(date) => {
                                   if (watchedDateFrom && date < watchedDateFrom) return true;
-                                  return isDateDisabled(date);
+                                  return isDateDisabledWithPastCheck(date);
                                 }}
+                                className="pointer-events-auto"
                               />
                             </PopoverContent>
                           </Popover>
@@ -453,7 +546,8 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                               mode="single"
                               selected={field.value}
                               onSelect={field.onChange}
-                              disabled={isDateDisabled}
+                              disabled={isDateDisabledWithPastCheck}
+                              className="pointer-events-auto"
                             />
                           </PopoverContent>
                         </Popover>
@@ -548,7 +642,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
               >
                 {insertMutation.isPending ? 'Invio in corso...' : 
                  isPendingRequest ? 'Richiesta in attesa di approvazione' :
-                 isFormBlocked ? 'Impossibile inviare' :
+                 isFormBlocked ? (balanceValidationErrors.length > 0 ? 'Saldo insufficiente' : 'Impossibile inviare') :
                  'Invia Richiesta'}
               </Button>
             </form>

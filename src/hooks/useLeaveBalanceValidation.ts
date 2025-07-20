@@ -64,7 +64,12 @@ export function useLeaveBalanceValidation() {
     timeFrom?: string,
     timeTo?: string
   ): LeaveBalanceValidation => {
+    console.log('Validazione richiesta:', { type, dateFrom, dateTo, day, timeFrom, timeTo });
+    console.log('Bilancio attuale:', balanceValidation);
+
+    // CONTROLLO RIGOROSO: nessun bilancio configurato
     if (!balanceValidation || !balanceValidation.hasBalance) {
+      console.log('❌ Nessun bilancio configurato');
       return {
         hasBalance: false,
         remainingVacationDays: 0,
@@ -80,6 +85,18 @@ export function useLeaveBalanceValidation() {
       const requestedDays = getWorkingDaysBetween(dateFrom, dateTo);
       const exceedsLimit = requestedDays > balanceValidation.remainingVacationDays;
       
+      console.log(`Ferie richieste: ${requestedDays} giorni, disponibili: ${balanceValidation.remainingVacationDays}`);
+      
+      // CONTROLLO RIGOROSO: anche 0 giorni disponibili blocca
+      if (balanceValidation.remainingVacationDays <= 0) {
+        console.log('❌ Nessun giorno di ferie disponibile');
+        return {
+          ...balanceValidation,
+          exceedsVacationLimit: true,
+          errorMessage: `Non hai giorni di ferie disponibili (saldo: ${balanceValidation.remainingVacationDays})`
+        };
+      }
+      
       return {
         ...balanceValidation,
         exceedsVacationLimit: exceedsLimit,
@@ -93,10 +110,31 @@ export function useLeaveBalanceValidation() {
       let requestedHours = 0;
       
       if (timeFrom && timeTo) {
-        // Permesso orario (only type supported now)
+        // Permesso orario
         const startTime = new Date(`1970-01-01T${timeFrom}:00`);
         const endTime = new Date(`1970-01-01T${timeTo}:00`);
         requestedHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+        
+        console.log(`Permesso richiesto: ${requestedHours} ore, disponibili: ${balanceValidation.remainingPermissionHours}`);
+        
+        // CONTROLLO RIGOROSO: anche 0 ore disponibili blocca
+        if (balanceValidation.remainingPermissionHours <= 0) {
+          console.log('❌ Nessuna ora di permesso disponibile');
+          return {
+            ...balanceValidation,
+            exceedsPermissionLimit: true,
+            errorMessage: `Non hai ore di permesso disponibili (saldo: ${balanceValidation.remainingPermissionHours})`
+          };
+        }
+        
+        if (requestedHours <= 0) {
+          return {
+            ...balanceValidation,
+            exceedsPermissionLimit: true,
+            errorMessage: "L'orario di fine deve essere successivo all'orario di inizio"
+          };
+        }
+        
       } else {
         // No time specified = invalid permission request
         return {
