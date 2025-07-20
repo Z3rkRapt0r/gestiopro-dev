@@ -240,39 +240,6 @@ export type Database = {
         }
         Relationships: []
       }
-      company_holidays: {
-        Row: {
-          admin_id: string
-          created_at: string | null
-          date: string
-          description: string | null
-          id: string
-          is_recurring: boolean | null
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          admin_id: string
-          created_at?: string | null
-          date: string
-          description?: string | null
-          id?: string
-          is_recurring?: boolean | null
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          admin_id?: string
-          created_at?: string | null
-          date?: string
-          description?: string | null
-          id?: string
-          is_recurring?: boolean | null
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       dashboard_settings: {
         Row: {
           admin_id: string
