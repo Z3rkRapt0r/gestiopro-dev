@@ -243,11 +243,11 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
 
       const leaveRequestData = {
         user_id: selectedUserId,
-        type: "ferie",
+        type: "ferie" as const,
         date_from: format(startDate, 'yyyy-MM-dd'),
         date_to: format(endDate, 'yyyy-MM-dd'),
         note: note || null,
-        status: "approved"
+        status: "approved" as const
       };
 
       insertMutation.mutate(leaveRequestData, {
@@ -281,12 +281,12 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
 
       const leaveRequestData = {
         user_id: selectedUserId,
-        type: "permesso",
+        type: "permesso" as const,
         day: format(startDate, 'yyyy-MM-dd'),
         time_from: timeFrom,
         time_to: timeTo,
         note: note || null,
-        status: "approved"
+        status: "approved" as const
       };
 
       insertMutation.mutate(leaveRequestData, {
