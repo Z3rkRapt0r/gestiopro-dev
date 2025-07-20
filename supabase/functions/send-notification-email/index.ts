@@ -115,16 +115,20 @@ serve(async (req) => {
       templateCategory = 'dipendenti';
     } else if (topic === 'permessi-approvazione') {
       templateType = 'permessi-approvazione';
-      templateCategory = 'amministratori';
+      // FIXED: Use 'dipendenti' category when sending to employees (recipientId is present)
+      templateCategory = recipientId ? 'dipendenti' : 'amministratori';
     } else if (topic === 'ferie-approvazione') {
       templateType = 'ferie-approvazione';
-      templateCategory = 'amministratori';
+      // FIXED: Use 'dipendenti' category when sending to employees (recipientId is present)
+      templateCategory = recipientId ? 'dipendenti' : 'amministratori';
     } else if (topic === 'permessi-rifiuto') {
       templateType = 'permessi-rifiuto';
-      templateCategory = 'amministratori';
+      // FIXED: Use 'dipendenti' category when sending to employees (recipientId is present)
+      templateCategory = recipientId ? 'dipendenti' : 'amministratori';
     } else if (topic === 'ferie-rifiuto') {
       templateType = 'ferie-rifiuto';
-      templateCategory = 'amministratori';
+      // FIXED: Use 'dipendenti' category when sending to employees (recipientId is present)
+      templateCategory = recipientId ? 'dipendenti' : 'amministratori';
     } else {
       // Enhanced fallback to subject analysis if topic is not clear
       const lowerSubject = subject?.toLowerCase() || '';
@@ -137,10 +141,12 @@ serve(async (req) => {
       } else if (lowerSubject.includes('permesso')) {
         if (lowerSubject.includes('approvata') || lowerSubject.includes('approvato')) {
           templateType = 'permessi-approvazione';
-          templateCategory = 'amministratori';
+          // FIXED: Use 'dipendenti' category when sending to employees (recipientId is present)
+          templateCategory = recipientId ? 'dipendenti' : 'amministratori';
         } else if (lowerSubject.includes('rifiutata') || lowerSubject.includes('rifiutato')) {
           templateType = 'permessi-rifiuto';
-          templateCategory = 'amministratori';
+          // FIXED: Use 'dipendenti' category when sending to employees (recipientId is present)
+          templateCategory = recipientId ? 'dipendenti' : 'amministratori';
         } else {
           templateType = 'permessi-richiesta';
           templateCategory = 'dipendenti';
@@ -148,10 +154,12 @@ serve(async (req) => {
       } else if (lowerSubject.includes('ferie')) {
         if (lowerSubject.includes('approvata') || lowerSubject.includes('approvato')) {
           templateType = 'ferie-approvazione';
-          templateCategory = 'amministratori';
+          // FIXED: Use 'dipendenti' category when sending to employees (recipientId is present)
+          templateCategory = recipientId ? 'dipendenti' : 'amministratori';
         } else if (lowerSubject.includes('rifiutata') || lowerSubject.includes('rifiutato')) {
           templateType = 'ferie-rifiuto';
-          templateCategory = 'amministratori';
+          // FIXED: Use 'dipendenti' category when sending to employees (recipientId is present)
+          templateCategory = recipientId ? 'dipendenti' : 'amministratori';
         } else {
           templateType = 'ferie-richiesta';
           templateCategory = 'dipendenti';
