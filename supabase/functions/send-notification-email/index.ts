@@ -356,17 +356,23 @@ serve(async (req) => {
     let successCount = 0;
     const errors = [];
 
-    // FIXED: Initialize finalAdminMessage correctly for all leave response types
+    // FIXED: Initialize finalAdminMessage correctly for all types including documents
     let finalAdminMessage = '';
     const isLeaveResponse = templateType.includes('approvazione') || templateType.includes('rifiuto');
+    const isDocumentTemplate = templateType === 'documenti';
     
     if (isLeaveResponse) {
       // For leave responses, use adminNote if available, otherwise use emailBody
       finalAdminMessage = adminNote || emailBody || adminMessage || '';
+    } else if (isDocumentTemplate) {
+      // FIXED: For document templates, use adminMessage (from form) or emailBody
+      finalAdminMessage = adminMessage || emailBody || '';
     } else {
       // For other types, use adminMessage or emailBody
       finalAdminMessage = adminMessage || emailBody || '';
     }
+
+    console.log("[Notification Email] Final admin message for template type", templateType, ":", finalAdminMessage);
 
     for (const recipient of recipients) {
       try {
@@ -539,8 +545,8 @@ serve(async (req) => {
           dynamicSubject: emailSubject,
           dynamicContent: emailContent,
           employeeEmail: employeeEmail,
-          // FIXED: Pass admin message parameters correctly for leave responses
-          showAdminMessage: templateData.show_admin_message && isLeaveResponse,
+          // FIXED: Show admin message for ALL templates that have it enabled, not just leave responses
+          showAdminMessage: templateData.show_admin_message,
           adminMessage: finalAdminMessage,
           adminMessageBgColor: templateData.admin_message_bg_color,
           adminMessageTextColor: templateData.admin_message_text_color,
@@ -551,6 +557,8 @@ serve(async (req) => {
           buttonText: templateData.button_text,
           buttonUrl: templateData.button_url,
         });
+
+        console.log("[Notification Email] FIXED: Admin message will be shown for template type", templateType, "with show_admin_message:", templateData.show_admin_message);
 
         // Email sending configuration
         const emailConfig: any = {
