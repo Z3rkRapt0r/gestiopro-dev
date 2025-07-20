@@ -140,17 +140,6 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
       {isAdmin && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="subject">Oggetto della mail</Label>
-            <Input
-              id="subject"
-              value={subject}
-              onChange={(e) => onSubjectChange(e.target.value)}
-              placeholder="Oggetto della mail"
-              disabled={!notifyRecipient}
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="body" className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
               Messaggio per il destinatario (opzionale)
