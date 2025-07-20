@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,8 @@ const AdminDocumentsSection = () => {
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
   const [filterRole, setFilterRole] = useState("");
+  const [uploadUserId, setUploadUserId] = useState<string | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const { documents, deleteDocument, refreshDocuments } = useDocuments();
   const { toast } = useToast();
 
@@ -93,13 +96,6 @@ const AdminDocumentsSection = () => {
         });
       }
     }
-  };
-
-  const getEmployeeDisplayName = (employeeId: string): string => {
-    const emp = employeeList.find(e => e.id === employeeId);
-    return emp
-      ? `${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim()
-      : "Sconosciuto";
   };
 
   return (
@@ -218,7 +214,12 @@ const AdminDocumentsSection = () => {
                   <div className="flex-1">
                     <div className="font-medium text-gray-900">{doc.title}</div>
                     <div className="text-xs text-gray-500">
-                      {doc.employee_display_name || getEmployeeDisplayName(doc.user_id)}
+                      {(() => {
+                        const emp = employeeList.find(e => e.id === doc.user_id);
+                        return emp
+                          ? `${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim()
+                          : "Sconosciuto";
+                      })()}
                       {" • "}
                       {new Date(doc.created_at).toLocaleDateString("it-IT")}
                     </div>

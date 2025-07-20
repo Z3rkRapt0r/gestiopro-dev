@@ -8,7 +8,7 @@ interface LeaveRejectionTemplateEditorProps {
 const LeaveRejectionTemplateEditor = ({ 
   templateCategory = "amministratori"
 }: LeaveRejectionTemplateEditorProps) => {
-  const defaultContent = "Gentile {employee_name},\n\nLa tua richiesta di permesso è stata rifiutata dall'amministratore.\n\nDettagli della richiesta:\n{leave_details}\n\nPer maggiori informazioni, contatta l'amministrazione.";
+  const defaultContent = "Gentile {employee_name},\n\nLa tua richiesta di permesso è stata rifiutata dall'amministratore.\n\nDettagli della richiesta:\n{leave_details}\n\nNote amministratore:\n{admin_note}\n\nPer maggiori informazioni, contatta l'amministrazione.";
   const defaultSubject = "Richiesta Permesso Rifiutata";
 
   return (

@@ -119,19 +119,16 @@ export function buildHtmlContent({
   employeeEmail?: string;
   recipientName?: string;
 }) {
-  // CRITICAL DEBUG LOGGING FOR ADMIN MESSAGE
-  console.log("[Mail Templates] ===== BUILDING HTML CONTENT =====");
-  console.log("[Mail Templates] Admin message processing:");
+  // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
+  console.log("[Mail Templates] Building HTML content with admin message params:");
   console.log("  showAdminMessage:", showAdminMessage);
   console.log("  adminMessage:", adminMessage);
-  console.log("  adminMessage length:", adminMessage ? adminMessage.length : 0);
-  console.log("  adminMessage empty:", !adminMessage || adminMessage.trim() === '');
   console.log("  templateType:", templateType);
   console.log("  adminMessageBgColor:", adminMessageBgColor);
   console.log("  adminMessageTextColor:", adminMessageTextColor);
   console.log("  recipientName:", recipientName);
 
-  // Enhanced logging for button configuration
+  // NEW: Enhanced logging for button configuration
   console.log("[Mail Templates] Button configuration:");
   console.log("  showButton:", showButton);
   console.log("  buttonText:", buttonText);
@@ -193,16 +190,16 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // CRITICAL: Admin Message Section - Show for ALL templates where showAdminMessage is true
+  // FIXED: Admin Message Section - Only for admin-to-employee communications
   let adminMessageSection = '';
   
-  // CORRECTED: Show admin message when requested AND message exists
-  const shouldShowAdminMessage = showAdminMessage && adminMessage && adminMessage.trim() !== '';
+  // Show admin message only when admin is sending to employee (not when employee sends to admin)
+  const shouldShowAdminMessage = adminMessage && adminMessage.trim() !== '' && isAdminToEmployee;
   
   console.log("[Mail Templates] Admin message section decision:");
-  console.log("  showAdminMessage:", showAdminMessage);
   console.log("  adminMessage exists:", !!adminMessage);
   console.log("  adminMessage not empty:", adminMessage && adminMessage.trim() !== '');
+  console.log("  isAdminToEmployee:", isAdminToEmployee);
   console.log("  shouldShowAdminMessage:", shouldShowAdminMessage);
   
   if (shouldShowAdminMessage) {
@@ -214,13 +211,9 @@ export function buildHtmlContent({
         </p>
       </div>
     `;
-    console.log("[Mail Templates] ADMIN MESSAGE SECTION CREATED for template:", templateType);
-    console.log("[Mail Templates] Admin message content:", adminMessage);
+    console.log("[Mail Templates] Admin message section created for admin-to-employee email");
   } else {
-    console.log("[Mail Templates] Admin message section NOT created:");
-    console.log("  showAdminMessage:", showAdminMessage);
-    console.log("  adminMessage exists:", !!adminMessage);
-    console.log("  adminMessage not empty:", adminMessage && adminMessage.trim() !== '');
+    console.log("[Mail Templates] Admin message section NOT created - not an admin-to-employee email");
   }
 
   // Determine final subject and content
@@ -354,7 +347,6 @@ export function buildHtmlContent({
   console.log("  Admin message section included:", shouldShowAdminMessage);
   console.log("  Employee notes section included:", shouldShowEmployeeNotes);
   console.log("  Custom button included:", shouldShowCustomButton);
-  console.log("  Final HTML length:", htmlContent.length);
   
   return htmlContent;
 }

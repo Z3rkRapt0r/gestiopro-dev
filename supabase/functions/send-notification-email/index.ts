@@ -12,33 +12,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("[Notification Email] ===== STARTING EMAIL FUNCTION =====");
+  console.log("[Notification Email] Starting email function");
 
   try {
     const body = await req.json();
-    console.log("[Notification Email] RAW REQUEST BODY:", JSON.stringify(body, null, 2));
+    console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
     const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName, employeeNote, adminMessage } = body;
 
-    // ENHANCED: Detailed parameter logging
-    console.log("[Notification Email] PARSED PARAMETERS:");
-    console.log("  recipientId:", recipientId);
-    console.log("  subject:", subject);
-    console.log("  shortText:", shortText);
-    console.log("  userId:", userId);
-    console.log("  topic:", topic);
-    console.log("  emailBody:", emailBody);
-    console.log("  adminNote:", adminNote);
-    console.log("  employeeEmail:", employeeEmail);
-    console.log("  employeeName:", employeeName);
-    console.log("  employeeNote:", employeeNote);
-    console.log("  adminMessage:", adminMessage);
-
-    // CRITICAL: Check for empty/undefined values that might cause issues
-    console.log("[Notification Email] PARAMETER VALIDATION:");
-    console.log("  adminMessage empty?", !adminMessage || adminMessage.trim() === '');
-    console.log("  emailBody empty?", !emailBody || emailBody.trim() === '');
-    console.log("  subject empty?", !subject || subject.trim() === '');
+    // ENHANCED: Log employee note specifically
+    console.log("[Notification Email] Employee note received:", employeeNote);
+    console.log("[Notification Email] Employee email received:", employeeEmail);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -84,11 +68,6 @@ serve(async (req) => {
       .eq("admin_id", adminSettingsUserId)
       .single();
 
-    console.log("[Notification Email] BREVO SETTINGS CHECK:");
-    console.log("  Settings found:", !!adminSetting);
-    console.log("  API key exists:", !!adminSetting?.brevo_api_key);
-    console.log("  Settings error:", settingsError);
-
     if (settingsError) {
       console.error("[Notification Email] Error fetching admin settings:", settingsError);
       return new Response(
@@ -112,9 +91,9 @@ serve(async (req) => {
 
     console.log("[Notification Email] Found Brevo settings for admin");
 
-    // ENHANCED TEMPLATE TYPE MAPPING
-    let templateType = 'notifiche';
-    let templateCategory = 'generale';
+    // FIXED: ENHANCED TEMPLATE TYPE MAPPING - Corrected logic for notification categories
+    let templateType = 'notifiche'; // default
+    let templateCategory = 'generale'; // default
     
     if (topic === 'document' || topic === 'documents') {
       templateType = 'documenti';
@@ -124,6 +103,9 @@ serve(async (req) => {
       templateCategory = 'amministratori';
     } else if (topic === 'notifications' || topic === 'notification') {
       templateType = 'notifiche';
+      // FIXED: Correct logic for notifications
+      // When employeeEmail is present: employee is sending to admin → use 'dipendenti' template
+      // When employeeEmail is NOT present: admin is sending to employees → use 'amministratori' template
       templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
     } else if (topic === 'permessi-richiesta') {
       templateType = 'permessi-richiesta';
@@ -161,7 +143,7 @@ serve(async (req) => {
           templateCategory = 'amministratori';
         } else {
           templateType = 'permessi-richiesta';
-          templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
+          templateCategory = 'dipendenti';
         }
       } else if (lowerSubject.includes('ferie')) {
         if (lowerSubject.includes('approvata') || lowerSubject.includes('approvato')) {
@@ -172,25 +154,23 @@ serve(async (req) => {
           templateCategory = 'amministratori';
         } else {
           templateType = 'ferie-richiesta';
-          templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
+          templateCategory = 'dipendenti';
         }
       } else {
+        // FIXED: For generic notifications, use correct logic
         templateType = 'notifiche';
         templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
       }
     }
 
-    console.log("[Notification Email] TEMPLATE MAPPING RESULT:");
-    console.log("  Template Type:", templateType);
-    console.log("  Template Category:", templateCategory);
-    console.log("  Topic:", topic);
-    console.log("  EmployeeEmail present:", !!employeeEmail);
+    console.log("[Notification Email] FIXED Template mapping - Type:", templateType, "Category:", templateCategory, "Topic:", topic);
+    console.log("[Notification Email] EmployeeEmail present:", !!employeeEmail, "- This determines notification category");
 
-    // Check if this is an admin notification template (should use dynamic content)
+    // FIXED: Check if this is an admin notification template (should use dynamic content)
     const isAdminNotificationTemplate = templateType === 'notifiche' && templateCategory === 'amministratori';
 
     // Get email template for the specific template type and category
-    console.log("[Notification Email] SEARCHING FOR TEMPLATE:", templateType, templateCategory);
+    console.log("[Notification Email] Looking for email template:", templateType, templateCategory);
     const { data: emailTemplate, error: templateError } = await supabase
       .from("email_templates")
       .select("*")
@@ -199,26 +179,21 @@ serve(async (req) => {
       .eq("template_category", templateCategory)
       .maybeSingle();
 
-    console.log("[Notification Email] TEMPLATE QUERY RESULT:");
-    console.log("  Template found:", !!emailTemplate);
-    console.log("  Template error:", templateError);
-    console.log("  Is admin notification template:", isAdminNotificationTemplate);
-
     if (templateError) {
       console.error("[Notification Email] Error fetching email template:", templateError);
     }
+
+    console.log("[Notification Email] Template query result:", emailTemplate ? "Found custom template" : "No custom template found");
+    console.log("[Notification Email] Is admin notification template (uses dynamic content):", isAdminNotificationTemplate);
     
     // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
     if (emailTemplate) {
-      console.log("[Notification Email] TEMPLATE DETAILS:");
-      console.log("  show_admin_message:", emailTemplate.show_admin_message);
-      console.log("  admin_message_bg_color:", emailTemplate.admin_message_bg_color);
-      console.log("  admin_message_text_color:", emailTemplate.admin_message_text_color);
-      console.log("  show_button:", emailTemplate.show_button);
-      console.log("  button_text:", emailTemplate.button_text);
-      console.log("  button_url:", emailTemplate.button_url);
-      console.log("  subject:", emailTemplate.subject);
-      console.log("  content preview:", emailTemplate.content ? emailTemplate.content.substring(0, 100) + "..." : "null");
+      console.log("[Notification Email] Template show_admin_message:", emailTemplate.show_admin_message);
+      console.log("[Notification Email] Template admin_message_bg_color:", emailTemplate.admin_message_bg_color);
+      console.log("[Notification Email] Template admin_message_text_color:", emailTemplate.admin_message_text_color);
+      console.log("[Notification Email] Template button config - show_button:", emailTemplate.show_button);
+      console.log("[Notification Email] Template button config - button_text:", emailTemplate.button_text);
+      console.log("[Notification Email] Template button config - button_url:", emailTemplate.button_url);
     }
 
     // Template data handling - prioritize database template or use minimal fallback
@@ -268,7 +243,7 @@ serve(async (req) => {
       console.log("[Notification Email] No custom template found, using minimal fallback styling only");
     }
 
-    // Use global logo settings or fallback
+    // Use global logo settings if available, otherwise fallback to template or default
     let logoUrl = adminSetting.global_logo_url;
     let logoAlignment = adminSetting.global_logo_alignment || templateData.logo_alignment || 'center';
     let logoSize = adminSetting.global_logo_size || templateData.logo_size || 'medium';
@@ -283,16 +258,12 @@ serve(async (req) => {
       }
     }
 
-    console.log("[Notification Email] LOGO SETTINGS:");
-    console.log("  Logo URL:", logoUrl);
-    console.log("  Logo alignment:", logoAlignment);
-    console.log("  Logo size:", logoSize);
+    console.log("[Notification Email] Using logoUrl:", logoUrl);
+    console.log("[Notification Email] Logo settings - alignment:", logoAlignment, "size:", logoSize);
 
-    // Get recipients list
+    // Get recipients list - FIXED: Only admin for employee requests
     let recipients = [];
-    console.log("[Notification Email] DETERMINING RECIPIENTS:");
-    console.log("  RecipientId:", recipientId);
-    console.log("  Template type:", templateType);
+    console.log("[Notification Email] Determining recipients for recipientId:", recipientId, "templateType:", templateType);
     
     if (!recipientId) {
       // CORRECTED: For ALL employee requests (permessi/ferie/documents), send ONLY to administrators
@@ -342,7 +313,7 @@ serve(async (req) => {
       console.log("[Notification Email] Found specific recipient:", recipients.length);
     }
 
-    console.log("[Notification Email] RECIPIENTS FINAL COUNT:", recipients.length);
+    console.log("[Notification Email] Recipients found:", recipients.length);
 
     // Get admin profile for fallback sender info
     const { data: adminProfile, error: adminProfileError } = await supabase
@@ -368,9 +339,7 @@ serve(async (req) => {
       senderEmail = "zerkraptor@gmail.com"; // Fallback verified email
     }
 
-    console.log("[Notification Email] SENDER CONFIGURATION:");
-    console.log("  Sender name:", senderName);
-    console.log("  Sender email:", senderEmail);
+    console.log("[Notification Email] Using sender:", senderName, "<" + senderEmail + ">");
 
     // Determine if we should use employee email as reply-to
     let dynamicReplyTo = null;
@@ -387,40 +356,21 @@ serve(async (req) => {
     let successCount = 0;
     const errors = [];
 
-    // FIXED: Initialize finalAdminMessage correctly for all types including documents
+    // FIXED: Initialize finalAdminMessage correctly for all leave response types
     let finalAdminMessage = '';
     const isLeaveResponse = templateType.includes('approvazione') || templateType.includes('rifiuto');
-    const isDocumentTemplate = templateType === 'documenti';
-    
-    console.log("[Notification Email] ADMIN MESSAGE PROCESSING:");
-    console.log("  Is leave response:", isLeaveResponse);
-    console.log("  Is document template:", isDocumentTemplate);
-    console.log("  Raw adminMessage:", adminMessage);
-    console.log("  Raw emailBody:", emailBody);
-    console.log("  Raw adminNote:", adminNote);
     
     if (isLeaveResponse) {
       // For leave responses, use adminNote if available, otherwise use emailBody
       finalAdminMessage = adminNote || emailBody || adminMessage || '';
-      console.log("[Notification Email] Leave response - final admin message:", finalAdminMessage);
-    } else if (isDocumentTemplate) {
-      // FIXED: For document templates, prioritize adminMessage from form
-      finalAdminMessage = adminMessage || emailBody || '';
-      console.log("[Notification Email] Document template - final admin message:", finalAdminMessage);
     } else {
       // For other types, use adminMessage or emailBody
       finalAdminMessage = adminMessage || emailBody || '';
-      console.log("[Notification Email] Other template - final admin message:", finalAdminMessage);
     }
-
-    console.log("[Notification Email] FINAL ADMIN MESSAGE RESULT:");
-    console.log("  finalAdminMessage:", finalAdminMessage);
-    console.log("  finalAdminMessage length:", finalAdminMessage.length);
-    console.log("  finalAdminMessage empty?", !finalAdminMessage || finalAdminMessage.trim() === '');
 
     for (const recipient of recipients) {
       try {
-        console.log("[Notification Email] ===== PROCESSING RECIPIENT:", recipient.email, "=====");
+        console.log("[Notification Email] Preparing email for recipient:", recipient.email);
         
         const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
         
@@ -434,6 +384,7 @@ serve(async (req) => {
           // ADMIN NOTIFICATION TEMPLATE: Always use dynamic content from form
           console.log("[Notification Email] ADMIN NOTIFICATION TEMPLATE - Using dynamic content from form");
           
+          // Subject: Use template subject if form subject is empty, otherwise use form subject
           if (subject && subject.trim()) {
             emailSubject = subject.trim();
             console.log("[Notification Email] Using form subject:", emailSubject);
@@ -445,6 +396,7 @@ serve(async (req) => {
             console.log("[Notification Email] Using default subject:", emailSubject);
           }
           
+          // Content: Always use form content for admin notifications
           emailContent = shortText || 'Hai ricevuto una nuova notifica.';
           console.log("[Notification Email] Using form content:", emailContent);
         } else if (emailTemplate && emailTemplate.subject && emailTemplate.content) {
@@ -456,8 +408,10 @@ serve(async (req) => {
           console.log("[Notification Email] Database template content preview:", emailContent.substring(0, 100) + "...");
         } else {
           // ONLY FALLBACK: Use frontend content when NO database template exists
+          // CRITICAL: For leave responses without database template, provide minimal fallback
           if (isLeaveResponse) {
             console.log("[Notification Email] CRITICAL: Leave response without database template detected");
+            // Provide minimal fallback for leave responses
             if (templateType === 'permessi-approvazione') {
               emailSubject = 'Richiesta Permesso Approvata';
               emailContent = 'La tua richiesta di permesso è stata approvata.';
@@ -476,6 +430,7 @@ serve(async (req) => {
             }
             console.log("[Notification Email] Using minimal leave response fallback");
           } else {
+            // For other types, use frontend provided content
             emailSubject = subject || 'Notifica Sistema';
             emailContent = shortText || 'Hai ricevuto una nuova notifica.';
           }
@@ -484,9 +439,20 @@ serve(async (req) => {
           console.log("[Notification Email] Using content:", emailContent);
         }
         
-        console.log("[Notification Email] EMAIL CONTENT BEFORE VARIABLE SUBSTITUTION:");
-        console.log("  Subject:", emailSubject);
-        console.log("  Content preview:", emailContent.substring(0, 100) + "...");
+        // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING
+        console.log("[Notification Email] Starting variable substitution for template type:", templateType);
+        console.log("[Notification Email] Employee name provided:", employeeName);
+        console.log("[Notification Email] Employee note provided:", employeeNote);
+        console.log("[Notification Email] Admin message provided:", finalAdminMessage);
+        console.log("[Notification Email] Template category:", templateCategory);
+        console.log("[Notification Email] Is leave response:", isLeaveResponse);
+        console.log("[Notification Email] Show admin message setting:", templateData.show_admin_message);
+
+        // FIXED: Enhanced variable substitution with separate employee_name and recipient_name
+        console.log("[Notification Email] Enhanced variable substitution:");
+        console.log("  Template type:", templateType);
+        console.log("  Original subject:", emailSubject);
+        console.log("  Original content:", emailContent.substring(0, 100) + "...");
         console.log("  Employee name (sender):", employeeName || 'N/A');
         
         const recipientName = recipient.first_name && recipient.last_name 
@@ -496,35 +462,40 @@ serve(async (req) => {
         console.log("  Recipient name:", recipientName);
         
         // FIXED: Separate substitution for employee_name (sender) and recipient_name (recipient)
+        // Replace {employee_name} with the actual employee name (sender)
         const finalEmployeeName = employeeName || 'Dipendente';
         emailSubject = emailSubject.replace(/{employee_name}/g, finalEmployeeName);
         emailContent = emailContent.replace(/{employee_name}/g, finalEmployeeName);
         
+        // Replace {recipient_name} with the actual recipient name
         emailSubject = emailSubject.replace(/{recipient_name}/g, recipientName);
         emailContent = emailContent.replace(/{recipient_name}/g, recipientName);
         
-        console.log("[Notification Email] EMAIL CONTENT AFTER VARIABLE SUBSTITUTION:");
         console.log("  Final subject:", emailSubject);
         console.log("  Final content preview:", emailContent.substring(0, 100) + "...");
-        console.log("  Template database usage:", !!emailTemplate);
-        console.log("  Admin message to pass:", finalAdminMessage);
-        console.log("  Employee notes to pass:", employeeNote);
-        console.log("  Template show_admin_notes setting:", templateData.show_admin_notes);
+
+        // CRITICAL: Do NOT replace {admin_message} placeholder in content
+        // The admin message will be handled by the template system in the dedicated section
+        console.log("[Notification Email] NOT replacing {admin_message} placeholder - template will handle it");
+
+        console.log("[Notification Email] Final email subject:", emailSubject);
+        console.log("[Notification Email] Final email content preview:", emailContent.substring(0, 100) + "...");
+        console.log("[Notification Email] Template database usage:", !!emailTemplate);
+        console.log("[Notification Email] Admin message to pass:", finalAdminMessage);
+        
+        // FIXED: Enhanced logging for employee notes
+        console.log("[Notification Email] Employee notes to pass:", employeeNote);
+        console.log("[Notification Email] Template show_admin_notes setting:", templateData.show_admin_notes);
 
         // FIXED: Properly format leave details for ALL leave request and response types
         let leaveDetails = '';
         const isLeaveRequest = templateType === 'permessi-richiesta' || templateType === 'ferie-richiesta';
         
         if ((isLeaveRequest || isLeaveResponse) && emailBody) {
+          // For all leave-related emails, format the leave details from the email body
           leaveDetails = emailBody;
           console.log("[Notification Email] Leave-related email detected, formatting details:", leaveDetails);
         }
-
-        console.log("[Notification Email] BUILDING HTML CONTENT WITH PARAMETERS:");
-        console.log("  showAdminMessage:", templateData.show_admin_message);
-        console.log("  adminMessage:", finalAdminMessage);
-        console.log("  adminMessage length:", finalAdminMessage ? finalAdminMessage.length : 0);
-        console.log("  Will show admin section:", templateData.show_admin_message && finalAdminMessage && finalAdminMessage.trim() !== '');
 
         const htmlContent = buildHtmlContent({
           subject: emailSubject,
@@ -551,8 +522,11 @@ serve(async (req) => {
           showDetailsButton: templateData.show_details_button,
           showLeaveDetails: templateData.show_leave_details,
           showAdminNotes: templateData.show_admin_notes,
+          // FIXED: Pass properly formatted leave details for all leave types
           leaveDetails: leaveDetails,
+          // FIXED: Pass admin notes correctly for leave responses
           adminNotes: isLeaveResponse ? (adminNote || '') : '',
+          // FIXED: Pass employee notes correctly for leave requests
           employeeNotes: isLeaveRequest ? (employeeNote || '') : '',
           leaveDetailsBgColor: templateData.leave_details_bg_color,
           leaveDetailsTextColor: templateData.leave_details_text_color,
@@ -565,19 +539,18 @@ serve(async (req) => {
           dynamicSubject: emailSubject,
           dynamicContent: emailContent,
           employeeEmail: employeeEmail,
-          // FIXED: Show admin message for ALL templates that have it enabled
-          showAdminMessage: templateData.show_admin_message,
+          // FIXED: Pass admin message parameters correctly for leave responses
+          showAdminMessage: templateData.show_admin_message && isLeaveResponse,
           adminMessage: finalAdminMessage,
           adminMessageBgColor: templateData.admin_message_bg_color,
           adminMessageTextColor: templateData.admin_message_text_color,
+          // NEW: Pass recipient name to template
           recipientName: recipientName,
+          // NEW: Pass button configuration to template
           showButton: templateData.show_button,
           buttonText: templateData.button_text,
           buttonUrl: templateData.button_url,
         });
-
-        console.log("[Notification Email] HTML CONTENT GENERATED SUCCESSFULLY");
-        console.log("[Notification Email] HTML length:", htmlContent.length);
 
         // Email sending configuration
         const emailConfig: any = {
@@ -592,16 +565,9 @@ serve(async (req) => {
           console.log("[Notification Email] Setting reply-to:", dynamicReplyTo);
         }
 
-        console.log("[Notification Email] FINAL EMAIL CONFIG:");
-        console.log("  To:", recipient.email);
-        console.log("  Subject:", emailSubject);
-        console.log("  Sender:", senderEmail);
-        console.log("  Reply-to:", dynamicReplyTo || "none");
-        console.log("  HTML content length:", htmlContent.length);
+        console.log("[Notification Email] Sending email to:", recipient.email, "with sender:", senderEmail);
 
-        // CRITICAL: Send email via Brevo with enhanced error handling
-        console.log("[Notification Email] SENDING EMAIL VIA BREVO...");
-        
+        // Send email via Brevo
         const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
           headers: {
@@ -611,43 +577,31 @@ serve(async (req) => {
           body: JSON.stringify(emailConfig),
         });
 
-        console.log("[Notification Email] BREVO RESPONSE STATUS:", brevoResponse.status);
-        console.log("[Notification Email] BREVO RESPONSE OK:", brevoResponse.ok);
-
         if (!brevoResponse.ok) {
           const errorText = await brevoResponse.text();
           console.error(`[Notification Email] Brevo API error for ${recipient.email}:`, errorText);
-          console.error(`[Notification Email] Brevo response status: ${brevoResponse.status}`);
-          console.error(`[Notification Email] Brevo response headers:`, Object.fromEntries(brevoResponse.headers.entries()));
           errors.push(`Failed to send to ${recipient.email}: ${errorText}`);
           continue;
         }
 
         const brevoResult = await brevoResponse.json();
-        console.log("[Notification Email] BREVO SUCCESS RESULT:", brevoResult);
         console.log("[Notification Email] Email sent successfully to", recipient.email);
         successCount++;
 
       } catch (error) {
         console.error(`[Notification Email] Error sending email to ${recipient.email}:`, error);
-        console.error(`[Notification Email] Error stack:`, error.stack);
         errors.push(`Failed to send to ${recipient.email}: ${error.message}`);
       }
     }
 
-    console.log("[Notification Email] ===== EMAIL SENDING COMPLETED =====");
+    console.log("[Notification Email] Email sending completed!");
     console.log("[Notification Email] Success count:", successCount);
-    console.log("[Notification Email] Total recipients:", recipients.length);
-    console.log("[Notification Email] Errors count:", errors.length);
     console.log("[Notification Email] Errors:", errors);
 
     return new Response(
       JSON.stringify({
         success: true,
         message: `Emails sent to ${successCount} recipients`,
-        totalRecipients: recipients.length,
-        successCount,
-        errorCount: errors.length,
         errors: errors.length > 0 ? errors : undefined,
       }),
       { 
@@ -657,16 +611,11 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error("[Notification Email] ===== CRITICAL FUNCTION ERROR =====");
-    console.error("[Notification Email] Error message:", error.message);
-    console.error("[Notification Email] Error stack:", error.stack);
-    console.error("[Notification Email] Error details:", error);
-    
+    console.error("[Notification Email] Function error:", error);
     return new Response(
       JSON.stringify({ 
         error: "Failed to send notification email", 
-        details: error.message,
-        stack: error.stack
+        details: error.message 
       }),
       { 
         status: 500, 
