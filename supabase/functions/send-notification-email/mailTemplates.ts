@@ -119,16 +119,19 @@ export function buildHtmlContent({
   employeeEmail?: string;
   recipientName?: string;
 }) {
-  // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
-  console.log("[Mail Templates] Building HTML content with admin message params:");
+  // CRITICAL DEBUG LOGGING FOR ADMIN MESSAGE
+  console.log("[Mail Templates] ===== BUILDING HTML CONTENT =====");
+  console.log("[Mail Templates] Admin message processing:");
   console.log("  showAdminMessage:", showAdminMessage);
   console.log("  adminMessage:", adminMessage);
+  console.log("  adminMessage length:", adminMessage ? adminMessage.length : 0);
+  console.log("  adminMessage empty:", !adminMessage || adminMessage.trim() === '');
   console.log("  templateType:", templateType);
   console.log("  adminMessageBgColor:", adminMessageBgColor);
   console.log("  adminMessageTextColor:", adminMessageTextColor);
   console.log("  recipientName:", recipientName);
 
-  // NEW: Enhanced logging for button configuration
+  // Enhanced logging for button configuration
   console.log("[Mail Templates] Button configuration:");
   console.log("  showButton:", showButton);
   console.log("  buttonText:", buttonText);
@@ -190,7 +193,7 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // FIXED: Admin Message Section - Show for ALL templates where showAdminMessage is true
+  // CRITICAL: Admin Message Section - Show for ALL templates where showAdminMessage is true
   let adminMessageSection = '';
   
   // CORRECTED: Show admin message when requested AND message exists
@@ -211,9 +214,13 @@ export function buildHtmlContent({
         </p>
       </div>
     `;
-    console.log("[Mail Templates] Admin message section created for template:", templateType);
+    console.log("[Mail Templates] ADMIN MESSAGE SECTION CREATED for template:", templateType);
+    console.log("[Mail Templates] Admin message content:", adminMessage);
   } else {
-    console.log("[Mail Templates] Admin message section NOT created - missing showAdminMessage or adminMessage");
+    console.log("[Mail Templates] Admin message section NOT created:");
+    console.log("  showAdminMessage:", showAdminMessage);
+    console.log("  adminMessage exists:", !!adminMessage);
+    console.log("  adminMessage not empty:", adminMessage && adminMessage.trim() !== '');
   }
 
   // Determine final subject and content
@@ -347,6 +354,7 @@ export function buildHtmlContent({
   console.log("  Admin message section included:", shouldShowAdminMessage);
   console.log("  Employee notes section included:", shouldShowEmployeeNotes);
   console.log("  Custom button included:", shouldShowCustomButton);
+  console.log("  Final HTML length:", htmlContent.length);
   
   return htmlContent;
 }
