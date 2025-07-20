@@ -23,6 +23,7 @@ serve(async (req) => {
     // ENHANCED: Log employee note specifically
     console.log("[Notification Email] Employee note received:", employeeNote);
     console.log("[Notification Email] Employee email received:", employeeEmail);
+    console.log("[Notification Email] Admin message received:", adminMessage);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -91,7 +92,7 @@ serve(async (req) => {
 
     console.log("[Notification Email] Found Brevo settings for admin");
 
-    // FIXED: ENHANCED TEMPLATE TYPE MAPPING - Corrected logic for notification categories
+    // ENHANCED TEMPLATE TYPE MAPPING - Corrected logic for notification categories
     let templateType = 'notifiche'; // default
     let templateCategory = 'generale'; // default
     
@@ -365,8 +366,9 @@ serve(async (req) => {
       // For leave responses, use adminNote if available, otherwise use emailBody
       finalAdminMessage = adminNote || emailBody || adminMessage || '';
     } else if (isDocumentTemplate) {
-      // FIXED: For document templates, use adminMessage (from form) or emailBody
+      // FIXED: For document templates, prioritize adminMessage from form
       finalAdminMessage = adminMessage || emailBody || '';
+      console.log("[Notification Email] Document template - using adminMessage:", finalAdminMessage);
     } else {
       // For other types, use adminMessage or emailBody
       finalAdminMessage = adminMessage || emailBody || '';
@@ -385,6 +387,8 @@ serve(async (req) => {
         
         // NEW: DYNAMIC CONTENT LOGIC FOR ADMIN NOTIFICATION TEMPLATES
         let emailSubject, emailContent;
+        
+        const isAdminNotificationTemplate = templateType === 'notifiche' && templateCategory === 'amministratori';
         
         if (isAdminNotificationTemplate) {
           // ADMIN NOTIFICATION TEMPLATE: Always use dynamic content from form
@@ -545,7 +549,7 @@ serve(async (req) => {
           dynamicSubject: emailSubject,
           dynamicContent: emailContent,
           employeeEmail: employeeEmail,
-          // FIXED: Show admin message for ALL templates that have it enabled, not just leave responses
+          // FIXED: Show admin message for ALL templates that have it enabled
           showAdminMessage: templateData.show_admin_message,
           adminMessage: finalAdminMessage,
           adminMessageBgColor: templateData.admin_message_bg_color,
@@ -558,7 +562,9 @@ serve(async (req) => {
           buttonUrl: templateData.button_url,
         });
 
-        console.log("[Notification Email] FIXED: Admin message will be shown for template type", templateType, "with show_admin_message:", templateData.show_admin_message);
+        console.log("[Notification Email] CRITICAL DEBUG: Template show_admin_message:", templateData.show_admin_message);
+        console.log("[Notification Email] CRITICAL DEBUG: finalAdminMessage:", finalAdminMessage);
+        console.log("[Notification Email] CRITICAL DEBUG: Will show admin message:", templateData.show_admin_message && finalAdminMessage);
 
         // Email sending configuration
         const emailConfig: any = {
