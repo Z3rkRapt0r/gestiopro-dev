@@ -11,6 +11,7 @@ interface LeaveBalanceStats {
   permission_hours_used: number;
   permission_hours_remaining: number;
   year: number;
+  hasBalance: boolean; // Nuovo campo per indicare se esiste un bilancio
 }
 
 export const useEmployeeLeaveBalanceStats = (employeeId?: string) => {
@@ -31,21 +32,20 @@ export const useEmployeeLeaveBalanceStats = (employeeId?: string) => {
         .select('*')
         .eq('user_id', targetUserId)
         .eq('year', currentYear)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        console.warn('No leave balance found for user:', targetUserId, 'year:', currentYear);
-        return {
-          vacation_days_total: 0,
-          vacation_days_used: 0,
-          vacation_days_remaining: 0,
-          permission_hours_total: 0,
-          permission_hours_used: 0,
-          permission_hours_remaining: 0,
-          year: currentYear,
-        };
+        console.error('Errore nel recupero bilancio:', error);
+        return null;
       }
 
+      // Se non c'è un bilancio configurato, ritorna null invece di valori zero
+      if (!data) {
+        console.warn('No leave balance found for user:', targetUserId, 'year:', currentYear);
+        return null;
+      }
+
+      // Se c'è un bilancio configurato, ritorna i valori effettivi
       return {
         vacation_days_total: data.vacation_days_total,
         vacation_days_used: data.vacation_days_used,
@@ -54,6 +54,7 @@ export const useEmployeeLeaveBalanceStats = (employeeId?: string) => {
         permission_hours_used: data.permission_hours_used,
         permission_hours_remaining: Math.max(0, data.permission_hours_total - data.permission_hours_used),
         year: data.year,
+        hasBalance: true,
       };
     },
     enabled: !!targetUserId,

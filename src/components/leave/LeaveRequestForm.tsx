@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -58,7 +57,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const { insertMutation } = useLeaveRequests();
   const { isWorkingDay, countWorkingDays, getWorkingDaysLabels } = useWorkingDaysValidation();
   const { validateLeaveRequest, balanceValidation } = useLeaveBalanceValidation();
-  const { leaveBalance } = useEmployeeLeaveBalanceStats();
+  const { leaveBalance, isLoading: isLoadingBalance } = useEmployeeLeaveBalanceStats();
   const { notifyAdmin } = useLeaveRequestNotifications();
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [balanceValidationErrors, setBalanceValidationErrors] = useState<string[]>([]);
@@ -90,8 +89,17 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   
   const { employeeStatus } = useEmployeeStatus(profile?.id, targetDate);
 
+  // CONTROLLO BILANCIO: se non c'è bilancio configurato, blocca tutto
+  const hasNoBalance = !isLoadingBalance && !leaveBalance;
+
   // VALIDAZIONE SALDO MIGLIORATA - Real-time e rigorosa
   useEffect(() => {
+    // Se non c'è bilancio, mostra errore
+    if (hasNoBalance) {
+      setBalanceValidationErrors(['❌ Nessun bilancio configurato per l\'anno corrente. Contatta l\'amministratore.']);
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       if (watchedType && ((watchedType === 'ferie' && watchedDateFrom && watchedDateTo) || 
                           (watchedType === 'permesso' && watchedDay && watchedTimeFrom && watchedTimeTo))) {
@@ -109,11 +117,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
         
         // CONTROLLO RIGOROSO: blocca sempre se insufficiente
         if (!validation.hasBalance) {
-          setBalanceValidationErrors(['Nessun bilancio configurato per l\'anno corrente']);
+          setBalanceValidationErrors(['❌ Nessun bilancio configurato per l\'anno corrente']);
         } else if (validation.exceedsVacationLimit) {
-          setBalanceValidationErrors([validation.errorMessage || 'Giorni di ferie insufficienti']);
+          setBalanceValidationErrors([validation.errorMessage || '❌ Giorni di ferie insufficienti']);
         } else if (validation.exceedsPermissionLimit) {
-          setBalanceValidationErrors([validation.errorMessage || 'Ore di permesso insufficienti']);
+          setBalanceValidationErrors([validation.errorMessage || '❌ Ore di permesso insufficienti']);
         } else {
           setBalanceValidationErrors([]);
         }
@@ -123,7 +131,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, validateLeaveRequest]);
+  }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, validateLeaveRequest, hasNoBalance]);
 
   const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
@@ -164,6 +172,13 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     console.log('Inizio invio richiesta:', data);
     setShowValidationErrors(false);
     
+    // CONTROLLO FINALE: se non c'è bilancio, blocca completamente
+    if (hasNoBalance) {
+      console.log('Invio bloccato: nessun bilancio configurato');
+      setShowValidationErrors(true);
+      return;
+    }
+
     // CONTROLLO FINALE SALDO PRIMA DELL'INVIO
     if (balanceValidationErrors.length > 0) {
       console.log('Invio bloccato per saldo insufficiente:', balanceValidationErrors);
@@ -265,8 +280,9 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const validationEndDate = watchedType === 'ferie' ? (watchedDateTo ? format(watchedDateTo, 'yyyy-MM-dd') : undefined) : 
                             watchedType === 'permesso' ? (watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined) : undefined;
 
-  // CONTROLLO FINALE PER DISABILITARE PULSANTE
-  const isFormBlocked = !formValidationState.isValid || 
+  // CONTROLLO FINALE PER DISABILITARE PULSANTE - Include controllo bilancio mancante
+  const isFormBlocked = hasNoBalance || 
+                        !formValidationState.isValid || 
                         balanceValidationErrors.length > 0 ||
                         (employeeStatus && employeeStatus.hasHardBlock);
 
@@ -287,7 +303,22 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
           <CardTitle className="text-lg sm:text-xl">Nuova Richiesta</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6">
-          {leaveBalance && (
+          {/* ALERT CRITICO: Nessun bilancio configurato */}
+          {hasNoBalance && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <AlertDescription>
+                <div className="font-medium mb-2">🚫 Bilancio non configurato</div>
+                <div className="text-sm space-y-1">
+                  <p>Non è stato configurato un bilancio ferie/permessi per l'anno corrente.</p>
+                  <p className="font-medium">Contatta l'amministratore per configurare il tuo bilancio prima di poter fare richieste.</p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Mostra bilanci solo se esistono */}
+          {leaveBalance && leaveBalance.hasBalance && (
             <Alert className="border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
               <AlertDescription className="text-blue-700">
@@ -348,12 +379,19 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <AlertDescription>
-                <div className="font-medium mb-2">❌ Saldo insufficiente:</div>
+                <div className="font-medium mb-2">
+                  {hasNoBalance ? '🚫 Bilancio non configurato' : '❌ Saldo insufficiente'}
+                </div>
                 <div className="text-sm space-y-1">
                   {balanceValidationErrors.map((error, index) => (
                     <p key={index}>{error}</p>
                   ))}
-                  <p className="mt-2 text-xs">Contatta l'amministratore per verificare il tuo bilancio annuale.</p>
+                  <p className="mt-2 text-xs">
+                    {hasNoBalance 
+                      ? 'L\'amministratore deve configurare il tuo bilancio annuale prima che tu possa fare richieste.'
+                      : 'Contatta l\'amministratore per verificare il tuo bilancio annuale.'
+                    }
+                  </p>
                 </div>
               </AlertDescription>
             </Alert>
@@ -642,6 +680,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
               >
                 {insertMutation.isPending ? 'Invio in corso...' : 
                  isPendingRequest ? 'Richiesta in attesa di approvazione' :
+                 hasNoBalance ? 'Bilancio non configurato' :
                  isFormBlocked ? (balanceValidationErrors.length > 0 ? 'Saldo insufficiente' : 'Impossibile inviare') :
                  'Invia Richiesta'}
               </Button>
