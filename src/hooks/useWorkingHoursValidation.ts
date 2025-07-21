@@ -1,3 +1,4 @@
+
 import { useWorkSchedules } from './useWorkSchedules';
 
 export interface WorkingHoursValidation {
@@ -48,7 +49,7 @@ export const useWorkingHoursValidation = () => {
       const workEnd = workSchedule.end_time;
 
       if (timeFrom < workStart) {
-        errors.push(`L'orario di inizio (${timeFrom}) deve essere dalle ${workStart} in poi`);
+        errors.push(`L'orario di inizio (${timeFrom}) deve essere dopo l'inizio dell'orario di lavoro (${workStart})`);
       }
 
       if (timeTo > workEnd) {
