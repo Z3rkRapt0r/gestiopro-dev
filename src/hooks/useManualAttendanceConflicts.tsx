@@ -1,11 +1,14 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
+import { useCompanyHolidays } from './useCompanyHolidays';
 
 export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
   const [conflictDates, setConflictDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isHoliday } = useCompanyHolidays();
 
   const calculateConflicts = useCallback(async (userIds: string[]) => {
     if (!userIds || userIds.length === 0) {
@@ -22,9 +25,22 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
     const conflictDates = new Set<string>();
     
     try {
+      // 1. CONTROLLO FESTIVITÀ GLOBALI (NUOVO)
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const startOfYear = new Date(currentYear, 0, 1);
+      const endOfYear = new Date(currentYear, 11, 31);
+      const allDaysInYear = eachDayOfInterval({ start: startOfYear, end: endOfYear });
+      
+      allDaysInYear.forEach(date => {
+        if (isHoliday(date)) {
+          conflictDates.add(format(date, 'yyyy-MM-dd'));
+        }
+      });
+
       // Per ogni dipendente, verifica TUTTI i conflitti critici
       for (const userId of userIds) {
-        // 1. CONTROLLO TRASFERTE APPROVATE ESISTENTI
+        // 2. CONTROLLO TRASFERTE APPROVATE ESISTENTI
         const { data: existingTrips } = await supabase
           .from('business_trips')
           .select('start_date, end_date')
@@ -43,7 +59,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
           }
         }
 
-        // 2. CONTROLLO SOLO FERIE APPROVATE (PERMESSI NON BLOCCANO PIÙ LE PRESENZE)
+        // 3. CONTROLLO SOLO FERIE APPROVATE (PERMESSI NON BLOCCANO PIÙ LE PRESENZE)
         const { data: approvedLeaveRequests } = await supabase
           .from('leave_requests')
           .select('type, date_from, date_to, day')
@@ -66,7 +82,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
           }
         }
 
-        // 3. CONTROLLO MALATTIE E PRESENZE ESISTENTI (da unified_attendances)
+        // 4. CONTROLLO MALATTIE E PRESENZE ESISTENTI (da unified_attendances)
         const { data: existingAttendances } = await supabase
           .from('unified_attendances')
           .select('date, is_sick_leave')
@@ -78,7 +94,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
           });
         }
 
-        // 4. CONTROLLO PRESENZE MANUALI ESISTENTI
+        // 5. CONTROLLO PRESENZE MANUALI ESISTENTI
         const { data: manualAttendances } = await supabase
           .from('manual_attendances')
           .select('date')
@@ -94,7 +110,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
-      console.log('📅 Date con conflitti trovate per presenze/malattie (esclusi permessi):', conflictDateObjects.length);
+      console.log('📅 Date con conflitti trovate per presenze/malattie (incluse festività):', conflictDateObjects.length);
       setConflictDates(conflictDateObjects);
       
     } catch (error) {
@@ -104,7 +120,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isHoliday]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
