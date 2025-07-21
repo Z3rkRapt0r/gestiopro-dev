@@ -386,10 +386,10 @@ export function ManualLeaveEntryForm({
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-700">
                 <div className="font-medium mb-2">Bilancio dipendente:</div>
-                <div className="text-sm space-y-1">
-                  <div>• Ferie: <strong>{leaveBalance.remainingVacationDays}</strong> giorni disponibili</div>
-                  <div>• Permessi: <strong>{formatDecimalHours(leaveBalance.remainingPermissionHours)}</strong> disponibili</div>
-                </div>
+                 <div className="text-sm space-y-1">
+                   <div>• Ferie: <strong>{leaveBalance.vacation_days_remaining}</strong> giorni disponibili</div>
+                   <div>• Permessi: <strong>{formatDecimalHours(leaveBalance.permission_hours_remaining)}</strong> disponibili</div>
+                 </div>
               </AlertDescription>
             </Alert>
           )}

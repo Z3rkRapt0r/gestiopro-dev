@@ -4,8 +4,8 @@ import { formatDecimalHours } from "@/hooks/useLeaveBalanceValidation";
 
 export interface EmployeeLeaveBalanceValidation {
   hasBalance: boolean;
-  remainingVacationDays: number;
-  remainingPermissionHours: number;
+  vacation_days_remaining: number;
+  permission_hours_remaining: number;
   exceedsVacationLimit: boolean;
   exceedsPermissionLimit: boolean;
   errorMessage?: string;
@@ -53,8 +53,8 @@ export function useEmployeeLeaveBalanceValidation(employeeId?: string) {
       console.log('❌ Nessun bilancio configurato per il dipendente');
       return {
         hasBalance: false,
-        remainingVacationDays: 0,
-        remainingPermissionHours: 0,
+        vacation_days_remaining: 0,
+        permission_hours_remaining: 0,
         exceedsVacationLimit: true,
         exceedsPermissionLimit: true,
         errorMessage: "Il dipendente selezionato non ha bilanci configurati per l'anno corrente"
@@ -64,25 +64,27 @@ export function useEmployeeLeaveBalanceValidation(employeeId?: string) {
     if (type === "ferie" && dateFrom && dateTo) {
       // Calcola giorni lavorativi richiesti (Lun-Ven)
       const requestedDays = getWorkingDaysBetween(dateFrom, dateTo);
-      const exceedsLimit = requestedDays > leaveBalance.remainingVacationDays;
+      const exceedsLimit = requestedDays > leaveBalance.vacation_days_remaining;
       
-      console.log(`Ferie richieste per dipendente: ${requestedDays} giorni, disponibili: ${leaveBalance.remainingVacationDays}`);
+      console.log(`Ferie richieste per dipendente: ${requestedDays} giorni, disponibili: ${leaveBalance.vacation_days_remaining}`);
       
       // CONTROLLO RIGOROSO: anche 0 giorni disponibili blocca
-      if (leaveBalance.remainingVacationDays <= 0) {
+      if (leaveBalance.vacation_days_remaining <= 0) {
         console.log('❌ Nessun giorno di ferie disponibile per il dipendente');
         return {
           ...leaveBalance,
           exceedsVacationLimit: true,
-          errorMessage: `Il dipendente non ha giorni di ferie disponibili (saldo: ${leaveBalance.remainingVacationDays})`
+          exceedsPermissionLimit: false,
+          errorMessage: `Il dipendente non ha giorni di ferie disponibili (saldo: ${leaveBalance.vacation_days_remaining})`
         };
       }
       
       return {
         ...leaveBalance,
         exceedsVacationLimit: exceedsLimit,
+        exceedsPermissionLimit: false,
         errorMessage: exceedsLimit 
-          ? `Richiesti ${requestedDays} giorni ma il dipendente ha disponibili solo ${leaveBalance.remainingVacationDays}`
+          ? `Richiesti ${requestedDays} giorni ma il dipendente ha disponibili solo ${leaveBalance.vacation_days_remaining}`
           : undefined
       };
     }
@@ -94,15 +96,16 @@ export function useEmployeeLeaveBalanceValidation(employeeId?: string) {
         // Calcola ore decimali includendo i minuti
         requestedHours = timeToDecimalHours(timeFrom, timeTo);
         
-        console.log(`Permesso richiesto per dipendente: ${formatDecimalHours(requestedHours)}, disponibili: ${formatDecimalHours(leaveBalance.remainingPermissionHours)}`);
+        console.log(`Permesso richiesto per dipendente: ${formatDecimalHours(requestedHours)}, disponibili: ${formatDecimalHours(leaveBalance.permission_hours_remaining)}`);
         
         // CONTROLLO RIGOROSO: anche 0 ore disponibili blocca
-        if (leaveBalance.remainingPermissionHours <= 0) {
+        if (leaveBalance.permission_hours_remaining <= 0) {
           console.log('❌ Nessuna ora di permesso disponibile per il dipendente');
           return {
             ...leaveBalance,
             exceedsPermissionLimit: true,
-            errorMessage: `Il dipendente non ha ore di permesso disponibili (saldo: ${formatDecimalHours(leaveBalance.remainingPermissionHours)})`
+            exceedsVacationLimit: false,
+            errorMessage: `Il dipendente non ha ore di permesso disponibili (saldo: ${formatDecimalHours(leaveBalance.permission_hours_remaining)})`
           };
         }
         
@@ -110,6 +113,7 @@ export function useEmployeeLeaveBalanceValidation(employeeId?: string) {
           return {
             ...leaveBalance,
             exceedsPermissionLimit: true,
+            exceedsVacationLimit: false,
             errorMessage: "L'orario di fine deve essere successivo all'orario di inizio"
           };
         }
@@ -119,22 +123,28 @@ export function useEmployeeLeaveBalanceValidation(employeeId?: string) {
         return {
           ...leaveBalance,
           exceedsPermissionLimit: true,
+          exceedsVacationLimit: false,
           errorMessage: "Orario di inizio e fine sono obbligatori per i permessi"
         };
       }
 
-      const exceedsLimit = requestedHours > leaveBalance.remainingPermissionHours;
+      const exceedsLimit = requestedHours > leaveBalance.permission_hours_remaining;
 
       return {
         ...leaveBalance,
         exceedsPermissionLimit: exceedsLimit,
+        exceedsVacationLimit: false,
         errorMessage: exceedsLimit 
-          ? `Richieste ${formatDecimalHours(requestedHours)} ma il dipendente ha disponibili solo ${formatDecimalHours(leaveBalance.remainingPermissionHours)}`
+          ? `Richieste ${formatDecimalHours(requestedHours)} ma il dipendente ha disponibili solo ${formatDecimalHours(leaveBalance.permission_hours_remaining)}`
           : undefined
       };
     }
 
-    return leaveBalance;
+    return {
+      ...leaveBalance,
+      exceedsVacationLimit: false,
+      exceedsPermissionLimit: false
+    };
   };
 
   return {
