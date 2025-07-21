@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -14,8 +13,8 @@ export const useAttendanceOperations = () => {
   const { validateLocation } = useGPSValidation();
   const { workSchedule } = useWorkSchedules();
 
-  // Funzione per calcolare i ritardi considerando i permessi approvati
-  const calculateLateness = async (checkInTime: Date, workSchedule: any, userId: string) => {
+  // Funzione per calcolare i ritardi
+  const calculateLateness = (checkInTime: Date, workSchedule: any) => {
     if (!workSchedule || !workSchedule.start_time || !workSchedule.tolerance_minutes) {
       return { isLate: false, lateMinutes: 0 };
     }
@@ -38,38 +37,8 @@ export const useAttendanceOperations = () => {
       return { isLate: false, lateMinutes: 0 };
     }
 
-    const checkInDate = checkInTime.toISOString().split('T')[0];
-    
-    // Controlla se ci sono permessi approvati per questa data
-    const { data: approvedPermissions } = await supabase
-      .from('leave_requests')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'approved')
-      .eq('type', 'permesso')
-      .eq('day', checkInDate);
-
-    let referenceStartTime = workSchedule.start_time;
-    
-    // Se ci sono permessi orari approvati, trova quello che termina più tardi
-    if (approvedPermissions && approvedPermissions.length > 0) {
-      const hourlyPermissions = approvedPermissions.filter(p => p.time_from && p.time_to);
-      
-      if (hourlyPermissions.length > 0) {
-        // Trova il permesso che termina più tardi
-        const latestPermission = hourlyPermissions.reduce((latest, current) => {
-          return current.time_to > latest.time_to ? current : latest;
-        });
-        
-        // Se il permesso termina dopo l'orario di inizio standard, usa quello come riferimento
-        if (latestPermission.time_to > workSchedule.start_time) {
-          referenceStartTime = latestPermission.time_to;
-        }
-      }
-    }
-
     // Calcola l'orario di inizio previsto + tolleranza
-    const [startHours, startMinutes] = referenceStartTime.split(':').map(Number);
+    const [startHours, startMinutes] = workSchedule.start_time.split(':').map(Number);
     const expectedStartTime = new Date(checkInTime);
     expectedStartTime.setHours(startHours, startMinutes, 0, 0);
     
@@ -201,8 +170,8 @@ export const useAttendanceOperations = () => {
       const now = new Date();
       const checkInTime = now.toTimeString().slice(0, 5);
       
-      // Calcola ritardo considerando i permessi approvati
-      const { isLate, lateMinutes } = await calculateLateness(now, workSchedule, user?.id!);
+      // Calcola ritardo
+      const { isLate, lateMinutes } = calculateLateness(now, workSchedule);
       
       // Genera il path organizzativo italiano
       const operationType = isBusinessTrip ? 'viaggio_lavoro' : 'presenza_normale';
@@ -255,7 +224,7 @@ export const useAttendanceOperations = () => {
 
       if (unifiedError) throw unifiedError;
 
-      console.log('✅ Check-in completato con validazione anti-conflitto e calcolo ritardo intelligente');
+      console.log('✅ Check-in completato con validazione anti-conflitto');
       return { attendanceData, unifiedData };
     },
     onSuccess: (data) => {
