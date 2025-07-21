@@ -5,7 +5,7 @@ import { format, eachDayOfInterval } from 'date-fns';
 import { useCompanyHolidays } from './useCompanyHolidays';
 import { useTimeBasedPermissionValidation } from './useTimeBasedPermissionValidation';
 
-export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
+export const useManualAttendanceConflicts = (selectedEmployees: string[], targetDate?: Date) => {
   const [conflictDates, setConflictDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
     setIsLoading(true);
     setError(null);
     
-    console.log('🔍 Calcolo conflitti per presenze/malattie con logica temporale per dipendenti:', userIds);
+    console.log('🔍 Calcolo conflitti per presenze/malattie con logica temporale migliorata per dipendenti:', userIds);
     
     const conflictDates = new Set<string>();
     
@@ -61,7 +61,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
           }
         }
 
-        // 3. CONTROLLO SOLO FERIE APPROVATE (PERMESSI GESTITI CON LOGICA TEMPORALE)
+        // 3. CONTROLLO SOLO FERIE APPROVATE (PERMESSI GESTITI CON LOGICA TEMPORALE MIGLIORATA)
         const { data: approvedLeaveRequests } = await supabase
           .from('leave_requests')
           .select('type, date_from, date_to, day, time_from, time_to')
@@ -81,25 +81,29 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
               });
             }
             
-            // PERMESSI: Solo se sono attivi adesso (logica temporale)
+            // PERMESSI: Logica migliorata basata su data target
             if (leave.type === 'permesso' && leave.day) {
-              const permissionDate = leave.day;
+              const permissionDateStr = leave.day;
+              const permissionDate = new Date(permissionDateStr);
               
               // Per permessi giornalieri, blocca sempre
               if (!leave.time_from || !leave.time_to) {
-                conflictDates.add(permissionDate);
+                conflictDates.add(permissionDateStr);
               } else {
-                // Per permessi orari, controlla se sono attivi adesso
+                // Per permessi orari, usa la logica migliorata
                 const fakePermission = {
-                  day: permissionDate,
+                  day: permissionDateStr,
                   time_from: leave.time_from,
                   time_to: leave.time_to
                 };
                 
-                if (isPermissionActive(fakePermission)) {
-                  conflictDates.add(permissionDate);
+                // Usa la data target se specificata, altrimenti usa la data del permesso
+                const checkDate = targetDate || permissionDate;
+                
+                if (isPermissionActive(fakePermission, new Date(), checkDate)) {
+                  conflictDates.add(permissionDateStr);
                 }
-                // Se il permesso orario non è attivo, non bloccare la data
+                // Se il permesso orario non è attivo per la data target, non bloccare
               }
             }
           }
@@ -133,7 +137,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
-      console.log('📅 Date con conflitti trovate (con logica temporale per permessi):', conflictDateObjects.length);
+      console.log('📅 Date con conflitti trovate (con logica temporale migliorata per permessi):', conflictDateObjects.length);
       setConflictDates(conflictDateObjects);
       
     } catch (error) {
@@ -143,7 +147,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
     } finally {
       setIsLoading(false);
     }
-  }, [isHoliday, isPermissionActive]);
+  }, [isHoliday, isPermissionActive, targetDate]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {

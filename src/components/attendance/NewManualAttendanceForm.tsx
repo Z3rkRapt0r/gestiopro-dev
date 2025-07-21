@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, AlertCircle } from 'lucide-react';
+import { UserPlus, AlertCircle, Info } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
+import { useTimeBasedPermissionValidation } from '@/hooks/useTimeBasedPermissionValidation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import ConflictSummaryCard from './ConflictSummaryCard';
@@ -17,6 +18,7 @@ import ConflictSummaryCard from './ConflictSummaryCard';
 export default function NewManualAttendanceForm() {
   const { createManualAttendance, isCreating } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
+  const { getPermissionStatus } = useTimeBasedPermissionValidation();
   const [formData, setFormData] = useState({
     user_id: '',
     date: '',
@@ -30,6 +32,7 @@ export default function NewManualAttendanceForm() {
     permission_time_to: '',
   });
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [permissionInfo, setPermissionInfo] = useState<string | null>(null);
 
   // Determina il tipo per il sistema anti-conflitto
   const conflictType = formData.is_sick_leave ? 'sick_leave' : 
@@ -72,6 +75,42 @@ export default function NewManualAttendanceForm() {
 
     setValidationError(null);
     return true;
+  };
+
+  // Funzione per controllare lo stato dei permessi per la data selezionata
+  const checkPermissionStatus = async (dateStr: string, employeeId: string) => {
+    if (!dateStr || !employeeId) return;
+
+    try {
+      // Cerca permessi per questo dipendente nella data selezionata
+      const { data: permissions } = await supabase
+        .from('leave_requests')
+        .select('type, day, time_from, time_to')
+        .eq('user_id', employeeId)
+        .eq('status', 'approved')
+        .eq('type', 'permesso')
+        .eq('day', dateStr);
+
+      if (permissions && permissions.length > 0) {
+        const permission = permissions[0];
+        const targetDate = new Date(dateStr);
+        const status = getPermissionStatus(permission, new Date(), targetDate);
+        
+        if (status.status === 'expired') {
+          setPermissionInfo(status.message);
+          setValidationError(null);
+        } else if (status.status === 'active' || status.status === 'upcoming') {
+          setPermissionInfo(null);
+          setValidationError(status.message);
+        } else {
+          setPermissionInfo(null);
+        }
+      } else {
+        setPermissionInfo(null);
+      }
+    } catch (error) {
+      console.error('Errore nel controllo stato permessi:', error);
+    }
   };
 
   // Validazione anti-conflitto completa
@@ -122,12 +161,14 @@ export default function NewManualAttendanceForm() {
   const handleEmployeeChange = async (userId: string) => {
     setFormData(prev => ({ ...prev, user_id: userId }));
     setValidationError(null);
+    setPermissionInfo(null);
     
     // Valida immediatamente se ci sono date selezionate
     if (formData.date) {
       const isHireDateValid = validateDatesAgainstHireDate(formData.date, formData.date_to, userId);
       if (isHireDateValid) {
         await validateConflicts(formData.date, formData.date_to, userId);
+        await checkPermissionStatus(formData.date, userId);
       }
     }
   };
@@ -143,6 +184,9 @@ export default function NewManualAttendanceForm() {
       const isHireDateValid = validateDatesAgainstHireDate(startDate, endDate, formData.user_id);
       if (isHireDateValid) {
         await validateConflicts(startDate, endDate, formData.user_id);
+        if (field === 'date') {
+          await checkPermissionStatus(value, formData.user_id);
+        }
       }
     }
   };
@@ -163,6 +207,9 @@ export default function NewManualAttendanceForm() {
     // Ricontrolla i conflitti con il nuovo tipo
     if (formData.user_id && formData.date) {
       await validateConflicts(formData.date, formData.date_to, formData.user_id);
+      if (!value) { // Se stiamo deselezionando, controlla anche lo stato permessi
+        await checkPermissionStatus(formData.date, formData.user_id);
+      }
     }
   };
 
@@ -191,6 +238,7 @@ export default function NewManualAttendanceForm() {
     if (!isConflictValid) {
       return;
     }
+    
     
     if (formData.is_sick_leave && formData.date && formData.date_to) {
       // Gestione range di date per malattia
@@ -271,6 +319,7 @@ export default function NewManualAttendanceForm() {
       permission_time_to: '',
     });
     setValidationError(null);
+    setPermissionInfo(null);
   };
 
   return (
@@ -349,6 +398,7 @@ export default function NewManualAttendanceForm() {
               </div>
             </div>
 
+            {/* Messaggi di validazione e informazioni */}
             {validationError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -356,6 +406,14 @@ export default function NewManualAttendanceForm() {
               </Alert>
             )}
 
+            {permissionInfo && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-green-700">{permissionInfo}</AlertDescription>
+              </Alert>
+            )}
+
+            
             {formData.is_sick_leave ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -482,7 +540,7 @@ export default function NewManualAttendanceForm() {
 
             <Button 
               type="submit" 
-              disabled={isCreating || !formData.user_id || !formData.date || (formData.is_sick_leave && !formData.date_to) || !!validationError || isCalculatingConflicts} 
+              disabled={isCreating || !formData.user_id || !formData.date || (formData.is_sick_leave && !formData.date_to) || (!!validationError && !permissionInfo) || isCalculatingConflicts} 
               className="w-full"
             >
               {isCreating ? 'Salvando...' : 
