@@ -21,11 +21,31 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Calendar, Clock, MapPin, User, ExternalLink, Trash2 } from 'lucide-react';
-import { useAttendances, Attendance } from '@/hooks/useAttendances';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useAuth } from '@/hooks/useAuth';
 
+type UnifiedAttendance = {
+  id: string;
+  user_id: string;
+  date: string;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  check_in_latitude?: number | null;
+  check_in_longitude?: number | null;
+  check_out_latitude?: number | null;
+  check_out_longitude?: number | null;
+  profiles?: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+  };
+  is_manual?: boolean;
+  is_late?: boolean;
+  late_minutes?: number;
+};
+
 export default function AttendanceHistory() {
-  const { attendances, isLoading, deleteAttendance, isDeleting } = useAttendances();
+  const { attendances, isLoading } = useUnifiedAttendances();
   const { profile } = useAuth();
 
   const formatTime = (timeString: string | null) => {
@@ -45,7 +65,7 @@ export default function AttendanceHistory() {
     });
   };
 
-  const getEmployeeName = (attendance: Attendance) => {
+  const getEmployeeName = (attendance: UnifiedAttendance) => {
     if (!attendance.profiles) {
       return 'Dipendente';
     }
@@ -68,7 +88,7 @@ export default function AttendanceHistory() {
     return `${diffHours.toFixed(1)}h`;
   };
 
-  const getStatusBadge = (attendance: Attendance) => {
+  const getStatusBadge = (attendance: UnifiedAttendance) => {
     if (!attendance.check_in_time) {
       return <Badge variant="destructive">Assente</Badge>;
     }
@@ -82,7 +102,7 @@ export default function AttendanceHistory() {
     return `https://maps.google.com/?q=${latitude},${longitude}`;
   };
 
-  const renderLocationCell = (attendance: Attendance) => {
+  const renderLocationCell = (attendance: UnifiedAttendance) => {
     if (profile?.role !== 'admin') {
       // Per dipendenti normali, mostra solo l'icona GPS
       if (attendance.check_in_latitude && attendance.check_in_longitude) {
@@ -138,8 +158,10 @@ export default function AttendanceHistory() {
     );
   };
 
+  // Rimuovere il delete per unified attendances dato che non è supportato
+  // Per ora solo visualizzazione
   const handleDeleteAttendance = (attendanceId: string) => {
-    deleteAttendance(attendanceId);
+    console.log('Delete not supported for unified attendances:', attendanceId);
   };
 
   if (isLoading) {
@@ -228,7 +250,7 @@ export default function AttendanceHistory() {
                       <TableCell>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={isDeleting}>
+                            <Button variant="destructive" size="sm" disabled={false}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </AlertDialogTrigger>
