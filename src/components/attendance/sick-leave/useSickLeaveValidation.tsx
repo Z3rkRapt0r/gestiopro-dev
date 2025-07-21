@@ -1,17 +1,11 @@
-
 import { useState } from "react";
 import { format } from "date-fns";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { useLeaveConflicts } from "@/hooks/useLeaveConflicts";
-import { useCompanyHolidays } from "@/hooks/useCompanyHolidays";
-import { useTimeBasedPermissionValidation } from "@/hooks/useTimeBasedPermissionValidation";
-import { supabase } from "@/integrations/supabase/client";
 
 export function useSickLeaveValidation(selectedUserId: string) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const { employees } = useActiveEmployees();
-  const { isHoliday, getHolidayName } = useCompanyHolidays();
-  const { getPermissionStatus } = useTimeBasedPermissionValidation();
   
   const { 
     conflictDates, 
@@ -43,49 +37,12 @@ export function useSickLeaveValidation(selectedUserId: string) {
     return true;
   };
 
-  // Validazione anti-conflitto completa con controllo festività e permessi scaduti
+  // Validazione anti-conflitto completa
   const validateConflicts = async (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
 
     try {
-      console.log('🔍 Controllo conflitti per malattia (incluse festività e permessi scaduti)...');
-      
-      // Controllo festività nelle date selezionate
-      const dateToCheck = startDate;
-      if (isHoliday(dateToCheck)) {
-        const holidayName = getHolidayName(dateToCheck);
-        setValidationError(`⚠️ La data di inizio ${format(dateToCheck, 'dd/MM/yyyy')} coincide con una festività aziendale${holidayName ? `: ${holidayName}` : ''}. Si consiglia di verificare la necessità della malattia in questa data.`);
-        // Non bloccare completamente ma avvisare
-      }
-      
-      if (endDate && isHoliday(endDate)) {
-        const holidayName = getHolidayName(endDate);
-        setValidationError(`⚠️ La data di fine ${format(endDate, 'dd/MM/yyyy')} coincide con una festività aziendale${holidayName ? `: ${holidayName}` : ''}. Si consiglia di verificare la necessità della malattia in questa data.`);
-      }
-      
-      // Controllo permessi con logica temporale migliorata
-      const startDateStr = format(startDate, 'yyyy-MM-dd');
-      const { data: permissions } = await supabase
-        .from('leave_requests')
-        .select('type, day, time_from, time_to')
-        .eq('user_id', employeeId)
-        .eq('status', 'approved')
-        .eq('type', 'permesso')
-        .eq('day', startDateStr);
-
-      if (permissions && permissions.length > 0) {
-        const permission = permissions[0];
-        const status = getPermissionStatus(permission, new Date(), startDate);
-        
-        if (status.status === 'expired') {
-          // Permesso scaduto: non bloccare ma informare
-          console.log('ℹ️ Permesso scaduto trovato, ma non bloccante:', status.message);
-        } else if (status.status === 'active' || status.status === 'upcoming') {
-          setValidationError(`⚠️ Conflitto con permesso: ${status.message}`);
-          return false;
-        }
-      }
-      
+      console.log('🔍 Controllo conflitti per malattia...');
       const validation = await validateSickLeaveRange(
         employeeId, 
         format(startDate, 'yyyy-MM-dd'),
@@ -97,6 +54,7 @@ export function useSickLeaveValidation(selectedUserId: string) {
         return false;
       }
       
+      setValidationError(null);
       return true;
     } catch (error) {
       console.error('❌ Errore validazione conflitti malattia:', error);

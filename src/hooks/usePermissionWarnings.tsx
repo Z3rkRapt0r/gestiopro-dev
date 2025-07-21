@@ -1,13 +1,10 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { useCompanyHolidays } from './useCompanyHolidays';
 
 export const usePermissionWarnings = (selectedEmployees: string[], selectedDate?: Date) => {
   const [permissionWarnings, setPermissionWarnings] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { isHoliday, getHolidayName } = useCompanyHolidays();
 
   const checkPermissions = useCallback(async (userIds: string[], date?: Date) => {
     if (!userIds || userIds.length === 0 || !date) {
@@ -19,12 +16,6 @@ export const usePermissionWarnings = (selectedEmployees: string[], selectedDate?
     const warnings: string[] = [];
     
     try {
-      // CONTROLLO FESTIVITÀ (NUOVO)
-      if (isHoliday(date)) {
-        const holidayName = getHolidayName(date);
-        warnings.push(`⚠️ La data selezionata è una festività aziendale${holidayName ? `: ${holidayName}` : ''}`);
-      }
-
       for (const userId of userIds) {
         // Ottieni prima i dettagli del permesso
         const { data: permissions } = await supabase
@@ -61,7 +52,7 @@ export const usePermissionWarnings = (selectedEmployees: string[], selectedDate?
     } finally {
       setIsLoading(false);
     }
-  }, [isHoliday, getHolidayName]);
+  }, []);
 
   useEffect(() => {
     if (selectedDate) {
