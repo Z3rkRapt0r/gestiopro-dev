@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -69,6 +68,7 @@ export const useEmployeeStats = () => {
         ? Math.max(0, leaveBalanceData.data.vacation_days_total - leaveBalanceData.data.vacation_days_used)
         : 0;
       
+      // Keep as decimal hours to preserve minutes precision
       const permissionHoursRemaining = leaveBalanceData.data 
         ? Math.max(0, leaveBalanceData.data.permission_hours_total - leaveBalanceData.data.permission_hours_used)
         : 0;

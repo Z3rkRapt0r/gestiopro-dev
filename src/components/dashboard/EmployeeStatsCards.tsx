@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Bell, Calendar, CheckCircle, XCircle, Clock, Plane, Timer } from "lucide-react";
+import { formatDecimalHours } from "@/hooks/useLeaveBalanceValidation";
 
 interface EmployeeStatsCardsProps {
   stats: {
@@ -24,15 +25,17 @@ const EmployeeStatsCards = ({ stats }: EmployeeStatsCardsProps) => {
       subtitle: "Giorni disponibili",
       icon: Plane,
       colorClass: "bg-blue-50 border-blue-200 text-blue-900",
-      iconClass: "text-blue-600"
+      iconClass: "text-blue-600",
+      displayValue: stats.vacationDaysRemaining.toString()
     },
     {
       title: "Permessi Rimanenti", 
       value: stats.permissionHoursRemaining,
-      subtitle: "Ore disponibili",
+      subtitle: "Tempo disponibile",
       icon: Timer,
       colorClass: "bg-green-50 border-green-200 text-green-900",
-      iconClass: "text-green-600"
+      iconClass: "text-green-600",
+      displayValue: formatDecimalHours(stats.permissionHoursRemaining)
     },
     {
       title: "In Attesa",
@@ -40,7 +43,8 @@ const EmployeeStatsCards = ({ stats }: EmployeeStatsCardsProps) => {
       subtitle: "Richieste pending",
       icon: Clock,
       colorClass: "bg-yellow-50 border-yellow-200 text-yellow-900",
-      iconClass: "text-yellow-600"
+      iconClass: "text-yellow-600",
+      displayValue: stats.pendingLeaveRequests.toString()
     }
   ];
 
@@ -59,7 +63,7 @@ const EmployeeStatsCards = ({ stats }: EmployeeStatsCardsProps) => {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-3xl font-bold mb-1">
-              {stat.value}
+              {stat.displayValue}
             </div>
             <p className={`text-xs ${stat.iconClass} opacity-80`}>
               {stat.subtitle}

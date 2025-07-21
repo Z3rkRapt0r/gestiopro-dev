@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useEmployeeLeaveBalance } from "@/hooks/useEmployeeLeaveBalance";
+import { formatDecimalHours } from "@/hooks/useLeaveBalanceValidation";
 import { Trash2, Calendar, Clock, User, Edit, Check, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -207,7 +208,7 @@ export function EmployeeLeaveBalanceList() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <Clock className="h-4 w-4" />
-                      Permessi (ore)
+                      Permessi
                     </div>
                     {isEditing ? (
                       <div className="space-y-2">
@@ -223,31 +224,31 @@ export function EmployeeLeaveBalanceList() {
                             }))}
                             className="w-20 h-8"
                           />
-                          <span className="text-sm">h</span>
+                          <span className="text-sm">ore</span>
                         </div>
                         <div className="flex gap-2">
                           <Badge variant="secondary">
-                            Usate: {balance.permission_hours_used}h
+                            Usate: {formatDecimalHours(balance.permission_hours_used)}
                           </Badge>
                           <Badge 
                             variant={editValues.permission_hours_total - balance.permission_hours_used > 0 ? "default" : "destructive"}
                           >
-                            Rimanenti: {editValues.permission_hours_total - balance.permission_hours_used}h
+                            Rimanenti: {formatDecimalHours(editValues.permission_hours_total - balance.permission_hours_used)}
                           </Badge>
                         </div>
                       </div>
                     ) : (
                       <div className="flex gap-2">
                         <Badge variant="outline">
-                          Assegnate: {balance.permission_hours_total}h
+                          Assegnate: {formatDecimalHours(balance.permission_hours_total)}
                         </Badge>
                         <Badge variant="secondary">
-                          Usate: {balance.permission_hours_used}h
+                          Usate: {formatDecimalHours(balance.permission_hours_used)}
                         </Badge>
                         <Badge 
                           variant={permissionRemaining > 0 ? "default" : "destructive"}
                         >
-                          Rimanenti: {permissionRemaining}h
+                          Rimanenti: {formatDecimalHours(permissionRemaining)}
                         </Badge>
                       </div>
                     )}

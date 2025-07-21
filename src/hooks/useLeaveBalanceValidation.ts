@@ -12,6 +12,20 @@ export interface LeaveBalanceValidation {
   errorMessage?: string;
 }
 
+// Export the helper function so it can be used in other components
+export const formatDecimalHours = (decimalHours: number): string => {
+  const hours = Math.floor(decimalHours);
+  const minutes = Math.round((decimalHours - hours) * 60);
+  
+  if (hours === 0) {
+    return `${minutes} minuti`;
+  } else if (minutes === 0) {
+    return `${hours} ${hours === 1 ? 'ora' : 'ore'}`;
+  } else {
+    return `${hours} ${hours === 1 ? 'ora' : 'ore'} e ${minutes} minuti`;
+  }
+};
+
 export function useLeaveBalanceValidation() {
   const { profile } = useAuth();
 
@@ -62,20 +76,6 @@ export function useLeaveBalanceValidation() {
     const endTime = new Date(`1970-01-01T${timeTo}:00`);
     const diffMs = endTime.getTime() - startTime.getTime();
     return diffMs / (1000 * 60 * 60); // Convert to hours
-  };
-
-  // Funzione helper per convertire ore decimali in formato "X ore Y minuti"
-  const formatDecimalHours = (decimalHours: number): string => {
-    const hours = Math.floor(decimalHours);
-    const minutes = Math.round((decimalHours - hours) * 60);
-    
-    if (hours === 0) {
-      return `${minutes} minuti`;
-    } else if (minutes === 0) {
-      return `${hours} ${hours === 1 ? 'ora' : 'ore'}`;
-    } else {
-      return `${hours} ${hours === 1 ? 'ora' : 'ore'} e ${minutes} minuti`;
-    }
   };
 
   const validateLeaveRequest = (
