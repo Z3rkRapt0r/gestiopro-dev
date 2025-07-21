@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
+import { useTimeBasedPermissionValidation } from '@/hooks/useTimeBasedPermissionValidation';
 import { formatTime, isWorkingDay } from '@/utils/attendanceUtils';
 import AttendanceCalendarSidebar from './calendar/AttendanceCalendarSidebar';
 import PresentEmployeesSection from './sections/PresentEmployeesSection';
@@ -26,6 +26,7 @@ export default function NewDailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
@@ -34,44 +35,19 @@ export default function NewDailyAttendanceCalendar() {
   const { businessTrips } = useBusinessTrips();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
   const { getSickLeavesForDate, isUserSickOnDate } = useSickLeavesForCalendars();
+  const { isPermissionActive, getPermissionStatus } = useTimeBasedPermissionValidation();
+
+  // Timer per aggiornare l'ora corrente ogni minuto
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Aggiorna ogni minuto
+
+    return () => clearInterval(timer);
+  }, []);
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-
-  // Funzione per ottenere gli assenti
-  const getAbsentEmployees = async () => {
-    if (!selectedDate || !employees) return [];
-    
-    const absentEmployees = [];
-    
-    for (const emp of employees) {
-      const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id);
-      if (hasAttendance) continue;
-      
-      const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id);
-      if (isOnLeave) continue;
-      
-      // Verifica se è in malattia usando il nuovo hook
-      const isSick = isUserSickOnDate(emp.id, selectedDateStr);
-      if (isSick) continue;
-      
-      // Verifica se è in trasferta
-      const isOnBusinessTrip = onBusinessTripEmployees.some(empTrip => empTrip.id === emp.id);
-      if (isOnBusinessTrip) continue;
-      
-      const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
-      if (shouldTrack && isWorkingDay(selectedDate, workSchedule)) {
-        absentEmployees.push(emp);
-      }
-    }
-    
-    return absentEmployees;
-  };
-
-  React.useEffect(() => {
-    if (selectedDateStr && employees && attendances) {
-      getAbsentEmployees().then(setAbsentEmployees);
-    }
-  }, [selectedDateStr, employees, attendances]);
+  const isToday = selectedDate ? format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') : false;
 
   if (isLoading) {
     return (
@@ -88,7 +64,7 @@ export default function NewDailyAttendanceCalendar() {
   }
 
   console.log('Data selezionata nel calendario:', selectedDateStr);
-  console.log('Presenze disponibili:', attendances?.map(att => ({ date: att.date, user: att.profiles?.first_name })));
+  console.log('Ora corrente per validazione temporale:', format(currentTime, 'HH:mm:ss'));
   
   const selectedDateAttendances = attendances?.filter(att => {
     console.log(`Confronto: ${att.date} === ${selectedDateStr} ?`, att.date === selectedDateStr);
@@ -97,38 +73,37 @@ export default function NewDailyAttendanceCalendar() {
 
   console.log('Presenze per la data selezionata:', selectedDateAttendances);
 
-  // CORREZIONE: Usa confronto stringhe invece di Date objects come nel calendario operatore
+  // CORREZIONE: Usa confronto stringhe E logica temporale per i permessi
   const selectedDateLeaves = leaveRequests?.filter(request => {
     if (request.status !== 'approved') return false;
     
     if (request.type === 'ferie' && request.date_from && request.date_to) {
-      // Debug per Gabriele
-      if (request.profiles?.first_name?.toLowerCase() === 'gabriele') {
-        console.log('🔍 DEBUG Gabriele nel calendario generale:', {
-          currentDateStr: selectedDateStr,
-          date_from: request.date_from,
-          date_to: request.date_to,
-          comparison: `${selectedDateStr} >= ${request.date_from} && ${selectedDateStr} <= ${request.date_to}`,
-          result: selectedDateStr >= request.date_from && selectedDateStr <= request.date_to
-        });
-      }
-      
-      // Usa confronto stringhe come nel calendario operatore
       return selectedDateStr >= request.date_from && selectedDateStr <= request.date_to;
     }
     
     if (request.type === 'permesso' && request.day) {
-      return request.day === selectedDateStr;
+      if (request.day !== selectedDateStr) return false;
+      
+      // Per permessi, usa la logica temporale solo se stiamo guardando oggi
+      if (isToday) {
+        return isPermissionActive(request, currentTime);
+      } else {
+        // Per date passate/future, mostra sempre tutti i permessi
+        return true;
+      }
     }
     
     return false;
   }) || [];
 
-  console.log('🔍 Ferie per la data selezionata nel calendario generale:', selectedDateLeaves.map(leave => ({
+  console.log('🔍 Ferie/Permessi per la data selezionata (con logica temporale):', selectedDateLeaves.map(leave => ({
     user: leave.profiles?.first_name,
     type: leave.type,
-    from: leave.date_from,
-    to: leave.date_to
+    from: leave.date_from || leave.day,
+    to: leave.date_to || leave.day,
+    timeFrom: leave.time_from,
+    timeTo: leave.time_to,
+    isActive: leave.type === 'permesso' ? isPermissionActive(leave, currentTime) : true
   })));
 
   // PRIMA: Calcola i dipendenti in trasferta (riorganizzato per essere calcolato per primo)
@@ -305,7 +280,7 @@ export default function NewDailyAttendanceCalendar() {
     }
   });
 
-  // Dipendenti in permesso
+  // Dipendenti in permesso con stato temporale
   const onPermissionEmployees = [];
   selectedDateLeaves.forEach(leave => {
     if (leave.type === 'permesso' && leave.day) {
@@ -316,6 +291,7 @@ export default function NewDailyAttendanceCalendar() {
         );
         
         const isHourlyPermission = leave.time_from && leave.time_to;
+        const permissionStatus = getPermissionStatus(leave, currentTime);
         
         onPermissionEmployees.push({
           ...employee,
@@ -324,30 +300,99 @@ export default function NewDailyAttendanceCalendar() {
           permissionType: isHourlyPermission ? 'orario' : 'giornaliero',
           permissionTimeFrom: leave.time_from,
           permissionTimeTo: leave.time_to,
+          permissionStatus: permissionStatus,
+          isActive: isPermissionActive(leave, currentTime)
         });
       }
     }
   });
 
-  if (onPermissionEmployees.length === 0) {
+  // Cerca anche permessi nelle attendance che potrebbero non essere più attivi
+  if (isToday) {
     const permissionAttendances = selectedDateAttendances.filter(att => 
       att.notes === 'Permesso' || att.notes?.includes('Permesso')
     );
+    
     permissionAttendances.forEach(att => {
       const employee = employees?.find(emp => emp.id === att.user_id);
-      if (employee && !onLeaveEmployees.some(emp => emp.id === employee.id)) {
-        const isHourlyPermission = (att.check_in_time && att.check_out_time) || 
-                                  (att.notes && att.notes.includes('(') && att.notes.includes('-') && att.notes.includes(')'));
+      if (employee && !onPermissionEmployees.some(emp => emp.id === employee.id)) {
+        // Cerca la richiesta di permesso originale per ottenere gli orari
+        const relatedLeave = leaveRequests?.find(leave => 
+          leave.type === 'permesso' && 
+          leave.user_id === employee.id && 
+          leave.day === selectedDateStr &&
+          leave.status === 'approved'
+        );
         
-        onPermissionEmployees.push({
-          ...employee,
-          attendance: att,
-          leave: null,
-          permissionType: isHourlyPermission ? 'orario' : 'giornaliero',
-        });
+        if (relatedLeave) {
+          const permissionStatus = getPermissionStatus(relatedLeave, currentTime);
+          
+          onPermissionEmployees.push({
+            ...employee,
+            attendance: att,
+            leave: relatedLeave,
+            permissionType: (relatedLeave.time_from && relatedLeave.time_to) ? 'orario' : 'giornaliero',
+            permissionTimeFrom: relatedLeave.time_from,
+            permissionTimeTo: relatedLeave.time_to,
+            permissionStatus: permissionStatus,
+            isActive: isPermissionActive(relatedLeave, currentTime)
+          });
+        }
       }
     });
   }
+
+  // Funzione per ottenere gli assenti con logica temporale migliorata
+  const getAbsentEmployees = async () => {
+    if (!selectedDate || !employees) return [];
+    
+    const absentEmployees = [];
+    
+    for (const emp of employees) {
+      const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id);
+      if (hasAttendance) continue;
+      
+      const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id && leave.type === 'ferie');
+      if (isOnLeave) continue;
+      
+      // Verifica se è in malattia
+      const isSick = isUserSickOnDate(emp.id, selectedDateStr);
+      if (isSick) continue;
+      
+      // Verifica se è in trasferta
+      const isOnBusinessTrip = onBusinessTripEmployees.some(empTrip => empTrip.id === emp.id);
+      if (isOnBusinessTrip) continue;
+      
+      // Verifica se è in permesso attivo (solo per oggi)
+      let isOnActivePermission = false;
+      if (isToday) {
+        const employeePermissions = selectedDateLeaves.filter(leave => 
+          leave.user_id === emp.id && leave.type === 'permesso'
+        );
+        isOnActivePermission = employeePermissions.some(permission => 
+          isPermissionActive(permission, currentTime)
+        );
+      } else {
+        // Per date passate/future, considera tutti i permessi come attivi
+        isOnActivePermission = onPermissionEmployees.some(empPerm => empPerm.id === emp.id);
+      }
+      
+      if (isOnActivePermission) continue;
+      
+      const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
+      if (shouldTrack && isWorkingDay(selectedDate, workSchedule)) {
+        absentEmployees.push(emp);
+      }
+    }
+    
+    return absentEmployees;
+  };
+
+  React.useEffect(() => {
+    if (selectedDateStr && employees && attendances) {
+      getAbsentEmployees().then(setAbsentEmployees);
+    }
+  }, [selectedDateStr, employees, attendances, currentTime, selectedDateLeaves]);
 
   // Navigation functions for mobile
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -426,6 +471,11 @@ export default function NewDailyAttendanceCalendar() {
                   Non lavorativo
                 </Badge>
               )}
+              {isToday && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-600 text-xs sm:text-sm">
+                  Aggiornato alle {format(currentTime, 'HH:mm')}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-4">
@@ -454,6 +504,7 @@ export default function NewDailyAttendanceCalendar() {
                 <PermissionEmployeesSection
                   employees={onPermissionEmployees}
                   formatTime={formatTime}
+                  showTemporalStatus={isToday}
                 />
 
                 <BusinessTripEmployeesSection

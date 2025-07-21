@@ -3,12 +3,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
 import { useCompanyHolidays } from './useCompanyHolidays';
+import { useTimeBasedPermissionValidation } from './useTimeBasedPermissionValidation';
 
 export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
   const [conflictDates, setConflictDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isHoliday } = useCompanyHolidays();
+  const { isPermissionActive } = useTimeBasedPermissionValidation();
 
   const calculateConflicts = useCallback(async (userIds: string[]) => {
     if (!userIds || userIds.length === 0) {
@@ -20,12 +22,12 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
     setIsLoading(true);
     setError(null);
     
-    console.log('🔍 Calcolo conflitti per presenze/malattie per dipendenti:', userIds);
+    console.log('🔍 Calcolo conflitti per presenze/malattie con logica temporale per dipendenti:', userIds);
     
     const conflictDates = new Set<string>();
     
     try {
-      // 1. CONTROLLO FESTIVITÀ GLOBALI (NUOVO)
+      // 1. CONTROLLO FESTIVITÀ GLOBALI
       const today = new Date();
       const currentYear = today.getFullYear();
       const startOfYear = new Date(currentYear, 0, 1);
@@ -59,16 +61,16 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
           }
         }
 
-        // 3. CONTROLLO SOLO FERIE APPROVATE (PERMESSI NON BLOCCANO PIÙ LE PRESENZE)
+        // 3. CONTROLLO SOLO FERIE APPROVATE (PERMESSI GESTITI CON LOGICA TEMPORALE)
         const { data: approvedLeaveRequests } = await supabase
           .from('leave_requests')
-          .select('type, date_from, date_to, day')
+          .select('type, date_from, date_to, day, time_from, time_to')
           .eq('user_id', userId)
           .eq('status', 'approved');
 
         if (approvedLeaveRequests) {
           for (const leave of approvedLeaveRequests) {
-            // Solo le ferie bloccano le presenze manuali
+            // Solo le ferie bloccano sempre le presenze manuali
             if (leave.type === 'ferie' && leave.date_from && leave.date_to) {
               const startDate = new Date(leave.date_from);
               const endDate = new Date(leave.date_to);
@@ -78,7 +80,28 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
                 conflictDates.add(format(day, 'yyyy-MM-dd'));
               });
             }
-            // PERMESSI RIMOSSI: non bloccano più le presenze manuali
+            
+            // PERMESSI: Solo se sono attivi adesso (logica temporale)
+            if (leave.type === 'permesso' && leave.day) {
+              const permissionDate = leave.day;
+              
+              // Per permessi giornalieri, blocca sempre
+              if (!leave.time_from || !leave.time_to) {
+                conflictDates.add(permissionDate);
+              } else {
+                // Per permessi orari, controlla se sono attivi adesso
+                const fakePermission = {
+                  day: permissionDate,
+                  time_from: leave.time_from,
+                  time_to: leave.time_to
+                };
+                
+                if (isPermissionActive(fakePermission)) {
+                  conflictDates.add(permissionDate);
+                }
+                // Se il permesso orario non è attivo, non bloccare la data
+              }
+            }
           }
         }
 
@@ -110,7 +133,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
-      console.log('📅 Date con conflitti trovate per presenze/malattie (incluse festività):', conflictDateObjects.length);
+      console.log('📅 Date con conflitti trovate (con logica temporale per permessi):', conflictDateObjects.length);
       setConflictDates(conflictDateObjects);
       
     } catch (error) {
@@ -120,7 +143,7 @@ export const useManualAttendanceConflicts = (selectedEmployees: string[]) => {
     } finally {
       setIsLoading(false);
     }
-  }, [isHoliday]);
+  }, [isHoliday, isPermissionActive]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
