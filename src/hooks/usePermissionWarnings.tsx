@@ -1,13 +1,10 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { useCompanyHolidays } from './useCompanyHolidays';
 
 export const usePermissionWarnings = (selectedEmployees: string[], selectedDate?: Date) => {
   const [permissionWarnings, setPermissionWarnings] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { isHoliday, getHolidayName, isLoading: holidaysLoading } = useCompanyHolidays();
 
   const checkPermissions = useCallback(async (userIds: string[], date?: Date) => {
     if (!userIds || userIds.length === 0 || !date) {
@@ -15,26 +12,10 @@ export const usePermissionWarnings = (selectedEmployees: string[], selectedDate?
       return;
     }
 
-    // Aspetta che le festività siano caricate
-    if (holidaysLoading) {
-      console.log('⏳ [PERMISSION-WARNINGS] Attendo caricamento festività...');
-      return;
-    }
-
     setIsLoading(true);
     const warnings: string[] = [];
     
-    console.log('🔍 [PERMISSION-WARNINGS] Controllo avvisi per:', { userIds, date: format(date, 'yyyy-MM-dd') });
-    
     try {
-      // CONTROLLO FESTIVITÀ (NUOVO CON DEBUG)
-      if (isHoliday(date)) {
-        const holidayName = getHolidayName(date);
-        const warning = `⚠️ La data selezionata è una festività aziendale${holidayName ? `: ${holidayName}` : ''}`;
-        warnings.push(warning);
-        console.log(`🎉 [PERMISSION-WARNINGS] Festività trovata: ${warning}`);
-      }
-
       for (const userId of userIds) {
         // Ottieni prima i dettagli del permesso
         const { data: permissions } = await supabase
@@ -57,27 +38,21 @@ export const usePermissionWarnings = (selectedEmployees: string[], selectedDate?
           const employeeName = `${employee.first_name} ${employee.last_name}`;
           
           if (permission.time_from && permission.time_to) {
-            const warning = `${employeeName} ha un permesso dalle ${permission.time_from} alle ${permission.time_to}`;
-            warnings.push(warning);
-            console.log(`📋 [PERMISSION-WARNINGS] Permesso trovato: ${warning}`);
+            warnings.push(`${employeeName} ha un permesso dalle ${permission.time_from} alle ${permission.time_to}`);
           } else {
-            const warning = `${employeeName} ha un permesso per l'intera giornata`;
-            warnings.push(warning);
-            console.log(`📋 [PERMISSION-WARNINGS] Permesso giornaliero: ${warning}`);
+            warnings.push(`${employeeName} ha un permesso per l'intera giornata`);
           }
         }
       }
       
-      console.log(`📊 [PERMISSION-WARNINGS] Totale avvisi trovati: ${warnings.length}`);
       setPermissionWarnings(warnings);
     } catch (error) {
-      console.error('❌ [PERMISSION-WARNINGS] Errore nel controllo permessi:', error);
+      console.error('❌ Errore nel controllo permessi:', error);
       setPermissionWarnings([]);
     } finally {
       setIsLoading(false);
-      console.log('✅ [PERMISSION-WARNINGS] Controllo avvisi completato');
     }
-  }, [isHoliday, getHolidayName, holidaysLoading]);
+  }, []);
 
   useEffect(() => {
     if (selectedDate) {

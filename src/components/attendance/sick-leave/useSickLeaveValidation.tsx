@@ -1,14 +1,11 @@
-
 import { useState } from "react";
 import { format } from "date-fns";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { useLeaveConflicts } from "@/hooks/useLeaveConflicts";
-import { useCompanyHolidays } from "@/hooks/useCompanyHolidays";
 
 export function useSickLeaveValidation(selectedUserId: string) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const { employees } = useActiveEmployees();
-  const { isHoliday, getHolidayName, isLoading: holidaysLoading } = useCompanyHolidays();
   
   const { 
     conflictDates, 
@@ -40,35 +37,12 @@ export function useSickLeaveValidation(selectedUserId: string) {
     return true;
   };
 
-  // Validazione anti-conflitto completa con controllo festività migliorato
+  // Validazione anti-conflitto completa
   const validateConflicts = async (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
 
-    // Aspetta che le festività siano caricate
-    if (holidaysLoading) {
-      console.log('⏳ [SICK-LEAVE-VALIDATION] Attendo caricamento festività...');
-      return true; // Non bloccare se le festività stanno ancora caricando
-    }
-
     try {
-      console.log('🔍 [SICK-LEAVE-VALIDATION] Controllo conflitti per malattia (incluse festività)...');
-      
-      // Controllo festività nelle date selezionate con logging migliorato
-      const datesToCheck = [startDate];
-      if (endDate && endDate !== startDate) {
-        datesToCheck.push(endDate);
-      }
-      
-      for (const dateToCheck of datesToCheck) {
-        if (isHoliday(dateToCheck)) {
-          const holidayName = getHolidayName(dateToCheck);
-          const warning = `⚠️ La data ${format(dateToCheck, 'dd/MM/yyyy')} coincide con una festività aziendale${holidayName ? `: ${holidayName}` : ''}. Si consiglia di verificare la necessità della malattia in questa data.`;
-          console.log(`🎉 [SICK-LEAVE-VALIDATION] Festività trovata: ${warning}`);
-          setValidationError(warning);
-          // Non bloccare completamente ma avvisare
-        }
-      }
-      
+      console.log('🔍 Controllo conflitti per malattia...');
       const validation = await validateSickLeaveRange(
         employeeId, 
         format(startDate, 'yyyy-MM-dd'),
@@ -76,15 +50,14 @@ export function useSickLeaveValidation(selectedUserId: string) {
       );
       
       if (!validation.isValid) {
-        console.log(`❌ [SICK-LEAVE-VALIDATION] Conflitti trovati: ${validation.conflicts.join('; ')}`);
         setValidationError(validation.conflicts.join('; '));
         return false;
       }
       
-      console.log('✅ [SICK-LEAVE-VALIDATION] Nessun conflitto critico trovato');
+      setValidationError(null);
       return true;
     } catch (error) {
-      console.error('❌ [SICK-LEAVE-VALIDATION] Errore validazione conflitti malattia:', error);
+      console.error('❌ Errore validazione conflitti malattia:', error);
       setValidationError('Errore durante la validazione dei conflitti');
       return false;
     }
