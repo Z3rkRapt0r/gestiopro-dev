@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { LogOut, Building, User } from "lucide-react";
+import { LogOut, Building, User, Settings as SettingsIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardHeaderProps {
   title: string;
@@ -21,6 +22,7 @@ interface DashboardHeaderProps {
 const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
   const { profile, signOut } = useAuth();
   const { settings, loading } = useDashboardSettings();
+  const navigate = useNavigate();
   
   if (loading) {
     return (
@@ -120,9 +122,9 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profilo</span>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/settings')}>
+                  <SettingsIcon className="mr-2 h-4 w-4" />
+                  <span>Impostazioni</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 

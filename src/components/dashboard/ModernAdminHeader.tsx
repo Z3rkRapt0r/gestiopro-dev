@@ -12,9 +12,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { 
   User, 
-  LogOut
+  LogOut,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface ModernAdminHeaderProps {
   title: string;
@@ -22,6 +24,7 @@ interface ModernAdminHeaderProps {
 
 export default function ModernAdminHeader({ title }: ModernAdminHeaderProps) {
   const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const userInitials = profile?.first_name && profile?.last_name 
     ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
@@ -78,9 +81,9 @@ export default function ModernAdminHeader({ title }: ModernAdminHeaderProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer">
-                <User className="mr-2 h-4 w-4" />
-                <span>Profilo</span>
+              <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/settings')}>
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                <span>Impostazioni</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 

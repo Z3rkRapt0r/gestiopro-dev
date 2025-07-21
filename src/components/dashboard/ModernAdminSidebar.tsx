@@ -82,14 +82,6 @@ const menuItems = [
     color: 'from-pink-500 to-rose-500',
     bgColor: 'bg-pink-50',
     textColor: 'text-pink-700'
-  },
-  {
-    id: 'settings',
-    label: 'Impostazioni',
-    icon: Settings,
-    color: 'from-slate-500 to-gray-500',
-    bgColor: 'bg-slate-50',
-    textColor: 'text-slate-700'
   }
 ];
 

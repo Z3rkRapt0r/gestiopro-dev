@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import EmployeeDocumentsPage from "@/components/dashboard/EmployeeDocumentsPage";
 import ResetPasswordPage from "@/components/auth/ResetPasswordPage";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
+import AdminSettingsSection from "@/components/admin/AdminSettingsSection";
 
 // Create QueryClient outside component to avoid recreation
 const queryClient = new QueryClient({
@@ -30,6 +31,7 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/documents/:employeeId" element={<EmployeeDocumentsPage />} />
+            <Route path="/settings" element={<AdminSettingsSection />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

@@ -132,22 +132,22 @@ export function useLeaveBalanceValidation() {
       let requestedHours = 0;
       // Permetti anche solo uno dei due orari
       if (timeFrom || timeTo) {
-        if (timeFrom && timeTo) {
-          requestedHours = timeToDecimalHours(timeFrom, timeTo);
-          if (balanceValidation.remainingPermissionHours <= 0) {
-            return {
-              ...balanceValidation,
-              exceedsPermissionLimit: true,
-              errorMessage: `Non hai ore di permesso disponibili (saldo: ${formatDecimalHours(balanceValidation.remainingPermissionHours)})`
-            };
-          }
-          if (requestedHours <= 0) {
-            return {
-              ...balanceValidation,
-              exceedsPermissionLimit: true,
-              errorMessage: "L'orario di fine deve essere successivo all'orario di inizio"
-            };
-          }
+      if (timeFrom && timeTo) {
+        requestedHours = timeToDecimalHours(timeFrom, timeTo);
+        if (balanceValidation.remainingPermissionHours <= 0) {
+          return {
+            ...balanceValidation,
+            exceedsPermissionLimit: true,
+            errorMessage: `Non hai ore di permesso disponibili (saldo: ${formatDecimalHours(balanceValidation.remainingPermissionHours)})`
+          };
+        }
+        if (requestedHours <= 0) {
+          return {
+            ...balanceValidation,
+            exceedsPermissionLimit: true,
+            errorMessage: "L'orario di fine deve essere successivo all'orario di inizio"
+          };
+        }
         }
         // Se solo uno dei due è presente, nessun errore di obbligatorietà
       } else {

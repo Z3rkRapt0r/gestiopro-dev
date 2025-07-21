@@ -215,7 +215,7 @@ export default function NewManualAttendanceForm() {
     } else {
       setValidationError(null);
     }
-
+    
     if (formData.is_sick_leave && formData.date && formData.date_to) {
       // Gestione range di date per malattia
       const startDate = new Date(formData.date);
