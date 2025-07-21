@@ -23,8 +23,10 @@ import { useEmployeeStatus } from '@/hooks/useEmployeeStatus';
 import { useAuth } from '@/hooks/useAuth';
 import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
 import { useLeaveRequestNotifications } from '@/hooks/useLeaveRequestNotifications';
+import { useWorkingHoursValidation } from '@/hooks/useWorkingHoursValidation';
 import WorkingDaysPreview from './WorkingDaysPreview';
 import { LeaveRequestFormValidation } from './LeaveRequestFormValidation';
+
 const leaveRequestSchema = z.object({
   type: z.enum(['ferie', 'permesso']),
   date_from: z.date().optional(),
@@ -44,10 +46,13 @@ const leaveRequestSchema = z.object({
 }, {
   message: "Compila tutti i campi obbligatori per il tipo di richiesta selezionato"
 });
+
 type LeaveRequestFormData = z.infer<typeof leaveRequestSchema>;
+
 interface LeaveRequestFormProps {
   onSuccess?: () => void;
 }
+
 export default function LeaveRequestForm({
   onSuccess
 }: LeaveRequestFormProps) {
@@ -64,7 +69,8 @@ export default function LeaveRequestForm({
   } = useWorkingDaysValidation();
   const {
     validateLeaveRequest,
-    balanceValidation
+    balanceValidation,
+    formatDecimalHours
   } = useLeaveBalanceValidation();
   const {
     leaveBalance,
@@ -73,18 +79,26 @@ export default function LeaveRequestForm({
   const {
     notifyAdmin
   } = useLeaveRequestNotifications();
+  const {
+    validatePermissionTime,
+    getWorkingHoursInfo
+  } = useWorkingHoursValidation();
+
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [balanceValidationErrors, setBalanceValidationErrors] = useState<string[]>([]);
+  const [workingHoursErrors, setWorkingHoursErrors] = useState<string[]>([]);
   const [formValidationState, setFormValidationState] = useState({
     isValid: true,
     message: ''
   });
+
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
     defaultValues: {
       type: 'ferie'
     }
   });
+
   const watchedType = form.watch('type');
   const watchedDateFrom = form.watch('date_from');
   const watchedDateTo = form.watch('date_to');
@@ -106,6 +120,9 @@ export default function LeaveRequestForm({
 
   // CONTROLLO BILANCIO: se non c'è bilancio configurato, blocca tutto
   const hasNoBalance = !isLoadingBalance && !leaveBalance;
+
+  // Informazioni orari di lavoro
+  const workingHoursInfo = getWorkingHoursInfo();
 
   // VALIDAZIONE SALDO MIGLIORATA - Real-time e rigorosa
   useEffect(() => {
@@ -135,6 +152,26 @@ export default function LeaveRequestForm({
     }, 300);
     return () => clearTimeout(timeoutId);
   }, [watchedType, watchedDateFrom, watchedDateTo, watchedDay, watchedTimeFrom, watchedTimeTo, validateLeaveRequest, hasNoBalance]);
+
+  // VALIDAZIONE ORARI DI LAVORO - Real-time
+  useEffect(() => {
+    if (watchedType === 'permesso' && watchedDay && watchedTimeFrom && watchedTimeTo) {
+      const timeoutId = setTimeout(() => {
+        const hoursValidation = validatePermissionTime(watchedDay, watchedTimeFrom, watchedTimeTo);
+        console.log('Validazione orari di lavoro:', hoursValidation);
+        
+        if (!hoursValidation.isValid) {
+          setWorkingHoursErrors(hoursValidation.errors);
+        } else {
+          setWorkingHoursErrors([]);
+        }
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setWorkingHoursErrors([]);
+    }
+  }, [watchedType, watchedDay, watchedTimeFrom, watchedTimeTo, validatePermissionTime]);
+
   const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
     if (type === 'ferie') {
@@ -164,6 +201,7 @@ export default function LeaveRequestForm({
     // Applica altri controlli (conflitti, festivi, ecc.)
     return isDateDisabled(date);
   };
+
   const onSubmit = async (data: LeaveRequestFormData) => {
     if (!profile?.id) return;
     console.log('Inizio invio richiesta:', data);
@@ -182,10 +220,19 @@ export default function LeaveRequestForm({
       setShowValidationErrors(true);
       return;
     }
+
+    // CONTROLLO FINALE ORARI DI LAVORO
+    if (workingHoursErrors.length > 0) {
+      console.log('Invio bloccato per orari di lavoro non validi:', workingHoursErrors);
+      setShowValidationErrors(true);
+      return;
+    }
+
     if (!formValidationState.isValid) {
       setShowValidationErrors(true);
       return;
     }
+
     let validationErrors: string[] = [];
     if (data.type === 'ferie' && data.date_from && data.date_to) {
       validationErrors = validateWorkingDays(data.date_from, data.date_to, data.type);
@@ -256,13 +303,15 @@ export default function LeaveRequestForm({
       }
     });
   };
+
   const workingDaysLabels = getWorkingDaysLabels();
   const validationStartDate = watchedType === 'ferie' ? watchedDateFrom ? format(watchedDateFrom, 'yyyy-MM-dd') : undefined : watchedType === 'permesso' ? watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined : undefined;
   const validationEndDate = watchedType === 'ferie' ? watchedDateTo ? format(watchedDateTo, 'yyyy-MM-dd') : undefined : watchedType === 'permesso' ? watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined : undefined;
 
-  // CONTROLLO FINALE PER DISABILITARE PULSANTE - Include controllo bilancio mancante
-  const isFormBlocked = hasNoBalance || !formValidationState.isValid || balanceValidationErrors.length > 0 || employeeStatus && employeeStatus.hasHardBlock;
+  // CONTROLLO FINALE PER DISABILITARE PULSANTE - Include controllo bilancio mancante e orari
+  const isFormBlocked = hasNoBalance || !formValidationState.isValid || balanceValidationErrors.length > 0 || workingHoursErrors.length > 0 || employeeStatus && employeeStatus.hasHardBlock;
   const isPendingRequest = !formValidationState.isValid && formValidationState.message.includes('richiesta in attesa');
+
   return <LeaveRequestFormValidation leaveType={watchedType} startDate={validationStartDate} endDate={validationEndDate} singleDay={watchedType === 'permesso' ? validationStartDate : undefined} onValidationChange={(isValid, message) => {
     setFormValidationState({
       isValid,
@@ -278,9 +327,8 @@ export default function LeaveRequestForm({
           {hasNoBalance && <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <AlertDescription>
-                <div className="font-medium mb-2">🚫 Conteggio Ferie e Permessi </div>
+                <div className="font-medium mb-2">🚫 Conteggio Ferie e Permessi Non Configurato</div>
                 <div className="text-sm space-y-1">
-                  
                   <p className="font-normal text-xs">Contatta l'amministratore per caricare il tuo bilancio prima di poter fare richieste.</p>
                 </div>
               </AlertDescription>
@@ -294,8 +342,23 @@ export default function LeaveRequestForm({
                 <div className="space-y-1 text-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
                     <span>• Ferie: <strong>{leaveBalance.vacation_days_remaining}</strong> giorni su {leaveBalance.vacation_days_total}</span>
-                    <span>• Permessi: <strong>{leaveBalance.permission_hours_remaining}</strong> ore su {leaveBalance.permission_hours_total}</span>
+                    <span>• Permessi: <strong>{formatDecimalHours(leaveBalance.permission_hours_remaining)}</strong> su {formatDecimalHours(leaveBalance.permission_hours_total)}</span>
                   </div>
+                </div>
+              </AlertDescription>
+            </Alert>}
+
+          {/* Informazioni orari di lavoro */}
+          {workingHoursInfo && <Alert className="border-blue-200 bg-blue-50">
+              <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+              <AlertDescription className="text-blue-700">
+                <div className="font-medium mb-2">Orari di lavoro configurati:</div>
+                <div className="text-sm space-y-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                    <span>• Giorni: <strong>{workingHoursInfo.workingDays}</strong></span>
+                    <span>• Orari: <strong>{workingHoursInfo.workingHours}</strong></span>
+                  </div>
+                  <div className="mt-1 text-xs">I permessi devono essere richiesti solo nei giorni e orari lavorativi.</div>
                 </div>
               </AlertDescription>
             </Alert>}
@@ -323,6 +386,7 @@ export default function LeaveRequestForm({
               <AlertDescription>
                 <div className="space-y-2">
                   {balanceValidationErrors.map((error, index) => <p key={index} className="text-sm font-medium">{error}</p>)}
+                  {workingHoursErrors.map((error, index) => <p key={index} className="text-sm font-medium">{error}</p>)}
                   {!formValidationState.isValid && formValidationState.message && <p className="text-sm">{formValidationState.message}</p>}
                   {employeeStatus && employeeStatus.hasHardBlock && <p className="text-sm">Non puoi fare richieste per questo periodo: {employeeStatus.blockingReasons.join(', ')}</p>}
                 </div>

@@ -14,6 +14,7 @@ import { useLeaveRequests } from "@/hooks/useLeaveRequests";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { useLeaveConflicts } from "@/hooks/useLeaveConflicts";
 import { useLeaveRequestNotifications } from "@/hooks/useLeaveRequestNotifications";
+import { useWorkingHoursValidation } from "@/hooks/useWorkingHoursValidation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,10 +34,15 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
   const [note, setNote] = useState<string>("");
   const [notifyEmployee, setNotifyEmployee] = useState<boolean>(true);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [workingHoursErrors, setWorkingHoursErrors] = useState<string[]>([]);
 
   const { employees } = useActiveEmployees();
   const { insertMutation } = useLeaveRequests();
   const { sendLeaveRequestNotification } = useLeaveRequestNotifications();
+  const { 
+    validatePermissionTime,
+    getWorkingHoursInfo
+  } = useWorkingHoursValidation();
   
   const { 
     isLoading: isCalculatingConflicts, 
@@ -44,6 +50,8 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     validateVacationDates,
     validatePermissionDate
   } = useLeaveConflicts(selectedUserId, leaveType);
+
+  const workingHoursInfo = getWorkingHoursInfo();
 
   const validateDatesAgainstHireDate = (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
@@ -105,13 +113,33 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     }
   };
 
+  const validateWorkingHours = (day?: Date, timeFrom?: string, timeTo?: string) => {
+    if (leaveType === 'permesso' && day && timeFrom && timeTo) {
+      const hoursValidation = validatePermissionTime(day, timeFrom, timeTo);
+      
+      if (!hoursValidation.isValid) {
+        setWorkingHoursErrors(hoursValidation.errors);
+        return false;
+      } else {
+        setWorkingHoursErrors([]);
+        return true;
+      }
+    }
+    setWorkingHoursErrors([]);
+    return true;
+  };
+
   const handleEmployeeChange = (userId: string) => {
     setSelectedUserId(userId);
     setValidationError(null);
+    setWorkingHoursErrors([]);
     // Valida immediatamente se ci sono date selezionate
     validateDatesAgainstHireDate(startDate, endDate, userId);
     if (startDate) {
       validateConflicts(startDate, endDate, userId);
+      if (leaveType === 'permesso') {
+        validateWorkingHours(startDate, timeFrom, timeTo);
+      }
     }
   };
 
@@ -125,6 +153,10 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     // Poi controlla i conflitti
     if (selectedUserId && date) {
       await validateConflicts(date, endDate, selectedUserId);
+      // Valida orari di lavoro per permessi
+      if (leaveType === 'permesso') {
+        validateWorkingHours(date, timeFrom, timeTo);
+      }
     }
   };
 
@@ -158,6 +190,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     if (value && timeTo && selectedUserId && startDate) {
       setTimeout(() => {
         validateConflicts(startDate, endDate, selectedUserId);
+        validateWorkingHours(startDate, value, timeTo);
       }, 500);
     }
   };
@@ -170,6 +203,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
     if (timeFrom && value && selectedUserId && startDate) {
       setTimeout(() => {
         validateConflicts(startDate, endDate, selectedUserId);
+        validateWorkingHours(startDate, timeFrom, value);
       }, 500);
     }
   };
@@ -228,6 +262,11 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
       return;
     }
 
+    // Validazione orari di lavoro per permessi
+    if (leaveType === 'permesso' && !validateWorkingHours(startDate, timeFrom, timeTo)) {
+      return;
+    }
+
     const employeeProfile = employees?.find(emp => emp.id === selectedUserId);
 
     if (leaveType === "ferie") {
@@ -265,6 +304,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           setNote("");
           setNotifyEmployee(true);
           setValidationError(null);
+          setWorkingHoursErrors([]);
           onSuccess?.();
         }
       });
@@ -305,6 +345,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           setNote("");
           setNotifyEmployee(true);
           setValidationError(null);
+          setWorkingHoursErrors([]);
           onSuccess?.();
         }
       });
@@ -350,19 +391,36 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
             </Select>
           </div>
 
-          {selectedUserId && isCalculatingConflicts && (
-            <Alert className="border-blue-200 bg-blue-50">
+          {/* Informazioni orari di lavoro */}
+          {workingHoursInfo && <Alert className="border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-700">
-                🔍 Verifica disponibilità date in corso...
+                <div className="font-medium mb-2">Orari di lavoro configurati:</div>
+                <div className="text-sm space-y-1">
+                  <div>• Giorni: <strong>{workingHoursInfo.workingDays}</strong></div>
+                  <div>• Orari: <strong>{workingHoursInfo.workingHours}</strong></div>
+                  <div className="text-xs mt-1">I permessi devono rispettare gli orari lavorativi.</div>
+                </div>
               </AlertDescription>
-            </Alert>
-          )}
+            </Alert>}
 
           {validationError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{validationError}</AlertDescription>
+            </Alert>
+          )}
+
+          {workingHoursErrors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1">
+                  {workingHoursErrors.map((error, index) => (
+                    <div key={index} className="text-sm">{error}</div>
+                  ))}
+                </div>
+              </AlertDescription>
             </Alert>
           )}
 
@@ -536,7 +594,7 @@ export function ManualLeaveEntryForm({ onSuccess }: ManualLeaveEntryFormProps) {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={insertMutation.isPending || !!validationError || isCalculatingConflicts}
+            disabled={insertMutation.isPending || !!validationError || workingHoursErrors.length > 0 || isCalculatingConflicts}
           >
             {insertMutation.isPending ? "Salvando..." : "Salva Richiesta"}
           </Button>

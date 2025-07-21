@@ -56,6 +56,28 @@ export function useLeaveBalanceValidation() {
     enabled: !!profile?.id,
   });
 
+  // Funzione helper per convertire ore e minuti in ore decimali
+  const timeToDecimalHours = (timeFrom: string, timeTo: string): number => {
+    const startTime = new Date(`1970-01-01T${timeFrom}:00`);
+    const endTime = new Date(`1970-01-01T${timeTo}:00`);
+    const diffMs = endTime.getTime() - startTime.getTime();
+    return diffMs / (1000 * 60 * 60); // Convert to hours
+  };
+
+  // Funzione helper per convertire ore decimali in formato "X ore Y minuti"
+  const formatDecimalHours = (decimalHours: number): string => {
+    const hours = Math.floor(decimalHours);
+    const minutes = Math.round((decimalHours - hours) * 60);
+    
+    if (hours === 0) {
+      return `${minutes} minuti`;
+    } else if (minutes === 0) {
+      return `${hours} ${hours === 1 ? 'ora' : 'ore'}`;
+    } else {
+      return `${hours} ${hours === 1 ? 'ora' : 'ore'} e ${minutes} minuti`;
+    }
+  };
+
   const validateLeaveRequest = (
     type: "ferie" | "permesso",
     dateFrom?: Date | null,
@@ -110,12 +132,10 @@ export function useLeaveBalanceValidation() {
       let requestedHours = 0;
       
       if (timeFrom && timeTo) {
-        // Permesso orario
-        const startTime = new Date(`1970-01-01T${timeFrom}:00`);
-        const endTime = new Date(`1970-01-01T${timeTo}:00`);
-        requestedHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+        // Calcola ore decimali includendo i minuti
+        requestedHours = timeToDecimalHours(timeFrom, timeTo);
         
-        console.log(`Permesso richiesto: ${requestedHours} ore, disponibili: ${balanceValidation.remainingPermissionHours}`);
+        console.log(`Permesso richiesto: ${formatDecimalHours(requestedHours)}, disponibili: ${formatDecimalHours(balanceValidation.remainingPermissionHours)}`);
         
         // CONTROLLO RIGOROSO: anche 0 ore disponibili blocca
         if (balanceValidation.remainingPermissionHours <= 0) {
@@ -123,7 +143,7 @@ export function useLeaveBalanceValidation() {
           return {
             ...balanceValidation,
             exceedsPermissionLimit: true,
-            errorMessage: `Non hai ore di permesso disponibili (saldo: ${balanceValidation.remainingPermissionHours})`
+            errorMessage: `Non hai ore di permesso disponibili (saldo: ${formatDecimalHours(balanceValidation.remainingPermissionHours)})`
           };
         }
         
@@ -150,7 +170,7 @@ export function useLeaveBalanceValidation() {
         ...balanceValidation,
         exceedsPermissionLimit: exceedsLimit,
         errorMessage: exceedsLimit 
-          ? `Richieste ${requestedHours} ore ma disponibili solo ${balanceValidation.remainingPermissionHours}`
+          ? `Richieste ${formatDecimalHours(requestedHours)} ma disponibili solo ${formatDecimalHours(balanceValidation.remainingPermissionHours)}`
           : undefined
       };
     }
@@ -162,7 +182,8 @@ export function useLeaveBalanceValidation() {
     balanceValidation,
     isLoading,
     validateLeaveRequest,
-    refetch
+    refetch,
+    formatDecimalHours
   };
 }
 
