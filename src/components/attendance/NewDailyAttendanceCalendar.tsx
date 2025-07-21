@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,77 +38,86 @@ export default function NewDailyAttendanceCalendar() {
   const { getSickLeavesForDate, isUserSickOnDate } = useSickLeavesForCalendars();
   const { isPermissionActive, getPermissionStatus } = useTimeBasedPermissionValidation();
 
-  // Timer per aggiornare l'ora corrente ogni minuto
+  // Stabilized date strings for consistent comparisons
+  const selectedDateStr = useMemo(() => 
+    selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '', 
+    [selectedDate]
+  );
+  
+  const isToday = useMemo(() => 
+    selectedDate ? format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') : false, 
+    [selectedDate]
+  );
+
+  // Timer - only update if we're viewing today and have permission-related data
   useEffect(() => {
+    if (!isToday) return;
+    
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000); // Aggiorna ogni minuto
+    }, 60000); // Update every minute
 
     return () => clearInterval(timer);
-  }, []);
+  }, [isToday]);
 
-  const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-  const isToday = selectedDate ? format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') : false;
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-gray-100 animate-pulse rounded"></div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  console.log('Data selezionata nel calendario:', selectedDateStr);
-  console.log('Ora corrente per validazione temporale:', format(currentTime, 'HH:mm:ss'));
-  
-  const selectedDateAttendances = attendances?.filter(att => {
-    console.log(`Confronto: ${att.date} === ${selectedDateStr} ?`, att.date === selectedDateStr);
-    return att.date === selectedDateStr;
-  }) || [];
-
-  console.log('Presenze per la data selezionata:', selectedDateAttendances);
-
-  // CORREZIONE: Usa confronto stringhe E logica temporale per i permessi
-  const selectedDateLeaves = leaveRequests?.filter(request => {
-    if (request.status !== 'approved') return false;
+  // Stabilized attendances for selected date
+  const selectedDateAttendances = useMemo(() => {
+    if (!attendances || !selectedDateStr) return [];
     
-    if (request.type === 'ferie' && request.date_from && request.date_to) {
-      return selectedDateStr >= request.date_from && selectedDateStr <= request.date_to;
-    }
+    console.log('Data selezionata nel calendario:', selectedDateStr);
     
-    if (request.type === 'permesso' && request.day) {
-      if (request.day !== selectedDateStr) return false;
+    const filtered = attendances.filter(att => {
+      console.log(`Confronto: ${att.date} === ${selectedDateStr} ?`, att.date === selectedDateStr);
+      return att.date === selectedDateStr;
+    });
+
+    console.log('Presenze per la data selezionata:', filtered);
+    return filtered;
+  }, [attendances, selectedDateStr]);
+
+  // Stabilized leave requests for selected date
+  const selectedDateLeaves = useMemo(() => {
+    if (!leaveRequests || !selectedDateStr) return [];
+    
+    const filtered = leaveRequests.filter(request => {
+      if (request.status !== 'approved') return false;
       
-      // Per permessi, usa la logica temporale solo se stiamo guardando oggi
-      if (isToday) {
-        return isPermissionActive(request, currentTime);
-      } else {
-        // Per date passate/future, mostra sempre tutti i permessi
-        return true;
+      if (request.type === 'ferie' && request.date_from && request.date_to) {
+        return selectedDateStr >= request.date_from && selectedDateStr <= request.date_to;
       }
-    }
-    
-    return false;
-  }) || [];
+      
+      if (request.type === 'permesso' && request.day) {
+        if (request.day !== selectedDateStr) return false;
+        
+        // For permissions, use temporal logic only if we're looking at today
+        if (isToday) {
+          return isPermissionActive(request, currentTime);
+        } else {
+          // For past/future dates, show all permissions
+          return true;
+        }
+      }
+      
+      return false;
+    });
 
-  console.log('🔍 Ferie/Permessi per la data selezionata (con logica temporale):', selectedDateLeaves.map(leave => ({
-    user: leave.profiles?.first_name,
-    type: leave.type,
-    from: leave.date_from || leave.day,
-    to: leave.date_to || leave.day,
-    timeFrom: leave.time_from,
-    timeTo: leave.time_to,
-    isActive: leave.type === 'permesso' ? isPermissionActive(leave, currentTime) : true
-  })));
+    console.log('🔍 Ferie/Permessi per la data selezionata (con logica temporale):', filtered.map(leave => ({
+      user: leave.profiles?.first_name,
+      type: leave.type,
+      from: leave.date_from || leave.day,
+      to: leave.date_to || leave.day,
+      timeFrom: leave.time_from,
+      timeTo: leave.time_to,
+      isActive: leave.type === 'permesso' ? isPermissionActive(leave, currentTime) : true
+    })));
 
-  // PRIMA: Calcola i dipendenti in trasferta (riorganizzato per essere calcolato per primo)
+    return filtered;
+  }, [leaveRequests, selectedDateStr, isToday, currentTime, isPermissionActive]);
+
+  // Business trip employees - structural calculation (no temporal logic)
   const onBusinessTripEmployees = useMemo(() => {
+    if (!businessTrips || !employees || !selectedDateStr) return [];
+    
     const result = [];
     const processedEmployeeIds = new Set();
     
@@ -118,177 +128,177 @@ export default function NewDailyAttendanceCalendar() {
       dates: `${trip.start_date} - ${trip.end_date}`
     })));
 
-    if (businessTrips && selectedDate) {
-      businessTrips.forEach(trip => {
-        // Usa le stringhe delle date per la comparazione più affidabile
-        const tripStartStr = trip.start_date;
-        const tripEndStr = trip.end_date;
-        const currentDateStr = selectedDateStr;
-        
-        console.log('📅 Verifica trasferta:', {
-          destination: trip.destination,
-          tripStart: tripStartStr,
-          tripEnd: tripEndStr,
-          currentDate: currentDateStr,
-          isInRange: currentDateStr >= tripStartStr && currentDateStr <= tripEndStr
-        });
-        
-        // Confronta le stringhe delle date direttamente (formato YYYY-MM-DD)
-        if (currentDateStr >= tripStartStr && currentDateStr <= tripEndStr) {
-          const employee = employees?.find(emp => emp.id === trip.user_id);
-          if (employee && !processedEmployeeIds.has(employee.id)) {
-            // Trova tutte le trasferte attive per questo dipendente nella data selezionata
-            const activeTrips = businessTrips.filter(t => {
-              return t.user_id === employee.id && 
-                     currentDateStr >= t.start_date && 
-                     currentDateStr <= t.end_date;
-            });
-
-            // Usa la trasferta più recente o quella con destinazione più specifica
-            const primaryTrip = activeTrips.reduce((latest, current) => {
-              return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
-            }, trip);
-
-            result.push({
-              ...employee,
-              businessTrip: {
-                destination: primaryTrip.destination,
-                start_date: primaryTrip.start_date,
-                end_date: primaryTrip.end_date,
-                reason: primaryTrip.reason,
-              },
-            });
-            
-            processedEmployeeIds.add(employee.id);
-            console.log('✅ Dipendente aggiunto alla lista trasferte:', employee.first_name, employee.last_name);
-          }
-        }
+    businessTrips.forEach(trip => {
+      const tripStartStr = trip.start_date;
+      const tripEndStr = trip.end_date;
+      
+      console.log('📅 Verifica trasferta:', {
+        destination: trip.destination,
+        tripStart: tripStartStr,
+        tripEnd: tripEndStr,
+        currentDate: selectedDateStr,
+        isInRange: selectedDateStr >= tripStartStr && selectedDateStr <= tripEndStr
       });
-    }
+      
+      if (selectedDateStr >= tripStartStr && selectedDateStr <= tripEndStr) {
+        const employee = employees.find(emp => emp.id === trip.user_id);
+        if (employee && !processedEmployeeIds.has(employee.id)) {
+          const activeTrips = businessTrips.filter(t => {
+            return t.user_id === employee.id && 
+                   selectedDateStr >= t.start_date && 
+                   selectedDateStr <= t.end_date;
+          });
+
+          const primaryTrip = activeTrips.reduce((latest, current) => {
+            return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
+          }, trip);
+
+          result.push({
+            ...employee,
+            businessTrip: {
+              destination: primaryTrip.destination,
+              start_date: primaryTrip.start_date,
+              end_date: primaryTrip.end_date,
+              reason: primaryTrip.reason,
+            },
+          });
+          
+          processedEmployeeIds.add(employee.id);
+          console.log('✅ Dipendente aggiunto alla lista trasferte:', employee.first_name, employee.last_name);
+        }
+      }
+    });
 
     console.log('🚌 Dipendenti in trasferta finali:', result.map(emp => `${emp.first_name} ${emp.last_name}`));
     return result;
-  }, [selectedDateStr, businessTrips, employees, selectedDate]);
+  }, [businessTrips, employees, selectedDateStr]);
 
-  // DOPO: Calcola i dipendenti presenti fisicamente (escludendo quelli in trasferta)
-  const presentEmployees = selectedDateAttendances
-    .filter(att => {
-      console.log('🔍 Verifica presenza per filtro:', {
-        user_id: att.user_id,
-        check_in_time: att.check_in_time,
-        is_sick_leave: att.is_sick_leave,
-        is_business_trip: att.is_business_trip,
-        notes: att.notes
-      });
+  // Present employees - excludes business trip employees
+  const presentEmployees = useMemo(() => {
+    if (!selectedDateAttendances || !employees || !onBusinessTripEmployees) return [];
+    
+    return selectedDateAttendances
+      .filter(att => {
+        console.log('🔍 Verifica presenza per filtro:', {
+          user_id: att.user_id,
+          check_in_time: att.check_in_time,
+          is_sick_leave: att.is_sick_leave,
+          is_business_trip: att.is_business_trip,
+          notes: att.notes
+        });
 
-      // Escludi se non ha orario di entrata o è in malattia
-      if (!att.check_in_time || att.is_sick_leave) {
-        console.log('❌ Escluso: nessun check-in o malattia');
-        return false;
-      }
+        if (!att.check_in_time || att.is_sick_leave) {
+          console.log('❌ Escluso: nessun check-in o malattia');
+          return false;
+        }
+        
+        if (att.notes === 'Ferie' || att.notes === 'Permesso') {
+          console.log('❌ Escluso: ferie o permesso');
+          return false;
+        }
+        
+        if (att.is_business_trip) {
+          console.log('❌ Escluso: flag is_business_trip = true');
+          return false;
+        }
+        
+        const isOnBusinessTrip = onBusinessTripEmployees.some(emp => emp.id === att.user_id);
+        if (isOnBusinessTrip) {
+          console.log('❌ Escluso: presente nella lista trasferte');
+          return false;
+        }
+        
+        console.log('✅ Incluso nella sezione presenti');
+        return true;
+      })
+      .map(att => {
+        const employee = employees.find(emp => emp.id === att.user_id);
+        return {
+          ...employee,
+          attendance: att,
+        };
+      })
+      .filter(emp => emp.id);
+  }, [selectedDateAttendances, employees, onBusinessTripEmployees]);
+
+  // Sick employees - structural calculation
+  const sickEmployees = useMemo(() => {
+    if (!employees || !selectedDateStr) return [];
+    
+    const sickLeaveDays = getSickLeavesForDate(selectedDateStr);
+    return sickLeaveDays.map(sickDay => {
+      const employee = employees.find(emp => emp.id === sickDay.user_id);
+      const attendance = selectedDateAttendances.find(att => 
+        att.user_id === sickDay.user_id && att.is_sick_leave
+      );
       
-      // Escludi se è ferie o permesso
-      if (att.notes === 'Ferie' || att.notes === 'Permesso') {
-        console.log('❌ Escluso: ferie o permesso');
-        return false;
-      }
-      
-      // Escludi se ha il flag is_business_trip a true
-      if (att.is_business_trip) {
-        console.log('❌ Escluso: flag is_business_trip = true');
-        return false;
-      }
-      
-      // Escludi se è nella lista dei dipendenti in trasferta
-      const isOnBusinessTrip = onBusinessTripEmployees.some(emp => emp.id === att.user_id);
-      if (isOnBusinessTrip) {
-        console.log('❌ Escluso: presente nella lista trasferte');
-        return false;
-      }
-      
-      console.log('✅ Incluso nella sezione presenti');
-      return true;
-    })
-    .map(att => {
-      const employee = employees?.find(emp => emp.id === att.user_id);
       return {
         ...employee,
-        attendance: att,
+        attendance: attendance || {
+          notes: sickDay.notes,
+          date: sickDay.date,
+          user_id: sickDay.user_id,
+          is_sick_leave: true
+        },
+        sickLeaveId: sickDay.sick_leave_id,
       };
-    })
-    .filter(emp => emp.id);
+    }).filter(emp => emp.id);
+  }, [employees, selectedDateStr, getSickLeavesForDate, selectedDateAttendances]);
 
-  console.log('👥 Dipendenti presenti finali:', presentEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
-
-  // Dipendenti in malattia - NUOVA LOGICA con tabella sick_leaves
-  const sickLeaveDays = getSickLeavesForDate(selectedDateStr);
-  const sickEmployees = sickLeaveDays.map(sickDay => {
-    const employee = employees?.find(emp => emp.id === sickDay.user_id);
-    // Cerca una presenza manuale eventualmente registrata per questo giorno di malattia
-    const attendance = selectedDateAttendances.find(att => 
-      att.user_id === sickDay.user_id && att.is_sick_leave
-    );
+  // On leave employees - structural calculation
+  const onLeaveEmployees = useMemo(() => {
+    if (!employees || !selectedDateLeaves) return [];
     
-    return {
-      ...employee,
-      attendance: attendance || {
-        notes: sickDay.notes,
-        date: sickDay.date,
-        user_id: sickDay.user_id,
-        is_sick_leave: true
-      },
-      sickLeaveId: sickDay.sick_leave_id,
-    };
-  }).filter(emp => emp.id);
-
-  console.log('🤒 Dipendenti in malattia dalla nuova tabella:', sickEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
-
-  // Dipendenti in ferie
-  const onLeaveEmployees = [];
-  employees?.forEach(employee => {
-    const activeLeave = selectedDateLeaves.find(leave => 
-      leave.type === 'ferie' && leave.user_id === employee.id
-    );
-    
-    if (activeLeave) {
-      const automaticAttendance = selectedDateAttendances.find(att => 
-        att.user_id === employee.id && att.notes === 'Ferie'
+    const result = [];
+    employees.forEach(employee => {
+      const activeLeave = selectedDateLeaves.find(leave => 
+        leave.type === 'ferie' && leave.user_id === employee.id
       );
       
-      onLeaveEmployees.push({
-        ...employee,
-        attendance: automaticAttendance || null,
-        leave: activeLeave,
-      });
-    } else {
-      const ferieAttendance = selectedDateAttendances.find(att => 
-        att.user_id === employee.id && att.notes === 'Ferie'
-      );
-      
-      if (ferieAttendance) {
-        const relatedLeave = leaveRequests?.find(leave => 
-          leave.type === 'ferie' && 
-          leave.user_id === employee.id && 
-          leave.status === 'approved' &&
-          leave.date_from && 
-          leave.date_to
+      if (activeLeave) {
+        const automaticAttendance = selectedDateAttendances.find(att => 
+          att.user_id === employee.id && att.notes === 'Ferie'
         );
         
-        onLeaveEmployees.push({
+        result.push({
           ...employee,
-          attendance: ferieAttendance,
-          leave: relatedLeave || null,
+          attendance: automaticAttendance || null,
+          leave: activeLeave,
         });
+      } else {
+        const ferieAttendance = selectedDateAttendances.find(att => 
+          att.user_id === employee.id && att.notes === 'Ferie'
+        );
+        
+        if (ferieAttendance) {
+          const relatedLeave = leaveRequests?.find(leave => 
+            leave.type === 'ferie' && 
+            leave.user_id === employee.id && 
+            leave.status === 'approved' &&
+            leave.date_from && 
+            leave.date_to
+          );
+          
+          result.push({
+            ...employee,
+            attendance: ferieAttendance,
+            leave: relatedLeave || null,
+          });
+        }
       }
-    }
-  });
+    });
+    
+    return result;
+  }, [employees, selectedDateLeaves, selectedDateAttendances, leaveRequests]);
 
-  // Dipendenti in permesso con stato temporale
+  // Permission employees - includes temporal logic for today only
   const onPermissionEmployees = useMemo(() => {
+    if (!employees || !selectedDateLeaves) return [];
+    
     const result = [];
     selectedDateLeaves.forEach(leave => {
       if (leave.type === 'permesso' && leave.day) {
-        const employee = employees?.find(emp => emp.id === leave.user_id);
+        const employee = employees.find(emp => emp.id === leave.user_id);
         if (employee) {
           const automaticAttendance = selectedDateAttendances.find(att => 
             att.user_id === leave.user_id && (att.notes === 'Permesso' || att.notes?.includes('Permesso'))
@@ -311,16 +321,15 @@ export default function NewDailyAttendanceCalendar() {
       }
     });
 
-    // Cerca anche permessi nelle attendance che potrebbero non essere più attivi
-    if (isToday) {
+    // Check for permissions in attendances that might not be active anymore
+    if (isToday && selectedDateAttendances) {
       const permissionAttendances = selectedDateAttendances.filter(att => 
         att.notes === 'Permesso' || att.notes?.includes('Permesso')
       );
       
       permissionAttendances.forEach(att => {
-        const employee = employees?.find(emp => emp.id === att.user_id);
+        const employee = employees.find(emp => emp.id === att.user_id);
         if (employee && !result.some(emp => emp.id === employee.id)) {
-          // Cerca la richiesta di permesso originale per ottenere gli orari
           const relatedLeave = leaveRequests?.find(leave => 
             leave.type === 'permesso' && 
             leave.user_id === employee.id && 
@@ -345,69 +354,103 @@ export default function NewDailyAttendanceCalendar() {
         }
       });
     }
+    
     return result;
-  }, [selectedDateLeaves, employees, selectedDateAttendances, isToday, leaveRequests, selectedDateStr, getPermissionStatus, currentTime, isPermissionActive]);
+  }, [employees, selectedDateLeaves, selectedDateAttendances, isToday, leaveRequests, selectedDateStr, getPermissionStatus, currentTime, isPermissionActive]);
 
-  // Calcola gli assenti con useEffect separato per evitare render instabili
+  // Stabilized functions for absent employees calculation
+  const checkEmployeeAbsence = useCallback(async (emp: any) => {
+    const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id);
+    if (hasAttendance) return false;
+    
+    const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id && leave.type === 'ferie');
+    if (isOnLeave) return false;
+    
+    const isSick = isUserSickOnDate(emp.id, selectedDateStr);
+    if (isSick) return false;
+    
+    const isOnBusinessTrip = onBusinessTripEmployees.some(empTrip => empTrip.id === emp.id);
+    if (isOnBusinessTrip) return false;
+    
+    let isOnActivePermission = false;
+    if (isToday) {
+      const employeePermissions = selectedDateLeaves.filter(leave => 
+        leave.user_id === emp.id && leave.type === 'permesso'
+      );
+      isOnActivePermission = employeePermissions.some(permission => 
+        isPermissionActive(permission, currentTime)
+      );
+    } else {
+      isOnActivePermission = onPermissionEmployees.some(empPerm => empPerm.id === emp.id);
+    }
+    
+    if (isOnActivePermission) return false;
+    
+    const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
+    return shouldTrack && selectedDate && isWorkingDay(selectedDate, workSchedule);
+  }, [selectedDateAttendances, selectedDateLeaves, isUserSickOnDate, selectedDateStr, onBusinessTripEmployees, isToday, onPermissionEmployees, currentTime, isPermissionActive, shouldTrackEmployeeOnDate, selectedDate, workSchedule]);
+
+  // Absent employees calculation - optimized with structural dependencies only
   useEffect(() => {
     const calculateAbsentEmployees = async () => {
-      if (!selectedDate || !employees) {
+      if (!selectedDate || !employees || !selectedDateStr) {
         setAbsentEmployees([]);
         return;
       }
       
-      const absentEmployees = [];
+      const absentList = [];
       
       for (const emp of employees) {
-        const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id);
-        if (hasAttendance) continue;
-        
-        const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id && leave.type === 'ferie');
-        if (isOnLeave) continue;
-        
-        // Verifica se è in malattia
-        const isSick = isUserSickOnDate(emp.id, selectedDateStr);
-        if (isSick) continue;
-        
-        // Verifica se è in trasferta
-        const isOnBusinessTrip = onBusinessTripEmployees.some(empTrip => empTrip.id === emp.id);
-        if (isOnBusinessTrip) continue;
-        
-        // Verifica se è in permesso attivo (solo per oggi)
-        let isOnActivePermission = false;
-        if (isToday) {
-          const employeePermissions = selectedDateLeaves.filter(leave => 
-            leave.user_id === emp.id && leave.type === 'permesso'
-          );
-          isOnActivePermission = employeePermissions.some(permission => 
-            isPermissionActive(permission, currentTime)
-          );
-        } else {
-          // Per date passate/future, considera tutti i permessi come attivi
-          isOnActivePermission = onPermissionEmployees.some(empPerm => empPerm.id === emp.id);
-        }
-        
-        if (isOnActivePermission) continue;
-        
-        const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
-        if (shouldTrack && isWorkingDay(selectedDate, workSchedule)) {
-          absentEmployees.push(emp);
+        const isAbsent = await checkEmployeeAbsence(emp);
+        if (isAbsent) {
+          absentList.push(emp);
         }
       }
       
-      setAbsentEmployees(absentEmployees);
+      setAbsentEmployees(absentList);
     };
 
-    calculateAbsentEmployees();
-  }, [selectedDateStr, employees, attendances, currentTime, selectedDateLeaves, isToday, onBusinessTripEmployees, isUserSickOnDate, isPermissionActive, shouldTrackEmployeeOnDate, workSchedule, selectedDate]);
+    // Debounce the calculation to avoid too frequent updates
+    const timeoutId = setTimeout(calculateAbsentEmployees, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [
+    selectedDate,
+    selectedDateStr,
+    employees,
+    // Structural dependencies only - no currentTime here
+    selectedDateAttendances,
+    selectedDateLeaves,
+    onBusinessTripEmployees,
+    onPermissionEmployees,
+    checkEmployeeAbsence
+  ]);
 
   // Navigation functions for mobile
-  const navigateDate = (direction: 'prev' | 'next') => {
+  const navigateDate = useCallback((direction: 'prev' | 'next') => {
     if (!selectedDate) return;
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
     setSelectedDate(newDate);
-  };
+  }, [selectedDate]);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-gray-100 animate-pulse rounded"></div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  console.log('👥 Dipendenti presenti finali:', presentEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
+  console.log('🤒 Dipendenti in malattia dalla nuova tabella:', sickEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
+  console.log('Ora corrente per validazione temporale:', format(currentTime, 'HH:mm:ss'));
 
   return (
     <div className="space-y-4">
