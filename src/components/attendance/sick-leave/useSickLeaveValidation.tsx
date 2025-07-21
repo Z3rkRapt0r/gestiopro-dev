@@ -1,14 +1,11 @@
-
 import { useState } from "react";
 import { format } from "date-fns";
 import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { useLeaveConflicts } from "@/hooks/useLeaveConflicts";
-import { useCompanyHolidays } from "@/hooks/useCompanyHolidays";
 
 export function useSickLeaveValidation(selectedUserId: string) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const { employees } = useActiveEmployees();
-  const { isHoliday, getHolidayName } = useCompanyHolidays();
   
   const { 
     conflictDates, 
@@ -40,26 +37,12 @@ export function useSickLeaveValidation(selectedUserId: string) {
     return true;
   };
 
-  // Validazione anti-conflitto completa con controllo festività
+  // Validazione anti-conflitto completa
   const validateConflicts = async (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
 
     try {
-      console.log('🔍 Controllo conflitti per malattia (incluse festività)...');
-      
-      // Controllo festività nelle date selezionate
-      const dateToCheck = startDate;
-      if (isHoliday(dateToCheck)) {
-        const holidayName = getHolidayName(dateToCheck);
-        setValidationError(`⚠️ La data di inizio ${format(dateToCheck, 'dd/MM/yyyy')} coincide con una festività aziendale${holidayName ? `: ${holidayName}` : ''}. Si consiglia di verificare la necessità della malattia in questa data.`);
-        // Non bloccare completamente ma avvisare
-      }
-      
-      if (endDate && isHoliday(endDate)) {
-        const holidayName = getHolidayName(endDate);
-        setValidationError(`⚠️ La data di fine ${format(endDate, 'dd/MM/yyyy')} coincide con una festività aziendale${holidayName ? `: ${holidayName}` : ''}. Si consiglia di verificare la necessità della malattia in questa data.`);
-      }
-      
+      console.log('🔍 Controllo conflitti per malattia...');
       const validation = await validateSickLeaveRange(
         employeeId, 
         format(startDate, 'yyyy-MM-dd'),
@@ -71,6 +54,7 @@ export function useSickLeaveValidation(selectedUserId: string) {
         return false;
       }
       
+      setValidationError(null);
       return true;
     } catch (error) {
       console.error('❌ Errore validazione conflitti malattia:', error);
