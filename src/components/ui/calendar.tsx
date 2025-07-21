@@ -49,7 +49,7 @@ function Calendar({
         day_today: "bg-blue-100 text-blue-900 border-blue-300",
         day_outside:
           "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        day_disabled: "text-muted-foreground opacity-50",
+        day_disabled: "text-red-500 opacity-50 bg-red-50 line-through cursor-not-allowed hover:bg-red-50", // MIGLIORATO: stile più visibile per date disabilitate
         day_range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
