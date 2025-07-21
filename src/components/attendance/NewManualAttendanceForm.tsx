@@ -14,6 +14,7 @@ import { useTimeBasedPermissionValidation } from '@/hooks/useTimeBasedPermission
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import ConflictSummaryCard from './ConflictSummaryCard';
+import { supabase } from "@/integrations/supabase/client";
 
 export default function NewManualAttendanceForm() {
   const { createManualAttendance, isCreating } = useUnifiedAttendances();

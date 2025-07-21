@@ -5,6 +5,7 @@ import { useActiveEmployees } from "@/hooks/useActiveEmployees";
 import { useLeaveConflicts } from "@/hooks/useLeaveConflicts";
 import { useCompanyHolidays } from "@/hooks/useCompanyHolidays";
 import { useTimeBasedPermissionValidation } from "@/hooks/useTimeBasedPermissionValidation";
+import { supabase } from "@/integrations/supabase/client";
 
 export function useSickLeaveValidation(selectedUserId: string) {
   const [validationError, setValidationError] = useState<string | null>(null);
