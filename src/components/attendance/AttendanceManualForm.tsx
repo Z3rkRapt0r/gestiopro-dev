@@ -1,7 +1,7 @@
 
 import React from 'react';
-import NewManualAttendanceForm from '@/components/attendance/NewManualAttendanceForm';
+import ManualAttendanceForm from '@/components/attendance/ManualAttendanceForm';
 
 export default function AttendanceManualForm() {
-  return <NewManualAttendanceForm />;
+  return <ManualAttendanceForm />;
 }
