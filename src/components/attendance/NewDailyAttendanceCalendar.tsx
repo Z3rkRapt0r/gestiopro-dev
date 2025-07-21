@@ -342,57 +342,58 @@ export default function NewDailyAttendanceCalendar() {
     });
   }
 
-  // Funzione per ottenere gli assenti con logica temporale migliorata
-  const getAbsentEmployees = async () => {
-    if (!selectedDate || !employees) return [];
-    
-    const absentEmployees = [];
-    
-    for (const emp of employees) {
-      const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id);
-      if (hasAttendance) continue;
-      
-      const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id && leave.type === 'ferie');
-      if (isOnLeave) continue;
-      
-      // Verifica se è in malattia
-      const isSick = isUserSickOnDate(emp.id, selectedDateStr);
-      if (isSick) continue;
-      
-      // Verifica se è in trasferta
-      const isOnBusinessTrip = onBusinessTripEmployees.some(empTrip => empTrip.id === emp.id);
-      if (isOnBusinessTrip) continue;
-      
-      // Verifica se è in permesso attivo (solo per oggi)
-      let isOnActivePermission = false;
-      if (isToday) {
-        const employeePermissions = selectedDateLeaves.filter(leave => 
-          leave.user_id === emp.id && leave.type === 'permesso'
-        );
-        isOnActivePermission = employeePermissions.some(permission => 
-          isPermissionActive(permission, currentTime)
-        );
-      } else {
-        // Per date passate/future, considera tutti i permessi come attivi
-        isOnActivePermission = onPermissionEmployees.some(empPerm => empPerm.id === emp.id);
+  // Calcola gli assenti con useEffect separato per evitare render instabili
+  useEffect(() => {
+    const calculateAbsentEmployees = async () => {
+      if (!selectedDate || !employees) {
+        setAbsentEmployees([]);
+        return;
       }
       
-      if (isOnActivePermission) continue;
+      const absentEmployees = [];
       
-      const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
-      if (shouldTrack && isWorkingDay(selectedDate, workSchedule)) {
-        absentEmployees.push(emp);
+      for (const emp of employees) {
+        const hasAttendance = selectedDateAttendances.some(att => att.user_id === emp.id);
+        if (hasAttendance) continue;
+        
+        const isOnLeave = selectedDateLeaves.some(leave => leave.user_id === emp.id && leave.type === 'ferie');
+        if (isOnLeave) continue;
+        
+        // Verifica se è in malattia
+        const isSick = isUserSickOnDate(emp.id, selectedDateStr);
+        if (isSick) continue;
+        
+        // Verifica se è in trasferta
+        const isOnBusinessTrip = onBusinessTripEmployees.some(empTrip => empTrip.id === emp.id);
+        if (isOnBusinessTrip) continue;
+        
+        // Verifica se è in permesso attivo (solo per oggi)
+        let isOnActivePermission = false;
+        if (isToday) {
+          const employeePermissions = selectedDateLeaves.filter(leave => 
+            leave.user_id === emp.id && leave.type === 'permesso'
+          );
+          isOnActivePermission = employeePermissions.some(permission => 
+            isPermissionActive(permission, currentTime)
+          );
+        } else {
+          // Per date passate/future, considera tutti i permessi come attivi
+          isOnActivePermission = onPermissionEmployees.some(empPerm => empPerm.id === emp.id);
+        }
+        
+        if (isOnActivePermission) continue;
+        
+        const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
+        if (shouldTrack && isWorkingDay(selectedDate, workSchedule)) {
+          absentEmployees.push(emp);
+        }
       }
-    }
-    
-    return absentEmployees;
-  };
+      
+      setAbsentEmployees(absentEmployees);
+    };
 
-  React.useEffect(() => {
-    if (selectedDateStr && employees && attendances) {
-      getAbsentEmployees().then(setAbsentEmployees);
-    }
-  }, [selectedDateStr, employees, attendances, currentTime, selectedDateLeaves]);
+    calculateAbsentEmployees();
+  }, [selectedDateStr, employees, attendances, currentTime, selectedDateLeaves, isToday, onBusinessTripEmployees, isUserSickOnDate, isPermissionActive, shouldTrackEmployeeOnDate, workSchedule, selectedDate]);
 
   // Navigation functions for mobile
   const navigateDate = (direction: 'prev' | 'next') => {
