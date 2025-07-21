@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -29,6 +30,8 @@ export const useCompanyHolidays = () => {
     if (!user) return;
 
     setIsLoading(true);
+    console.log('🏢 [HOLIDAYS] Inizio caricamento festività...');
+    
     try {
       const { data, error } = await (supabase as any)
         .from('company_holidays')
@@ -36,15 +39,19 @@ export const useCompanyHolidays = () => {
         .order('date', { ascending: true });
 
       if (error) {
-        console.error('Error fetching holidays:', error);
+        console.error('❌ [HOLIDAYS] Errore nel caricamento festività:', error);
         return;
       }
 
+      console.log('📅 [HOLIDAYS] Festività caricate:', data?.length || 0, 'trovate');
+      console.log('📋 [HOLIDAYS] Dettaglio festività:', data);
+      
       setHolidays((data as any[]) || []);
     } catch (error) {
-      console.error('Error fetching holidays:', error);
+      console.error('❌ [HOLIDAYS] Errore nel caricamento festività:', error);
     } finally {
       setIsLoading(false);
+      console.log('✅ [HOLIDAYS] Caricamento festività completato');
     }
   };
 
@@ -97,20 +104,35 @@ export const useCompanyHolidays = () => {
     const dateStr = date.toISOString().split('T')[0];
     const monthDay = date.toISOString().substr(5, 5); // MM-DD format
     
-    return holidays.some(holiday => {
+    console.log(`🔍 [HOLIDAYS] Controllo se ${dateStr} è festività...`);
+    
+    const isHolidayResult = holidays.some(holiday => {
       if (holiday.is_recurring) {
         // Per festività ricorrenti, confronta solo mese e giorno
         const holidayMonthDay = holiday.date.substr(5, 5);
-        return holidayMonthDay === monthDay;
+        const match = holidayMonthDay === monthDay;
+        if (match) {
+          console.log(`🎉 [HOLIDAYS] FESTIVITÀ RICORRENTE trovata: ${holiday.name} per ${dateStr}`);
+        }
+        return match;
       } else {
         // Per festività specifiche, confronta la data completa
-        return holiday.date === dateStr;
+        const match = holiday.date === dateStr;
+        if (match) {
+          console.log(`🎉 [HOLIDAYS] FESTIVITÀ SPECIFICA trovata: ${holiday.name} per ${dateStr}`);
+        }
+        return match;
       }
     });
+    
+    console.log(`${isHolidayResult ? '🚫' : '✅'} [HOLIDAYS] ${dateStr} ${isHolidayResult ? 'È' : 'NON È'} una festività`);
+    return isHolidayResult;
   };
 
   const getHolidaysInRange = (startDate: Date, endDate: Date): CompanyHoliday[] => {
-    return holidays.filter(holiday => {
+    console.log(`🔍 [HOLIDAYS] Ricerca festività nel range ${startDate.toISOString().split('T')[0]} - ${endDate.toISOString().split('T')[0]}`);
+    
+    const result = holidays.filter(holiday => {
       const holidayDate = new Date(holiday.date);
       
       if (holiday.is_recurring) {
@@ -132,6 +154,9 @@ export const useCompanyHolidays = () => {
         return holidayDate >= startDate && holidayDate <= endDate;
       }
     });
+    
+    console.log(`📅 [HOLIDAYS] Trovate ${result.length} festività nel range`);
+    return result;
   };
 
   const getHolidayName = (date: Date): string | null => {
@@ -146,6 +171,10 @@ export const useCompanyHolidays = () => {
         return holiday.date === dateStr;
       }
     });
+    
+    if (holiday) {
+      console.log(`🏷️ [HOLIDAYS] Nome festività per ${dateStr}: ${holiday.name}`);
+    }
     
     return holiday ? holiday.name : null;
   };
