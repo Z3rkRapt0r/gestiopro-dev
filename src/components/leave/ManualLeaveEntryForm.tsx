@@ -20,11 +20,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "@/hooks/use-toast";
-
 interface ManualLeaveEntryFormProps {
   onSuccess?: () => void;
 }
-
 export function ManualLeaveEntryForm({
   onSuccess
 }: ManualLeaveEntryFormProps) {
@@ -39,34 +37,38 @@ export function ManualLeaveEntryForm({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [workingHoursErrors, setWorkingHoursErrors] = useState<string[]>([]);
   const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
-
-  const { employees } = useActiveEmployees();
-  const { insertMutation } = useLeaveRequests();
-  const { sendLeaveRequestNotification } = useLeaveRequestNotifications();
-  const { validatePermissionTime, getWorkingHoursInfo } = useWorkingHoursValidation();
-  const { leaveBalance, validateLeaveRequest, formatDecimalHours } = useEmployeeLeaveBalanceValidation(selectedUserId);
-
+  const {
+    employees
+  } = useActiveEmployees();
+  const {
+    insertMutation
+  } = useLeaveRequests();
+  const {
+    sendLeaveRequestNotification
+  } = useLeaveRequestNotifications();
+  const {
+    validatePermissionTime,
+    getWorkingHoursInfo
+  } = useWorkingHoursValidation();
+  const {
+    leaveBalance,
+    validateLeaveRequest,
+    formatDecimalHours
+  } = useEmployeeLeaveBalanceValidation(selectedUserId);
   const {
     isLoading: isCalculatingConflicts,
     isDateDisabled,
     validateVacationDates,
     validatePermissionDate
   } = useLeaveConflicts(selectedUserId, leaveType);
-
   const workingHoursInfo = getWorkingHoursInfo();
 
   // Valida bilanci quando cambia dipendente, tipo o date
   useEffect(() => {
     if (selectedUserId) {
-      const validation = validateLeaveRequest(
-        leaveType,
-        startDate,
-        endDate,
-        startDate, // day for permissions
-        timeFrom,
-        timeTo
-      );
-      
+      const validation = validateLeaveRequest(leaveType, startDate, endDate, startDate,
+      // day for permissions
+      timeFrom, timeTo);
       if (!validation.hasBalance || validation.exceedsVacationLimit || validation.exceedsPermissionLimit) {
         setBalanceValidationError(validation.errorMessage || "Errore validazione bilanci");
       } else {
@@ -76,7 +78,6 @@ export function ManualLeaveEntryForm({
       setBalanceValidationError(null);
     }
   }, [selectedUserId, leaveType, startDate, endDate, timeFrom, timeTo, validateLeaveRequest]);
-
   const validateDatesAgainstHireDate = (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
     const employee = employees?.find(emp => emp.id === employeeId);
@@ -93,7 +94,6 @@ export function ManualLeaveEntryForm({
     setValidationError(null);
     return true;
   };
-
   const validateConflicts = async (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
     try {
@@ -118,7 +118,6 @@ export function ManualLeaveEntryForm({
       return false;
     }
   };
-
   const validateWorkingHours = (day?: Date, timeFrom?: string, timeTo?: string) => {
     if (leaveType === 'permesso' && day && timeFrom && timeTo) {
       const hoursValidation = validatePermissionTime(day, timeFrom, timeTo);
@@ -133,7 +132,6 @@ export function ManualLeaveEntryForm({
     setWorkingHoursErrors([]);
     return true;
   };
-
   const handleEmployeeChange = (userId: string) => {
     setSelectedUserId(userId);
     setValidationError(null);
@@ -148,7 +146,6 @@ export function ManualLeaveEntryForm({
       }
     }
   };
-
   const handleStartDateChange = async (date: Date | undefined) => {
     setStartDate(date);
 
@@ -165,7 +162,6 @@ export function ManualLeaveEntryForm({
       }
     }
   };
-
   const handleEndDateChange = async (date: Date | undefined) => {
     setEndDate(date);
 
@@ -178,7 +174,6 @@ export function ManualLeaveEntryForm({
       await validateConflicts(startDate, date, selectedUserId);
     }
   };
-
   const handleLeaveTypeChange = (newLeaveType: "ferie" | "permesso") => {
     setLeaveType(newLeaveType);
     setValidationError(null);
@@ -188,7 +183,6 @@ export function ManualLeaveEntryForm({
       validateConflicts(startDate, endDate, selectedUserId);
     }
   };
-
   const handleTimeFromChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setTimeFrom(value);
@@ -201,7 +195,6 @@ export function ManualLeaveEntryForm({
       }, 500);
     }
   };
-
   const handleTimeToChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setTimeTo(value);
@@ -214,7 +207,6 @@ export function ManualLeaveEntryForm({
       }, 500);
     }
   };
-
   const sendNotificationToEmployee = async (leaveRequest: any, employeeProfile: any) => {
     if (!notifyEmployee) return;
     try {
@@ -248,7 +240,6 @@ export function ManualLeaveEntryForm({
       });
     }
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) {
@@ -261,7 +252,6 @@ export function ManualLeaveEntryForm({
       alert(`Errore bilanci: ${balanceValidationError}`);
       return;
     }
-
     if (!validateDatesAgainstHireDate(startDate, endDate, selectedUserId)) {
       return;
     }
@@ -274,9 +264,7 @@ export function ManualLeaveEntryForm({
     if (leaveType === 'permesso' && !validateWorkingHours(startDate, timeFrom, timeTo)) {
       return;
     }
-
     const employeeProfile = employees?.find(emp => emp.id === selectedUserId);
-    
     if (leaveType === "ferie") {
       if (!startDate || !endDate) {
         alert("Seleziona le date di inizio e fine per le ferie");
@@ -353,9 +341,7 @@ export function ManualLeaveEntryForm({
       });
     }
   };
-
-  return (
-    <Card className="max-w-2xl mx-auto">
+  return <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="w-5 h-5" />
@@ -371,18 +357,15 @@ export function ManualLeaveEntryForm({
                 <SelectValue placeholder="Seleziona un dipendente" />
               </SelectTrigger>
               <SelectContent>
-                {employees?.map(employee => (
-                  <SelectItem key={employee.id} value={employee.id}>
+                {employees?.map(employee => <SelectItem key={employee.id} value={employee.id}>
                     {employee.first_name} {employee.last_name} ({employee.email})
-                  </SelectItem>
-                ))}
+                  </SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
           {/* Mostra informazioni bilanci dipendente */}
-          {selectedUserId && leaveBalance && (
-            <Alert className="border-blue-200 bg-blue-50">
+          {selectedUserId && leaveBalance && <Alert className="border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-700">
                 <div className="font-medium mb-2">Bilancio dipendente:</div>
@@ -391,36 +374,18 @@ export function ManualLeaveEntryForm({
                    <div>• Permessi: <strong>{formatDecimalHours(leaveBalance.permission_hours_remaining)}</strong> disponibili</div>
                  </div>
               </AlertDescription>
-            </Alert>
-          )}
+            </Alert>}
 
           {/* Alert bilanci non configurati */}
-          {balanceValidationError && (
-            <Alert variant="destructive">
+          {balanceValidationError && <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 <div className="flex items-center justify-between">
                   <span>{balanceValidationError}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="ml-2"
-                    onClick={() => {
-                      // Link per gestione bilanci - potresti implementare navigazione
-                      toast({
-                        title: "Info",
-                        description: "Vai alla sezione Gestione Bilanci Ferie per configurare i bilanci del dipendente"
-                      });
-                    }}
-                  >
-                    <Settings className="h-4 w-4 mr-1" />
-                    Gestisci Bilanci
-                  </Button>
+                  
                 </div>
               </AlertDescription>
-            </Alert>
-          )}
+            </Alert>}
 
           <div className="space-y-2">
             <Label>Tipo di richiesta *</Label>
@@ -436,8 +401,7 @@ export function ManualLeaveEntryForm({
           </div>
 
           {/* Informazioni orari di lavoro */}
-          {workingHoursInfo && (
-            <Alert className="border-blue-200 bg-blue-50">
+          {workingHoursInfo && <Alert className="border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-700">
                 <div className="font-medium mb-2">Orari di lavoro configurati:</div>
@@ -447,61 +411,42 @@ export function ManualLeaveEntryForm({
                   <div className="text-xs mt-1">I permessi devono rispettare gli orari lavorativi.</div>
                 </div>
               </AlertDescription>
-            </Alert>
-          )}
+            </Alert>}
 
-          {validationError && (
-            <Alert variant="destructive">
+          {validationError && <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{validationError}</AlertDescription>
-            </Alert>
-          )}
+            </Alert>}
 
-          {workingHoursErrors.length > 0 && (
-            <Alert variant="destructive">
+          {workingHoursErrors.length > 0 && <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-1">
-                  {workingHoursErrors.map((error, index) => (
-                    <div key={index} className="text-sm">{error}</div>
-                  ))}
+                  {workingHoursErrors.map((error, index) => <div key={index} className="text-sm">{error}</div>)}
                 </div>
               </AlertDescription>
-            </Alert>
-          )}
+            </Alert>}
 
           {/* Disabilita campi se non ci sono bilanci configurati */}
-          {leaveType === "ferie" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {leaveType === "ferie" ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Data inizio ferie *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground",
-                        balanceValidationError && "opacity-50 cursor-not-allowed"
-                      )}
-                      disabled={!!balanceValidationError}
-                    >
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground", balanceValidationError && "opacity-50 cursor-not-allowed")} disabled={!!balanceValidationError}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
+                      {startDate ? format(startDate, "dd/MM/yyyy", {
+                    locale: it
+                  }) : "Seleziona data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar 
-                      mode="single" 
-                      selected={startDate} 
-                      onSelect={handleStartDateChange} 
-                      disabled={(date) => {
-                        const employee = employees?.find(emp => emp.id === selectedUserId);
-                        const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                        if (hireDate && date < hireDate) return true;
-                        return isDateDisabled(date);
-                      }} 
-                    />
+                    <Calendar mode="single" selected={startDate} onSelect={handleStartDateChange} disabled={date => {
+                  const employee = employees?.find(emp => emp.id === selectedUserId);
+                  const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                  if (hireDate && date < hireDate) return true;
+                  return isDateDisabled(date);
+                }} />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -510,67 +455,43 @@ export function ManualLeaveEntryForm({
                 <Label>Data fine ferie *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !endDate && "text-muted-foreground",
-                        balanceValidationError && "opacity-50 cursor-not-allowed"
-                      )}
-                      disabled={!!balanceValidationError}
-                    >
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground", balanceValidationError && "opacity-50 cursor-not-allowed")} disabled={!!balanceValidationError}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
+                      {endDate ? format(endDate, "dd/MM/yyyy", {
+                    locale: it
+                  }) : "Seleziona data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar 
-                      mode="single" 
-                      selected={endDate} 
-                      onSelect={handleEndDateChange} 
-                      disabled={(date) => {
-                        const employee = employees?.find(emp => emp.id === selectedUserId);
-                        const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                        const minDate = startDate || hireDate;
-                        if (minDate && date < minDate) return true;
-                        return isDateDisabled(date);
-                      }} 
-                    />
+                    <Calendar mode="single" selected={endDate} onSelect={handleEndDateChange} disabled={date => {
+                  const employee = employees?.find(emp => emp.id === selectedUserId);
+                  const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                  const minDate = startDate || hireDate;
+                  if (minDate && date < minDate) return true;
+                  return isDateDisabled(date);
+                }} />
                   </PopoverContent>
                 </Popover>
               </div>
-            </div>
-          ) : (
-            <>
+            </div> : <>
               <div className="space-y-2">
                 <Label>Data permesso *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground",
-                        balanceValidationError && "opacity-50 cursor-not-allowed"
-                      )}
-                      disabled={!!balanceValidationError}
-                    >
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground", balanceValidationError && "opacity-50 cursor-not-allowed")} disabled={!!balanceValidationError}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
+                      {startDate ? format(startDate, "dd/MM/yyyy", {
+                    locale: it
+                  }) : "Seleziona data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar 
-                      mode="single" 
-                      selected={startDate} 
-                      onSelect={handleStartDateChange} 
-                      disabled={(date) => {
-                        const employee = employees?.find(emp => emp.id === selectedUserId);
-                        const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                        if (hireDate && date < hireDate) return true;
-                        return isDateDisabled(date);
-                      }} 
-                    />
+                    <Calendar mode="single" selected={startDate} onSelect={handleStartDateChange} disabled={date => {
+                  const employee = employees?.find(emp => emp.id === selectedUserId);
+                  const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                  if (hireDate && date < hireDate) return true;
+                  return isDateDisabled(date);
+                }} />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -580,58 +501,27 @@ export function ManualLeaveEntryForm({
                   <Label htmlFor="timeFrom">Ora inizio *</Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input 
-                      id="timeFrom" 
-                      type="time" 
-                      value={timeFrom} 
-                      onChange={handleTimeFromChange} 
-                      className="pl-10" 
-                      placeholder="HH:MM" 
-                      step="300" 
-                      required 
-                      disabled={!!balanceValidationError}
-                    />
+                    <Input id="timeFrom" type="time" value={timeFrom} onChange={handleTimeFromChange} className="pl-10" placeholder="HH:MM" step="300" required disabled={!!balanceValidationError} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timeTo">Ora fine *</Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input 
-                      id="timeTo" 
-                      type="time" 
-                      value={timeTo} 
-                      onChange={handleTimeToChange} 
-                      className="pl-10" 
-                      placeholder="HH:MM" 
-                      step="300" 
-                      required 
-                      disabled={!!balanceValidationError}
-                    />
+                    <Input id="timeTo" type="time" value={timeTo} onChange={handleTimeToChange} className="pl-10" placeholder="HH:MM" step="300" required disabled={!!balanceValidationError} />
                   </div>
                 </div>
               </div>
-            </>
-          )}
+            </>}
 
           <div className="space-y-2">
             <Label htmlFor="note">Note</Label>
-            <Textarea 
-              id="note" 
-              placeholder="Note aggiuntive (opzionale)" 
-              value={note} 
-              onChange={(e) => setNote(e.target.value)} 
-              rows={3} 
-            />
+            <Textarea id="note" placeholder="Note aggiuntive (opzionale)" value={note} onChange={e => setNote(e.target.value)} rows={3} />
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center space-x-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <Checkbox 
-                id="notifyEmployee" 
-                checked={notifyEmployee} 
-                onCheckedChange={(checked) => setNotifyEmployee(checked as boolean)} 
-              />
+              <Checkbox id="notifyEmployee" checked={notifyEmployee} onCheckedChange={checked => setNotifyEmployee(checked as boolean)} />
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4 text-blue-600" />
                 <Label htmlFor="notifyEmployee" className="text-blue-700 font-medium cursor-pointer">
@@ -641,21 +531,10 @@ export function ManualLeaveEntryForm({
             </div>
           </div>
 
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={
-              insertMutation.isPending || 
-              !!validationError || 
-              !!balanceValidationError ||
-              workingHoursErrors.length > 0 || 
-              isCalculatingConflicts
-            }
-          >
+          <Button type="submit" className="w-full" disabled={insertMutation.isPending || !!validationError || !!balanceValidationError || workingHoursErrors.length > 0 || isCalculatingConflicts}>
             {insertMutation.isPending ? "Salvando..." : "Salva Richiesta"}
           </Button>
         </form>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 }
