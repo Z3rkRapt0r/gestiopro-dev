@@ -15,6 +15,7 @@ import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
+import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 
@@ -23,6 +24,7 @@ export default function ManualAttendanceForm() {
   const { employees } = useActiveEmployees();
   const { leaveRequests } = useLeaveRequests();
   const { isValidDateForEmployee } = useWorkingDaysTracking();
+  const { settings: attendanceSettings, isLoading: isLoadingAttendanceSettings } = useAttendanceSettings();
   
   const [formData, setFormData] = useState({
     user_id: '',
@@ -38,7 +40,8 @@ export default function ManualAttendanceForm() {
     conflictDates, 
     isLoading: isCalculatingConflicts, 
     isDateDisabled,
-    validateAttendanceEntry
+    validateAttendanceEntry,
+    conflictDetails
   } = useLeaveConflicts(formData.user_id, 'attendance');
 
   // Funzione per validare la data rispetto alla logica di tracking
@@ -293,29 +296,22 @@ export default function ManualAttendanceForm() {
               </div>
             )}
 
+            {/* Warning permessi orari per la data selezionata */}
+            {formData.date && conflictDetails.filter(
+              detail => detail.date === formData.date && detail.type === 'permission' && detail.description.includes('(')
+            ).map((detail, idx) => (
+              <Alert key={idx} className="text-sm bg-yellow-50 border-yellow-200 mb-2">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="break-words text-yellow-800">
+                  Attenzione: per questa data è presente un permesso orario: {detail.description}
+                </AlertDescription>
+              </Alert>
+            ))}
+
             {validationError && (
               <Alert variant="destructive" className="text-sm">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="break-words">{validationError}</AlertDescription>
-              </Alert>
-            )}
-
-            {excludedEmployees.length > 0 && formData.date && (
-              <Alert className="text-sm">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="break-words">
-                  {excludedEmployees.length} dipendente/i escluso/i per la data {format(new Date(formData.date), 'dd/MM/yyyy')} 
-                  (in ferie o malattia): {excludedEmployees.map(emp => `${emp.first_name} ${emp.last_name}`).join(', ')}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {availableEmployees.length < (employees?.length || 0) && formData.date && (
-              <Alert className="text-sm">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Alcuni dipendenti sono stati filtrati automaticamente (in ferie, malattia o permessi)
-                </AlertDescription>
               </Alert>
             )}
 
@@ -338,6 +334,7 @@ export default function ManualAttendanceForm() {
                   value={formData.check_out_time}
                   onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
                   className="mt-1 h-11 sm:h-10"
+                  disabled={attendanceSettings && attendanceSettings.checkout_enabled === false}
                 />
               </div>
             </div>

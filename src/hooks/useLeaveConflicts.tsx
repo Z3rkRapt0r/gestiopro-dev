@@ -153,7 +153,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
       }
 
       // 4. CONTROLLO PERMESSI APPROVATI (conflitti per permessi, malattie e presenze)
-      if (type === 'permesso' || type === 'sick_leave' || type === 'attendance') {
+      if (type === 'permesso' || type === 'sick_leave') {
+        // Per permesso e malattia: aggiungi tutti i permessi approvati
         const { data: approvedPermissions } = await supabase
           .from('leave_requests')
           .select('day, time_from, time_to')
@@ -166,11 +167,9 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
           approvedPermissions.forEach(permission => {
             const dateStr = format(new Date(permission.day), 'yyyy-MM-dd');
             conflictDates.add(dateStr);
-            
             const timeInfo = permission.time_from && permission.time_to 
               ? ` (${permission.time_from}-${permission.time_to})` 
               : ' (giornaliero)';
-            
             details.push({
               date: dateStr,
               type: 'permission',
@@ -178,8 +177,41 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
               severity: 'critical'
             });
           });
-          
           summary.permissions += approvedPermissions.length;
+        }
+      } else if (type === 'attendance') {
+        // Per attendance: aggiungi solo permessi giornalieri come conflitti bloccanti
+        const { data: approvedPermissions } = await supabase
+          .from('leave_requests')
+          .select('day, time_from, time_to')
+          .eq('user_id', userId)
+          .eq('status', 'approved')
+          .eq('type', 'permesso')
+          .not('day', 'is', null);
+
+        if (approvedPermissions) {
+          approvedPermissions.forEach(permission => {
+            const dateStr = format(new Date(permission.day), 'yyyy-MM-dd');
+            if (permission.time_from && permission.time_to) {
+              // Permesso orario: aggiungi solo a conflictDetails come warning
+              details.push({
+                date: dateStr,
+                type: 'permission',
+                description: `Permesso approvato (${permission.time_from}-${permission.time_to})`,
+                severity: 'warning'
+              });
+            } else {
+              // Permesso giornaliero: aggiungi come conflitto bloccante
+              conflictDates.add(dateStr);
+              details.push({
+                date: dateStr,
+                type: 'permission',
+                description: `Permesso approvato (giornaliero)`,
+                severity: 'critical'
+              });
+              summary.permissions += 1;
+            }
+          });
         }
       }
 
@@ -210,8 +242,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 6. CONTROLLO PRESENZE ESISTENTI (per nuove presenze e malattie)
-      if (type === 'attendance' || type === 'sick_leave') {
+      // 6. CONTROLLO PRESENZE ESISTENTI (per nuove presenze, malattie e ora anche ferie)
+      if (type === 'attendance' || type === 'sick_leave' || type === 'ferie') {
         const { data: existingAttendances } = await supabase
           .from('unified_attendances')
           .select('date')
@@ -225,8 +257,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
             details.push({
               date: dateStr,
               type: 'attendance',
-              description: type === 'sick_leave' ? 'Presenza già registrata - impossibile registrare malattia' : 'Presenza già registrata',
-              severity: type === 'sick_leave' ? 'critical' : 'warning'
+              description: type === 'sick_leave' ? 'Presenza già registrata - impossibile registrare malattia' : (type === 'ferie' ? 'Presenza già registrata - impossibile registrare ferie' : 'Presenza già registrata'),
+              severity: type === 'sick_leave' || type === 'ferie' ? 'critical' : 'warning'
             });
           });
           
@@ -246,8 +278,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
             details.push({
               date: dateStr,
               type: 'attendance',
-              description: type === 'sick_leave' ? 'Presenza manuale già registrata - impossibile registrare malattia' : 'Presenza manuale già registrata',
-              severity: type === 'sick_leave' ? 'critical' : 'warning'
+              description: type === 'sick_leave' ? 'Presenza manuale già registrata - impossibile registrare malattia' : (type === 'ferie' ? 'Presenza manuale già registrata - impossibile registrare ferie' : 'Presenza manuale già registrata'),
+              severity: type === 'sick_leave' || type === 'ferie' ? 'critical' : 'warning'
             });
           });
           
@@ -295,10 +327,30 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
   }, [selectedUserId, leaveType, calculateConflicts]);
 
   const isDateDisabled = useCallback((date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    // Se il tipo è attendance, disabilita solo se c'è un permesso giornaliero o altri conflitti critici (malattia, ferie, trasferta, presenza già registrata)
+    if (leaveType === 'attendance') {
+      // Cerca dettagli di conflitto per la data
+      const details = conflictDetails.filter(detail => detail.date === dateStr);
+      // Disabilita se:
+      // - permesso giornaliero
+      // - malattia
+      // - ferie
+      // - trasferta
+      // - presenza già registrata
+      return details.some(detail =>
+        (detail.type === 'permission' && detail.description.includes('giornaliero')) ||
+        detail.type === 'sick_leave' ||
+        detail.type === 'vacation' ||
+        detail.type === 'business_trip' ||
+        detail.type === 'attendance'
+      );
+    }
+    // Per altri tipi, logica originale
     return conflictDates.some(conflictDate => 
       format(date, 'yyyy-MM-dd') === format(conflictDate, 'yyyy-MM-dd')
     );
-  }, [conflictDates]);
+  }, [conflictDates, conflictDetails, leaveType]);
 
   const getConflictDetailsForDate = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -578,8 +630,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
   };
 
   // Funzione di validazione specifica per presenze normali
-  const validateAttendanceEntry = async (userId: string, date: string): Promise<LeaveValidationResult> => {
-    console.log('🔍 Validazione anti-conflitto per presenza:', { userId, date });
+  const validateAttendanceEntry = async (userId: string, date: string, checkInTime?: string): Promise<LeaveValidationResult> => {
+    console.log('🔍 Validazione anti-conflitto per presenza:', { userId, date, checkInTime });
     
     const conflicts: string[] = [];
     
@@ -630,8 +682,9 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 4. CONTROLLO PERMESSI GIORNALIERI
-      const { data: existingPermissions } = await supabase
+      // 4. CONTROLLO PERMESSI GIORNALIERI E ORARI
+      // Permessi giornalieri
+      const { data: dailyPermissions } = await supabase
         .from('leave_requests')
         .select('*')
         .eq('user_id', userId)
@@ -641,8 +694,28 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         .is('time_from', null)
         .is('time_to', null);
 
-      if (existingPermissions && existingPermissions.length > 0) {
+      if (dailyPermissions && dailyPermissions.length > 0) {
         conflicts.push(`Conflitto critico: esiste un permesso giornaliero approvato il ${format(targetDate, 'dd/MM/yyyy')}`);
+      }
+
+      // Permessi orari
+      const { data: hourlyPermissions } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved')
+        .eq('type', 'permesso')
+        .eq('day', date)
+        .not('time_from', 'is', null)
+        .not('time_to', 'is', null);
+
+      if (hourlyPermissions && hourlyPermissions.length > 0 && checkInTime) {
+        // Se la presenza inizia PRIMA della fine del permesso, blocca
+        for (const perm of hourlyPermissions) {
+          if (perm.time_to && checkInTime <= perm.time_to) {
+            conflicts.push(`Conflitto critico: esiste un permesso orario approvato (${perm.time_from}-${perm.time_to}) che termina dopo l'orario di ingresso (${checkInTime})`);
+          }
+        }
       }
 
       return {

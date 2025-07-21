@@ -69,7 +69,8 @@ export function ManualLeaveEntryForm({
       const validation = validateLeaveRequest(leaveType, startDate, endDate, startDate,
       // day for permissions
       timeFrom, timeTo);
-      if (!validation.hasBalance || validation.exceedsVacationLimit || validation.exceedsPermissionLimit) {
+      // Non mostrare l'errore di orario mancante in tempo reale, solo al submit
+      if (!validation.hasBalance || validation.exceedsVacationLimit || (validation.exceedsPermissionLimit && validation.errorMessage !== "Inserisci almeno un orario di inizio o fine per il permesso")) {
         setBalanceValidationError(validation.errorMessage || "Errore validazione bilanci");
       } else {
         setBalanceValidationError(null);
@@ -306,8 +307,8 @@ export function ManualLeaveEntryForm({
         alert("Seleziona la data per il permesso");
         return;
       }
-      if (!timeFrom || !timeTo) {
-        alert("Inserisci orario di inizio e fine per il permesso");
+      if (!timeFrom && !timeTo) {
+        setBalanceValidationError("Inserisci almeno un orario di inizio o fine per il permesso");
         return;
       }
       const leaveRequestData = {
@@ -400,19 +401,6 @@ export function ManualLeaveEntryForm({
             </Select>
           </div>
 
-          {/* Informazioni orari di lavoro */}
-          {workingHoursInfo && <Alert className="border-blue-200 bg-blue-50">
-              <Info className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-700">
-                <div className="font-medium mb-2">Orari di lavoro configurati:</div>
-                <div className="text-sm space-y-1">
-                  <div>• Giorni: <strong>{workingHoursInfo.workingDays}</strong></div>
-                  <div>• Orari: <strong>{workingHoursInfo.workingHours}</strong></div>
-                  <div className="text-xs mt-1">I permessi devono rispettare gli orari lavorativi.</div>
-                </div>
-              </AlertDescription>
-            </Alert>}
-
           {validationError && <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{validationError}</AlertDescription>
@@ -498,20 +486,27 @@ export function ManualLeaveEntryForm({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="timeFrom">Ora inizio *</Label>
+                  <Label htmlFor="timeFrom">Ora inizio</Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input id="timeFrom" type="time" value={timeFrom} onChange={handleTimeFromChange} className="pl-10" placeholder="HH:MM" step="300" required disabled={!!balanceValidationError} />
+                    <Input id="timeFrom" type="time" value={timeFrom} onChange={handleTimeFromChange} className="pl-10" placeholder="HH:MM" step="300" disabled={!!balanceValidationError} />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="timeTo">Ora fine *</Label>
+                  <Label htmlFor="timeTo">Ora fine</Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input id="timeTo" type="time" value={timeTo} onChange={handleTimeToChange} className="pl-10" placeholder="HH:MM" step="300" required disabled={!!balanceValidationError} />
+                    <Input id="timeTo" type="time" value={timeTo} onChange={handleTimeToChange} className="pl-10" placeholder="HH:MM" step="300" disabled={!!balanceValidationError} />
                   </div>
                 </div>
               </div>
+
+              {/* Messaggio esplicativo se il tasto è disabilitato */}
+              {leaveType === "permesso" && workingHoursErrors.length > 0 && (
+                <div className="text-xs text-orange-600 mt-2">
+                  {"Correggi gli orari: devono essere coerenti con l'orario lavorativo."}
+                </div>
+              )}
             </>}
 
           <div className="space-y-2">
@@ -531,7 +526,16 @@ export function ManualLeaveEntryForm({
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={insertMutation.isPending || !!validationError || !!balanceValidationError || workingHoursErrors.length > 0 || isCalculatingConflicts}>
+          <Button type="submit" className="w-full" 
+            disabled={
+              insertMutation.isPending ||
+              !!validationError ||
+              !!balanceValidationError ||
+              workingHoursErrors.length > 0 ||
+              isCalculatingConflicts ||
+              (leaveType === 'permesso' && (!startDate || !timeFrom || !timeTo))
+            }
+          >
             {insertMutation.isPending ? "Salvando..." : "Salva Richiesta"}
           </Button>
         </form>

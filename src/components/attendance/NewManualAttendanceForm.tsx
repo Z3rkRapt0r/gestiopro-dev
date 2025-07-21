@@ -178,20 +178,44 @@ export default function NewManualAttendanceForm() {
     return isDateDisabled(new Date(dateValue));
   };
 
+  // Modifica handleSubmit per validare la presenza anche in caso di permesso orario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     // Verifica finale della validazione data di assunzione
     if (!validateDatesAgainstHireDate(formData.date, formData.date_to, formData.user_id)) {
       return;
     }
 
-    // Verifica finale della validazione conflitti
-    const isConflictValid = await validateConflicts(formData.date, formData.date_to, formData.user_id);
-    if (!isConflictValid) {
-      return;
+    // Recupera permessi orari per il giorno selezionato
+    let permessoOrarioFine = null;
+    const permessiOrari = conflictDetails.filter(
+      detail => detail.date === formData.date && detail.type === 'permission' && detail.description.includes('(')
+    );
+    if (permessiOrari.length > 0) {
+      // Estrai l'orario di fine dal testo (es: Permesso approvato (09:00-11:00))
+      const match = permessiOrari[0].description.match(/\((\d{2}:\d{2})-(\d{2}:\d{2})\)/);
+      if (match) {
+        permessoOrarioFine = match[2];
+      }
     }
-    
+
+    // Se esiste un permesso orario e il check-in è prima della fine del permesso, forza il check-in dopo il permesso
+    let checkInTime = formData.check_in_time;
+    if (permessoOrarioFine) {
+      if (!checkInTime || checkInTime < permessoOrarioFine) {
+        checkInTime = permessoOrarioFine;
+      }
+    }
+
+    // Verifica finale della validazione conflitti (passa checkInTime)
+    const isConflictValid = await validateAttendanceEntry(formData.user_id, formData.date, checkInTime);
+    if (!isConflictValid) {
+      // Mostra solo avviso, non blocca
+      setValidationError('Attenzione: esiste un permesso orario per questo giorno. La presenza sarà registrata a partire dalla fine del permesso.');
+    } else {
+      setValidationError(null);
+    }
+
     if (formData.is_sick_leave && formData.date && formData.date_to) {
       // Gestione range di date per malattia
       const startDate = new Date(formData.date);
@@ -247,7 +271,7 @@ export default function NewManualAttendanceForm() {
       const attendanceData = {
         user_id: formData.user_id,
         date: formData.date,
-        check_in_time: formData.is_sick_leave ? null : (formData.check_in_time || null),
+        check_in_time: formData.is_sick_leave ? null : (checkInTime || null),
         check_out_time: formData.is_sick_leave ? null : (formData.check_out_time || null),
         notes: formData.notes || null,
         is_sick_leave: formData.is_sick_leave,
@@ -313,16 +337,6 @@ export default function NewManualAttendanceForm() {
                 </div>
               )}
             </div>
-
-            {/* Riepilogo conflitti proattivo */}
-            {formData.user_id && (
-              <ConflictSummaryCard
-                summary={conflictSummary}
-                details={conflictDetails}
-                employeeName={employeeName}
-                isLoading={isCalculatingConflicts}
-              />
-            )}
 
             {/* Tipo di inserimento */}
             <div className="space-y-3">
@@ -411,6 +425,17 @@ export default function NewManualAttendanceForm() {
                 {isDateInputDisabled(formData.date) && (
                   <p className="text-xs text-red-600 mt-1">⚠️ Data con conflitti</p>
                 )}
+                {/* Avviso permesso orario presente */}
+                {formData.date && conflictDetails
+                  .filter(detail => detail.date === formData.date && detail.type === 'permission')
+                  .map((detail, idx) => (
+                    <Alert key={idx} className="border-yellow-200 bg-yellow-50 mb-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-700">
+                        Attenzione: {detail.description}
+                      </AlertDescription>
+                    </Alert>
+                  ))}
               </div>
             )}
 

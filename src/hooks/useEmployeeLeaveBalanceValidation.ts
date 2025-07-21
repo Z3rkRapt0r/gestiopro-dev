@@ -91,45 +91,38 @@ export function useEmployeeLeaveBalanceValidation(employeeId?: string) {
 
     if (type === "permesso") {
       let requestedHours = 0;
-      
-      if (timeFrom && timeTo) {
-        // Calcola ore decimali includendo i minuti
-        requestedHours = timeToDecimalHours(timeFrom, timeTo);
-        
-        console.log(`Permesso richiesto per dipendente: ${formatDecimalHours(requestedHours)}, disponibili: ${formatDecimalHours(leaveBalance.permission_hours_remaining)}`);
-        
-        // CONTROLLO RIGOROSO: anche 0 ore disponibili blocca
-        if (leaveBalance.permission_hours_remaining <= 0) {
-          console.log('❌ Nessuna ora di permesso disponibile per il dipendente');
-          return {
-            ...leaveBalance,
-            exceedsPermissionLimit: true,
-            exceedsVacationLimit: false,
-            errorMessage: `Il dipendente non ha ore di permesso disponibili (saldo: ${formatDecimalHours(leaveBalance.permission_hours_remaining)})`
-          };
+      // Permetti anche solo uno dei due orari
+      if (timeFrom || timeTo) {
+        if (timeFrom && timeTo) {
+          requestedHours = timeToDecimalHours(timeFrom, timeTo);
+          if (leaveBalance.permission_hours_remaining <= 0) {
+            return {
+              ...leaveBalance,
+              exceedsPermissionLimit: true,
+              exceedsVacationLimit: false,
+              errorMessage: `Il dipendente non ha ore di permesso disponibili (saldo: ${formatDecimalHours(leaveBalance.permission_hours_remaining)})`
+            };
+          }
+          if (requestedHours <= 0) {
+            return {
+              ...leaveBalance,
+              exceedsPermissionLimit: true,
+              exceedsVacationLimit: false,
+              errorMessage: "L'orario di fine deve essere successivo all'orario di inizio"
+            };
+          }
         }
-        
-        if (requestedHours <= 0) {
-          return {
-            ...leaveBalance,
-            exceedsPermissionLimit: true,
-            exceedsVacationLimit: false,
-            errorMessage: "L'orario di fine deve essere successivo all'orario di inizio"
-          };
-        }
-        
+        // Se solo uno dei due è presente, nessun errore di obbligatorietà
       } else {
-        // No time specified = invalid permission request
+        // Nessun orario inserito
         return {
           ...leaveBalance,
           exceedsPermissionLimit: true,
           exceedsVacationLimit: false,
-          errorMessage: "Orario di inizio e fine sono obbligatori per i permessi"
+          errorMessage: "Inserisci almeno un orario di inizio o fine per il permesso"
         };
       }
-
       const exceedsLimit = requestedHours > leaveBalance.permission_hours_remaining;
-
       return {
         ...leaveBalance,
         exceedsPermissionLimit: exceedsLimit,

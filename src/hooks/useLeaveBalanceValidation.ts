@@ -130,42 +130,35 @@ export function useLeaveBalanceValidation() {
 
     if (type === "permesso") {
       let requestedHours = 0;
-      
-      if (timeFrom && timeTo) {
-        // Calcola ore decimali includendo i minuti
-        requestedHours = timeToDecimalHours(timeFrom, timeTo);
-        
-        console.log(`Permesso richiesto: ${formatDecimalHours(requestedHours)}, disponibili: ${formatDecimalHours(balanceValidation.remainingPermissionHours)}`);
-        
-        // CONTROLLO RIGOROSO: anche 0 ore disponibili blocca
-        if (balanceValidation.remainingPermissionHours <= 0) {
-          console.log('❌ Nessuna ora di permesso disponibile');
-          return {
-            ...balanceValidation,
-            exceedsPermissionLimit: true,
-            errorMessage: `Non hai ore di permesso disponibili (saldo: ${formatDecimalHours(balanceValidation.remainingPermissionHours)})`
-          };
+      // Permetti anche solo uno dei due orari
+      if (timeFrom || timeTo) {
+        if (timeFrom && timeTo) {
+          requestedHours = timeToDecimalHours(timeFrom, timeTo);
+          if (balanceValidation.remainingPermissionHours <= 0) {
+            return {
+              ...balanceValidation,
+              exceedsPermissionLimit: true,
+              errorMessage: `Non hai ore di permesso disponibili (saldo: ${formatDecimalHours(balanceValidation.remainingPermissionHours)})`
+            };
+          }
+          if (requestedHours <= 0) {
+            return {
+              ...balanceValidation,
+              exceedsPermissionLimit: true,
+              errorMessage: "L'orario di fine deve essere successivo all'orario di inizio"
+            };
+          }
         }
-        
-        if (requestedHours <= 0) {
-          return {
-            ...balanceValidation,
-            exceedsPermissionLimit: true,
-            errorMessage: "L'orario di fine deve essere successivo all'orario di inizio"
-          };
-        }
-        
+        // Se solo uno dei due è presente, nessun errore di obbligatorietà
       } else {
-        // No time specified = invalid permission request
+        // Nessun orario inserito
         return {
           ...balanceValidation,
           exceedsPermissionLimit: true,
-          errorMessage: "Orario di inizio e fine sono obbligatori per i permessi"
+          errorMessage: "Inserisci almeno un orario di inizio o fine per il permesso"
         };
       }
-
       const exceedsLimit = requestedHours > balanceValidation.remainingPermissionHours;
-
       return {
         ...balanceValidation,
         exceedsPermissionLimit: exceedsLimit,
