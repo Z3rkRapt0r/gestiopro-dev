@@ -26,7 +26,6 @@ import { useLeaveRequestNotifications } from '@/hooks/useLeaveRequestNotificatio
 import { useWorkingHoursValidation } from '@/hooks/useWorkingHoursValidation';
 import WorkingDaysPreview from './WorkingDaysPreview';
 import { LeaveRequestFormValidation } from './LeaveRequestFormValidation';
-
 const leaveRequestSchema = z.object({
   type: z.enum(['ferie', 'permesso']),
   date_from: z.date().optional(),
@@ -46,13 +45,10 @@ const leaveRequestSchema = z.object({
 }, {
   message: "Compila tutti i campi obbligatori per il tipo di richiesta selezionato"
 });
-
 type LeaveRequestFormData = z.infer<typeof leaveRequestSchema>;
-
 interface LeaveRequestFormProps {
   onSuccess?: () => void;
 }
-
 export default function LeaveRequestForm({
   onSuccess
 }: LeaveRequestFormProps) {
@@ -83,7 +79,6 @@ export default function LeaveRequestForm({
     validatePermissionTime,
     getWorkingHoursInfo
   } = useWorkingHoursValidation();
-
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [balanceValidationErrors, setBalanceValidationErrors] = useState<string[]>([]);
   const [workingHoursErrors, setWorkingHoursErrors] = useState<string[]>([]);
@@ -91,14 +86,12 @@ export default function LeaveRequestForm({
     isValid: true,
     message: ''
   });
-
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
     defaultValues: {
       type: 'ferie'
     }
   });
-
   const watchedType = form.watch('type');
   const watchedDateFrom = form.watch('date_from');
   const watchedDateTo = form.watch('date_to');
@@ -159,7 +152,6 @@ export default function LeaveRequestForm({
       const timeoutId = setTimeout(() => {
         const hoursValidation = validatePermissionTime(watchedDay, watchedTimeFrom, watchedTimeTo);
         console.log('Validazione orari di lavoro:', hoursValidation);
-        
         if (!hoursValidation.isValid) {
           setWorkingHoursErrors(hoursValidation.errors);
         } else {
@@ -171,7 +163,6 @@ export default function LeaveRequestForm({
       setWorkingHoursErrors([]);
     }
   }, [watchedType, watchedDay, watchedTimeFrom, watchedTimeTo, validatePermissionTime]);
-
   const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
     if (type === 'ferie') {
@@ -201,7 +192,6 @@ export default function LeaveRequestForm({
     // Applica altri controlli (conflitti, festivi, ecc.)
     return isDateDisabled(date);
   };
-
   const onSubmit = async (data: LeaveRequestFormData) => {
     if (!profile?.id) return;
     console.log('Inizio invio richiesta:', data);
@@ -227,12 +217,10 @@ export default function LeaveRequestForm({
       setShowValidationErrors(true);
       return;
     }
-
     if (!formValidationState.isValid) {
       setShowValidationErrors(true);
       return;
     }
-
     let validationErrors: string[] = [];
     if (data.type === 'ferie' && data.date_from && data.date_to) {
       validationErrors = validateWorkingDays(data.date_from, data.date_to, data.type);
@@ -303,7 +291,6 @@ export default function LeaveRequestForm({
       }
     });
   };
-
   const workingDaysLabels = getWorkingDaysLabels();
   const validationStartDate = watchedType === 'ferie' ? watchedDateFrom ? format(watchedDateFrom, 'yyyy-MM-dd') : undefined : watchedType === 'permesso' ? watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined : undefined;
   const validationEndDate = watchedType === 'ferie' ? watchedDateTo ? format(watchedDateTo, 'yyyy-MM-dd') : undefined : watchedType === 'permesso' ? watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined : undefined;
@@ -311,7 +298,6 @@ export default function LeaveRequestForm({
   // CONTROLLO FINALE PER DISABILITARE PULSANTE - Include controllo bilancio mancante e orari
   const isFormBlocked = hasNoBalance || !formValidationState.isValid || balanceValidationErrors.length > 0 || workingHoursErrors.length > 0 || employeeStatus && employeeStatus.hasHardBlock;
   const isPendingRequest = !formValidationState.isValid && formValidationState.message.includes('richiesta in attesa');
-
   return <LeaveRequestFormValidation leaveType={watchedType} startDate={validationStartDate} endDate={validationEndDate} singleDay={watchedType === 'permesso' ? validationStartDate : undefined} onValidationChange={(isValid, message) => {
     setFormValidationState({
       isValid,
@@ -363,16 +349,7 @@ export default function LeaveRequestForm({
               </AlertDescription>
             </Alert>}
 
-          {workingDaysLabels.length > 0 && <Alert className="border-blue-200 bg-blue-50">
-              <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
-              <AlertDescription className="text-blue-700">
-                <div className="font-medium mb-2">Giorni lavorativi configurati:</div>
-                <div className="text-sm">
-                  <div className="font-medium">{workingDaysLabels.join(', ')}</div>
-                  <div className="mt-1 text-xs">Solo i giorni lavorativi verranno conteggiati per ferie e permessi.</div>
-                </div>
-              </AlertDescription>
-            </Alert>}
+          {workingDaysLabels.length > 0}
 
           {isCalculatingConflicts && <Alert className="border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
