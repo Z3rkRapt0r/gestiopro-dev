@@ -20,9 +20,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "@/hooks/use-toast";
+
 interface ManualLeaveEntryFormProps {
   onSuccess?: () => void;
 }
+
 export function ManualLeaveEntryForm({
   onSuccess
 }: ManualLeaveEntryFormProps) {
@@ -37,6 +39,8 @@ export function ManualLeaveEntryForm({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [workingHoursErrors, setWorkingHoursErrors] = useState<string[]>([]);
   const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
+  const [isValidationIncomplete, setIsValidationIncomplete] = useState<boolean>(false);
+
   const {
     employees
   } = useActiveEmployees();
@@ -66,18 +70,28 @@ export function ManualLeaveEntryForm({
   // Valida bilanci quando cambia dipendente, tipo o date
   useEffect(() => {
     if (selectedUserId) {
-      const validation = validateLeaveRequest(leaveType, startDate, endDate, startDate,
-      // day for permissions
-      timeFrom, timeTo);
-      if (!validation.hasBalance || validation.exceedsVacationLimit || validation.exceedsPermissionLimit) {
-        setBalanceValidationError(validation.errorMessage || "Errore validazione bilanci");
-      } else {
+      const validation = validateLeaveRequest(leaveType, startDate, endDate, startDate, timeFrom, timeTo);
+      
+      // Distingui tra validazione incompleta e errore reale
+      if (validation.isIncomplete) {
+        setIsValidationIncomplete(true);
         setBalanceValidationError(null);
+        console.log('⏳ Validazione incompleta - form ancora utilizzabile');
+      } else if (!validation.hasBalance || validation.exceedsVacationLimit || validation.exceedsPermissionLimit) {
+        setIsValidationIncomplete(false);
+        setBalanceValidationError(validation.errorMessage || "Errore validazione bilanci");
+        console.log('❌ Errore validazione bilanci:', validation.errorMessage);
+      } else {
+        setIsValidationIncomplete(false);
+        setBalanceValidationError(null);
+        console.log('✅ Validazione bilanci superata');
       }
     } else {
+      setIsValidationIncomplete(false);
       setBalanceValidationError(null);
     }
   }, [selectedUserId, leaveType, startDate, endDate, timeFrom, timeTo, validateLeaveRequest]);
+
   const validateDatesAgainstHireDate = (startDate?: Date, endDate?: Date, employeeId?: string) => {
     if (!startDate || !employeeId) return true;
     const employee = employees?.find(emp => emp.id === employeeId);
@@ -174,15 +188,18 @@ export function ManualLeaveEntryForm({
       await validateConflicts(startDate, date, selectedUserId);
     }
   };
+
   const handleLeaveTypeChange = (newLeaveType: "ferie" | "permesso") => {
     setLeaveType(newLeaveType);
     setValidationError(null);
     setBalanceValidationError(null);
+    setIsValidationIncomplete(false);
     // Ricontrolla i conflitti con il nuovo tipo
     if (selectedUserId && startDate) {
       validateConflicts(startDate, endDate, selectedUserId);
     }
   };
+
   const handleTimeFromChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setTimeFrom(value);
@@ -247,11 +264,13 @@ export function ManualLeaveEntryForm({
       return;
     }
 
-    // Controllo bilanci prima di tutte le altre validazioni
-    if (balanceValidationError) {
-      alert(`Errore bilanci: ${balanceValidationError}`);
+    // VALIDAZIONE FINALE: Controllo bilanci solo se tutti i campi sono compilati
+    const finalValidation = validateLeaveRequest(leaveType, startDate, endDate, startDate, timeFrom, timeTo);
+    if (!finalValidation.hasBalance || finalValidation.exceedsVacationLimit || finalValidation.exceedsPermissionLimit) {
+      alert(`Errore bilanci: ${finalValidation.errorMessage}`);
       return;
     }
+
     if (!validateDatesAgainstHireDate(startDate, endDate, selectedUserId)) {
       return;
     }
@@ -341,7 +360,12 @@ export function ManualLeaveEntryForm({
       });
     }
   };
-  return <Card className="max-w-2xl mx-auto">
+
+  // Determina se i campi devono essere disabilitati
+  const shouldDisableFields = !!balanceValidationError && !isValidationIncomplete;
+
+  return (
+    <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="w-5 h-5" />
@@ -357,35 +381,50 @@ export function ManualLeaveEntryForm({
                 <SelectValue placeholder="Seleziona un dipendente" />
               </SelectTrigger>
               <SelectContent>
-                {employees?.map(employee => <SelectItem key={employee.id} value={employee.id}>
+                {employees?.map(employee => (
+                  <SelectItem key={employee.id} value={employee.id}>
                     {employee.first_name} {employee.last_name} ({employee.email})
-                  </SelectItem>)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           {/* Mostra informazioni bilanci dipendente */}
-          {selectedUserId && leaveBalance && <Alert className="border-blue-200 bg-blue-50">
+          {selectedUserId && leaveBalance && (
+            <Alert className="border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-700">
                 <div className="font-medium mb-2">Bilancio dipendente:</div>
-                 <div className="text-sm space-y-1">
-                   <div>• Ferie: <strong>{leaveBalance.vacation_days_remaining}</strong> giorni disponibili</div>
-                   <div>• Permessi: <strong>{formatDecimalHours(leaveBalance.permission_hours_remaining)}</strong> disponibili</div>
-                 </div>
+                <div className="text-sm space-y-1">
+                  <div>• Ferie: <strong>{leaveBalance.vacation_days_remaining}</strong> giorni disponibili</div>
+                  <div>• Permessi: <strong>{formatDecimalHours(leaveBalance.permission_hours_remaining)}</strong> disponibili</div>
+                </div>
               </AlertDescription>
-            </Alert>}
+            </Alert>
+          )}
 
-          {/* Alert bilanci non configurati */}
-          {balanceValidationError && <Alert variant="destructive">
+          {/* Messaggio informativo per validazione incompleta */}
+          {isValidationIncomplete && leaveType === "permesso" && (
+            <Alert className="border-yellow-200 bg-yellow-50">
+              <Info className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-700">
+                Inserisci data e orari per completare la validazione del permesso.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Alert bilanci solo per errori reali, non per validazioni incomplete */}
+          {balanceValidationError && !isValidationIncomplete && (
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 <div className="flex items-center justify-between">
                   <span>{balanceValidationError}</span>
-                  
                 </div>
               </AlertDescription>
-            </Alert>}
+            </Alert>
+          )}
 
           <div className="space-y-2">
             <Label>Tipo di richiesta *</Label>
@@ -427,26 +466,38 @@ export function ManualLeaveEntryForm({
               </AlertDescription>
             </Alert>}
 
-          {/* Disabilita campi se non ci sono bilanci configurati */}
-          {leaveType === "ferie" ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Date picker fields - ora non più disabilitati per validazioni incomplete */}
+          {leaveType === "ferie" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Data inizio ferie *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground", balanceValidationError && "opacity-50 cursor-not-allowed")} disabled={!!balanceValidationError}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground",
+                        shouldDisableFields && "opacity-50 cursor-not-allowed"
+                      )}
+                      disabled={shouldDisableFields}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "dd/MM/yyyy", {
-                    locale: it
-                  }) : "Seleziona data"}
+                      {startDate ? format(startDate, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={startDate} onSelect={handleStartDateChange} disabled={date => {
-                  const employee = employees?.find(emp => emp.id === selectedUserId);
-                  const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                  if (hireDate && date < hireDate) return true;
-                  return isDateDisabled(date);
-                }} />
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={handleStartDateChange}
+                      disabled={(date) => {
+                        const employee = employees?.find(emp => emp.id === selectedUserId);
+                        const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                        if (hireDate && date < hireDate) return true;
+                        return isDateDisabled(date);
+                      }}
+                    />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -455,43 +506,67 @@ export function ManualLeaveEntryForm({
                 <Label>Data fine ferie *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground", balanceValidationError && "opacity-50 cursor-not-allowed")} disabled={!!balanceValidationError}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground",
+                        shouldDisableFields && "opacity-50 cursor-not-allowed"
+                      )}
+                      disabled={shouldDisableFields}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "dd/MM/yyyy", {
-                    locale: it
-                  }) : "Seleziona data"}
+                      {endDate ? format(endDate, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={endDate} onSelect={handleEndDateChange} disabled={date => {
-                  const employee = employees?.find(emp => emp.id === selectedUserId);
-                  const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                  const minDate = startDate || hireDate;
-                  if (minDate && date < minDate) return true;
-                  return isDateDisabled(date);
-                }} />
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={handleEndDateChange}
+                      disabled={(date) => {
+                        const employee = employees?.find(emp => emp.id === selectedUserId);
+                        const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                        const minDate = startDate || hireDate;
+                        if (minDate && date < minDate) return true;
+                        return isDateDisabled(date);
+                      }}
+                    />
                   </PopoverContent>
                 </Popover>
               </div>
-            </div> : <>
+            </div>
+          ) : (
+            <>
               <div className="space-y-2">
                 <Label>Data permesso *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground", balanceValidationError && "opacity-50 cursor-not-allowed")} disabled={!!balanceValidationError}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground",
+                        shouldDisableFields && "opacity-50 cursor-not-allowed"
+                      )}
+                      disabled={shouldDisableFields}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "dd/MM/yyyy", {
-                    locale: it
-                  }) : "Seleziona data"}
+                      {startDate ? format(startDate, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={startDate} onSelect={handleStartDateChange} disabled={date => {
-                  const employee = employees?.find(emp => emp.id === selectedUserId);
-                  const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
-                  if (hireDate && date < hireDate) return true;
-                  return isDateDisabled(date);
-                }} />
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={handleStartDateChange}
+                      disabled={(date) => {
+                        const employee = employees?.find(emp => emp.id === selectedUserId);
+                        const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
+                        if (hireDate && date < hireDate) return true;
+                        return isDateDisabled(date);
+                      }}
+                    />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -501,18 +576,39 @@ export function ManualLeaveEntryForm({
                   <Label htmlFor="timeFrom">Ora inizio *</Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input id="timeFrom" type="time" value={timeFrom} onChange={handleTimeFromChange} className="pl-10" placeholder="HH:MM" step="300" required disabled={!!balanceValidationError} />
+                    <Input
+                      id="timeFrom"
+                      type="time"
+                      value={timeFrom}
+                      onChange={handleTimeFromChange}
+                      className="pl-10"
+                      placeholder="HH:MM"
+                      step="300"
+                      required
+                      disabled={shouldDisableFields}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timeTo">Ora fine *</Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input id="timeTo" type="time" value={timeTo} onChange={handleTimeToChange} className="pl-10" placeholder="HH:MM" step="300" required disabled={!!balanceValidationError} />
+                    <Input
+                      id="timeTo"
+                      type="time"
+                      value={timeTo}
+                      onChange={handleTimeToChange}
+                      className="pl-10"
+                      placeholder="HH:MM"
+                      step="300"
+                      required
+                      disabled={shouldDisableFields}
+                    />
                   </div>
                 </div>
               </div>
-            </>}
+            </>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="note">Note</Label>
@@ -531,10 +627,21 @@ export function ManualLeaveEntryForm({
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={insertMutation.isPending || !!validationError || !!balanceValidationError || workingHoursErrors.length > 0 || isCalculatingConflicts}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={
+              insertMutation.isPending ||
+              !!validationError ||
+              (!!balanceValidationError && !isValidationIncomplete) ||
+              workingHoursErrors.length > 0 ||
+              isCalculatingConflicts
+            }
+          >
             {insertMutation.isPending ? "Salvando..." : "Salva Richiesta"}
           </Button>
         </form>
       </CardContent>
-    </Card>;
+    </Card>
+  );
 }
