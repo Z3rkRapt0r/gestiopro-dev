@@ -21,6 +21,7 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
     console.log('🔍 Calcolo conflitti RIGOROSO per dipendenti:', userIds);
     
     const conflictDates = new Set<string>();
+    const today = new Date();
     
     try {
       // Per ogni dipendente, verifica TUTTI i conflitti critici
@@ -84,6 +85,22 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
             allDays.forEach(day => {
               conflictDates.add(format(day, 'yyyy-MM-dd'));
             });
+          }
+        }
+
+        // 4. CONTROLLO PRESENZE ESISTENTI (NUOVO)
+        const { data: existingAttendances } = await supabase
+          .from('unified_attendances')
+          .select('date')
+          .eq('user_id', userId)
+          .not('check_in_time', 'is', null)
+          .eq('is_business_trip', false)
+          .eq('is_sick_leave', false)
+          .lte('date', format(today, 'yyyy-MM-dd'));
+
+        if (existingAttendances) {
+          for (const attendance of existingAttendances) {
+            conflictDates.add(format(new Date(attendance.date), 'yyyy-MM-dd'));
           }
         }
       }
