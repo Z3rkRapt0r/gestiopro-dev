@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
@@ -41,16 +42,17 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
         }
       }
 
-      // 2. CONTROLLO FERIE E PERMESSI APPROVATI
+      // 2. CONTROLLO FERIE APPROVATE (permessi rimossi)
       const { data: leaveRequests } = await supabase
         .from('leave_requests')
-        .select('type, date_from, date_to, day')
+        .select('type, date_from, date_to')
         .eq('user_id', userId)
-        .eq('status', 'approved');
+        .eq('status', 'approved')
+        .eq('type', 'ferie');
 
       if (leaveRequests) {
         for (const leave of leaveRequests) {
-          if (leave.type === 'ferie' && leave.date_from && leave.date_to) {
+          if (leave.date_from && leave.date_to) {
             const startDate = new Date(leave.date_from);
             const endDate = new Date(leave.date_to);
             const allDays = eachDayOfInterval({ start: startDate, end: endDate });
@@ -58,10 +60,6 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
             allDays.forEach(day => {
               conflictDates.add(format(day, 'yyyy-MM-dd'));
             });
-          }
-          
-          if (leave.type === 'permesso' && leave.day) {
-            conflictDates.add(format(new Date(leave.day), 'yyyy-MM-dd'));
           }
         }
       }
