@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -107,65 +107,68 @@ export default function NewDailyAttendanceCalendar() {
   })));
 
   // PRIMA: Calcola i dipendenti in trasferta (riorganizzato per essere calcolato per primo)
-  const onBusinessTripEmployees = [];
-  const processedEmployeeIds = new Set();
-  
-  console.log('🔍 Calcolo dipendenti in trasferta per la data:', selectedDateStr);
-  console.log('📋 Trasferte disponibili:', businessTrips?.map(trip => ({
-    user_id: trip.user_id,
-    destination: trip.destination,
-    dates: `${trip.start_date} - ${trip.end_date}`
-  })));
+  const onBusinessTripEmployees = useMemo(() => {
+    const result = [];
+    const processedEmployeeIds = new Set();
+    
+    console.log('🔍 Calcolo dipendenti in trasferta per la data:', selectedDateStr);
+    console.log('📋 Trasferte disponibili:', businessTrips?.map(trip => ({
+      user_id: trip.user_id,
+      destination: trip.destination,
+      dates: `${trip.start_date} - ${trip.end_date}`
+    })));
 
-  if (businessTrips && selectedDate) {
-    businessTrips.forEach(trip => {
-      // Usa le stringhe delle date per la comparazione più affidabile
-      const tripStartStr = trip.start_date;
-      const tripEndStr = trip.end_date;
-      const currentDateStr = selectedDateStr;
-      
-      console.log('📅 Verifica trasferta:', {
-        destination: trip.destination,
-        tripStart: tripStartStr,
-        tripEnd: tripEndStr,
-        currentDate: currentDateStr,
-        isInRange: currentDateStr >= tripStartStr && currentDateStr <= tripEndStr
-      });
-      
-      // Confronta le stringhe delle date direttamente (formato YYYY-MM-DD)
-      if (currentDateStr >= tripStartStr && currentDateStr <= tripEndStr) {
-        const employee = employees?.find(emp => emp.id === trip.user_id);
-        if (employee && !processedEmployeeIds.has(employee.id)) {
-          // Trova tutte le trasferte attive per questo dipendente nella data selezionata
-          const activeTrips = businessTrips.filter(t => {
-            return t.user_id === employee.id && 
-                   currentDateStr >= t.start_date && 
-                   currentDateStr <= t.end_date;
-          });
+    if (businessTrips && selectedDate) {
+      businessTrips.forEach(trip => {
+        // Usa le stringhe delle date per la comparazione più affidabile
+        const tripStartStr = trip.start_date;
+        const tripEndStr = trip.end_date;
+        const currentDateStr = selectedDateStr;
+        
+        console.log('📅 Verifica trasferta:', {
+          destination: trip.destination,
+          tripStart: tripStartStr,
+          tripEnd: tripEndStr,
+          currentDate: currentDateStr,
+          isInRange: currentDateStr >= tripStartStr && currentDateStr <= tripEndStr
+        });
+        
+        // Confronta le stringhe delle date direttamente (formato YYYY-MM-DD)
+        if (currentDateStr >= tripStartStr && currentDateStr <= tripEndStr) {
+          const employee = employees?.find(emp => emp.id === trip.user_id);
+          if (employee && !processedEmployeeIds.has(employee.id)) {
+            // Trova tutte le trasferte attive per questo dipendente nella data selezionata
+            const activeTrips = businessTrips.filter(t => {
+              return t.user_id === employee.id && 
+                     currentDateStr >= t.start_date && 
+                     currentDateStr <= t.end_date;
+            });
 
-          // Usa la trasferta più recente o quella con destinazione più specifica
-          const primaryTrip = activeTrips.reduce((latest, current) => {
-            return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
-          }, trip);
+            // Usa la trasferta più recente o quella con destinazione più specifica
+            const primaryTrip = activeTrips.reduce((latest, current) => {
+              return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
+            }, trip);
 
-          onBusinessTripEmployees.push({
-            ...employee,
-            businessTrip: {
-              destination: primaryTrip.destination,
-              start_date: primaryTrip.start_date,
-              end_date: primaryTrip.end_date,
-              reason: primaryTrip.reason,
-            },
-          });
-          
-          processedEmployeeIds.add(employee.id);
-          console.log('✅ Dipendente aggiunto alla lista trasferte:', employee.first_name, employee.last_name);
+            result.push({
+              ...employee,
+              businessTrip: {
+                destination: primaryTrip.destination,
+                start_date: primaryTrip.start_date,
+                end_date: primaryTrip.end_date,
+                reason: primaryTrip.reason,
+              },
+            });
+            
+            processedEmployeeIds.add(employee.id);
+            console.log('✅ Dipendente aggiunto alla lista trasferte:', employee.first_name, employee.last_name);
+          }
         }
-      }
-    });
-  }
+      });
+    }
 
-  console.log('🚌 Dipendenti in trasferta finali:', onBusinessTripEmployees.map(emp => `${emp.first_name} ${emp.last_name}`));
+    console.log('🚌 Dipendenti in trasferta finali:', result.map(emp => `${emp.first_name} ${emp.last_name}`));
+    return result;
+  }, [selectedDateStr, businessTrips, employees, selectedDate]);
 
   // DOPO: Calcola i dipendenti presenti fisicamente (escludendo quelli in trasferta)
   const presentEmployees = selectedDateAttendances
@@ -281,66 +284,69 @@ export default function NewDailyAttendanceCalendar() {
   });
 
   // Dipendenti in permesso con stato temporale
-  const onPermissionEmployees = [];
-  selectedDateLeaves.forEach(leave => {
-    if (leave.type === 'permesso' && leave.day) {
-      const employee = employees?.find(emp => emp.id === leave.user_id);
-      if (employee) {
-        const automaticAttendance = selectedDateAttendances.find(att => 
-          att.user_id === leave.user_id && (att.notes === 'Permesso' || att.notes?.includes('Permesso'))
-        );
-        
-        const isHourlyPermission = leave.time_from && leave.time_to;
-        const permissionStatus = getPermissionStatus(leave, currentTime);
-        
-        onPermissionEmployees.push({
-          ...employee,
-          attendance: automaticAttendance || null,
-          leave: leave,
-          permissionType: isHourlyPermission ? 'orario' : 'giornaliero',
-          permissionTimeFrom: leave.time_from,
-          permissionTimeTo: leave.time_to,
-          permissionStatus: permissionStatus,
-          isActive: isPermissionActive(leave, currentTime)
-        });
-      }
-    }
-  });
-
-  // Cerca anche permessi nelle attendance che potrebbero non essere più attivi
-  if (isToday) {
-    const permissionAttendances = selectedDateAttendances.filter(att => 
-      att.notes === 'Permesso' || att.notes?.includes('Permesso')
-    );
-    
-    permissionAttendances.forEach(att => {
-      const employee = employees?.find(emp => emp.id === att.user_id);
-      if (employee && !onPermissionEmployees.some(emp => emp.id === employee.id)) {
-        // Cerca la richiesta di permesso originale per ottenere gli orari
-        const relatedLeave = leaveRequests?.find(leave => 
-          leave.type === 'permesso' && 
-          leave.user_id === employee.id && 
-          leave.day === selectedDateStr &&
-          leave.status === 'approved'
-        );
-        
-        if (relatedLeave) {
-          const permissionStatus = getPermissionStatus(relatedLeave, currentTime);
+  const onPermissionEmployees = useMemo(() => {
+    const result = [];
+    selectedDateLeaves.forEach(leave => {
+      if (leave.type === 'permesso' && leave.day) {
+        const employee = employees?.find(emp => emp.id === leave.user_id);
+        if (employee) {
+          const automaticAttendance = selectedDateAttendances.find(att => 
+            att.user_id === leave.user_id && (att.notes === 'Permesso' || att.notes?.includes('Permesso'))
+          );
           
-          onPermissionEmployees.push({
+          const isHourlyPermission = leave.time_from && leave.time_to;
+          const permissionStatus = getPermissionStatus(leave, currentTime);
+          
+          result.push({
             ...employee,
-            attendance: att,
-            leave: relatedLeave,
-            permissionType: (relatedLeave.time_from && relatedLeave.time_to) ? 'orario' : 'giornaliero',
-            permissionTimeFrom: relatedLeave.time_from,
-            permissionTimeTo: relatedLeave.time_to,
+            attendance: automaticAttendance || null,
+            leave: leave,
+            permissionType: isHourlyPermission ? 'orario' : 'giornaliero',
+            permissionTimeFrom: leave.time_from,
+            permissionTimeTo: leave.time_to,
             permissionStatus: permissionStatus,
-            isActive: isPermissionActive(relatedLeave, currentTime)
+            isActive: isPermissionActive(leave, currentTime)
           });
         }
       }
     });
-  }
+
+    // Cerca anche permessi nelle attendance che potrebbero non essere più attivi
+    if (isToday) {
+      const permissionAttendances = selectedDateAttendances.filter(att => 
+        att.notes === 'Permesso' || att.notes?.includes('Permesso')
+      );
+      
+      permissionAttendances.forEach(att => {
+        const employee = employees?.find(emp => emp.id === att.user_id);
+        if (employee && !result.some(emp => emp.id === employee.id)) {
+          // Cerca la richiesta di permesso originale per ottenere gli orari
+          const relatedLeave = leaveRequests?.find(leave => 
+            leave.type === 'permesso' && 
+            leave.user_id === employee.id && 
+            leave.day === selectedDateStr &&
+            leave.status === 'approved'
+          );
+          
+          if (relatedLeave) {
+            const permissionStatus = getPermissionStatus(relatedLeave, currentTime);
+            
+            result.push({
+              ...employee,
+              attendance: att,
+              leave: relatedLeave,
+              permissionType: (relatedLeave.time_from && relatedLeave.time_to) ? 'orario' : 'giornaliero',
+              permissionTimeFrom: relatedLeave.time_from,
+              permissionTimeTo: relatedLeave.time_to,
+              permissionStatus: permissionStatus,
+              isActive: isPermissionActive(relatedLeave, currentTime)
+            });
+          }
+        }
+      });
+    }
+    return result;
+  }, [selectedDateLeaves, employees, selectedDateAttendances, isToday, leaveRequests, selectedDateStr, getPermissionStatus, currentTime, isPermissionActive]);
 
   // Calcola gli assenti con useEffect separato per evitare render instabili
   useEffect(() => {
