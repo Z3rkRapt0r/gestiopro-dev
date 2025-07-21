@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
-import { useCompanyHolidays } from './useCompanyHolidays';
 
 export interface LeaveValidationResult {
   isValid: boolean;
@@ -37,7 +36,6 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { isHoliday, getHolidayName } = useCompanyHolidays();
 
   const calculateConflicts = useCallback(async (userId?: string, type?: string) => {
     if (!userId) {
@@ -72,28 +70,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     };
     
     try {
-      // 1. CONTROLLO FESTIVITÀ
-      const today = new Date();
-      const currentYear = today.getFullYear();
-      const startOfYear = new Date(currentYear, 0, 1);
-      const endOfYear = new Date(currentYear, 11, 31);
-      const allDaysInYear = eachDayOfInterval({ start: startOfYear, end: endOfYear });
-      
-      allDaysInYear.forEach(date => {
-        if (isHoliday(date)) {
-          const dateStr = format(date, 'yyyy-MM-dd');
-          conflictDates.add(dateStr);
-          const holidayName = getHolidayName(date);
-          details.push({
-            date: dateStr,
-            type: 'vacation',
-            description: `Festività${holidayName ? `: ${holidayName}` : ''}`,
-            severity: 'critical'
-          });
-        }
-      });
-
-      // 2. CONTROLLO TRASFERTE APPROVATE (sempre conflitti critici)
+      // 1. CONTROLLO TRASFERTE APPROVATE (sempre conflitti critici)
       const { data: existingTrips } = await supabase
         .from('business_trips')
         .select('start_date, end_date, destination')
@@ -121,7 +98,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 3. CONTROLLO FERIE APPROVATE (conflitti critici per tutti i tipi)
+      // 2. CONTROLLO FERIE APPROVATE (conflitti critici per tutti i tipi)
       const { data: approvedVacations } = await supabase
         .from('leave_requests')
         .select('date_from, date_to')
@@ -152,7 +129,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 4. CONTROLLO PERMESSI APPROVATI (conflitti per permessi, malattie e presenze)
+      // 3. CONTROLLO PERMESSI APPROVATI (conflitti per permessi, malattie e presenze)
       if (type === 'permesso' || type === 'sick_leave' || type === 'attendance') {
         const { data: approvedPermissions } = await supabase
           .from('leave_requests')
@@ -183,7 +160,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 5. CONTROLLO MALATTIE (da tabella sick_leaves - conflitti critici per tutti i tipi)
+      // 4. CONTROLLO MALATTIE (da tabella sick_leaves - conflitti critici per tutti i tipi)
       const { data: sickLeaves } = await supabase
         .from('sick_leaves')
         .select('start_date, end_date, notes')
@@ -210,7 +187,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 6. CONTROLLO PRESENZE ESISTENTI (per nuove presenze e malattie)
+      // 5. CONTROLLO PRESENZE ESISTENTI (per nuove presenze e malattie)
       if (type === 'attendance' || type === 'sick_leave') {
         const { data: existingAttendances } = await supabase
           .from('unified_attendances')

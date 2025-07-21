@@ -76,14 +76,6 @@ const menuItems = [
     textColor: 'text-red-700'
   },
   {
-    id: 'holidays',
-    label: 'Festività',
-    icon: Calendar,
-    color: 'from-pink-500 to-rose-500',
-    bgColor: 'bg-pink-50',
-    textColor: 'text-pink-700'
-  },
-  {
     id: 'settings',
     label: 'Impostazioni',
     icon: Settings,

@@ -1,16 +1,11 @@
 
 import { useWorkSchedules } from './useWorkSchedules';
-import { useCompanyHolidays } from './useCompanyHolidays';
 
 export const useWorkingDaysValidation = () => {
   const { workSchedule } = useWorkSchedules();
-  const { isHoliday } = useCompanyHolidays();
 
   const isWorkingDay = (date: Date): boolean => {
     if (!workSchedule) return true; // Default: tutti i giorni sono lavorativi se non c'è configurazione
-    
-    // Controlla se è una festività
-    if (isHoliday(date)) return false;
     
     const dayOfWeek = date.getDay();
     switch (dayOfWeek) {
