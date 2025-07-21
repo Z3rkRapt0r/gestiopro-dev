@@ -9,6 +9,7 @@ import AdminEmployeesSection from './AdminEmployeesSection';
 import AdminAttendanceSection from './AdminAttendanceSection';
 import AdminDocumentsSection from './AdminDocumentsSection';
 import NotificationsSection from './NotificationsSection';
+import AdminHolidaysSection from '../admin/AdminHolidaysSection';
 import AdminSettingsSection from '../admin/AdminSettingsSection';
 import AdminLeaveApprovalsSection from '../leave/AdminLeaveApprovalsSection';
 import AdminOvertimeSection from '../overtime/AdminOvertimeSection';
@@ -25,6 +26,7 @@ const tabTitles = {
   leaves: 'Gestione Permessi',
   documents: 'Gestione Documenti',
   notifications: 'Centro Notifiche',
+  holidays: 'Gestione Festività',
   settings: 'Impostazioni Sistema'
 };
 
@@ -74,6 +76,8 @@ export default function ModernAdminDashboard() {
         return <AdminDocumentsSection />;
       case 'notifications':
         return <NotificationsSection />;
+      case 'holidays':
+        return <AdminHolidaysSection />;
       case 'settings':
         return <AdminSettingsSection />;
       default:

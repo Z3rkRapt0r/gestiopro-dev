@@ -2,11 +2,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
+import { useCompanyHolidays } from './useCompanyHolidays';
 
 export const useOvertimeConflicts = (selectedEmployeeId: string) => {
   const [conflictDates, setConflictDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isHoliday } = useCompanyHolidays();
 
   const calculateConflicts = useCallback(async (userId: string) => {
     if (!userId) {
@@ -23,7 +25,20 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
     const conflictDates = new Set<string>();
     
     try {
-      // 1. CONTROLLO TRASFERTE APPROVATE
+      // 1. CONTROLLO FESTIVITÀ
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const startOfYear = new Date(currentYear, 0, 1);
+      const endOfYear = new Date(currentYear, 11, 31);
+      const allDaysInYear = eachDayOfInterval({ start: startOfYear, end: endOfYear });
+      
+      allDaysInYear.forEach(date => {
+        if (isHoliday(date)) {
+          conflictDates.add(format(date, 'yyyy-MM-dd'));
+        }
+      });
+
+      // 2. CONTROLLO TRASFERTE APPROVATE
       const { data: businessTrips } = await supabase
         .from('business_trips')
         .select('start_date, end_date')
@@ -42,7 +57,7 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
         }
       }
 
-      // 2. CONTROLLO FERIE APPROVATE (permessi rimossi)
+      // 3. CONTROLLO FERIE APPROVATE (permessi rimossi)
       const { data: leaveRequests } = await supabase
         .from('leave_requests')
         .select('type, date_from, date_to')
@@ -64,7 +79,7 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
         }
       }
 
-      // 3. CONTROLLO MALATTIE (dalla nuova tabella dedicata)
+      // 4. CONTROLLO MALATTIE (dalla nuova tabella dedicata)
       const { data: sickLeaves } = await supabase
         .from('sick_leaves')
         .select('start_date, end_date')
