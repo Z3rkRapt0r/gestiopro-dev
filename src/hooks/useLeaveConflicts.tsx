@@ -15,12 +15,11 @@ export interface ConflictSummary {
   permissions: number;
   sickLeaves: number;
   attendances: number;
-  holidays: number;
 }
 
 export interface ConflictDetail {
   date: string;
-  type: 'business_trip' | 'vacation' | 'permission' | 'sick_leave' | 'attendance' | 'holiday';
+  type: 'business_trip' | 'vacation' | 'permission' | 'sick_leave' | 'attendance';
   description: string;
   severity: 'critical' | 'warning';
 }
@@ -34,12 +33,11 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     vacations: 0,
     permissions: 0,
     sickLeaves: 0,
-    attendances: 0,
-    holidays: 0
+    attendances: 0
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { isHoliday, getHolidayName, isLoading: holidaysLoading } = useCompanyHolidays();
+  const { isHoliday, getHolidayName } = useCompanyHolidays();
 
   const calculateConflicts = useCallback(async (userId?: string, type?: string) => {
     if (!userId) {
@@ -51,23 +49,16 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         vacations: 0,
         permissions: 0,
         sickLeaves: 0,
-        attendances: 0,
-        holidays: 0
+        attendances: 0
       });
       setIsLoading(false);
-      return;
-    }
-
-    // ATTENDIAMO che le festività siano caricate prima di procedere
-    if (holidaysLoading) {
-      console.log('⏳ Attendo caricamento festività...');
       return;
     }
 
     setIsLoading(true);
     setError(null);
     
-    console.log('🔍 Calcolo conflitti AVANZATO per:', { userId, type, holidaysLoaded: !holidaysLoading });
+    console.log('🔍 Calcolo conflitti proattivo per:', { userId, type });
     
     const conflictDates = new Set<string>();
     const details: ConflictDetail[] = [];
@@ -77,42 +68,30 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
       vacations: 0,
       permissions: 0,
       sickLeaves: 0,
-      attendances: 0,
-      holidays: 0
+      attendances: 0
     };
     
     try {
-      // 1. CONTROLLO FESTIVITÀ (CON DEBUG MIGLIORATO)
+      // 1. CONTROLLO FESTIVITÀ
       const today = new Date();
       const currentYear = today.getFullYear();
       const startOfYear = new Date(currentYear, 0, 1);
       const endOfYear = new Date(currentYear, 11, 31);
       const allDaysInYear = eachDayOfInterval({ start: startOfYear, end: endOfYear });
       
-      console.log('🎄 Controllo festività per tutto l\'anno:', {
-        startOfYear: format(startOfYear, 'yyyy-MM-dd'),
-        endOfYear: format(endOfYear, 'yyyy-MM-dd'),
-        totalDays: allDaysInYear.length
-      });
-      
-      let holidaysFound = 0;
       allDaysInYear.forEach(date => {
         if (isHoliday(date)) {
-          holidaysFound++;
           const dateStr = format(date, 'yyyy-MM-dd');
           conflictDates.add(dateStr);
           const holidayName = getHolidayName(date);
           details.push({
             date: dateStr,
-            type: 'holiday',
+            type: 'vacation',
             description: `Festività${holidayName ? `: ${holidayName}` : ''}`,
             severity: 'critical'
           });
         }
       });
-      
-      summary.holidays = holidaysFound;
-      console.log('🎄 Festività trovate nell\'anno:', holidaysFound);
 
       // 2. CONTROLLO TRASFERTE APPROVATE (sempre conflitti critici)
       const { data: existingTrips } = await supabase
@@ -282,9 +261,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
-      console.log('📅 Riepilogo conflitti calcolati FINALE:', summary);
+      console.log('📅 Riepilogo conflitti calcolati:', summary);
       console.log('📋 Dettagli conflitti:', details.length);
-      console.log('🗓️ Date con conflitti:', conflictDateObjects.length);
       
       setConflictDates(conflictDateObjects);
       setConflictDetails(details);
@@ -301,41 +279,25 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         vacations: 0,
         permissions: 0,
         sickLeaves: 0,
-        attendances: 0,
-        holidays: 0
+        attendances: 0
       });
     } finally {
       setIsLoading(false);
     }
-  }, [isHoliday, getHolidayName, holidaysLoading]);
+  }, []);
 
   useEffect(() => {
-    // Non calcolare se le festività stanno ancora caricando
-    if (holidaysLoading) {
-      console.log('⏳ Festività in caricamento, attendiamo...');
-      return;
-    }
-
     const timeoutId = setTimeout(() => {
       calculateConflicts(selectedUserId, leaveType);
     }, 300); // Debounce di 300ms
 
     return () => clearTimeout(timeoutId);
-  }, [selectedUserId, leaveType, calculateConflicts, holidaysLoading]);
+  }, [selectedUserId, leaveType, calculateConflicts]);
 
   const isDateDisabled = useCallback((date: Date) => {
-    const isDisabled = conflictDates.some(conflictDate => 
+    return conflictDates.some(conflictDate => 
       format(date, 'yyyy-MM-dd') === format(conflictDate, 'yyyy-MM-dd')
     );
-    
-    if (isDisabled) {
-      console.log('🚫 Data BLOCCATA dal calendario:', {
-        date: format(date, 'yyyy-MM-dd'),
-        conflicts: getConflictDetailsForDate(date)
-      });
-    }
-    
-    return isDisabled;
   }, [conflictDates]);
 
   const getConflictDetailsForDate = useCallback((date: Date) => {
@@ -720,7 +682,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     conflictDates,
     conflictDetails,
     conflictSummary,
-    isLoading: isLoading || holidaysLoading,
+    isLoading,
     error,
     isDateDisabled,
     getConflictDetailsForDate,
