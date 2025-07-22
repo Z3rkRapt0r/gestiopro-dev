@@ -33,7 +33,8 @@ import {
   Loader2, 
   MoreVertical, 
   HardDrive, 
-  Trash2
+  Trash2,
+  User
 } from 'lucide-react';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import CreateEmployeeForm from './CreateEmployeeForm';
@@ -342,6 +343,14 @@ export default function AdminEmployeesSection() {
                             className="border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200"
                           >
                             <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(`/employee/${employee.id}`, '_blank')}
+                            className="border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200"
+                          >
+                            <User className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="outline"

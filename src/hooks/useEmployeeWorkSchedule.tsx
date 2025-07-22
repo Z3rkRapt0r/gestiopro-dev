@@ -1,0 +1,64 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+export interface EmployeeWorkSchedule {
+  id: string;
+  employee_id: string;
+  work_days: string[];
+  start_time: string;
+  end_time: string;
+}
+
+export const useEmployeeWorkSchedule = (employeeId?: string) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: workSchedule, isLoading } = useQuery({
+    queryKey: ['employee-work-schedule', employeeId],
+    enabled: !!employeeId,
+    queryFn: async () => {
+      if (!employeeId) return null;
+      const { data, error } = await supabase
+        .from('employee_work_schedules')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as EmployeeWorkSchedule | null;
+    },
+  });
+
+  const upsertWorkSchedule = useMutation({
+    mutationFn: async (newSchedule: Omit<EmployeeWorkSchedule, 'id'>) => {
+      const { data, error } = await supabase
+        .from('employee_work_schedules')
+        .upsert(newSchedule, { onConflict: 'employee_id' })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee-work-schedule', employeeId] });
+      toast({
+        title: 'Orari salvati',
+        description: 'Orari di lavoro dipendente aggiornati',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Errore',
+        description: error.message || 'Errore aggiornamento orari dipendente',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  return {
+    workSchedule,
+    isLoading,
+    upsertWorkSchedule: upsertWorkSchedule.mutate,
+    isUpdating: upsertWorkSchedule.isPending,
+  };
+}; 
