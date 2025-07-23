@@ -86,7 +86,9 @@ export const useDocuments = () => {
 
       const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          metadata: { owner: finalTargetUserId }
+        });
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);

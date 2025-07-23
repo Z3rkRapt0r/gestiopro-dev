@@ -76,8 +76,7 @@ export default function LeaveRequestForm({
     notifyAdmin
   } = useLeaveRequestNotifications();
   const {
-    validatePermissionTime,
-    getWorkingHoursInfo
+    validatePermissionTime
   } = useWorkingHoursValidation();
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [balanceValidationErrors, setBalanceValidationErrors] = useState<string[]>([]);
@@ -113,9 +112,6 @@ export default function LeaveRequestForm({
 
   // CONTROLLO BILANCIO: se non c'è bilancio configurato, blocca tutto
   const hasNoBalance = !isLoadingBalance && !leaveBalance;
-
-  // Informazioni orari di lavoro
-  const workingHoursInfo = getWorkingHoursInfo();
 
   // VALIDAZIONE SALDO MIGLIORATA - Real-time e rigorosa
   useEffect(() => {
@@ -298,6 +294,11 @@ export default function LeaveRequestForm({
   // CONTROLLO FINALE PER DISABILITARE PULSANTE - Include controllo bilancio mancante e orari
   const isFormBlocked = hasNoBalance || !formValidationState.isValid || balanceValidationErrors.length > 0 || workingHoursErrors.length > 0 || employeeStatus && employeeStatus.hasHardBlock;
   const isPendingRequest = !formValidationState.isValid && formValidationState.message.includes('richiesta in attesa');
+
+  // Controllo di sicurezza: se il profilo non è caricato, mostra un messaggio chiaro
+  if (!profile) {
+    return <div className="p-8 text-center text-red-600">Impossibile caricare il profilo utente. Riprova o contatta l'amministratore.</div>;
+  }
   return <LeaveRequestFormValidation leaveType={watchedType} startDate={validationStartDate} endDate={validationEndDate} singleDay={watchedType === 'permesso' ? validationStartDate : undefined} onValidationChange={(isValid, message) => {
     setFormValidationState({
       isValid,
@@ -330,21 +331,6 @@ export default function LeaveRequestForm({
                     <span>• Ferie: <strong>{leaveBalance.vacation_days_remaining}</strong> giorni su {leaveBalance.vacation_days_total}</span>
                     <span>• Permessi: <strong>{formatDecimalHours(leaveBalance.permission_hours_remaining)}</strong> su {formatDecimalHours(leaveBalance.permission_hours_total)}</span>
                   </div>
-                </div>
-              </AlertDescription>
-            </Alert>}
-
-          {/* Informazioni orari di lavoro */}
-          {workingHoursInfo && <Alert className="border-blue-200 bg-blue-50">
-              <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
-              <AlertDescription className="text-blue-700">
-                <div className="font-medium mb-2">Orari di lavoro configurati:</div>
-                <div className="text-sm space-y-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                    <span>• Giorni: <strong>{workingHoursInfo.workingDays}</strong></span>
-                    <span>• Orari: <strong>{workingHoursInfo.workingHours}</strong></span>
-                  </div>
-                  <div className="mt-1 text-xs">I permessi devono essere richiesti solo nei giorni e orari lavorativi.</div>
                 </div>
               </AlertDescription>
             </Alert>}

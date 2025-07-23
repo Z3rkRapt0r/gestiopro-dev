@@ -34,7 +34,9 @@ import {
   MoreVertical, 
   HardDrive, 
   Trash2,
-  User
+  User,
+  Clock,
+  FileText
 } from 'lucide-react';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import CreateEmployeeForm from './CreateEmployeeForm';
@@ -350,7 +352,7 @@ export default function AdminEmployeesSection() {
                             onClick={() => window.open(`/employee/${employee.id}`, '_blank')}
                             className="border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200"
                           >
-                            <User className="w-4 h-4" />
+                            <Clock className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="outline"
@@ -358,7 +360,7 @@ export default function AdminEmployeesSection() {
                             onClick={() => window.open(`/admin/documents/${employee.id}`, '_blank')}
                             className="border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200"
                           >
-                            <Eye className="w-4 h-4" />
+                            <FileText className="w-4 h-4" />
                           </Button>
                           
                           <DropdownMenu>

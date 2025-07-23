@@ -1,5 +1,6 @@
 
 import { useWorkSchedules } from './useWorkSchedules';
+import { useEmployeeWorkSchedule } from './useEmployeeWorkSchedule';
 
 export interface WorkingHoursValidation {
   isValid: boolean;
@@ -7,8 +8,10 @@ export interface WorkingHoursValidation {
   warnings: string[];
 }
 
-export const useWorkingHoursValidation = () => {
-  const { workSchedule } = useWorkSchedules();
+export const useWorkingHoursValidation = (employeeId?: string) => {
+  const { workSchedule: companyWorkSchedule } = useWorkSchedules();
+  const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(employeeId);
+  const workSchedule = employeeWorkSchedule || companyWorkSchedule;
 
   const validatePermissionTime = (
     day: Date,
@@ -26,21 +29,29 @@ export const useWorkingHoursValidation = () => {
     // Verifica se il giorno è lavorativo
     const dayOfWeek = day.getDay();
     const isWorkingDay = (() => {
-      switch (dayOfWeek) {
-        case 0: return workSchedule.sunday;
-        case 1: return workSchedule.monday;
-        case 2: return workSchedule.tuesday;
-        case 3: return workSchedule.wednesday;
-        case 4: return workSchedule.thursday;
-        case 5: return workSchedule.friday;
-        case 6: return workSchedule.saturday;
-        default: return false;
+      if ('work_days' in workSchedule) {
+        // employeeWorkSchedule: work_days è un array di string
+        const days = workSchedule.work_days;
+        const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        return days.includes(dayNames[dayOfWeek]);
+      } else {
+        // companyWorkSchedule: boolean per ogni giorno
+        switch (dayOfWeek) {
+          case 0: return workSchedule.sunday;
+          case 1: return workSchedule.monday;
+          case 2: return workSchedule.tuesday;
+          case 3: return workSchedule.wednesday;
+          case 4: return workSchedule.thursday;
+          case 5: return workSchedule.friday;
+          case 6: return workSchedule.saturday;
+          default: return false;
+        }
       }
     })();
 
     if (!isWorkingDay) {
       const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-      errors.push(`${dayNames[dayOfWeek]} non è un giorno lavorativo secondo la configurazione aziendale`);
+      errors.push(`${dayNames[dayOfWeek]} non è un giorno lavorativo secondo la configurazione`);
     }
 
     // Verifica orari
@@ -68,28 +79,5 @@ export const useWorkingHoursValidation = () => {
     };
   };
 
-  const getWorkingHoursInfo = () => {
-    if (!workSchedule) return null;
-
-    const workingDays = [];
-    if (workSchedule.monday) workingDays.push('Lun');
-    if (workSchedule.tuesday) workingDays.push('Mar');
-    if (workSchedule.wednesday) workingDays.push('Mer');
-    if (workSchedule.thursday) workingDays.push('Gio');
-    if (workSchedule.friday) workingDays.push('Ven');
-    if (workSchedule.saturday) workingDays.push('Sab');
-    if (workSchedule.sunday) workingDays.push('Dom');
-
-    return {
-      workingDays: workingDays.join(', '),
-      workingHours: `${workSchedule.start_time} - ${workSchedule.end_time}`,
-      toleranceMinutes: workSchedule.tolerance_minutes
-    };
-  };
-
-  return {
-    validatePermissionTime,
-    getWorkingHoursInfo,
-    workSchedule
-  };
+  return { validatePermissionTime, workSchedule };
 };

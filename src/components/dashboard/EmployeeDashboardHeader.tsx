@@ -13,11 +13,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
 
 const EmployeeDashboardHeader = () => {
   const { profile, signOut } = useAuth();
   const { settings: dashboardSettings } = useDashboardSettings();
   const { settings: employeeLogoSettings } = useEmployeeLogoSettings();
+  const navigate = useNavigate();
 
   // Determina quale logo mostrare: prima il logo dedicato dipendenti, poi quello dashboard generale
   const logoToShow = employeeLogoSettings.employee_logo_enabled && employeeLogoSettings.employee_default_logo_url
@@ -100,7 +102,7 @@ const EmployeeDashboardHeader = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer">
+                <DropdownMenuItem className="cursor-pointer" onClick={() => navigate(`/employee/${profile?.id}`)}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profilo</span>
                 </DropdownMenuItem>
