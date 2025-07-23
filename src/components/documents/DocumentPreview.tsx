@@ -1,8 +1,9 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { supabase } from "@/integrations/supabase/client";
 
 interface DocumentPreviewProps {
   document: any;
@@ -16,6 +17,19 @@ const DocumentPreview = ({ document, isOpen, onClose, onDownload }: DocumentPrev
   
   const isImage = document?.file_type?.startsWith('image/');
   const isPdf = document?.file_type === 'application/pdf';
+
+  // URL firmato per PDF privati
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (isPdf && document?.file_path) {
+      supabase.storage
+        .from('documents')
+        .createSignedUrl(document.file_path, 60)
+        .then(({ data }) => setSignedUrl(data?.signedUrl || null));
+    } else {
+      setSignedUrl(null);
+    }
+  }, [document, isPdf]);
   
   const getFileUrl = () => {
     // In una implementazione reale, qui useresti supabase.storage.from('documents').getPublicUrl()
@@ -55,6 +69,16 @@ const DocumentPreview = ({ document, isOpen, onClose, onDownload }: DocumentPrev
                 alt={document?.title}
                 className="max-w-full max-h-[600px] object-contain"
                 onError={() => setImageError(true)}
+              />
+            </div>
+          ) : isPdf && signedUrl ? (
+            <div className="flex justify-center items-center min-h-[400px] bg-gray-50 rounded-lg">
+              <iframe
+                src={signedUrl}
+                title="Anteprima PDF"
+                width="100%"
+                height="600px"
+                style={{ border: "none" }}
               />
             </div>
           ) : isPdf ? (
