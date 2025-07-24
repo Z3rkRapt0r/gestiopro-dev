@@ -143,18 +143,18 @@ serve(async (req) => {
           templateCategory = 'amministratori';
         } else {
           templateType = 'permessi-richiesta';
-          templateCategory = 'dipendenti';
+          templateCategory = 'amministratori';
         }
       } else if (lowerSubject.includes('ferie')) {
         if (lowerSubject.includes('approvata') || lowerSubject.includes('approvato')) {
           templateType = 'ferie-approvazione';
-          templateCategory = 'amministratori';
+          templateCategory = 'dipendenti';
         } else if (lowerSubject.includes('rifiutata') || lowerSubject.includes('rifiutato')) {
           templateType = 'ferie-rifiuto';
-          templateCategory = 'amministratori';
+          templateCategory = 'dipendenti';
         } else {
           templateType = 'ferie-richiesta';
-          templateCategory = 'dipendenti';
+          templateCategory = 'amministratori';
         }
       } else {
         // FIXED: For generic notifications, use correct logic
