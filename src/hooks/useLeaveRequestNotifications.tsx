@@ -71,26 +71,23 @@ export const useLeaveRequestNotifications = () => {
         }
       }
 
-      // CRITICAL FIX: Prepare email payload with proper parameters for all leave types
+      // SIMPLIFIED: Prepare email payload for the new dedicated edge function
       const emailPayload: any = {
         recipientId,
-        subject, // Can be null for database template priority
-        shortText, // Can be null for database template priority
-        topic,
-        body,
-        employeeName: employeeFullName // FIXED: Pass the constructed full name
+        employeeName: employeeFullName,
+        leaveType: leaveRequest.type,
+        leaveDetails: body,
+        isApproval,
+        isRejection
       };
 
-      // FIXED: Add adminNote for approvals and rejections - this will be handled separately by the template
+      // Add admin note for approvals and rejections
       if ((isApproval || isRejection) && adminNote) {
         emailPayload.adminNote = adminNote;
         console.log('Adding admin note for leave response notification:', adminNote);
       }
 
-      // FIXED: Do NOT include employeeEmail for new leave requests to ensure they are treated as internal admin notifications
-      // This ensures all leave requests are sent from the configured Brevo sender to admin recipients
-
-      // FIXED: Add employee note for leave requests - this is already included in body for new requests
+      // Add employee note for new requests
       if (!isApproval && !isRejection && leaveRequest.note) {
         emailPayload.employeeNote = leaveRequest.note;
         console.log('Adding employee note for leave request:', leaveRequest.note);
@@ -98,7 +95,7 @@ export const useLeaveRequestNotifications = () => {
 
       console.log('Sending leave request notification payload:', emailPayload);
 
-      const { data, error } = await supabase.functions.invoke('send-notification-email', {
+      const { data, error } = await supabase.functions.invoke('send-leave-request-email', {
         body: emailPayload
       });
 
