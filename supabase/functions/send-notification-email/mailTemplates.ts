@@ -213,11 +213,11 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // FIXED: Admin Message Section - Only for admin-to-employee communications - SAFE
+  // FIXED: Admin Message Section - Show for leave requests (contains request details) and admin-to-employee communications - SAFE
   let adminMessageSection = '';
   
-  // Show admin message only when admin is sending to employee (not when employee sends to admin)
-  const shouldShowAdminMessage = safeAdminMessage && safeAdminMessage.trim() !== '' && isAdminToEmployee;
+  // Show admin message for leave requests (contains request details) OR when admin is sending to employee
+  const shouldShowAdminMessage = safeAdminMessage && safeAdminMessage.trim() !== '' && (isLeaveRequest || isAdminToEmployee);
   
   console.log("[Mail Templates] Admin message section decision:");
   console.log("  adminMessage exists:", !!safeAdminMessage);
