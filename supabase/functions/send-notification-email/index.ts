@@ -372,6 +372,13 @@ serve(async (req) => {
       try {
         console.log("[Notification Email] Preparing email for recipient:", recipient.email);
         
+        // ENHANCED: Email validation before processing
+        if (!recipient.email || !recipient.email.includes('@')) {
+          console.error("[Notification Email] Invalid recipient email:", recipient.email);
+          errors.push(`Invalid email address: ${recipient.email}`);
+          continue;
+        }
+        
         const attachmentSection = buildAttachmentSection(null, templateData.primary_color);
         
         const isDocumentEmail = templateType === 'documenti';
@@ -576,27 +583,49 @@ serve(async (req) => {
         }
 
         console.log("[Notification Email] Sending email to:", recipient.email, "with sender:", senderEmail);
+        console.log("[Notification Email] Email config object:", JSON.stringify({
+          sender: emailConfig.sender,
+          to: emailConfig.to,
+          subject: emailConfig.subject,
+          hasHtmlContent: !!emailConfig.htmlContent,
+          htmlContentLength: emailConfig.htmlContent?.length || 0,
+          hasReplyTo: !!emailConfig.replyTo
+        }, null, 2));
 
-        // Send email via Brevo
-        const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "api-key": adminSetting.brevo_api_key,
-          },
-          body: JSON.stringify(emailConfig),
-        });
+        // ENHANCED: Detailed Brevo API call with comprehensive logging
+        try {
+          console.log("[Notification Email] About to call Brevo API...");
+          
+          const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "api-key": adminSetting.brevo_api_key,
+            },
+            body: JSON.stringify(emailConfig),
+          });
 
-        if (!brevoResponse.ok) {
-          const errorText = await brevoResponse.text();
-          console.error(`[Notification Email] Brevo API error for ${recipient.email}:`, errorText);
-          errors.push(`Failed to send to ${recipient.email}: ${errorText}`);
+          console.log("[Notification Email] Brevo API response status:", brevoResponse.status);
+          console.log("[Notification Email] Brevo API response headers:", Object.fromEntries(brevoResponse.headers.entries()));
+
+          if (!brevoResponse.ok) {
+            const errorText = await brevoResponse.text();
+            console.error(`[Notification Email] Brevo API error for ${recipient.email}:`, errorText);
+            console.error(`[Notification Email] Brevo API status: ${brevoResponse.status}`);
+            errors.push(`Failed to send to ${recipient.email}: Status ${brevoResponse.status} - ${errorText}`);
+            continue;
+          }
+
+          const brevoResult = await brevoResponse.json();
+          console.log("[Notification Email] Brevo API success response:", JSON.stringify(brevoResult, null, 2));
+          console.log("[Notification Email] Email sent successfully to", recipient.email);
+          successCount++;
+          
+        } catch (brevoError) {
+          console.error(`[Notification Email] Brevo API call failed for ${recipient.email}:`, brevoError);
+          errors.push(`Failed to call Brevo API for ${recipient.email}: ${brevoError.message}`);
           continue;
         }
-
-        const brevoResult = await brevoResponse.json();
-        console.log("[Notification Email] Email sent successfully to", recipient.email);
-        successCount++;
 
       } catch (error) {
         console.error(`[Notification Email] Error sending email to ${recipient.email}:`, error);
