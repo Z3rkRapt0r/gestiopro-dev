@@ -240,6 +240,39 @@ export type Database = {
         }
         Relationships: []
       }
+      company_holidays: {
+        Row: {
+          admin_id: string
+          created_at: string | null
+          date: string
+          description: string | null
+          id: string
+          is_recurring: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       dashboard_settings: {
         Row: {
           admin_id: string
@@ -600,6 +633,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      employee_work_schedules: {
+        Row: {
+          created_at: string | null
+          employee_id: string
+          end_time: string
+          id: string
+          start_time: string
+          updated_at: string | null
+          work_days: string[]
+        }
+        Insert: {
+          created_at?: string | null
+          employee_id: string
+          end_time: string
+          id?: string
+          start_time: string
+          updated_at?: string | null
+          work_days: string[]
+        }
+        Update: {
+          created_at?: string | null
+          employee_id?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          updated_at?: string | null
+          work_days?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_work_schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leave_requests: {
         Row: {
@@ -1271,6 +1342,10 @@ export type Database = {
       }
       is_admin: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_employee_code_unique: {
+        Args: { code: string; exclude_id?: string }
         Returns: boolean
       }
       populate_working_days_for_user: {
