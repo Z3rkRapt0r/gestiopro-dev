@@ -573,9 +573,20 @@ serve(async (req) => {
           });
           
           console.log("[Notification Email] HTML content built successfully");
+          console.log("[Notification Email] HTML content length:", htmlContent?.length || 0);
         } catch (htmlError) {
           console.error("[Notification Email] Error building HTML content:", htmlError);
+          console.error("[Notification Email] Error stack:", htmlError.stack);
           throw htmlError;
+        }
+
+        console.log("[Notification Email] About to validate email configuration...");
+        
+        // ENHANCED: Email validation before processing
+        if (!recipient.email || !recipient.email.includes('@')) {
+          console.error("[Notification Email] Invalid recipient email:", recipient.email);
+          errors.push(`Invalid email address: ${recipient.email}`);
+          continue;
         }
 
         // Email sending configuration
@@ -590,6 +601,8 @@ serve(async (req) => {
           emailConfig.replyTo = { email: dynamicReplyTo };
           console.log("[Notification Email] Setting reply-to:", dynamicReplyTo);
         }
+
+        console.log("[Notification Email] Email config validated successfully");
 
         console.log("[Notification Email] Sending email to:", recipient.email, "with sender:", senderEmail);
         console.log("[Notification Email] Email config object:", JSON.stringify({
