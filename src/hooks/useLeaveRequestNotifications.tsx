@@ -87,11 +87,8 @@ export const useLeaveRequestNotifications = () => {
         console.log('Adding admin note for leave response notification:', adminNote);
       }
 
-      // For new leave requests from employee to admin, include employee email for reply-to
-      if (!isApproval && !isRejection && employeeProfile.email) {
-        emailPayload.employeeEmail = employeeProfile.email;
-        console.log('Adding employee email for leave request notification:', employeeProfile.email);
-      }
+      // FIXED: Do NOT include employeeEmail for new leave requests to ensure they are treated as internal admin notifications
+      // This ensures all leave requests are sent from the configured Brevo sender to admin recipients
 
       // FIXED: Add employee note for leave requests - this is already included in body for new requests
       if (!isApproval && !isRejection && leaveRequest.note) {
