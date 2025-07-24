@@ -497,60 +497,69 @@ serve(async (req) => {
           console.log("[Notification Email] Leave-related email detected, formatting details:", leaveDetails);
         }
 
-        const htmlContent = buildHtmlContent({
-          subject: emailSubject,
-          shortText: emailContent,
-          logoUrl,
-          attachmentSection,
-          senderEmail,
-          isDocumentEmail,
-          templateType,
-          primaryColor: templateData.primary_color,
-          backgroundColor: templateData.background_color,
-          textColor: templateData.text_color,
-          logoAlignment,
-          footerText: templateData.footer_text,
-          footerColor: templateData.footer_color,
-          fontFamily: templateData.font_family,
-          buttonColor: templateData.button_color,
-          buttonTextColor: templateData.button_text_color,
-          borderRadius: templateData.border_radius,
-          logoSize,
-          headerAlignment: templateData.header_alignment,
-          bodyAlignment: templateData.body_alignment,
-          fontSize: templateData.font_size,
-          showDetailsButton: templateData.show_details_button,
-          showLeaveDetails: templateData.show_leave_details,
-          showAdminNotes: templateData.show_admin_notes,
-          // FIXED: Pass properly formatted leave details for all leave types
-          leaveDetails: leaveDetails,
-          // FIXED: Pass admin notes correctly for leave responses
-          adminNotes: isLeaveResponse ? (adminNote || '') : '',
-          // FIXED: Pass employee notes correctly for leave requests
-          employeeNotes: isLeaveRequest ? (employeeNote || '') : '',
-          leaveDetailsBgColor: templateData.leave_details_bg_color,
-          leaveDetailsTextColor: templateData.leave_details_text_color,
-          adminNotesBgColor: templateData.admin_notes_bg_color,
-          adminNotesTextColor: templateData.admin_notes_text_color,
-          showCustomBlock: templateData.show_custom_block,
-          customBlockText: templateData.custom_block_text,
-          customBlockBgColor: templateData.custom_block_bg_color,
-          customBlockTextColor: templateData.custom_block_text_color,
-          dynamicSubject: emailSubject,
-          dynamicContent: emailContent,
-          employeeEmail: employeeEmail,
-          // FIXED: Pass admin message parameters correctly for leave responses
-          showAdminMessage: templateData.show_admin_message && isLeaveResponse,
-          adminMessage: finalAdminMessage,
-          adminMessageBgColor: templateData.admin_message_bg_color,
-          adminMessageTextColor: templateData.admin_message_text_color,
-          // NEW: Pass recipient name to template
-          recipientName: recipientName,
-          // NEW: Pass button configuration to template
-          showButton: templateData.show_button,
-          buttonText: templateData.button_text,
-          buttonUrl: templateData.button_url,
-        });
+        console.log("[Notification Email] About to build HTML content...");
+        
+        try {
+          const htmlContent = buildHtmlContent({
+            subject: emailSubject,
+            shortText: emailContent,
+            logoUrl,
+            attachmentSection,
+            senderEmail,
+            isDocumentEmail,
+            templateType,
+            primaryColor: templateData.primary_color,
+            backgroundColor: templateData.background_color,
+            textColor: templateData.text_color,
+            logoAlignment,
+            footerText: templateData.footer_text,
+            footerColor: templateData.footer_color,
+            fontFamily: templateData.font_family,
+            buttonColor: templateData.button_color,
+            buttonTextColor: templateData.button_text_color,
+            borderRadius: templateData.border_radius,
+            logoSize,
+            headerAlignment: templateData.header_alignment,
+            bodyAlignment: templateData.body_alignment,
+            fontSize: templateData.font_size,
+            showDetailsButton: templateData.show_details_button,
+            showLeaveDetails: templateData.show_leave_details,
+            showAdminNotes: templateData.show_admin_notes,
+            // FIXED: Pass properly formatted leave details for all leave types
+            leaveDetails: leaveDetails,
+            // FIXED: Pass admin notes correctly for leave responses
+            adminNotes: isLeaveResponse ? (adminNote || '') : '',
+            // FIXED: Pass employee notes correctly for leave requests
+            employeeNotes: isLeaveRequest ? (employeeNote || '') : '',
+            leaveDetailsBgColor: templateData.leave_details_bg_color,
+            leaveDetailsTextColor: templateData.leave_details_text_color,
+            adminNotesBgColor: templateData.admin_notes_bg_color,
+            adminNotesTextColor: templateData.admin_notes_text_color,
+            showCustomBlock: templateData.show_custom_block,
+            customBlockText: templateData.custom_block_text,
+            customBlockBgColor: templateData.custom_block_bg_color,
+            customBlockTextColor: templateData.custom_block_text_color,
+            dynamicSubject: emailSubject,
+            dynamicContent: emailContent,
+            employeeEmail: employeeEmail || '',
+            // FIXED: Pass admin message parameters correctly for leave responses
+            showAdminMessage: templateData.show_admin_message && isLeaveResponse,
+            adminMessage: finalAdminMessage,
+            adminMessageBgColor: templateData.admin_message_bg_color,
+            adminMessageTextColor: templateData.admin_message_text_color,
+            // NEW: Pass recipient name to template
+            recipientName: recipientName,
+            // NEW: Pass button configuration to template
+            showButton: templateData.show_button,
+            buttonText: templateData.button_text,
+            buttonUrl: templateData.button_url,
+          });
+          
+          console.log("[Notification Email] HTML content built successfully");
+        } catch (htmlError) {
+          console.error("[Notification Email] Error building HTML content:", htmlError);
+          throw htmlError;
+        }
 
         // Email sending configuration
         const emailConfig: any = {
