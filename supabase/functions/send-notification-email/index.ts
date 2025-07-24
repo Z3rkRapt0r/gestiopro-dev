@@ -499,8 +499,9 @@ serve(async (req) => {
 
         console.log("[Notification Email] About to build HTML content...");
         
+        let htmlContent;
         try {
-          const htmlContent = buildHtmlContent({
+          htmlContent = buildHtmlContent({
             subject: emailSubject,
             shortText: emailContent,
             logoUrl,
