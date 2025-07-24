@@ -47,8 +47,7 @@ export function ManualLeaveEntryForm({
     sendLeaveRequestNotification
   } = useLeaveRequestNotifications();
   const {
-    validatePermissionTime,
-    getWorkingHoursInfo
+    validatePermissionTime
   } = useWorkingHoursValidation();
   const {
     leaveBalance,
@@ -61,7 +60,6 @@ export function ManualLeaveEntryForm({
     validateVacationDates,
     validatePermissionDate
   } = useLeaveConflicts(selectedUserId, leaveType);
-  const workingHoursInfo = getWorkingHoursInfo();
 
   // Valida bilanci quando cambia dipendente, tipo o date
   useEffect(() => {
