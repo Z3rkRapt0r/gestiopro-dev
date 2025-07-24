@@ -65,6 +65,14 @@ export function buildAttachmentSection(attachmentUrl: string | null, primaryColo
   `;
 }
 
+// HELPER: Safe replacement for undefined strings
+function safeReplace(text: string | undefined, searchValue: string | RegExp, replaceValue: string): string {
+  if (text === undefined || text === null) {
+    return '';
+  }
+  return String(text).replace(searchValue, replaceValue);
+}
+
 export function buildHtmlContent({
   subject,
   shortText,
@@ -119,6 +127,21 @@ export function buildHtmlContent({
   employeeEmail?: string;
   recipientName?: string;
 }) {
+  // ENHANCED: Add safety checks for undefined parameters at the start
+  console.log("[Mail Templates] Parameter validation:");
+  console.log("  leaveDetails type:", typeof leaveDetails, "value:", leaveDetails);
+  console.log("  adminMessage type:", typeof adminMessage, "value:", adminMessage);
+  console.log("  employeeNotes type:", typeof employeeNotes, "value:", employeeNotes);
+  console.log("  adminNotes type:", typeof adminNotes, "value:", adminNotes);
+  console.log("  customBlockText type:", typeof customBlockText, "value:", customBlockText);
+  
+  // SAFE: Ensure all string parameters have fallback values
+  const safeLeaveDetails = leaveDetails || '';
+  const safeAdminMessage = adminMessage || '';
+  const safeEmployeeNotes = employeeNotes || '';
+  const safeAdminNotes = adminNotes || '';
+  const safeCustomBlockText = customBlockText || '';
+  const safeFinalContent = dynamicContent || shortText || '';
   // ENHANCED LOGGING FOR ADMIN MESSAGE DEBUGGING
   console.log("[Mail Templates] Building HTML content with admin message params:");
   console.log("  showAdminMessage:", showAdminMessage);
@@ -180,25 +203,25 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // Custom Block Section
-  const customBlockSection = showCustomBlock && customBlockText ? `
+  // Custom Block Section - SAFE
+  const customBlockSection = showCustomBlock && safeCustomBlockText ? `
     <div style="background-color: ${customBlockBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${customBlockTextColor};">
       <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📣 Avviso Importante</h4>
       <p style="margin: 0; font-size: 14px;">
-        ${customBlockText}
+        ${safeReplace(safeCustomBlockText, /\n/g, '<br>')}
       </p>
     </div>
   ` : "";
 
-  // FIXED: Admin Message Section - Only for admin-to-employee communications
+  // FIXED: Admin Message Section - Only for admin-to-employee communications - SAFE
   let adminMessageSection = '';
   
   // Show admin message only when admin is sending to employee (not when employee sends to admin)
-  const shouldShowAdminMessage = adminMessage && adminMessage.trim() !== '' && isAdminToEmployee;
+  const shouldShowAdminMessage = safeAdminMessage && safeAdminMessage.trim() !== '' && isAdminToEmployee;
   
   console.log("[Mail Templates] Admin message section decision:");
-  console.log("  adminMessage exists:", !!adminMessage);
-  console.log("  adminMessage not empty:", adminMessage && adminMessage.trim() !== '');
+  console.log("  adminMessage exists:", !!safeAdminMessage);
+  console.log("  adminMessage not empty:", safeAdminMessage && safeAdminMessage.trim() !== '');
   console.log("  isAdminToEmployee:", isAdminToEmployee);
   console.log("  shouldShowAdminMessage:", shouldShowAdminMessage);
   
@@ -207,7 +230,7 @@ export function buildHtmlContent({
       <div style="background-color: ${adminMessageBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${adminMessageTextColor};">
         <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">💬 Messaggio Amministratore</h4>
         <p style="margin: 0; font-size: 14px;">
-          ${adminMessage.replace(/\n/g, '<br>')}
+          ${safeReplace(safeAdminMessage, /\n/g, '<br>')}
         </p>
       </div>
     `;
@@ -216,48 +239,47 @@ export function buildHtmlContent({
     console.log("[Mail Templates] Admin message section NOT created - not an admin-to-employee email");
   }
 
-  // Determine final subject and content
+  // Determine final subject and content - SAFE
   const finalSubject = dynamicSubject || subject;
-  let finalContent = dynamicContent || shortText;
 
   console.log("[Mail Templates] NOT replacing {admin_message} placeholder - using dedicated section only");
 
-  // Leave Details Section
-  const leaveDetailsSection = showLeaveDetails && leaveDetails ? `
+  // Leave Details Section - SAFE
+  const leaveDetailsSection = showLeaveDetails && safeLeaveDetails ? `
     <div style="background-color: ${leaveDetailsBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${leaveDetailsTextColor};">
       <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">Dettagli Richiesta</h4>
       <p style="margin: 0; font-size: 14px;">
-        ${leaveDetails.replace(/\n/g, '<br>')}
+        ${safeReplace(safeLeaveDetails, /\n/g, '<br>')}
       </p>
     </div>
   ` : "";
 
-  // FIXED: Employee Notes Section - Only for employee-to-admin communications or leave requests
-  const shouldShowEmployeeNotes = showAdminNotes && employeeNotes && (isEmployeeToAdmin || isLeaveRequest);
+  // FIXED: Employee Notes Section - Only for employee-to-admin communications or leave requests - SAFE
+  const shouldShowEmployeeNotes = showAdminNotes && safeEmployeeNotes && (isEmployeeToAdmin || isLeaveRequest);
   
   const employeeNotesSection = shouldShowEmployeeNotes ? `
     <div style="background-color: #e8f4fd; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: #2c5282;">
       <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">💬 Note del Dipendente</h4>
       <p style="margin: 0; font-size: 14px;">
-        ${employeeNotes.replace(/\n/g, '<br>')}
+        ${safeReplace(safeEmployeeNotes, /\n/g, '<br>')}
       </p>
     </div>
   ` : "";
 
   console.log("[Mail Templates] Employee notes section decision:");
   console.log("  showAdminNotes:", showAdminNotes);
-  console.log("  employeeNotes exists:", !!employeeNotes);
+  console.log("  employeeNotes exists:", !!safeEmployeeNotes);
   console.log("  isEmployeeToAdmin:", isEmployeeToAdmin);
   console.log("  isLeaveRequest:", isLeaveRequest);
   console.log("  shouldShowEmployeeNotes:", shouldShowEmployeeNotes);
   console.log("  employeeNotesSection created:", !!employeeNotesSection);
 
-  // FIXED: Admin Notes Section - Only for admin leave responses
-  const adminNotesSection = showAdminNotes && isLeaveResponse && adminNotes ? `
+  // FIXED: Admin Notes Section - Only for admin leave responses - SAFE
+  const adminNotesSection = showAdminNotes && isLeaveResponse && safeAdminNotes ? `
     <div style="background-color: ${adminNotesBgColor}; padding: 15px; border-left: 4px solid ${primaryColor}; margin-bottom: 20px; border-radius: 4px; color: ${adminNotesTextColor};">
       <h4 style="margin: 0 0 8px 0; color: ${primaryColor}; font-size: 16px;">📋 Note Amministratore</h4>
       <p style="margin: 0; font-size: 14px;">
-        ${adminNotes.replace(/\n/g, '<br>')}
+        ${safeReplace(safeAdminNotes, /\n/g, '<br>')}
       </p>
     </div>
   ` : "";
@@ -325,7 +347,7 @@ export function buildHtmlContent({
         ${finalSubject}
       </h2>
       <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${textColor}; text-align: ${bodyAlignment}; font-size: ${actualFontSize};">
-        ${finalContent.replace(/\n/g, '<br>')}
+        ${safeReplace(safeFinalContent, /\n/g, '<br>')}
         ${adminMessageSection}
         ${leaveDetailsSection}
         ${employeeNotesSection}
