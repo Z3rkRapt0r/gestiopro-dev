@@ -505,9 +505,18 @@ serve(async (req) => {
         }
 
         console.log("[Notification Email] About to build HTML content...");
+        console.log("[Notification Email] HTML build parameters:");
+        console.log("  - emailSubject:", emailSubject);
+        console.log("  - emailContent length:", emailContent?.length || 0);
+        console.log("  - logoUrl:", logoUrl);
+        console.log("  - templateType:", templateType);
+        console.log("  - primaryColor:", templateData.primary_color);
+        console.log("  - leaveDetails:", leaveDetails?.substring(0, 100) + "...");
         
         let htmlContent;
         try {
+          console.log("[Notification Email] Starting buildHtmlContent function...");
+          
           htmlContent = buildHtmlContent({
             subject: emailSubject,
             shortText: emailContent,
