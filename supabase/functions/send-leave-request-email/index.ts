@@ -44,20 +44,19 @@ Deno.serve(async (req) => {
       employeeNote
     } = payload;
 
-    // Get Brevo settings from admin profile
-    const { data: adminProfile, error: adminError } = await supabase
-      .from('profiles')
-      .select('brevo_api_key, brevo_sender_name, brevo_sender_email')
-      .eq('role', 'admin')
+    // Get Brevo settings from admin_settings table
+    const { data: adminSettings, error: adminError } = await supabase
+      .from('admin_settings')
+      .select('brevo_api_key, sender_name, sender_email')
       .not('brevo_api_key', 'is', null)
       .single();
 
-    if (adminError || !adminProfile) {
-      console.error('[Leave Request Email] No admin with Brevo settings found:', adminError);
+    if (adminError || !adminSettings) {
+      console.error('[Leave Request Email] No admin settings with Brevo found:', adminError);
       throw new Error('Configurazione Brevo non trovata');
     }
 
-    console.log('[Leave Request Email] Using Brevo sender:', `${adminProfile.brevo_sender_name} <${adminProfile.brevo_sender_email}>`);
+    console.log('[Leave Request Email] Using Brevo sender:', `${adminSettings.sender_name} <${adminSettings.sender_email}>`);
 
     // Determine recipients
     let recipients: string[] = [];
@@ -116,18 +115,18 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'api-key': adminProfile.brevo_api_key,
+        'api-key': adminSettings.brevo_api_key,
       },
       body: JSON.stringify({
         sender: {
-          name: adminProfile.brevo_sender_name,
-          email: adminProfile.brevo_sender_email,
+          name: adminSettings.sender_name,
+          email: adminSettings.sender_email,
         },
         to: recipients.map(email => ({ email })),
         subject,
         htmlContent,
         replyTo: {
-          email: adminProfile.brevo_sender_email,
+          email: adminSettings.sender_email,
         },
       }),
     });
