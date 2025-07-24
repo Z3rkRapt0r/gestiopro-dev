@@ -109,10 +109,10 @@ serve(async (req) => {
       templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
     } else if (topic === 'permessi-richiesta') {
       templateType = 'permessi-richiesta';
-      templateCategory = 'dipendenti';
+      templateCategory = 'amministratori';
     } else if (topic === 'ferie-richiesta') {
       templateType = 'ferie-richiesta';
-      templateCategory = 'dipendenti';
+      templateCategory = 'amministratori';
     } else if (topic === 'permessi-approvazione') {
       templateType = 'permessi-approvazione';
       templateCategory = 'amministratori';
