@@ -125,7 +125,7 @@ const GlobalLogoSection = () => {
           .from("admin_settings")
           .insert({
             admin_id: profile.id,
-            brevo_api_key: '', // Required field, set to empty string
+            resend_api_key: '', // Required field, set to empty string
             global_logo_url: globalLogoUrl,
             global_logo_alignment: globalLogoAlignment,
             global_logo_size: globalLogoSize,

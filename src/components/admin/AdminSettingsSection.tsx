@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { Input } from "@/components/ui/input";
@@ -26,13 +25,13 @@ const AdminSettingsSection = () => {
   return (
     <div className="max-w-6xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6">Impostazioni Amministratore</h1>
-      <Tabs defaultValue="brevo" className="w-full">
+      <Tabs defaultValue="resend" className="w-full">
         <TabsList className="flex flex-wrap justify-start gap-1 mb-6 h-auto bg-gray-100 p-1 rounded-lg w-full">
           <TabsTrigger 
-            value="brevo" 
+            value="resend" 
             className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
-            Configurazione Brevo
+            Configurazione Email
           </TabsTrigger>
           <TabsTrigger 
             value="emailtemplates" 
@@ -72,11 +71,11 @@ const AdminSettingsSection = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="brevo" className="space-y-6">
+        <TabsContent value="resend" className="space-y-6">
           <div>
-            <h2 className="text-xl font-semibold mb-4">Configurazione Email - Brevo</h2>
+            <h2 className="text-xl font-semibold mb-4">Configurazione Email - Resend</h2>
             <p className="text-sm text-gray-600 mb-6">
-              Configura le impostazioni base per l'invio di email tramite l'API Brevo
+              Configura le impostazioni base per l'invio di email tramite l'API Resend
             </p>
           </div>
 
@@ -88,18 +87,18 @@ const AdminSettingsSection = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="api-key">Chiave API Brevo *</Label>
+                  <Label htmlFor="api-key">Chiave API Resend *</Label>
                   <Input
                     id="api-key"
                     type="password"
-                    placeholder="Incolla la tua chiave API Brevo"
-                    value={brevoSettings.apiKey}
-                    onChange={e => setBrevoSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                    placeholder="Incolla la tua chiave API Resend"
+                    value={resendSettings.apiKey}
+                    onChange={e => setResendSettings(prev => ({ ...prev, apiKey: e.target.value }))}
                     disabled={loading}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    <a className="underline" href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer">
-                      Genera una nuova chiave su brevo.com
+                    <a className="underline" href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer">
+                      Genera una nuova chiave su resend.com
                     </a>
                   </p>
                 </div>
@@ -109,8 +108,8 @@ const AdminSettingsSection = () => {
                   <Input
                     id="sender-name"
                     placeholder="es. La Tua Azienda"
-                    value={brevoSettings.senderName}
-                    onChange={e => setBrevoSettings(prev => ({ ...prev, senderName: e.target.value }))}
+                    value={resendSettings.senderName}
+                    onChange={e => setResendSettings(prev => ({ ...prev, senderName: e.target.value }))}
                   />
                 </div>
 
@@ -120,8 +119,8 @@ const AdminSettingsSection = () => {
                     id="sender-email"
                     type="email"
                     placeholder="noreply@tuaazienda.com"
-                    value={brevoSettings.senderEmail}
-                    onChange={e => setBrevoSettings(prev => ({ ...prev, senderEmail: e.target.value }))}
+                    value={resendSettings.senderEmail}
+                    onChange={e => setResendSettings(prev => ({ ...prev, senderEmail: e.target.value }))}
                   />
                 </div>
 
@@ -131,15 +130,15 @@ const AdminSettingsSection = () => {
                     id="reply-to"
                     type="email"
                     placeholder="info@tuaazienda.com"
-                    value={brevoSettings.replyTo}
-                    onChange={e => setBrevoSettings(prev => ({ ...prev, replyTo: e.target.value }))}
+                    value={resendSettings.replyTo}
+                    onChange={e => setResendSettings(prev => ({ ...prev, replyTo: e.target.value }))}
                   />
                 </div>
 
                 <div className="pt-4">
                   <Button
-                    onClick={handleSaveBrevoSettings}
-                    disabled={loading || !brevoSettings.apiKey}
+                    onClick={handleSaveResendSettings}
+                    disabled={loading || !resendSettings.apiKey}
                     size="lg"
                     className="w-full"
                   >

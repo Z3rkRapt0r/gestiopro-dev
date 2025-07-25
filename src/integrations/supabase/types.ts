@@ -19,7 +19,6 @@ export type Database = {
           admin_id: string
           attendance_radius_meters: number | null
           auto_retry: boolean | null
-          brevo_api_key: string
           checkout_enabled: boolean | null
           company_latitude: number | null
           company_longitude: number | null
@@ -37,6 +36,7 @@ export type Database = {
           id: string
           max_retries: number | null
           reply_to: string | null
+          resend_api_key: string
           sender_email: string | null
           sender_name: string | null
           track_clicks: boolean | null
@@ -47,7 +47,6 @@ export type Database = {
           admin_id: string
           attendance_radius_meters?: number | null
           auto_retry?: boolean | null
-          brevo_api_key: string
           checkout_enabled?: boolean | null
           company_latitude?: number | null
           company_longitude?: number | null
@@ -65,6 +64,7 @@ export type Database = {
           id?: string
           max_retries?: number | null
           reply_to?: string | null
+          resend_api_key: string
           sender_email?: string | null
           sender_name?: string | null
           track_clicks?: boolean | null
@@ -75,7 +75,6 @@ export type Database = {
           admin_id?: string
           attendance_radius_meters?: number | null
           auto_retry?: boolean | null
-          brevo_api_key?: string
           checkout_enabled?: boolean | null
           company_latitude?: number | null
           company_longitude?: number | null
@@ -93,6 +92,7 @@ export type Database = {
           id?: string
           max_retries?: number | null
           reply_to?: string | null
+          resend_api_key?: string
           sender_email?: string | null
           sender_name?: string | null
           track_clicks?: boolean | null

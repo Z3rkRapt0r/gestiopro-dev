@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
-interface BrevoSettings {
+interface ResendSettings {
   apiKey: string;
   senderName: string;
   senderEmail: string;
@@ -25,7 +24,7 @@ export function useAdminSettings() {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [brevoSettings, setBrevoSettings] = useState<BrevoSettings>({
+  const [resendSettings, setResendSettings] = useState<ResendSettings>({
     apiKey: '',
     senderName: '',
     senderEmail: '',
@@ -55,9 +54,9 @@ export function useAdminSettings() {
             .maybeSingle();
           
           if (data) {
-            setApiKey(data.brevo_api_key || "");
-            setBrevoSettings({
-              apiKey: data.brevo_api_key || '',
+            setApiKey(data.resend_api_key || "");
+            setResendSettings({
+              apiKey: data.resend_api_key || '',
               senderName: data.sender_name || '',
               senderEmail: data.sender_email || '',
               replyTo: data.reply_to || '',
@@ -106,7 +105,7 @@ export function useAdminSettings() {
         .upsert(
           { 
             admin_id: profile.id, 
-            brevo_api_key: key.trim() 
+            resend_api_key: key.trim() 
           },
           { 
             onConflict: "admin_id",
@@ -123,10 +122,10 @@ export function useAdminSettings() {
         });
       } else {
         setApiKey(key.trim());
-        setBrevoSettings(prev => ({ ...prev, apiKey: key.trim() }));
+        setResendSettings(prev => ({ ...prev, apiKey: key.trim() }));
         toast({
           title: "Chiave salvata",
-          description: "Chiave Brevo aggiornata con successo.",
+          description: "Chiave Resend aggiornata con successo.",
         });
       }
     } catch (error: any) {
@@ -141,7 +140,7 @@ export function useAdminSettings() {
     }
   };
 
-  const saveBrevoSettings = async (settings: BrevoSettings) => {
+  const saveResendSettings = async (settings: ResendSettings) => {
     if (!profile?.id) {
       toast({
         title: "Errore",
@@ -167,7 +166,7 @@ export function useAdminSettings() {
         .upsert(
           { 
             admin_id: profile.id,
-            brevo_api_key: settings.apiKey.trim(),
+            resend_api_key: settings.apiKey.trim(),
             sender_name: settings.senderName.trim() || null,
             sender_email: settings.senderEmail.trim() || null,
             reply_to: settings.replyTo.trim() || null,
@@ -189,7 +188,7 @@ export function useAdminSettings() {
         );
 
       if (error) {
-        console.error("Error saving Brevo settings:", error);
+        console.error("Error saving Resend settings:", error);
         toast({
           title: "Errore",
           description: error.message,
@@ -197,10 +196,10 @@ export function useAdminSettings() {
         });
       } else {
         setApiKey(settings.apiKey.trim());
-        setBrevoSettings(settings);
+        setResendSettings(settings);
         toast({
           title: "Configurazione salvata",
-          description: "Impostazioni Brevo aggiornate con successo.",
+          description: "Impostazioni Resend aggiornate con successo.",
         });
       }
     } catch (error: any) {
