@@ -34,37 +34,37 @@ serve(async (req) => {
     
     // If no userId provided or if we need to find an admin with Brevo settings
     if (!userId || !adminSettingsUserId) {
-      console.log("[Notification Email] No userId provided, searching for admin with Brevo settings");
+      console.log("[Notification Email] No userId provided, searching for admin with Resend settings");
       
-      const { data: adminWithBrevo, error: adminSearchError } = await supabase
+      const { data: adminWithResend, error: adminSearchError } = await supabase
         .from("admin_settings")
-        .select("admin_id, brevo_api_key")
-        .not("brevo_api_key", "is", null)
+        .select("admin_id, resend_api_key")
+        .not("resend_api_key", "is", null)
         .limit(1)
         .single();
 
-      if (!adminSearchError && adminWithBrevo) {
-        adminSettingsUserId = adminWithBrevo.admin_id;
-        console.log("[Notification Email] Found admin with Brevo settings:", adminSettingsUserId);
+      if (!adminSearchError && adminWithResend) {
+        adminSettingsUserId = adminWithResend.admin_id;
+        console.log("[Notification Email] Found admin with Resend settings:", adminSettingsUserId);
       } else {
-        console.error("[Notification Email] No admin with Brevo settings found:", adminSearchError);
+        console.error("[Notification Email] No admin with Resend settings found:", adminSearchError);
       }
     }
 
     if (!adminSettingsUserId) {
-      console.error("[Notification Email] No valid admin ID found for Brevo settings");
+      console.error("[Notification Email] No valid admin ID found for Resend settings");
       return new Response(
-        JSON.stringify({ error: "No admin with Brevo configuration found" }),
+        JSON.stringify({ error: "No admin with Resend configuration found" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     console.log("[Notification Email] Using admin ID for settings:", adminSettingsUserId);
 
-    // Get Brevo settings for admin including sender configuration and global logo
+    // Get Resend settings for admin including sender configuration and global logo
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
-      .select("brevo_api_key, sender_name, sender_email, reply_to, global_logo_url, global_logo_alignment, global_logo_size")
+      .select("resend_api_key, sender_name, sender_email, reply_to, global_logo_url, global_logo_alignment, global_logo_size")
       .eq("admin_id", adminSettingsUserId)
       .single();
 
@@ -79,17 +79,17 @@ serve(async (req) => {
       );
     }
 
-    if (!adminSetting?.brevo_api_key) {
-      console.error("[Notification Email] No Brevo API key found for admin:", adminSettingsUserId);
+    if (!adminSetting?.resend_api_key) {
+      console.error("[Notification Email] No Resend API key found for admin:", adminSettingsUserId);
       return new Response(
         JSON.stringify({ 
-          error: "No Brevo API key configured for this admin" 
+          error: "No Resend API key configured for this admin" 
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[Notification Email] Found Brevo settings for admin");
+    console.log("[Notification Email] Found Resend settings for admin");
 
     // FIXED: ENHANCED TEMPLATE TYPE MAPPING - Corrected logic for notification categories
     let templateType = 'notifiche'; // default
@@ -614,38 +614,44 @@ serve(async (req) => {
           hasReplyTo: !!emailConfig.replyTo
         }, null, 2));
 
-        // ENHANCED: Detailed Brevo API call with comprehensive logging
+        // ENHANCED: Detailed Resend API call with comprehensive logging
         try {
-          console.log("[Notification Email] About to call Brevo API...");
+          console.log("[Notification Email] About to call Resend API...");
           
-          const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
+          const resendResponse = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "api-key": adminSetting.brevo_api_key,
+              "Authorization": `Bearer ${adminSetting.resend_api_key}`,
             },
-            body: JSON.stringify(emailConfig),
+            body: JSON.stringify({
+              from: `${senderName} <${senderEmail}>`,
+              to: [recipient.email],
+              subject: emailSubject,
+              html: htmlContent,
+              reply_to: dynamicReplyTo || undefined,
+            }),
           });
 
-          console.log("[Notification Email] Brevo API response status:", brevoResponse.status);
-          console.log("[Notification Email] Brevo API response headers:", Object.fromEntries(brevoResponse.headers.entries()));
+          console.log("[Notification Email] Resend API response status:", resendResponse.status);
+          console.log("[Notification Email] Resend API response headers:", Object.fromEntries(resendResponse.headers.entries()));
 
-          if (!brevoResponse.ok) {
-            const errorText = await brevoResponse.text();
-            console.error(`[Notification Email] Brevo API error for ${recipient.email}:`, errorText);
-            console.error(`[Notification Email] Brevo API status: ${brevoResponse.status}`);
-            errors.push(`Failed to send to ${recipient.email}: Status ${brevoResponse.status} - ${errorText}`);
+          if (!resendResponse.ok) {
+            const errorText = await resendResponse.text();
+            console.error(`[Notification Email] Resend API error for ${recipient.email}:`, errorText);
+            console.error(`[Notification Email] Resend API status: ${resendResponse.status}`);
+            errors.push(`Failed to send to ${recipient.email}: Status ${resendResponse.status} - ${errorText}`);
             continue;
           }
 
-          const brevoResult = await brevoResponse.json();
-          console.log("[Notification Email] Brevo API success response:", JSON.stringify(brevoResult, null, 2));
+          const resendResult = await resendResponse.json();
+          console.log("[Notification Email] Resend API success response:", JSON.stringify(resendResult, null, 2));
           console.log("[Notification Email] Email sent successfully to", recipient.email);
           successCount++;
           
-        } catch (brevoError) {
-          console.error(`[Notification Email] Brevo API call failed for ${recipient.email}:`, brevoError);
-          errors.push(`Failed to call Brevo API for ${recipient.email}: ${brevoError.message}`);
+        } catch (resendError) {
+          console.error(`[Notification Email] Resend API call failed for ${recipient.email}:`, resendError);
+          errors.push(`Failed to call Resend API for ${recipient.email}: ${resendError.message}`);
           continue;
         }
 
