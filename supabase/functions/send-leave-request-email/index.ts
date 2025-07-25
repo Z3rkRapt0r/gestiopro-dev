@@ -1,4 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import { Resend } from "npm:resend@2.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,19 +47,21 @@ Deno.serve(async (req) => {
       employeeNote
     } = payload;
 
-    // Get Brevo settings from admin_settings table
+    // Get sender settings from admin_settings table
     const { data: adminSettings, error: adminError } = await supabase
       .from('admin_settings')
-      .select('brevo_api_key, sender_name, sender_email')
-      .not('brevo_api_key', 'is', null)
+      .select('sender_name, sender_email')
       .single();
 
     if (adminError || !adminSettings) {
-      console.error('[Leave Request Email] No admin settings with Brevo found:', adminError);
-      throw new Error('Configurazione Brevo non trovata');
+      console.error('[Leave Request Email] No admin settings found:', adminError);
+      throw new Error('Configurazione sender non trovata');
     }
 
-    console.log('[Leave Request Email] Using Brevo sender:', `${adminSettings.sender_name} <${adminSettings.sender_email}>`);
+    const senderName = adminSettings.sender_name || 'Sistema Gestionale';
+    const senderEmail = adminSettings.sender_email || 'noreply@example.com';
+
+    console.log('[Leave Request Email] Using Resend sender:', `${senderName} <${senderEmail}>`);
 
     // Determine recipients
     let recipients: string[] = [];
@@ -110,40 +115,21 @@ Deno.serve(async (req) => {
 
     console.log('[Leave Request Email] Prepared email:', { subject, recipientCount: recipients.length });
 
-    // Send email via Brevo
-    const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': adminSettings.brevo_api_key,
-      },
-      body: JSON.stringify({
-        sender: {
-          name: adminSettings.sender_name,
-          email: adminSettings.sender_email,
-        },
-        to: recipients.map(email => ({ email })),
-        subject,
-        htmlContent,
-        replyTo: {
-          email: adminSettings.sender_email,
-        },
-      }),
+    // Send email via Resend
+    const emailResponse = await resend.emails.send({
+      from: `${senderName} <${senderEmail}>`,
+      to: recipients,
+      subject,
+      html: htmlContent,
+      replyTo: senderEmail,
     });
 
-    if (!brevoResponse.ok) {
-      const brevoError = await brevoResponse.text();
-      console.error('[Leave Request Email] Brevo API error:', brevoError);
-      throw new Error(`Errore invio email: ${brevoError}`);
-    }
-
-    const brevoResult = await brevoResponse.json();
-    console.log('[Leave Request Email] Email sent successfully:', brevoResult);
+    console.log('[Leave Request Email] Email sent successfully:', emailResponse);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        messageId: brevoResult.messageId,
+        data: emailResponse,
         recipients: recipients.length 
       }),
       {
