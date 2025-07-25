@@ -4,13 +4,13 @@
 export async function fetchAdminSettings(supabase: any, userId: string) {
   const { data, error } = await supabase
     .from("admin_settings")
-    .select("brevo_api_key")
+    .select("resend_api_key")
     .eq("admin_id", userId)
     .maybeSingle();
-  if (error || !data?.brevo_api_key) {
-    throw new Error("No Brevo API key configured for this admin. Please configure it in the admin settings.");
+  if (error || !data?.resend_api_key) {
+    throw new Error("No Resend API key configured for this admin. Please configure it in the admin settings.");
   }
-  return data.brevo_api_key;
+  return data.resend_api_key;
 }
 
 export async function fetchAdminProfile(supabase: any, userId: string) {
