@@ -215,12 +215,12 @@ export function useAdminSettings() {
     }
   };
 
-  return { 
-    apiKey, 
-    brevoSettings, 
-    setBrevoSettings, 
-    loading, 
+  return {
+    apiKey,
+    resendSettings, 
+    setResendSettings, 
+    loading,
     saveApiKey, 
-    saveBrevoSettings 
+    saveResendSettings 
   };
 }

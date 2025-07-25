@@ -17,10 +17,10 @@ import AttendanceSettings from "@/components/attendance/AttendanceSettings";
 import WorkScheduleSettings from "./WorkScheduleSettings";
 
 const AdminSettingsSection = () => {
-  const { brevoSettings, setBrevoSettings, loading, saveBrevoSettings } = useAdminSettings();
+  const { resendSettings, setResendSettings, loading, saveResendSettings } = useAdminSettings();
 
-  const handleSaveBrevoSettings = () => {
-    saveBrevoSettings(brevoSettings);
+  const handleSaveResendSettings = () => {
+    saveResendSettings(resendSettings);
   };
 
   return (
