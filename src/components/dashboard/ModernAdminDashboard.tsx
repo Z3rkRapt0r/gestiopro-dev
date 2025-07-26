@@ -2,6 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
+import { 
+  Menu, 
+  X, 
+  LayoutDashboard, 
+  Users, 
+  Clock, 
+  FileText, 
+  Bell, 
+  Settings,
+  Calendar,
+  Building
+} from 'lucide-react';
 
 // Import existing sections
 import AdminDashboardOverview from './AdminDashboardOverview';
@@ -30,9 +42,22 @@ const tabTitles = {
   settings: 'Impostazioni Sistema'
 };
 
+const tabIcons = {
+  dashboard: LayoutDashboard,
+  employees: Users,
+  attendance: Clock,
+  overtime: Clock,
+  leaves: Calendar,
+  documents: FileText,
+  notifications: Bell,
+  holidays: Calendar,
+  settings: Settings
+};
+
 export default function ModernAdminDashboard() {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Invalidate queries when changing tabs
@@ -53,6 +78,8 @@ export default function ModernAdminDashboard() {
   useEffect(() => {
     const handleTabChange = (event: CustomEvent) => {
       setActiveTab(event.detail);
+      // Close mobile menu when navigating
+      setIsMobileMenuOpen(false);
     };
 
     window.addEventListener('setAdminTab', handleTabChange as EventListener);
@@ -61,6 +88,19 @@ export default function ModernAdminDashboard() {
       window.removeEventListener('setAdminTab', handleTabChange as EventListener);
     };
   }, []);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (isMobileMenuOpen && !target.closest('.mobile-menu') && !target.closest('.mobile-menu-toggle')) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMobileMenuOpen]);
 
   if (!profile || profile.role !== 'admin') {
     return (
@@ -72,6 +112,11 @@ export default function ModernAdminDashboard() {
       </div>
     );
   }
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -101,18 +146,92 @@ export default function ModernAdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <div className="flex h-screen overflow-hidden">
-        {/* Sidebar */}
+        {/* Desktop Sidebar */}
         <ModernAdminSidebar
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-          <ModernAdminHeader
-            title={tabTitles[activeTab as keyof typeof tabTitles]}
-          />
+          {/* Mobile Header with Hamburger */}
+          <div className="lg:hidden bg-white/95 backdrop-blur-xl border-b border-slate-200/60 shadow-sm z-40">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="mobile-menu-toggle p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+                >
+                  {isMobileMenuOpen ? (
+                    <X className="h-5 w-5 text-slate-700" />
+                  ) : (
+                    <Menu className="h-5 w-5 text-slate-700" />
+                  )}
+                </button>
+                <div>
+                  <h1 className="font-bold text-slate-900 text-lg">
+                    {tabTitles[activeTab as keyof typeof tabTitles]}
+                  </h1>
+                  <p className="text-xs text-slate-500">Area Amministratore</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Header */}
+          <div className="hidden lg:block">
+            <ModernAdminHeader
+              title={tabTitles[activeTab as keyof typeof tabTitles]}
+            />
+          </div>
+
+          {/* Mobile Menu Overlay */}
+          {isMobileMenuOpen && (
+            <div className="lg:hidden fixed inset-0 bg-black/50 z-50">
+              <div className="mobile-menu absolute top-0 left-0 w-80 h-full bg-white shadow-2xl transform transition-transform duration-300 ease-in-out">
+                <div className="p-6 border-b border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-bold text-slate-900 text-xl">Menu</h2>
+                    <button
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+                    >
+                      <X className="h-5 w-5 text-slate-700" />
+                    </button>
+                  </div>
+                </div>
+                
+                <nav className="p-4 space-y-2">
+                  {Object.entries(tabTitles).map(([key, title]) => {
+                    const isActive = activeTab === key;
+                    const Icon = tabIcons[key as keyof typeof tabIcons];
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleTabChange(key)}
+                        className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                          isActive
+                            ? 'bg-blue-50 text-blue-700 shadow-lg'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className={`p-2 rounded-lg ${
+                            isActive
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <span className="font-semibold">{title}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+            </div>
+          )}
 
           {/* Content Area */}
           <main className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50/50 to-white pb-20 lg:pb-6">
