@@ -75,11 +75,11 @@ const AdminDashboardOverview = () => {
       {/* Modern Stats Cards */}
       <ModernStatsCards stats={stats} />
 
-      {/* Today Attendance Summary */}
-      <TodayAttendanceSummary />
-
       {/* Summary Board */}
       <SummaryBoard />
+
+      {/* Today Attendance Summary */}
+      <TodayAttendanceSummary />
 
       {/* Upcoming Leaves Section */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 sm:p-6">

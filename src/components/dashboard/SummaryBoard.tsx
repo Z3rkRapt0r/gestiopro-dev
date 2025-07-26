@@ -7,8 +7,7 @@ import {
   Clock, 
   User, 
   RefreshCw,
-  CheckCircle,
-  XCircle,
+  ArrowRight,
   Umbrella,
   Heart
 } from 'lucide-react';
@@ -17,6 +16,7 @@ import { it } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface LeaveRequestWithProfile {
   id: string;
@@ -39,11 +39,16 @@ interface LeaveRequestWithProfile {
 const SummaryBoard = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [recentLeaveRequests, setRecentLeaveRequests] = useState<LeaveRequestWithProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const isAdmin = profile?.role === 'admin';
+
+  const handleGoToApprovals = () => {
+    navigate('/admin?tab=leave-approvals');
+  };
 
   const fetchRecentData = async () => {
     if (!isAdmin) return;
@@ -243,11 +248,14 @@ const SummaryBoard = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 ml-2">
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-green-600 hover:text-green-700">
-                    <CheckCircle className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-600 hover:text-red-700">
-                    <XCircle className="h-3 w-3" />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleGoToApprovals}
+                    className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    <ArrowRight className="h-3 w-3 mr-1" />
+                    <span className="text-xs">Gestisci</span>
                   </Button>
                 </div>
               </div>
