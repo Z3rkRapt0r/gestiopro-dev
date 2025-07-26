@@ -156,20 +156,20 @@ export default function ModernAdminDashboard() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Mobile Header with Hamburger */}
           <div className="lg:hidden bg-white/95 backdrop-blur-xl border-b border-slate-200/60 shadow-sm z-40">
-            <div className="flex items-center justify-between p-4">
+            <div className="flex items-center justify-between p-3">
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="mobile-menu-toggle p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+                  className="mobile-menu-toggle p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
                 >
                   {isMobileMenuOpen ? (
-                    <X className="h-5 w-5 text-slate-700" />
+                    <X className="h-4 w-4 text-slate-700" />
                   ) : (
-                    <Menu className="h-5 w-5 text-slate-700" />
+                    <Menu className="h-4 w-4 text-slate-700" />
                   )}
                 </button>
                 <div>
-                  <h1 className="font-bold text-slate-900 text-lg">
+                  <h1 className="font-bold text-slate-900 text-base">
                     {tabTitles[activeTab as keyof typeof tabTitles]}
                   </h1>
                   <p className="text-xs text-slate-500">Area Amministratore</p>
@@ -188,20 +188,20 @@ export default function ModernAdminDashboard() {
           {/* Mobile Menu Overlay */}
           {isMobileMenuOpen && (
             <div className="lg:hidden fixed inset-0 bg-black/50 z-50">
-              <div className="mobile-menu absolute top-0 left-0 w-80 h-full bg-white shadow-2xl transform transition-transform duration-300 ease-in-out">
-                <div className="p-6 border-b border-slate-200">
+              <div className="mobile-menu absolute top-0 left-0 w-72 h-full bg-white shadow-2xl transform transition-transform duration-300 ease-in-out">
+                <div className="p-4 border-b border-slate-200">
                   <div className="flex items-center justify-between">
-                    <h2 className="font-bold text-slate-900 text-xl">Menu</h2>
+                    <h2 className="font-bold text-slate-900 text-lg">Menu</h2>
                     <button
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
                     >
-                      <X className="h-5 w-5 text-slate-700" />
+                      <X className="h-4 w-4 text-slate-700" />
                     </button>
                   </div>
                 </div>
                 
-                <nav className="p-4 space-y-2">
+                <nav className="p-3 space-y-1">
                   {Object.entries(tabTitles).map(([key, title]) => {
                     const isActive = activeTab === key;
                     const Icon = tabIcons[key as keyof typeof tabIcons];
@@ -209,21 +209,21 @@ export default function ModernAdminDashboard() {
                       <button
                         key={key}
                         onClick={() => handleTabChange(key)}
-                        className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                        className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
                           isActive
-                            ? 'bg-blue-50 text-blue-700 shadow-lg'
+                            ? 'bg-blue-50 text-blue-700 shadow-md'
                             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                       >
                         <div className="flex items-center space-x-3">
-                          <div className={`p-2 rounded-lg ${
+                          <div className={`p-1.5 rounded-md ${
                             isActive
                               ? 'bg-blue-500 text-white'
                               : 'bg-slate-100 text-slate-600'
                           }`}>
-                            <Icon className="h-5 w-5" />
+                            <Icon className="h-4 w-4" />
                           </div>
-                          <span className="font-semibold">{title}</span>
+                          <span className="font-medium text-sm">{title}</span>
                         </div>
                       </button>
                     );
