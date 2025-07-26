@@ -19,12 +19,14 @@ export const useEmployeeWorkSchedule = (employeeId?: string) => {
     enabled: !!employeeId,
     queryFn: async () => {
       if (!employeeId) return null;
+      console.log(`🔍 [useEmployeeWorkSchedule] Caricamento orari personalizzati per employeeId:`, employeeId);
       const { data, error } = await supabase
         .from('employee_work_schedules')
         .select('*')
         .eq('employee_id', employeeId)
         .maybeSingle();
       if (error) throw error;
+      console.log(`📋 [useEmployeeWorkSchedule] Orari personalizzati caricati:`, data);
       return data as EmployeeWorkSchedule | null;
     },
   });

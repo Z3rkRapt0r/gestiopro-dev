@@ -79,33 +79,9 @@ export const generateDocumentPath = async (
     // Documenti aziendali
     return `Documenti_Aziendali/${documentTypeFolder}/${year}/${month}/${fileName}`;
   }
-  
-  // Documenti personali - ottieni i dati del dipendente
-  try {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('first_name, last_name, email')
-      .eq('id', targetUserId)
-      .single();
-    
-    if (error || !profile) {
-      console.warn('Impossibile ottenere il profilo del dipendente, uso fallback UUID');
-      return `Dipendente_${targetUserId.substring(0, 8)}/${documentTypeFolder}/${year}/${month}/${fileName}`;
-    }
-    
-    const employeeFolder = generateEmployeeFolderName(
-      profile.first_name,
-      profile.last_name,
-      profile.email,
-      targetUserId
-    );
-    
-    return `${employeeFolder}/${documentTypeFolder}/${year}/${month}/${fileName}`;
-    
-  } catch (error) {
-    console.error('Errore durante la generazione del path:', error);
-    return `Dipendente_${targetUserId.substring(0, 8)}/${documentTypeFolder}/${year}/${month}/${fileName}`;
-  }
+
+  // Documenti personali - path forzato a iniziare con l'uid
+  return `${targetUserId}/${documentTypeFolder}/${year}/${month}/${fileName}`;
 };
 
 /**

@@ -25,6 +25,9 @@ interface AttendanceData {
   // Overtime data
   overtime_hours?: number | null;
   overtime_notes?: string | null;
+  // NUOVO: Stato di presenza calcolato considerando orari personalizzati
+  attendance_status?: string;
+  day_name?: string; // Added for day name
 }
 
 interface EmployeeData {
@@ -157,6 +160,13 @@ const getAttendanceTimeDisplay = (att: AttendanceData, attendanceSettings?: Atte
 
 // Funzione per determinare lo stato di presenza
 const getAttendanceStatus = (att: AttendanceData) => {
+  // NUOVO: Se è disponibile lo stato calcolato, usalo
+  if (att.attendance_status) {
+    console.log('Using pre-calculated attendance_status:', att.attendance_status, 'for date:', att.date);
+    return att.attendance_status;
+  }
+  
+  // Fallback alla logica originale
   // Priority order: Malattia > Trasferta > Ferie > Permesso + Presenza/Assenza > Presente/Assente
   
   if (att.is_sick_leave) return 'Malattia';
@@ -228,13 +238,14 @@ export const generateAttendancePDF = async ({
     // Preparazione dati per la tabella
     const tableData = data.map(att => [
       safeFormatDate(att.date),
+      att.day_name || '', // Nome del giorno
       att.employee_name || 'N/A',
       getAttendanceStatus(att),
       getAttendanceTimeDisplay(att, attendanceSettings),
       getOvertimeDisplay(att.overtime_hours)
     ]);
     
-    const tableHeaders = [['Data', 'Nome Dipendente', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
+    const tableHeaders = [['Data', 'Giorno', 'Nome Dipendente', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
     
     console.log('Creazione tabella con', tableData.length, 'righe');
     
@@ -244,8 +255,8 @@ export const generateAttendancePDF = async ({
       body: tableData,
       startY: 55,
       styles: {
-        fontSize: 9,
-        cellPadding: 3,
+        fontSize: 8, // Ridotto
+        cellPadding: 2, // Ridotto
       },
       headStyles: {
         fillColor: [41, 128, 185],
@@ -256,12 +267,14 @@ export const generateAttendancePDF = async ({
         fillColor: [245, 245, 245],
       },
       columnStyles: {
-        0: { cellWidth: 25 }, // Data
-        1: { cellWidth: 45 }, // Nome Dipendente
-        2: { cellWidth: 45 }, // Stato Presenza
-        3: { cellWidth: 35 }, // Orario Timbratura
-        4: { cellWidth: 30 }, // Straordinari
+        0: { cellWidth: 22 }, // Data
+        1: { cellWidth: 22 }, // Giorno
+        2: { cellWidth: 38 }, // Nome Dipendente
+        3: { cellWidth: 38 }, // Stato Presenza
+        4: { cellWidth: 30 }, // Orario Timbratura
+        5: { cellWidth: 25 }, // Straordinari
       },
+      tableWidth: 'wrap', // Adatta la tabella al contenuto
       didParseCell: function(data) {
         // Evidenzia le righe con ritardi
         if (data.section === 'body') {

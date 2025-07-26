@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { User } from 'lucide-react';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
-import EmployeeAttendanceCalendar from './EmployeeAttendanceCalendar';
+import NewEmployeeAttendanceCalendar from './NewEmployeeAttendanceCalendar';
 
 export default function OperatorAttendanceSection() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -75,7 +75,7 @@ export default function OperatorAttendanceSection() {
           </div>
 
           {selectedEmployee && (
-            <EmployeeAttendanceCalendar
+            <NewEmployeeAttendanceCalendar
               employee={selectedEmployee}
               attendances={employeeAttendances}
             />

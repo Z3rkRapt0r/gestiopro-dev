@@ -171,7 +171,8 @@ const EmployeeProfileSection = () => {
   };
 
   // Determina se l'utente autenticato è admin
-  const isAdmin = profile?.role === 'admin';
+  const { profile: authProfile } = useAuth();
+  const isAdmin = authProfile?.role === 'admin';
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 p-4 sm:p-8">

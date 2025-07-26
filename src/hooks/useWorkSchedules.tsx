@@ -36,7 +36,7 @@ export const useWorkSchedules = () => {
         throw error;
       }
 
-      console.log('Orari di lavoro caricati:', data);
+      console.log('🏢 [useWorkSchedules] Orari di lavoro aziendali caricati:', data);
       return data as WorkSchedule | null;
     },
   });

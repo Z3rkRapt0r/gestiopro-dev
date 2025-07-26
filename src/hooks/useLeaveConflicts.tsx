@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
 import { useCompanyHolidays } from './useCompanyHolidays';
+import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 
 export interface LeaveValidationResult {
   isValid: boolean;
@@ -38,6 +39,8 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isHoliday, getHolidayName } = useCompanyHolidays();
+  
+
 
   const calculateConflicts = useCallback(async (userId?: string, type?: string) => {
     if (!userId) {
@@ -93,7 +96,42 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       });
 
-      // 2. CONTROLLO TRASFERTE APPROVATE (sempre conflitti critici)
+      // 2. CONTROLLO GIORNI NON LAVORATIVI PERSONALIZZATI (NUOVO)
+      if (userId) {
+        // Carica gli orari personalizzati per questo dipendente
+        const { data: employeeWorkSchedule } = await supabase
+          .from('employee_work_schedules')
+          .select('*')
+          .eq('employee_id', userId)
+          .maybeSingle();
+        
+        // Carica gli orari aziendali
+        const { data: companyWorkSchedule } = await supabase
+          .from('work_schedules')
+          .select('*')
+          .limit(1)
+          .maybeSingle();
+        
+        allDaysInYear.forEach(date => {
+          const isWorkingDayForEmployee = isEmployeeWorkingDay(date, employeeWorkSchedule, companyWorkSchedule);
+          if (!isWorkingDayForEmployee) {
+            const dateStr = format(date, 'yyyy-MM-dd');
+            conflictDates.add(dateStr);
+            
+            const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+            const dayName = dayNames[date.getDay()];
+            
+            details.push({
+              date: dateStr,
+              type: 'vacation',
+              description: `Giorno non lavorativo: ${dayName}`,
+              severity: 'critical'
+            });
+          }
+        });
+      }
+
+      // 3. CONTROLLO TRASFERTE APPROVATE (sempre conflitti critici)
       const { data: existingTrips } = await supabase
         .from('business_trips')
         .select('start_date, end_date, destination')
@@ -121,7 +159,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 3. CONTROLLO FERIE APPROVATE (conflitti critici per tutti i tipi)
+      // 4. CONTROLLO FERIE APPROVATE (conflitti critici per tutti i tipi)
       const { data: approvedVacations } = await supabase
         .from('leave_requests')
         .select('date_from, date_to')
@@ -152,7 +190,7 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
         }
       }
 
-      // 4. CONTROLLO PERMESSI APPROVATI (conflitti per permessi, malattie e presenze)
+      // 5. CONTROLLO PERMESSI APPROVATI (conflitti per permessi, malattie e presenze)
       if (type === 'permesso' || type === 'sick_leave') {
         // Per permesso e malattia: aggiungi tutti i permessi approvati
         const { data: approvedPermissions } = await supabase
@@ -316,15 +354,14 @@ export const useLeaveConflicts = (selectedUserId?: string, leaveType?: 'ferie' |
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isHoliday, getHolidayName]);
 
+  // Calcola i conflitti quando cambiano i parametri
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
+    if (selectedUserId || leaveType) {
       calculateConflicts(selectedUserId, leaveType);
-    }, 300); // Debounce di 300ms
-
-    return () => clearTimeout(timeoutId);
-  }, [selectedUserId, leaveType, calculateConflicts]);
+    }
+  }, [selectedUserId, leaveType]);
 
   const isDateDisabled = useCallback((date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');

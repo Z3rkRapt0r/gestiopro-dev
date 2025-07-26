@@ -14,6 +14,8 @@ import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
 import { formatTime, isWorkingDay } from '@/utils/attendanceUtils';
+import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
+import { supabase } from '@/integrations/supabase/client';
 import AttendanceCalendarSidebar from './calendar/AttendanceCalendarSidebar';
 import PresentEmployeesSection from './sections/PresentEmployeesSection';
 import SickEmployeesSection from './sections/SickEmployeesSection';
@@ -21,11 +23,13 @@ import LeaveEmployeesSection from './sections/LeaveEmployeesSection';
 import PermissionEmployeesSection from './sections/PermissionEmployeesSection';
 import BusinessTripEmployeesSection from './sections/BusinessTripEmployeesSection';
 import AbsentEmployeesSection from './sections/AbsentEmployeesSection';
+import NonWorkingDaySection from './sections/NonWorkingDaySection';
 
 export default function NewDailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [employeeWorkSchedules, setEmployeeWorkSchedules] = useState<{ [employeeId: string]: any }>({});
   
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
@@ -36,6 +40,31 @@ export default function NewDailyAttendanceCalendar() {
   const { getSickLeavesForDate, isUserSickOnDate } = useSickLeavesForCalendars();
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+
+  // Carica gli orari personalizzati per tutti i dipendenti
+  React.useEffect(() => {
+    const fetchEmployeeWorkSchedules = async () => {
+      if (!employees) return;
+      
+      const schedules: { [employeeId: string]: any } = {};
+      
+      for (const emp of employees) {
+        const { data } = await supabase
+          .from('employee_work_schedules')
+          .select('*')
+          .eq('employee_id', emp.id)
+          .maybeSingle();
+        
+        if (data) {
+          schedules[emp.id] = data;
+        }
+      }
+      
+      setEmployeeWorkSchedules(schedules);
+    };
+
+    fetchEmployeeWorkSchedules();
+  }, [employees]);
 
   // Funzione per ottenere gli assenti
   const getAbsentEmployees = async () => {
@@ -58,8 +87,16 @@ export default function NewDailyAttendanceCalendar() {
       const isOnBusinessTrip = onBusinessTripEmployees.some(empTrip => empTrip.id === emp.id);
       if (isOnBusinessTrip) continue;
       
+      // NUOVO: Verifica se è un giorno lavorativo per questo dipendente
+      const employeeWorkSchedule = employeeWorkSchedules[emp.id];
+      const isWorkingDayForThisEmployee = isEmployeeWorkingDay(selectedDate, employeeWorkSchedule, workSchedule);
+      
+      if (!isWorkingDayForThisEmployee) {
+        continue; // Non è un giorno lavorativo, non mostrare come assente
+      }
+      
       const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
-      if (shouldTrack && isWorkingDay(selectedDate, workSchedule)) {
+      if (shouldTrack) {
         absentEmployees.push(emp);
       }
     }
@@ -68,16 +105,20 @@ export default function NewDailyAttendanceCalendar() {
   };
 
   React.useEffect(() => {
-    if (selectedDateStr && employees && attendances) {
+    if (selectedDateStr && employees && attendances && Object.keys(employeeWorkSchedules).length > 0) {
       getAbsentEmployees().then(setAbsentEmployees);
     }
-  }, [selectedDateStr, employees, attendances]);
+  }, [selectedDateStr, employees, attendances, employeeWorkSchedules]);
 
-  if (isLoading) {
+  // Mostra loading se i dati non sono ancora caricati o se gli orari personalizzati non sono pronti
+  if (isLoading || Object.keys(employeeWorkSchedules).length === 0) {
     return (
       <Card>
         <CardContent className="p-6">
           <div className="space-y-3">
+            <div className="text-center text-gray-500 mb-4">
+              Caricamento orari personalizzati...
+            </div>
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-16 bg-gray-100 animate-pulse rounded"></div>
             ))}
@@ -438,6 +479,14 @@ export default function NewDailyAttendanceCalendar() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
+                {/* Sezione giorni non lavorativi - NUOVA */}
+                <NonWorkingDaySection
+                  employees={employees || []}
+                  selectedDate={selectedDate || new Date()}
+                  employeeWorkSchedules={employeeWorkSchedules}
+                  companyWorkSchedule={workSchedule}
+                />
+                
                 <PresentEmployeesSection
                   employees={presentEmployees}
                   formatTime={formatTime}

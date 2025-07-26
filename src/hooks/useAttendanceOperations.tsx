@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useGPSValidation } from './useGPSValidation';
 import { useWorkSchedules } from './useWorkSchedules';
+import { useEmployeeWorkSchedule } from './useEmployeeWorkSchedule';
 import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
 
 export const useAttendanceOperations = () => {
@@ -11,29 +12,53 @@ export const useAttendanceOperations = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { validateLocation } = useGPSValidation();
-  const { workSchedule } = useWorkSchedules();
+  const { workSchedule: companyWorkSchedule } = useWorkSchedules();
+  const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(user?.id);
 
-  // Funzione per calcolare i ritardi
-  const calculateLateness = (checkInTime: Date, workSchedule: any) => {
-    if (!workSchedule || !workSchedule.start_time || !workSchedule.tolerance_minutes) {
+  // Funzione per calcolare i ritardi usando orari personalizzati se disponibili
+  const calculateLateness = (checkInTime: Date) => {
+    // Priorità: orari personalizzati > orari aziendali
+    const workSchedule = employeeWorkSchedule || companyWorkSchedule;
+    
+    console.log('🔍 Calcolo ritardo con orari:', {
+      employeeWorkSchedule: employeeWorkSchedule ? 'Disponibile' : 'Non disponibile',
+      companyWorkSchedule: companyWorkSchedule ? 'Disponibile' : 'Non disponibile',
+      usedSchedule: employeeWorkSchedule ? 'Personalizzato' : 'Aziendale',
+      startTime: workSchedule?.start_time,
+      toleranceMinutes: companyWorkSchedule?.tolerance_minutes
+    });
+
+    if (!workSchedule || !workSchedule.start_time) {
+      console.log('⚠️ Nessun orario disponibile per il calcolo ritardo');
       return { isLate: false, lateMinutes: 0 };
     }
 
+    // Usa la tolleranza degli orari aziendali (gli orari personalizzati non hanno tolerance_minutes)
+    const toleranceMinutes = companyWorkSchedule?.tolerance_minutes || 0;
+
     const dayOfWeek = checkInTime.getDay();
-    const isWorkingDay = (() => {
-      switch (dayOfWeek) {
-        case 0: return workSchedule.sunday;
-        case 1: return workSchedule.monday;
-        case 2: return workSchedule.tuesday;
-        case 3: return workSchedule.wednesday;
-        case 4: return workSchedule.thursday;
-        case 5: return workSchedule.friday;
-        case 6: return workSchedule.saturday;
-        default: return false;
-      }
-    })();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[dayOfWeek];
+    
+    let isWorkingDay = false;
+    
+    if (employeeWorkSchedule) {
+      // Orari personalizzati: usa work_days array
+      isWorkingDay = employeeWorkSchedule.work_days.includes(dayName);
+    } else if (companyWorkSchedule) {
+      // Orari aziendali: usa i booleani
+      isWorkingDay = companyWorkSchedule[dayName as keyof typeof companyWorkSchedule] as boolean;
+    }
+
+    console.log('📅 Verifica giorno lavorativo:', {
+      dayOfWeek,
+      dayName,
+      isWorkingDay,
+      workDays: employeeWorkSchedule?.work_days
+    });
 
     if (!isWorkingDay) {
+      console.log('📅 Non è un giorno lavorativo, nessun ritardo');
       return { isLate: false, lateMinutes: 0 };
     }
 
@@ -43,13 +68,23 @@ export const useAttendanceOperations = () => {
     expectedStartTime.setHours(startHours, startMinutes, 0, 0);
     
     const toleranceTime = new Date(expectedStartTime);
-    toleranceTime.setMinutes(toleranceTime.getMinutes() + workSchedule.tolerance_minutes);
+    toleranceTime.setMinutes(toleranceTime.getMinutes() + toleranceMinutes);
+
+    console.log('⏰ Confronto orari:', {
+      checkInTime: checkInTime.toTimeString(),
+      expectedStartTime: expectedStartTime.toTimeString(),
+      toleranceTime: toleranceTime.toTimeString(),
+      toleranceMinutes,
+      isLate: checkInTime > toleranceTime
+    });
 
     if (checkInTime > toleranceTime) {
       const lateMinutes = Math.floor((checkInTime.getTime() - toleranceTime.getTime()) / (1000 * 60));
+      console.log(`🚨 Ritardo rilevato: ${lateMinutes} minuti`);
       return { isLate: true, lateMinutes };
     }
 
+    console.log('✅ Nessun ritardo rilevato');
     return { isLate: false, lateMinutes: 0 };
   };
 
@@ -171,7 +206,7 @@ export const useAttendanceOperations = () => {
       const checkInTime = now.toTimeString().slice(0, 5);
       
       // Calcola ritardo
-      const { isLate, lateMinutes } = calculateLateness(now, workSchedule);
+      const { isLate, lateMinutes } = calculateLateness(now);
       
       // Genera il path organizzativo italiano
       const operationType = isBusinessTrip ? 'viaggio_lavoro' : 'presenza_normale';

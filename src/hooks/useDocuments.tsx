@@ -82,6 +82,7 @@ export const useDocuments = () => {
         isPersonalDocument
       );
 
+      console.log('DEBUG UPLOAD: user.id:', user.id, 'filePath:', filePath);
       console.log('Upload documento con path italiano esistente:', filePath);
 
       const { error: uploadError } = await supabase.storage

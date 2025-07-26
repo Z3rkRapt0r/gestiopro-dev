@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { format } from 'date-fns';
 import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
+import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 
 interface RealisticAttendanceStats {
   totalWorkingDays: number;
@@ -22,7 +23,8 @@ interface RealisticAttendanceStats {
 export const useRealisticAttendanceStats = (
   employee: EmployeeProfile | null,
   attendances: UnifiedAttendance[],
-  workSchedule: any
+  workSchedule: any,
+  employeeWorkSchedule?: any
 ): RealisticAttendanceStats => {
   return useMemo(() => {
     // Validazione iniziale
@@ -96,19 +98,11 @@ export const useRealisticAttendanceStats = (
       description = `Dall'inizio dell'anno ${currentYear}`;
     }
 
-    // Funzione per verificare se un giorno è lavorativo
+    // Funzione per verificare se un giorno è lavorativo per questo dipendente
     const isWorkingDay = (date: Date): boolean => {
-      const dayOfWeek = date.getDay();
-      switch (dayOfWeek) {
-        case 0: return workSchedule.sunday;
-        case 1: return workSchedule.monday;
-        case 2: return workSchedule.tuesday;
-        case 3: return workSchedule.wednesday;
-        case 4: return workSchedule.thursday;
-        case 5: return workSchedule.friday;
-        case 6: return workSchedule.saturday;
-        default: return false;
-      }
+      const result = isEmployeeWorkingDay(date, employeeWorkSchedule, workSchedule);
+      console.log(`🔍 [useRealisticAttendanceStats] ${format(date, 'yyyy-MM-dd')} - employeeWorkSchedule:`, employeeWorkSchedule, 'companyWorkSchedule:', workSchedule, 'isWorkingDay:', result);
+      return result;
     };
 
     // Calcola i giorni lavorativi nel periodo
@@ -137,6 +131,7 @@ export const useRealisticAttendanceStats = (
     
     // Le assenze sono i giorni lavorativi senza presenza registrata
     const absentDays = Math.max(0, totalWorkingDays - periodAttendances.length);
+    console.log(`📊 [useRealisticAttendanceStats] Calcolo assenze: totalWorkingDays=${totalWorkingDays}, periodAttendances=${periodAttendances.length}, absentDays=${absentDays}`);
     
     const attendancePercentage = totalWorkingDays > 0 
       ? Math.round((presentDays / totalWorkingDays) * 100) 
@@ -155,5 +150,5 @@ export const useRealisticAttendanceStats = (
       },
       hasValidData: true
     };
-  }, [employee?.id, employee?.hire_date, employee?.tracking_start_type, attendances, workSchedule]);
+  }, [employee?.id, employee?.hire_date, employee?.tracking_start_type, attendances, workSchedule, employeeWorkSchedule]);
 };

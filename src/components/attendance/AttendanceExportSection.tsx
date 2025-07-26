@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils';
 import { generateAttendancePDF } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
+import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 
 type PeriodType = 'custom' | 'month' | 'year';
 
@@ -51,6 +53,7 @@ export default function AttendanceExportSection() {
   const { employees } = useActiveEmployees();
   const { settings: attendanceSettings } = useAttendanceSettings();
   const { getSickLeavesForDate } = useSickLeavesForCalendars();
+  const { workSchedule: companyWorkSchedule } = useWorkSchedules();
   
   // Fetch leave requests for the export period
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
@@ -185,11 +188,24 @@ export default function AttendanceExportSection() {
       // Create combined data including leave requests
       const enrichedData = [];
       
+      const employeeWorkSchedules: { [employeeId: string]: any } = {};
+      for (const employeeId of allEmployeeIds) {
+        const { data: employeeSchedule } = await supabase
+          .from('employee_work_schedules')
+          .select('*')
+          .eq('employee_id', employeeId)
+          .maybeSingle();
+        if (employeeSchedule) {
+          employeeWorkSchedules[employeeId] = employeeSchedule;
+        }
+      }
+
       for (const employeeId of allEmployeeIds) {
         const employee = employees?.find(emp => emp.id === employeeId);
         if (!employee) continue;
         
         for (const dateStr of dateRange) {
+          const checkDate = new Date(dateStr);
           // Find attendance record for this date/employee
           const attendance = filteredData.find(att => 
             att.user_id === employeeId && att.date === dateStr
@@ -224,16 +240,50 @@ export default function AttendanceExportSection() {
           const sickLeavesForDate = getSickLeavesForDate(dateStr);
           const isSickLeave = sickLeavesForDate.some(sl => sl.user_id === employeeId);
 
-          // Include all dates in range to show absences
+          // DEBUG: Calcola e logga il giorno lavorativo
+          const isWorkingDayForEmployee = isEmployeeWorkingDay(checkDate, employeeWorkSchedules[employeeId], companyWorkSchedule);
+          console.log('[PDF EXPORT DEBUG]', {
+            dateStr,
+            employeeId,
+            employeeName: `${employee.first_name} ${employee.last_name}`,
+            isWorkingDayForEmployee,
+            employeeWorkSchedule: employeeWorkSchedules[employeeId],
+            companyWorkSchedule,
+            dayOfWeek: checkDate.getDay(),
+            dayName: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][checkDate.getDay()]
+          });
+
+          // NUOVO: Determina lo stato di presenza considerando i giorni non lavorativi
+          let attendanceStatus = 'Presente';
+          
+          // PRIORITÀ ASSOLUTA: Se non è un giorno lavorativo, è sempre "Giorno non lavorativo"
+          if (!isWorkingDayForEmployee) {
+            attendanceStatus = 'Giorno non lavorativo';
+          } else if (isSickLeave) {
+            attendanceStatus = 'Malattia';
+          } else if (leaveForDate.find(l => l.type === 'ferie')) {
+            attendanceStatus = 'Ferie';
+          } else if (leaveForDate.find(l => l.type === 'permesso')) {
+            attendanceStatus = 'Permesso';
+          } else if (attendance?.is_business_trip) {
+            attendanceStatus = 'Trasferta';
+          } else if (attendance?.check_in_time || attendance?.check_out_time) {
+            attendanceStatus = 'Presente';
+          } else {
+            attendanceStatus = 'Assente';
+          }
+
+          // Includi sempre tutte le date, e imposta attendance_status = 'Giorno non lavorativo' se necessario
           enrichedData.push({
             id: attendance?.id || `virtual-${employeeId}-${dateStr}`,
             user_id: employeeId,
             date: dateStr,
+            day_name: format(checkDate, 'EEEE', { locale: it }), // Nome del giorno in italiano
             check_in_time: attendance?.check_in_time || null,
             check_out_time: attendance?.check_out_time || null,
             is_manual: attendance?.is_manual || false,
             is_business_trip: attendance?.is_business_trip || false,
-            is_sick_leave: isSickLeave, // Use new sick leave data
+            is_sick_leave: isSickLeave,
             is_late: attendance?.is_late || false,
             late_minutes: attendance?.late_minutes || 0,
             notes: attendance?.notes || '',
@@ -246,6 +296,8 @@ export default function AttendanceExportSection() {
             // Overtime data
             overtime_hours: overtimeForDate?.hours || null,
             overtime_notes: overtimeForDate?.notes || null,
+            // NUOVO: Aggiungi lo stato di presenza calcolato
+            attendance_status: attendanceStatus,
             // Helper functions
             safeFormatDate: () => safeFormatDate(dateStr),
             safeFormatCheckIn: () => safeFormatDateTime(attendance?.check_in_time, 'HH:mm'),

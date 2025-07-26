@@ -119,3 +119,135 @@ export const getEmployeeStatusForDate = async (params: StatusCheckParams): Promi
 export const formatHireDate = (hireDate: string): string => {
   return format(new Date(hireDate), 'dd/MM/yyyy');
 };
+
+// Utility per gli orari personalizzati dei dipendenti
+export interface EmployeeWorkSchedule {
+  id: string;
+  employee_id: string;
+  work_days: string[];
+  start_time: string;
+  end_time: string;
+}
+
+/**
+ * Determina se un giorno è lavorativo per un dipendente specifico
+ * Considera prima gli orari personalizzati, poi quelli aziendali
+ */
+export const isEmployeeWorkingDay = (
+  date: Date, 
+  employeeWorkSchedule: EmployeeWorkSchedule | null,
+  companyWorkSchedule: any
+): boolean => {
+  const dayOfWeek = date.getDay();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDayName = dayNames[dayOfWeek];
+
+  console.log(`🔍 [isEmployeeWorkingDay] ${date.toISOString().split('T')[0]} - employeeWorkSchedule:`, employeeWorkSchedule, 'companyWorkSchedule:', companyWorkSchedule, 'currentDayName:', currentDayName);
+
+  // Se il dipendente ha orari personalizzati, usa quelli
+  if (employeeWorkSchedule && employeeWorkSchedule.work_days) {
+    const result = employeeWorkSchedule.work_days.includes(currentDayName);
+    console.log(`✅ [isEmployeeWorkingDay] Usando orari personalizzati - work_days:`, employeeWorkSchedule.work_days, 'includes:', result);
+    return result;
+  }
+
+  // Altrimenti usa gli orari aziendali
+  if (companyWorkSchedule) {
+    let result = false;
+    switch (dayOfWeek) {
+      case 0: result = companyWorkSchedule.sunday; break;
+      case 1: result = companyWorkSchedule.monday; break;
+      case 2: result = companyWorkSchedule.tuesday; break;
+      case 3: result = companyWorkSchedule.wednesday; break;
+      case 4: result = companyWorkSchedule.thursday; break;
+      case 5: result = companyWorkSchedule.friday; break;
+      case 6: result = companyWorkSchedule.saturday; break;
+      default: result = false;
+    }
+    console.log(`🏢 [isEmployeeWorkingDay] Usando orari aziendali - result:`, result);
+    return result;
+  }
+
+  console.log(`❌ [isEmployeeWorkingDay] Nessun orario configurato - default: false`);
+  return false;
+};
+
+/**
+ * Ottiene l'orario di inizio per un dipendente specifico
+ */
+export const getEmployeeStartTime = (
+  employeeWorkSchedule: EmployeeWorkSchedule | null,
+  companyWorkSchedule: any
+): string | null => {
+  if (employeeWorkSchedule?.start_time) {
+    return employeeWorkSchedule.start_time;
+  }
+  
+  if (companyWorkSchedule?.start_time) {
+    return companyWorkSchedule.start_time;
+  }
+  
+  return null;
+};
+
+/**
+ * Ottiene l'orario di fine per un dipendente specifico
+ */
+export const getEmployeeEndTime = (
+  employeeWorkSchedule: EmployeeWorkSchedule | null,
+  companyWorkSchedule: any
+): string | null => {
+  if (employeeWorkSchedule?.end_time) {
+    return employeeWorkSchedule.end_time;
+  }
+  
+  if (companyWorkSchedule?.end_time) {
+    return companyWorkSchedule.end_time;
+  }
+  
+  return null;
+};
+
+/**
+ * Conta i giorni lavorativi per un dipendente specifico in un range di date
+ */
+export const countEmployeeWorkingDays = (
+  startDate: Date,
+  endDate: Date,
+  employeeWorkSchedule: EmployeeWorkSchedule | null,
+  companyWorkSchedule: any
+): number => {
+  let count = 0;
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    if (isEmployeeWorkingDay(current, employeeWorkSchedule, companyWorkSchedule)) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return count;
+};
+
+/**
+ * Ottiene tutti i giorni lavorativi per un dipendente specifico in un range di date
+ */
+export const getEmployeeWorkingDaysInRange = (
+  startDate: Date,
+  endDate: Date,
+  employeeWorkSchedule: EmployeeWorkSchedule | null,
+  companyWorkSchedule: any
+): Date[] => {
+  const workingDays: Date[] = [];
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    if (isEmployeeWorkingDay(current, employeeWorkSchedule, companyWorkSchedule)) {
+      workingDays.push(new Date(current));
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return workingDays;
+};

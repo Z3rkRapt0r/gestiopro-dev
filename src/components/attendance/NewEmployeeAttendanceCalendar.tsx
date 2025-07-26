@@ -8,10 +8,12 @@ import { Calendar as CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { useEmployeeWorkSchedule } from '@/hooks/useEmployeeWorkSchedule';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useRealisticAttendanceStats } from '@/hooks/useRealisticAttendanceStats';
 import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceStats';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
+import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 
@@ -21,29 +23,22 @@ interface NewEmployeeAttendanceCalendarProps {
 }
 
 export default function NewEmployeeAttendanceCalendar({ employee, attendances }: NewEmployeeAttendanceCalendarProps) {
+  console.log(`🎯 [NewEmployeeAttendanceCalendar] Componente caricato per:`, employee?.first_name, employee?.last_name);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
-  const { workSchedule } = useWorkSchedules();
+  const { workSchedule: companyWorkSchedule } = useWorkSchedules();
+  const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(employee?.id);
   const { leaveRequests } = useLeaveRequests();
-  const stats = useRealisticAttendanceStats(employee, attendances, workSchedule);
+  const stats = useRealisticAttendanceStats(employee, attendances, companyWorkSchedule, employeeWorkSchedule);
+  
+  // Debug log per verificare gli orari personalizzati
+  console.log(`👤 [NewEmployeeAttendanceCalendar] ${employee?.first_name} ${employee?.last_name} - employeeWorkSchedule:`, employeeWorkSchedule, 'companyWorkSchedule:', companyWorkSchedule);
   const { leaveBalance } = useEmployeeLeaveBalanceStats(employee?.id);
   const { getSickLeavesForUser, isUserSickOnDate } = useSickLeavesForCalendars();
 
-  // Funzione per verificare se un giorno è lavorativo
-  const isWorkingDay = (date: Date) => {
-    if (!workSchedule) return false;
-    
-    const dayOfWeek = date.getDay();
-    switch (dayOfWeek) {
-      case 0: return workSchedule.sunday;
-      case 1: return workSchedule.monday;
-      case 2: return workSchedule.tuesday;
-      case 3: return workSchedule.wednesday;
-      case 4: return workSchedule.thursday;
-      case 5: return workSchedule.friday;
-      case 6: return workSchedule.saturday;
-      default: return false;
-    }
+  // Funzione per verificare se un giorno è lavorativo per questo dipendente
+  const isWorkingDayForThisEmployee = (date: Date) => {
+    return isEmployeeWorkingDay(date, employeeWorkSchedule, companyWorkSchedule);
   };
 
   // Funzione per verificare se il dipendente era già stato assunto alla data
@@ -156,17 +151,20 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
         // Verifica se è in malattia usando il nuovo hook
         const isSick = isUserSickOnDate(employee.id, dateStr);
         
-        // Se è un giorno lavorativo, non ha presenza, non è in ferie approvate, non è in malattia e la data è passata
-        if (isWorkingDay(tempDate) && !hasAttendance && !isOnApprovedLeave && !isSick && tempDate < currentDate) {
+        // Se è un giorno lavorativo per questo dipendente, non ha presenza, non è in ferie approvate, non è in malattia e la data è passata
+        const isWorkingDay = isWorkingDayForThisEmployee(tempDate);
+        if (isWorkingDay && !hasAttendance && !isOnApprovedLeave && !isSick && tempDate < currentDate) {
           absentDates.push(new Date(tempDate));
         }
+        
+
       }
       
       tempDate.setDate(tempDate.getDate() + 1);
     }
     
     return absentDates;
-  }, [employee?.id, employee?.hire_date, attendances, workSchedule, stats, leaveRequests]);
+      }, [employee?.id, employee?.hire_date, attendances, employeeWorkSchedule, companyWorkSchedule, stats, leaveRequests]);
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
@@ -290,19 +288,24 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
           )}
           
           {/* Info configurazione */}
-          {workSchedule && (
+          {(employeeWorkSchedule || companyWorkSchedule) && (
             <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-sm font-medium text-blue-700 mb-2">Configurazione Orari:</div>
+              <div className="text-sm font-medium text-blue-700 mb-2">
+                Configurazione Orari:
+                {employeeWorkSchedule && <span className="text-blue-600 ml-1">(Personalizzati)</span>}
+              </div>
               <div className="text-xs text-blue-600 space-y-1">
-                <div>Orari: {workSchedule.start_time} - {workSchedule.end_time}</div>
+                <div>
+                  Orari: {employeeWorkSchedule?.start_time || companyWorkSchedule?.start_time} - {employeeWorkSchedule?.end_time || companyWorkSchedule?.end_time}
+                </div>
                 <div className="flex flex-wrap gap-1">
-                  {workSchedule.monday && <span className="bg-blue-100 px-1 rounded">Lun</span>}
-                  {workSchedule.tuesday && <span className="bg-blue-100 px-1 rounded">Mar</span>}
-                  {workSchedule.wednesday && <span className="bg-blue-100 px-1 rounded">Mer</span>}
-                  {workSchedule.thursday && <span className="bg-blue-100 px-1 rounded">Gio</span>}
-                  {workSchedule.friday && <span className="bg-blue-100 px-1 rounded">Ven</span>}
-                  {workSchedule.saturday && <span className="bg-blue-100 px-1 rounded">Sab</span>}
-                  {workSchedule.sunday && <span className="bg-blue-100 px-1 rounded">Dom</span>}
+                  {(employeeWorkSchedule?.work_days || []).includes('monday') || companyWorkSchedule?.monday ? <span className="bg-blue-100 px-1 rounded">Lun</span> : null}
+                  {(employeeWorkSchedule?.work_days || []).includes('tuesday') || companyWorkSchedule?.tuesday ? <span className="bg-blue-100 px-1 rounded">Mar</span> : null}
+                  {(employeeWorkSchedule?.work_days || []).includes('wednesday') || companyWorkSchedule?.wednesday ? <span className="bg-blue-100 px-1 rounded">Mer</span> : null}
+                  {(employeeWorkSchedule?.work_days || []).includes('thursday') || companyWorkSchedule?.thursday ? <span className="bg-blue-100 px-1 rounded">Gio</span> : null}
+                  {(employeeWorkSchedule?.work_days || []).includes('friday') || companyWorkSchedule?.friday ? <span className="bg-blue-100 px-1 rounded">Ven</span> : null}
+                  {(employeeWorkSchedule?.work_days || []).includes('saturday') || companyWorkSchedule?.saturday ? <span className="bg-blue-100 px-1 rounded">Sab</span> : null}
+                  {(employeeWorkSchedule?.work_days || []).includes('sunday') || companyWorkSchedule?.sunday ? <span className="bg-blue-100 px-1 rounded">Dom</span> : null}
                 </div>
               </div>
             </div>
@@ -400,7 +403,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
             <CardTitle className="flex items-center gap-2 text-base">
               <Clock className="w-4 h-4" />
               Dettagli {selectedDate ? format(selectedDate, 'dd/MM', { locale: it }) : ''}
-              {selectedDate && !isWorkingDay(selectedDate) && (
+              {selectedDate && !isWorkingDayForThisEmployee(selectedDate) && (
                 <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs">
                   Non lavorativo
                 </Badge>
@@ -418,7 +421,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                   Il dipendente è stato assunto il {employee.hire_date ? format(new Date(employee.hire_date), 'dd/MM/yyyy') : 'N/A'}
                 </p>
               </div>
-            ) : selectedDate && !isWorkingDay(selectedDate) ? (
+            ) : selectedDate && !isWorkingDayForThisEmployee(selectedDate) ? (
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
