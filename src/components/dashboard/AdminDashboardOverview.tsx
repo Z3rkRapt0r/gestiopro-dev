@@ -3,6 +3,7 @@ import { useAdminStats } from "@/hooks/useAdminStats";
 import ModernStatsCards from "./ModernStatsCards";
 import UpcomingLeavesSection from "./UpcomingLeavesSection";
 import TodayAttendanceSummary from "./TodayAttendanceSummary";
+import SummaryBoard from "./SummaryBoard";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,6 +77,9 @@ const AdminDashboardOverview = () => {
 
       {/* Today Attendance Summary */}
       <TodayAttendanceSummary />
+
+      {/* Summary Board */}
+      <SummaryBoard />
 
       {/* Upcoming Leaves Section */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 sm:p-6">
