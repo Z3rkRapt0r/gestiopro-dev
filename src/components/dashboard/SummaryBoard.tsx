@@ -50,10 +50,11 @@ const SummaryBoard = () => {
     
     setLoading(true);
     try {
-      // Fetch recent leave requests
+      // Fetch only pending leave requests
       const { data: leaveRequestsData, error: leaveRequestsError } = await supabase
         .from('leave_requests')
         .select('id, type, date_from, date_to, day, time_from, time_to, note, status, created_at, user_id')
+        .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -182,80 +183,72 @@ const SummaryBoard = () => {
   }
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm shadow-lg border border-slate-200/60">
-      <CardHeader className="pb-4">
+    <Card className="bg-white/80 backdrop-blur-sm shadow-lg border border-slate-200/60 max-w-2xl">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Calendar className="h-5 w-5" />
-            Richieste Ferie e Permessi
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            <Calendar className="h-4 w-4" />
+            Richieste in Attesa ({recentLeaveRequests.length})
           </CardTitle>
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">
-              Ultimo aggiornamento: {format(lastRefresh, 'HH:mm:ss', { locale: it })}
+              {format(lastRefresh, 'HH:mm', { locale: it })}
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={fetchRecentData}
               disabled={loading}
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 p-0"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent>
-        <div className="space-y-3">
+      <CardContent className="pt-0">
+        <div className="space-y-2">
           {recentLeaveRequests.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-              <p>Nessuna richiesta recente</p>
+            <div className="text-center py-6 text-slate-500">
+              <Calendar className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+              <p className="text-sm">Nessuna richiesta in attesa</p>
             </div>
           ) : (
             recentLeaveRequests.map((request) => (
               <div
                 key={request.id}
-                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
+                className="flex items-center justify-between p-2 bg-slate-50 rounded-md border border-slate-200 hover:bg-slate-100 transition-colors"
               >
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   {getLeaveRequestIcon(request.type)}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-slate-900">
+                      <p className="font-medium text-slate-900 text-sm">
                         {request.type === 'ferie' ? 'Ferie' : 
                          request.type === 'permesso' ? 'Permesso' : 'Malattia'}
                       </p>
-                      {getStatusBadge(request.status)}
+                      <span className="text-xs text-slate-600">
+                        {getEmployeeName(request.profiles)}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
-                      <User className="h-3 w-3" />
-                      <span>{getEmployeeName(request.profiles)}</span>
-                      <span>•</span>
-                      <span>{formatDate(request.created_at)}</span>
-                    </div>
-                    <p className="text-sm text-slate-700">
+                    <p className="text-xs text-slate-600">
                       {formatLeaveRequestDate(request)}
                     </p>
                     {request.note && (
-                      <p className="text-xs text-slate-500 mt-1 truncate">
+                      <p className="text-xs text-slate-500 mt-1 truncate max-w-xs">
                         "{request.note}"
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {request.status === 'pending' && (
-                    <>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-green-600 hover:text-green-700">
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
+                <div className="flex items-center gap-1 ml-2">
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-green-600 hover:text-green-700">
+                    <CheckCircle className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-600 hover:text-red-700">
+                    <XCircle className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
             ))
