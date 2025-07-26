@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, FileText, Calendar, Clock, Bell, UserCheck, TrendingUp, TrendingDown } from 'lucide-react';
+import { Users, FileText, Calendar, Bell, UserCheck, TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ModernStatsCardsProps {
@@ -10,7 +10,6 @@ interface ModernStatsCardsProps {
     activeEmployees: number;
     totalDocuments: number;
     pendingLeaveRequests: number;
-    totalAttendancesToday: number;
     unreadNotifications: number;
   };
 }
@@ -60,17 +59,7 @@ const statsConfig = [
     change: '-8.1%',
     changeType: 'negative' as const
   },
-  {
-    title: 'Presenze Oggi',
-    key: 'totalAttendancesToday' as const,
-    icon: Clock,
-    gradient: 'from-teal-500 via-cyan-500 to-blue-500',
-    bgGradient: 'from-teal-50 to-cyan-50',
-    borderColor: 'border-teal-200',
-    iconBg: 'bg-teal-500',
-    change: '+3.7%',
-    changeType: 'positive' as const
-  },
+
   {
     title: 'Notifiche',
     key: 'unreadNotifications' as const,
@@ -86,7 +75,7 @@ const statsConfig = [
 
 export default function ModernStatsCards({ stats }: ModernStatsCardsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-6 mb-8">
       {statsConfig.map((config, index) => {
         const Icon = config.icon;
         const value = stats[config.key];
