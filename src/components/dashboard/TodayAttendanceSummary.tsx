@@ -14,7 +14,8 @@ import {
   Filter,
   Plane,
   Umbrella,
-  Heart
+  Heart,
+  Calendar
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -37,6 +38,8 @@ const TodayAttendanceSummary = () => {
             return <Umbrella className="h-4 w-4 text-purple-600" />;
           case 'sick_leave':
             return <Heart className="h-4 w-4 text-orange-600" />;
+          case 'non_working_day':
+            return <Calendar className="h-4 w-4 text-gray-600" />;
           default:
             return <Shield className="h-4 w-4 text-gray-600" />;
         }
@@ -64,6 +67,8 @@ const TodayAttendanceSummary = () => {
           return <Badge className="bg-purple-50 text-purple-700 border-purple-200">Ferie</Badge>;
         case 'sick_leave':
           return <Badge className="bg-orange-50 text-orange-700 border-orange-200">Malattia</Badge>;
+        case 'non_working_day':
+          return <Badge className="bg-gray-50 text-gray-700 border-gray-200">Non Lavorativo</Badge>;
         default:
           return <Badge className="bg-gray-50 text-gray-700 border-gray-200">Giustificato</Badge>;
       }
@@ -118,7 +123,9 @@ const TodayAttendanceSummary = () => {
     );
   }
 
-  if (!isWorkingDay) {
+  // Mostra il riepilogo anche se non è un giorno lavorativo generale, 
+  // perché alcuni dipendenti potrebbero avere orari personalizzati
+  if (!isWorkingDay && summary.length === 0) {
     return (
       <Card className="bg-white/80 backdrop-blur-sm shadow-lg border border-slate-200/60">
         <CardHeader className="pb-3">
@@ -131,7 +138,7 @@ const TodayAttendanceSummary = () => {
           <div className="text-center py-8">
             <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-600 mb-2">Giorno non lavorativo</h3>
-            <p className="text-gray-500">Oggi non è configurato come giorno lavorativo</p>
+            <p className="text-gray-500">Oggi non è configurato come giorno lavorativo per nessun dipendente</p>
           </div>
         </CardContent>
       </Card>

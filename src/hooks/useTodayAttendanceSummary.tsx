@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveEmployees, type Employee } from '@/hooks/useActiveEmployees';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
-import { format } from 'date-fns';
+import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 
 export interface DailyAttendanceSummary {
   employee: Employee;
   status: 'present' | 'absent' | 'justified';
-  justification?: 'business_trip' | 'vacation' | 'sick_leave';
+  justification?: 'business_trip' | 'vacation' | 'sick_leave' | 'non_working_day';
   details?: string;
   attendanceTime?: string;
   isLate?: boolean;
@@ -16,7 +17,7 @@ export interface DailyAttendanceSummary {
 
 export const useTodayAttendanceSummary = () => {
   const { employees } = useActiveEmployees();
-  const { workSchedule } = useWorkSchedules();
+  const { workSchedule: companyWorkSchedule } = useWorkSchedules();
   const today = format(new Date(), 'yyyy-MM-dd');
 
   const { data: summary, isLoading } = useQuery({
@@ -56,20 +57,16 @@ export const useTodayAttendanceSummary = () => {
         .lte('start_date', today)
         .gte('end_date', today);
 
-      // Verifica se oggi è un giorno lavorativo
-      const dayOfWeek = new Date().getDay();
-      const isWorkingDay = workSchedule ? (() => {
-        switch (dayOfWeek) {
-          case 0: return workSchedule.sunday;
-          case 1: return workSchedule.monday;
-          case 2: return workSchedule.tuesday;
-          case 3: return workSchedule.wednesday;
-          case 4: return workSchedule.thursday;
-          case 5: return workSchedule.friday;
-          case 6: return workSchedule.saturday;
-          default: return false;
-        }
-      })() : true;
+      // Ottieni gli orari personalizzati per tutti i dipendenti
+      const { data: employeeWorkSchedules } = await supabase
+        .from('employee_work_schedules')
+        .select('*');
+
+      // Crea una mappa per accesso rapido agli orari personalizzati
+      const employeeWorkSchedulesMap = employeeWorkSchedules?.reduce((acc, schedule) => {
+        acc[schedule.employee_id] = schedule;
+        return acc;
+      }, {} as Record<string, any>) || {};
 
       const summaryData: DailyAttendanceSummary[] = employees.map(employee => {
         // Controlla presenza
@@ -118,11 +115,20 @@ export const useTodayAttendanceSummary = () => {
           };
         }
 
-        // Se non è un giorno lavorativo, non dovrebbe essere tracciato
-        if (!isWorkingDay) {
+        // NUOVO: Verifica se è un giorno lavorativo per questo dipendente specifico
+        const employeeWorkSchedule = employeeWorkSchedulesMap[employee.id];
+        const isWorkingDayForThisEmployee = isEmployeeWorkingDay(
+          new Date(), 
+          employeeWorkSchedule, 
+          companyWorkSchedule
+        );
+
+        // Se non è un giorno lavorativo per questo dipendente, è giustificato
+        if (!isWorkingDayForThisEmployee) {
           return {
             employee,
             status: 'justified' as const,
+            justification: 'non_working_day' as const,
             details: 'Giorno non lavorativo',
           };
         }
@@ -153,16 +159,16 @@ export const useTodayAttendanceSummary = () => {
     summary: summary || [],
     stats,
     isLoading,
-    isWorkingDay: workSchedule ? (() => {
+    isWorkingDay: companyWorkSchedule ? (() => {
       const dayOfWeek = new Date().getDay();
       switch (dayOfWeek) {
-        case 0: return workSchedule.sunday;
-        case 1: return workSchedule.monday;
-        case 2: return workSchedule.tuesday;
-        case 3: return workSchedule.wednesday;
-        case 4: return workSchedule.thursday;
-        case 5: return workSchedule.friday;
-        case 6: return workSchedule.saturday;
+        case 0: return companyWorkSchedule.sunday;
+        case 1: return companyWorkSchedule.monday;
+        case 2: return companyWorkSchedule.tuesday;
+        case 3: return companyWorkSchedule.wednesday;
+        case 4: return companyWorkSchedule.thursday;
+        case 5: return companyWorkSchedule.friday;
+        case 6: return companyWorkSchedule.saturday;
         default: return false;
       }
     })() : true,
