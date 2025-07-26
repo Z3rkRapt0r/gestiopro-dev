@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -258,6 +258,37 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   const leaveDaysCount = leaveDates.length;
   const businessTripDaysCount = businessTripDates.length;
 
+  // NUOVO: Calcola i giorni non lavorativi dall'inizio dell'anno
+  const nonWorkingDaysCount = useMemo(() => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    
+    // Data di inizio: 1° gennaio dell'anno corrente oppure data di assunzione se più tarda
+    let startDate = new Date(currentYear, 0, 1);
+    if (employee.hire_date) {
+      const hireDate = new Date(employee.hire_date);
+      if (hireDate > startDate) {
+        startDate = hireDate;
+      }
+    }
+    
+    let count = 0;
+    const tempDate = new Date(startDate);
+    
+    while (tempDate <= today) {
+      if (!isWorkingDay(tempDate)) {
+        count++;
+      }
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
+    
+    return count;
+  }, [employee.hire_date, isWorkingDay]);
+
+  // NUOVO: Calcola la percentuale di presenza considerando solo i giorni lavorativi
+  const totalWorkingDays = presentDaysCount + absentDaysCount;
+  const attendancePercentage = totalWorkingDays > 0 ? Math.round((presentDaysCount / totalWorkingDays) * 100) : 0;
+
   return (
     <div className="space-y-6">
       {/* Riepilogo Statistico */}
@@ -269,7 +300,7 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <div className="bg-green-50 p-3 rounded-lg border border-green-200">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -304,6 +335,40 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                 <span className="text-xs font-medium text-yellow-700">Trasferte</span>
               </div>
               <div className="text-lg font-bold text-yellow-700">{businessTripDaysCount}</div>
+            </div>
+            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                <span className="text-xs font-medium text-gray-700">Non Lavorativi</span>
+              </div>
+              <div className="text-lg font-bold text-gray-700">{nonWorkingDaysCount}</div>
+            </div>
+          </div>
+          
+          {/* Percentuale di presenza */}
+          <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
+            <div className="text-center">
+              <div className="text-sm font-medium text-blue-700 mb-2">Percentuale di Presenza</div>
+              <div className="text-3xl font-bold text-blue-800">{attendancePercentage}%</div>
+              <div className="text-xs text-blue-600 mt-1">
+                {presentDaysCount} presenti su {totalWorkingDays} giorni lavorativi
+              </div>
+            </div>
+          </div>
+          
+          {/* Informazioni aggiuntive */}
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="text-xs text-blue-700">
+              <div className="font-medium mb-1">ℹ️ Informazioni sul calcolo:</div>
+              <ul className="space-y-1 text-blue-600">
+                <li>• <strong>Presenti:</strong> Giorni con timbratura registrata</li>
+                <li>• <strong>Assenti:</strong> Giorni lavorativi senza timbratura</li>
+                <li>• <strong>Non Lavorativi:</strong> Giorni non configurati come lavorativi (weekend, festività)</li>
+                <li>• <strong>Ferie/Malattia/Trasferte:</strong> Giorni con richieste approvate</li>
+              </ul>
+              <div className="mt-2 text-blue-600">
+                <span className="font-medium">📅 Calendario Generale:</span> I giorni non lavorativi sono gestiti secondo la configurazione aziendale e personale
+              </div>
             </div>
           </div>
         </CardContent>
