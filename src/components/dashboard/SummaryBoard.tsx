@@ -47,7 +47,14 @@ const SummaryBoard = () => {
   const isAdmin = profile?.role === 'admin';
 
   const handleGoToApprovals = () => {
-    navigate('/admin?tab=leave-approvals');
+    // Navigate to admin dashboard with leaves tab active
+    navigate('/admin');
+    // The tab will be set by the dashboard component
+    // We need to trigger the tab change programmatically
+    setTimeout(() => {
+      const event = new CustomEvent('setAdminTab', { detail: 'leaves' });
+      window.dispatchEvent(event);
+    }, 100);
   };
 
   const fetchRecentData = async () => {
@@ -82,11 +89,6 @@ const SummaryBoard = () => {
 
       setRecentLeaveRequests(leaveRequestsWithProfiles);
       setLastRefresh(new Date());
-      
-      toast({
-        title: "Dati aggiornati",
-        description: "Bacheca riepilogativa aggiornata con successo",
-      });
     } catch (error) {
       console.error('Errore nel caricamento dati bacheca:', error);
       toast({

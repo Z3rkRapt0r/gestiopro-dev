@@ -49,6 +49,19 @@ export default function ModernAdminDashboard() {
     queryClient.invalidateQueries({ queryKey: ['attendances'] });
   }, [activeTab, queryClient]);
 
+  // Listen for tab change events from other components
+  useEffect(() => {
+    const handleTabChange = (event: CustomEvent) => {
+      setActiveTab(event.detail);
+    };
+
+    window.addEventListener('setAdminTab', handleTabChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('setAdminTab', handleTabChange as EventListener);
+    };
+  }, []);
+
   if (!profile || profile.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
