@@ -41,7 +41,7 @@ export default function UpcomingLeavesSection() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5" />
-            Ferie Imminenti
+            Ferie e Permessi Imminenti
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -59,7 +59,7 @@ export default function UpcomingLeavesSection() {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5" />
-            Ferie Imminenti
+            Ferie e Permessi Imminenti
           </CardTitle>
           <Select 
             value={daysRange.toString()} 
