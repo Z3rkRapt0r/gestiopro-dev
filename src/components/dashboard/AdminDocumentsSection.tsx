@@ -286,141 +286,183 @@ const AdminDocumentsSection = () => {
             <CardTitle>Elenco Dipendenti</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('name')}
-                      className="h-auto p-0 font-semibold"
-                    >
-                      Dipendente
-                      <SortIcon field="name" />
-                    </Button>
-                  </TableHead>
-                  
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('documents')}
-                      className="h-auto p-0 font-semibold"
-                    >
-                      Documenti
-                      <SortIcon field="documents" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('lastDocument')}
-                      className="h-auto p-0 font-semibold"
-                    >
-                      Ultimo Documento
-                      <SortIcon field="lastDocument" />
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEmployees.map(emp => (
-                  <TableRow key={emp.id} className="hover:bg-gray-50">
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {emp.first_name || ""} {emp.last_name || ""}
-                          </div>
-                          <div className="text-sm text-gray-500">{emp.email}</div>
-                        </div>
-                      </div>
-                    </TableCell>
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('name')}
+                        className="h-auto p-0 font-semibold"
+                      >
+                        Dipendente
+                        <SortIcon field="name" />
+                      </Button>
+                    </TableHead>
                     
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant={emp.documentCount > 0 ? "default" : "secondary"}>
-                          {emp.documentCount} documenti
-                        </Badge>
-                        {emp.documentCount > 0 && (
-                          <div className="flex space-x-1">
-                            {Object.entries(emp.documentTypes).slice(0, 3).map(([type, count]) => (
-                              <div key={type} className="w-2 h-2 bg-blue-400 rounded-full" title={`${type}: ${count}`} />
-                            ))}
-                            {Object.keys(emp.documentTypes).length > 3 && (
-                              <div className="w-2 h-2 bg-gray-300 rounded-full" title="Altri tipi" />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {emp.lastDocument ? (
-                        <div className="text-sm text-gray-600">
-                          {formatDate(emp.lastDocument.created_at)}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-400">Nessun documento</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          size="sm"
-                          onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Visualizza
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Visualizza Documenti
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Carica Documento
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('documents')}
+                        className="h-auto p-0 font-semibold"
+                      >
+                        Documenti
+                        <SortIcon field="documents" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('lastDocument')}
+                        className="h-auto p-0 font-semibold"
+                      >
+                        Ultimo Documento
+                        <SortIcon field="lastDocument" />
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.map(emp => (
+                    <TableRow key={emp.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Users className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {emp.first_name || ""} {emp.last_name || ""}
+                            </div>
+                            <div className="text-sm text-gray-500">{emp.email}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant={emp.documentCount > 0 ? "default" : "secondary"}>
+                            {emp.documentCount} documenti
+                          </Badge>
+                          {emp.documentCount > 0 && (
+                            <div className="flex space-x-1">
+                              {Object.entries(emp.documentTypes).slice(0, 3).map(([type, count]) => (
+                                <div key={type} className="w-2 h-2 bg-blue-400 rounded-full" title={`${type}: ${count}`} />
+                              ))}
+                              {Object.keys(emp.documentTypes).length > 3 && (
+                                <div className="w-2 h-2 bg-gray-300 rounded-full" title="Altri tipi" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {emp.lastDocument ? (
+                          <div className="text-sm text-gray-600">
+                            {formatDate(emp.lastDocument.created_at)}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">Nessun documento</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <Button
+                            size="sm"
+                            onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Visualizza
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Visualizza Documenti
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Carica Documento
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile List */}
+            <div className="md:hidden space-y-3">
+              {filteredEmployees.map(emp => (
+                <div
+                  key={emp.id}
+                  className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}
+                >
+                  <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-900 truncate">
+                      {emp.first_name || ""} {emp.last_name || ""}
+                    </div>
+                    <div className="text-sm text-gray-500 truncate">{emp.email}</div>
+                    {emp.documentCount > 0 && (
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge variant="default" className="text-xs">
+                          {emp.documentCount} doc
+                        </Badge>
+                        <div className="flex space-x-1">
+                          {Object.entries(emp.documentTypes).slice(0, 2).map(([type, count]) => (
+                            <div key={type} className="w-1.5 h-1.5 bg-blue-400 rounded-full" title={`${type}: ${count}`} />
+                          ))}
+                          {Object.keys(emp.documentTypes).length > 2 && (
+                            <div className="w-1.5 h-1.5 bg-gray-300 rounded-full" title="Altri tipi" />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       ) : (
         // VISTA GRIGLIA
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredEmployees.map(emp => (
             <Card
               key={emp.id}
               className="hover:shadow-lg transition-all duration-200 cursor-pointer group"
               onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}
             >
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <Users className="h-6 w-6 text-blue-600" />
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-start justify-between mb-3 md:mb-4">
+                  <div className="h-10 w-10 md:h-12 md:w-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                    <Users className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
                   </div>
-                  <Badge variant={emp.documentCount > 0 ? "default" : "secondary"}>
+                  <Badge variant={emp.documentCount > 0 ? "default" : "secondary"} className="text-xs">
                     {emp.documentCount} doc
                   </Badge>
                 </div>
                 
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-semibold text-base md:text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
                     {emp.first_name || ""} {emp.last_name || ""}
                   </h3>
                   <p className="text-sm text-gray-600">{emp.email}</p>
@@ -434,14 +476,14 @@ const AdminDocumentsSection = () => {
                     <div className="space-y-2 pt-2">
                       <div className="text-xs font-medium text-gray-700">Tipi di documento:</div>
                       <div className="flex flex-wrap gap-1">
-                        {Object.entries(emp.documentTypes).slice(0, 3).map(([type, count]) => (
+                        {Object.entries(emp.documentTypes).slice(0, 2).map(([type, count]) => (
                           <Badge key={type} variant="outline" className="text-xs">
                             {type}: {count}
                           </Badge>
                         ))}
-                        {Object.keys(emp.documentTypes).length > 3 && (
+                        {Object.keys(emp.documentTypes).length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                            +{Object.keys(emp.documentTypes).length - 3} altri
+                            +{Object.keys(emp.documentTypes).length - 2} altri
                           </Badge>
                         )}
                       </div>
@@ -456,7 +498,7 @@ const AdminDocumentsSection = () => {
                   )}
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-gray-100">
                   <Button
                     size="sm"
                     className="w-full"
