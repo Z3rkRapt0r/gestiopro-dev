@@ -28,13 +28,19 @@ ALTER TABLE public.working_days_tracking ENABLE ROW LEVEL SECURITY;
 -- Enable RLS on the employee_work_schedules table that doesn't have policies yet
 ALTER TABLE public.employee_work_schedules ENABLE ROW LEVEL SECURITY;
 
--- Create basic RLS policy for employee_work_schedules
+-- Create basic RLS policy for employee_work_schedules (admin only)
 CREATE POLICY "Only admins can manage employee work schedules" ON public.employee_work_schedules
 FOR ALL USING (
   EXISTS (
     SELECT 1 FROM public.profiles 
     WHERE id = auth.uid() AND role = 'admin'
   )
+);
+
+-- Add policy for employees to read their own work schedules
+CREATE POLICY "Employees can view their own work schedules" ON public.employee_work_schedules
+FOR SELECT USING (
+  employee_id = auth.uid()
 );
 
 -- Add security definer function to prevent role escalation vulnerabilities
