@@ -33,8 +33,8 @@ export const useAttendanceOperations = () => {
       return { isLate: false, lateMinutes: 0 };
     }
 
-    // Usa la tolleranza degli orari aziendali (gli orari personalizzati non hanno tolerance_minutes)
-    const toleranceMinutes = companyWorkSchedule?.tolerance_minutes || 0;
+    // Usa la tolleranza degli orari personalizzati se disponibile, altrimenti quella aziendale
+    const toleranceMinutes = employeeWorkSchedule?.tolerance_minutes || companyWorkSchedule?.tolerance_minutes || 0;
 
     const dayOfWeek = checkInTime.getDay();
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];

@@ -8,6 +8,7 @@ export interface EmployeeWorkSchedule {
   work_days: string[];
   start_time: string;
   end_time: string;
+  tolerance_minutes?: number;
 }
 
 export const useEmployeeWorkSchedule = (employeeId?: string) => {
