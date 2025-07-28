@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { useEmployeeWorkSchedule } from '@/hooks/useEmployeeWorkSchedule';
 import { useAuth } from '@/hooks/useAuth';
 import { useAttendanceOperations } from '@/hooks/useAttendanceOperations';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
@@ -20,9 +21,13 @@ export default function AttendanceCheckInOut() {
   const { user } = useAuth();
   const { checkIn, checkOut, isCheckingIn, isCheckingOut } = useAttendanceOperations();
   const { attendances } = useUnifiedAttendances();
-  const { workSchedule } = useWorkSchedules();
+  const { workSchedule: companyWorkSchedule } = useWorkSchedules();
+  const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(user?.id);
   const { settings: attendanceSettings } = useAttendanceSettings();
   const { employeeStatus, isLoading: statusLoading } = useEmployeeStatus();
+
+  // Usa orari personalizzati se disponibili, altrimenti orari aziendali
+  const workSchedule = employeeWorkSchedule || companyWorkSchedule;
 
   // Trova la presenza di oggi dalla tabella unificata
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -40,16 +45,26 @@ export default function AttendanceCheckInOut() {
     if (!workSchedule) return false;
     const today = new Date();
     const dayOfWeek = today.getDay();
-    switch (dayOfWeek) {
-      case 0: return workSchedule.sunday;
-      case 1: return workSchedule.monday;
-      case 2: return workSchedule.tuesday;
-      case 3: return workSchedule.wednesday;
-      case 4: return workSchedule.thursday;
-      case 5: return workSchedule.friday;
-      case 6: return workSchedule.saturday;
-      default: return false;
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[dayOfWeek];
+    
+    if (employeeWorkSchedule) {
+      // Orari personalizzati: usa work_days array
+      return employeeWorkSchedule.work_days.includes(dayName);
+    } else if (companyWorkSchedule) {
+      // Orari aziendali: usa i booleani
+      switch (dayOfWeek) {
+        case 0: return companyWorkSchedule.sunday;
+        case 1: return companyWorkSchedule.monday;
+        case 2: return companyWorkSchedule.tuesday;
+        case 3: return companyWorkSchedule.wednesday;
+        case 4: return companyWorkSchedule.thursday;
+        case 5: return companyWorkSchedule.friday;
+        case 6: return companyWorkSchedule.saturday;
+        default: return false;
+      }
     }
+    return false;
   };
 
   const handleCheckIn = async () => {
@@ -126,7 +141,14 @@ export default function AttendanceCheckInOut() {
           <CardContent className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Orario:</span>
-              <span className="font-medium text-sm sm:text-base">{workSchedule.start_time} - {workSchedule.end_time}</span>
+              <span className="font-medium text-sm sm:text-base">
+                {workSchedule.start_time} - {workSchedule.end_time}
+                {employeeWorkSchedule && (
+                  <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700">
+                    Personalizzati
+                  </Badge>
+                )}
+              </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Oggi:</span>
