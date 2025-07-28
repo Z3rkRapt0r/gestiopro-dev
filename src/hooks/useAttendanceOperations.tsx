@@ -33,8 +33,8 @@ export const useAttendanceOperations = () => {
       return { isLate: false, lateMinutes: 0 };
     }
 
-    // Usa la tolleranza degli orari personalizzati se disponibile, altrimenti quella aziendale
-    const toleranceMinutes = employeeWorkSchedule?.tolerance_minutes || companyWorkSchedule?.tolerance_minutes || 0;
+    // Usa sempre la tolleranza degli orari aziendali
+    const toleranceMinutes = companyWorkSchedule?.tolerance_minutes || 0;
 
     const dayOfWeek = checkInTime.getDay();
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -63,12 +63,20 @@ export const useAttendanceOperations = () => {
     }
 
     // Calcola l'orario di inizio previsto + tolleranza
-    const [startHours, startMinutes] = workSchedule.start_time.split(':').map(Number);
+    const [startHours, startMinutes] = workSchedule.start_time.split(':').slice(0, 2).map(Number);
     const expectedStartTime = new Date(checkInTime);
     expectedStartTime.setHours(startHours, startMinutes, 0, 0);
     
     const toleranceTime = new Date(expectedStartTime);
     toleranceTime.setMinutes(toleranceTime.getMinutes() + toleranceMinutes);
+
+    console.log('🔧 Parsing orario:', {
+      originalStartTime: workSchedule.start_time,
+      parsedHours: startHours,
+      parsedMinutes: startMinutes,
+      expectedStartTime: expectedStartTime.toTimeString(),
+      toleranceTime: toleranceTime.toTimeString()
+    });
 
     console.log('⏰ Confronto orari:', {
       checkInTime: checkInTime.toTimeString(),
