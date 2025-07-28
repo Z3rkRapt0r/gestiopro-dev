@@ -29,6 +29,16 @@ export default function AttendanceCheckInOut() {
   // Usa orari personalizzati se disponibili, altrimenti orari aziendali
   const workSchedule = employeeWorkSchedule || companyWorkSchedule;
 
+  // Debug: Log per diagnosticare il problema
+  console.log('🔍 [AttendanceCheckInOut] Debug orari:', {
+    userId: user?.id,
+    userName: user?.email,
+    employeeWorkSchedule: employeeWorkSchedule,
+    companyWorkSchedule: companyWorkSchedule,
+    finalWorkSchedule: workSchedule,
+    isUsingPersonalized: !!employeeWorkSchedule
+  });
+
   // Trova la presenza di oggi dalla tabella unificata
   const today = format(new Date(), 'yyyy-MM-dd');
   const todayAttendance = attendances?.find(att => att.user_id === user?.id && att.date === today);
