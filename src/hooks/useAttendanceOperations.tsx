@@ -16,7 +16,7 @@ export const useAttendanceOperations = () => {
   const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(user?.id);
 
   // Funzione per calcolare i ritardi usando orari personalizzati se disponibili
-  const calculateLateness = (checkInTime: Date) => {
+  const calculateLateness = async (checkInTime: Date) => {
     // Priorità: orari personalizzati > orari aziendali
     const workSchedule = employeeWorkSchedule || companyWorkSchedule;
     
@@ -62,8 +62,42 @@ export const useAttendanceOperations = () => {
       return { isLate: false, lateMinutes: 0 };
     }
 
+    // --- NOVITÀ: controllo permesso orario approvato ---
+    let referenceStartTime = workSchedule.start_time;
+    let usedPermission = null;
+    try {
+      const todayStr = checkInTime.toISOString().split('T')[0];
+      const { data: approvedPermissions } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('status', 'approved')
+        .eq('type', 'permesso')
+        .eq('day', todayStr);
+      if (approvedPermissions && approvedPermissions.length > 0) {
+        // Cerca il permesso orario che copre l'inizio turno
+        for (const permission of approvedPermissions) {
+          if (permission.time_from && permission.time_to) {
+            // Se il check-in è dopo la fine del permesso, usa quella come riferimento
+            const [permEndH, permEndM] = permission.time_to.split(':').slice(0,2).map(Number);
+            const permEnd = new Date(checkInTime);
+            permEnd.setHours(permEndH, permEndM, 0, 0);
+            // Se il check-in è dopo la fine del permesso, aggiorna il riferimento
+            if (checkInTime >= permEnd) {
+              referenceStartTime = permission.time_to;
+              usedPermission = permission;
+              break;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Errore controllo permesso orario:', e);
+    }
+    // --- FINE NOVITÀ ---
+
     // Calcola l'orario di inizio previsto + tolleranza
-    const [startHours, startMinutes] = workSchedule.start_time.split(':').slice(0, 2).map(Number);
+    const [startHours, startMinutes] = referenceStartTime.split(':').slice(0, 2).map(Number);
     const expectedStartTime = new Date(checkInTime);
     expectedStartTime.setHours(startHours, startMinutes, 0, 0);
     
@@ -72,10 +106,12 @@ export const useAttendanceOperations = () => {
 
     console.log('🔧 Parsing orario:', {
       originalStartTime: workSchedule.start_time,
+      referenceStartTime,
       parsedHours: startHours,
       parsedMinutes: startMinutes,
       expectedStartTime: expectedStartTime.toTimeString(),
-      toleranceTime: toleranceTime.toTimeString()
+      toleranceTime: toleranceTime.toTimeString(),
+      usedPermission
     });
 
     console.log('⏰ Confronto orari:', {
@@ -214,7 +250,7 @@ export const useAttendanceOperations = () => {
       const checkInTime = now.toTimeString().slice(0, 5);
       
       // Calcola ritardo
-      const { isLate, lateMinutes } = calculateLateness(now);
+      const { isLate, lateMinutes } = await calculateLateness(now);
       
       // Genera il path organizzativo italiano
       const operationType = isBusinessTrip ? 'viaggio_lavoro' : 'presenza_normale';
