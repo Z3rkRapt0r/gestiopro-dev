@@ -36,7 +36,7 @@ export const useUnifiedAttendances = () => {
   const queryClient = useQueryClient();
 
   // Funzione per calcolare il ritardo per presenze manuali
-  const calculateManualLateness = (checkInTime: string, userId: string, employeeWorkSchedule: any, companyWorkSchedule: any) => {
+  const calculateManualLateness = async (checkInTime: string, userId: string, employeeWorkSchedule: any, companyWorkSchedule: any) => {
     // Priorità: orari personalizzati > orari aziendali
     const workSchedule = employeeWorkSchedule || companyWorkSchedule;
     
@@ -67,8 +67,42 @@ export const useUnifiedAttendances = () => {
       return { isLate: false, lateMinutes: 0 };
     }
 
+    // --- NOVITÀ: controllo permesso orario approvato ---
+    let referenceStartTime = workSchedule.start_time;
+    let usedPermission = null;
+    try {
+      const todayStr = checkInDate.toISOString().split('T')[0];
+      const { data: approvedPermissions } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'approved')
+        .eq('type', 'permesso')
+        .eq('day', todayStr);
+      if (approvedPermissions && approvedPermissions.length > 0) {
+        // Cerca il permesso orario che copre l'inizio turno
+        for (const permission of approvedPermissions) {
+          if (permission.time_from && permission.time_to) {
+            // Se il check-in è dopo la fine del permesso, usa quella come riferimento
+            const [permEndH, permEndM] = permission.time_to.split(':').slice(0,2).map(Number);
+            const permEnd = new Date(checkInDate);
+            permEnd.setHours(permEndH, permEndM, 0, 0);
+            // Se il check-in è dopo la fine del permesso, aggiorna il riferimento
+            if (checkInDate >= permEnd) {
+              referenceStartTime = permission.time_to;
+              usedPermission = permission;
+              break;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Errore controllo permesso orario:', e);
+    }
+    // --- FINE NOVITÀ ---
+
     // Calcola l'orario di inizio previsto + tolleranza
-    const [startHours, startMinutes] = workSchedule.start_time.split(':').slice(0, 2).map(Number);
+    const [startHours, startMinutes] = referenceStartTime.split(':').slice(0, 2).map(Number);
     const expectedStartTime = new Date(checkInDate);
     expectedStartTime.setHours(startHours, startMinutes, 0, 0);
     
@@ -260,14 +294,14 @@ export const useUnifiedAttendances = () => {
           .select('*')
           .maybeSingle();
         
-        const latenessResult = calculateManualLateness(
+        const { isLate: late, lateMinutes: minutes } = await calculateManualLateness(
           attendanceData.check_in_time, 
           attendanceData.user_id,
           employeeWorkSchedule,
           companyWorkSchedule
         );
-        isLate = latenessResult.isLate;
-        lateMinutes = latenessResult.lateMinutes;
+        isLate = late;
+        lateMinutes = minutes;
       }
 
       const dataToInsert = {
