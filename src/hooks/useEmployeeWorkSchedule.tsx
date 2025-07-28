@@ -21,11 +21,21 @@ export const useEmployeeWorkSchedule = (employeeId?: string) => {
     queryFn: async () => {
       if (!employeeId) return null;
       console.log(`🔍 [useEmployeeWorkSchedule] Caricamento orari personalizzati per employeeId:`, employeeId);
+      
+      // Debug: verifica se la tabella esiste e ha dati
+      const { data: allSchedules, error: listError } = await supabase
+        .from('employee_work_schedules')
+        .select('*');
+      console.log(`📊 [useEmployeeWorkSchedule] Tutti gli orari personalizzati nel DB:`, allSchedules);
+      if (listError) console.error(`❌ [useEmployeeWorkSchedule] Errore nel listare tutti gli orari:`, listError);
+      
       const { data, error } = await supabase
         .from('employee_work_schedules')
         .select('*')
         .eq('employee_id', employeeId)
         .maybeSingle();
+      
+      console.log(`🔍 [useEmployeeWorkSchedule] Query specifica per employeeId ${employeeId}:`, { data, error });
       if (error) throw error;
       console.log(`📋 [useEmployeeWorkSchedule] Orari personalizzati caricati:`, data);
       return data as EmployeeWorkSchedule | null;
