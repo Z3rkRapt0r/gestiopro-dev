@@ -36,11 +36,7 @@ export const useUnifiedAttendances = () => {
   const queryClient = useQueryClient();
 
   // Funzione per calcolare il ritardo per presenze manuali
-  const calculateManualLateness = (checkInTime: string, userId: string) => {
-    // Carica gli orari per questo dipendente
-    const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(userId);
-    const { workSchedule: companyWorkSchedule } = useWorkSchedules();
-    
+  const calculateManualLateness = (checkInTime: string, userId: string, employeeWorkSchedule: any, companyWorkSchedule: any) => {
     // Priorità: orari personalizzati > orari aziendali
     const workSchedule = employeeWorkSchedule || companyWorkSchedule;
     
@@ -252,7 +248,24 @@ export const useUnifiedAttendances = () => {
       let lateMinutes = 0;
       
       if (attendanceData.check_in_time) {
-        const latenessResult = calculateManualLateness(attendanceData.check_in_time, attendanceData.user_id);
+        // Carica gli orari per questo dipendente
+        const { data: employeeWorkSchedule } = await supabase
+          .from('employee_work_schedules')
+          .select('*')
+          .eq('employee_id', attendanceData.user_id)
+          .maybeSingle();
+        
+        const { data: companyWorkSchedule } = await supabase
+          .from('work_schedules')
+          .select('*')
+          .maybeSingle();
+        
+        const latenessResult = calculateManualLateness(
+          attendanceData.check_in_time, 
+          attendanceData.user_id,
+          employeeWorkSchedule,
+          companyWorkSchedule
+        );
         isLate = latenessResult.isLate;
         lateMinutes = latenessResult.lateMinutes;
       }
