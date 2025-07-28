@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
+import { useEmployeeWorkSchedule } from '@/hooks/useEmployeeWorkSchedule';
+import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 
 export interface UnifiedAttendance {
   id: string;
@@ -32,6 +34,58 @@ export const useUnifiedAttendances = () => {
   const { toast } = useToast();
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
+
+  // Funzione per calcolare il ritardo per presenze manuali
+  const calculateManualLateness = (checkInTime: string, userId: string) => {
+    // Carica gli orari per questo dipendente
+    const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(userId);
+    const { workSchedule: companyWorkSchedule } = useWorkSchedules();
+    
+    // Priorità: orari personalizzati > orari aziendali
+    const workSchedule = employeeWorkSchedule || companyWorkSchedule;
+    
+    if (!workSchedule || !workSchedule.start_time) {
+      return { isLate: false, lateMinutes: 0 };
+    }
+
+    // Usa sempre la tolleranza degli orari aziendali
+    const toleranceMinutes = companyWorkSchedule?.tolerance_minutes || 0;
+
+    // Converte l'orario di check-in in Date
+    const checkInDate = new Date(checkInTime);
+    const dayOfWeek = checkInDate.getDay();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[dayOfWeek];
+    
+    let isWorkingDay = false;
+    
+    if (employeeWorkSchedule) {
+      // Orari personalizzati: usa work_days array
+      isWorkingDay = employeeWorkSchedule.work_days.includes(dayName);
+    } else if (companyWorkSchedule) {
+      // Orari aziendali: usa i booleani
+      isWorkingDay = companyWorkSchedule[dayName as keyof typeof companyWorkSchedule] as boolean;
+    }
+
+    if (!isWorkingDay) {
+      return { isLate: false, lateMinutes: 0 };
+    }
+
+    // Calcola l'orario di inizio previsto + tolleranza
+    const [startHours, startMinutes] = workSchedule.start_time.split(':').slice(0, 2).map(Number);
+    const expectedStartTime = new Date(checkInDate);
+    expectedStartTime.setHours(startHours, startMinutes, 0, 0);
+    
+    const toleranceTime = new Date(expectedStartTime);
+    toleranceTime.setMinutes(toleranceTime.getMinutes() + toleranceMinutes);
+
+    if (checkInDate > toleranceTime) {
+      const lateMinutes = Math.floor((checkInDate.getTime() - toleranceTime.getTime()) / (1000 * 60));
+      return { isLate: true, lateMinutes };
+    }
+
+    return { isLate: false, lateMinutes: 0 };
+  };
 
   // Funzione per validare lo stato del dipendente prima di inserimenti manuali
   const validateEmployeeStatusForManual = async (userId: string, date: string, isAdmin: boolean) => {
@@ -193,6 +247,16 @@ export const useUnifiedAttendances = () => {
         operationType
       });
 
+      // Calcola il ritardo se c'è un orario di check-in
+      let isLate = false;
+      let lateMinutes = 0;
+      
+      if (attendanceData.check_in_time) {
+        const latenessResult = calculateManualLateness(attendanceData.check_in_time, attendanceData.user_id);
+        isLate = latenessResult.isLate;
+        lateMinutes = latenessResult.lateMinutes;
+      }
+
       const dataToInsert = {
         user_id: attendanceData.user_id,
         date: attendanceData.date,
@@ -201,6 +265,8 @@ export const useUnifiedAttendances = () => {
         notes: attendanceData.notes ? `${attendanceData.notes} - ${readableId}` : readableId,
         is_manual: true,
         is_business_trip: false,
+        is_late: isLate,
+        late_minutes: lateMinutes,
         created_by: user?.id,
       };
 
