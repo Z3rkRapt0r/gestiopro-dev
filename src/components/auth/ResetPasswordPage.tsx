@@ -315,7 +315,16 @@ const ResetPasswordPage = () => {
             className="text-xs opacity-75"
             style={{ color: loginSettings.secondary_color }}
           >
-            Powered by {loginSettings.company_name}
+            Powered by{' '}
+            <a 
+              href="https://licenseglobal.it" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:underline font-medium"
+              style={{ color: loginSettings.primary_color }}
+            >
+              License Global
+            </a>
           </p>
         </div>
       </div>
