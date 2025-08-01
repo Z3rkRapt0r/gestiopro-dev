@@ -2,19 +2,43 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, eachDayOfInterval } from 'date-fns';
-import { useCompanyHolidays } from './useCompanyHolidays';
 
-export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
+export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: any[] = []) => {
   const [conflictDates, setConflictDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { isHoliday, holidays } = useCompanyHolidays();
   
   // Debug: verifica se le festività sono caricate
   console.log('🔍 Debug: Festività caricate dal database:', holidays?.length || 0);
   if (holidays && holidays.length > 0) {
     console.log('🔍 Debug: Prime 5 festività:', holidays.slice(0, 5).map(h => ({ name: h.name, date: h.date, is_recurring: h.is_recurring })));
   }
+
+  // Funzione locale per controllare se una data è festività
+  const isHoliday = (date: Date): boolean => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const monthDay = format(date, 'MM-dd');
+    
+    console.log('🔍 DEBUG: isHoliday chiamata per:', dateStr);
+    console.log('🔍 DEBUG: Holidays disponibili:', holidays.length);
+    
+    const isHolidayResult = holidays.some(holiday => {
+      if (holiday.is_recurring) {
+        const holidayMonthDay = holiday.date.substr(5, 5);
+        const match = holidayMonthDay === monthDay;
+        console.log(`🔍 DEBUG: Festività ricorrente ${holiday.name} (${holiday.date}) - ${holidayMonthDay} vs ${monthDay} = ${match}`);
+        return match;
+      } else {
+        const match = holiday.date === dateStr;
+        console.log(`🔍 DEBUG: Festività specifica ${holiday.name} (${holiday.date}) vs ${dateStr} = ${match}`);
+        return match;
+      }
+    });
+    
+    console.log('🔍 DEBUG: Risultato finale isHoliday per', dateStr, ':', isHolidayResult);
+    
+    return isHolidayResult;
+  };
 
   const calculateConflicts = useCallback(async (userIds: string[]) => {
     setIsLoading(true);

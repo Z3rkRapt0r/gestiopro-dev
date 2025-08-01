@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useBusinessTripConflicts } from '@/hooks/useBusinessTripConflicts';
+import { useCompanyHolidays } from '@/hooks/useCompanyHolidays';
 import { Plane, Calendar as CalendarIcon, Users, Trash2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -19,14 +20,15 @@ import { it } from 'date-fns/locale';
 export default function AdminBusinessTripsManagement() {
   const { businessTrips, createTrip, isCreating, deleteTrip, isDeleting } = useBusinessTrips();
   const { employees } = useActiveEmployees();
+  const { holidays } = useCompanyHolidays();
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [destination, setDestination] = useState('');
   const [reason, setReason] = useState('');
 
-  // Usa il nuovo hook per i conflitti
-  const { conflictDates, isLoading: isCalculatingConflicts, isDateDisabled } = useBusinessTripConflicts(selectedEmployees);
+  // Usa il nuovo hook per i conflitti, passando le festività
+  const { conflictDates, isLoading: isCalculatingConflicts, isDateDisabled } = useBusinessTripConflicts(selectedEmployees, holidays);
   
   // Debug: verifica quando il componente si aggiorna
   console.log('🔍 DEBUG: AdminBusinessTripsManagement renderizzato');
