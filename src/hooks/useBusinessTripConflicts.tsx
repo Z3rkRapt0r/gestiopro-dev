@@ -21,6 +21,12 @@ export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: 
     
     console.log('🔍 DEBUG: isHoliday chiamata per:', dateStr);
     console.log('🔍 DEBUG: Holidays disponibili:', holidays.length);
+    console.log('🔍 DEBUG: Holidays array completo:', holidays);
+    
+    if (holidays.length === 0) {
+      console.log('❌ DEBUG: Nessuna festività disponibile!');
+      return false;
+    }
     
     const isHolidayResult = holidays.some(holiday => {
       if (holiday.is_recurring) {
@@ -73,6 +79,7 @@ export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: 
       });
       
       console.log('🔍 DEBUG: Totale festività trovate:', holidayCount);
+      console.log('🔍 DEBUG: Date di conflitto dopo festività:', Array.from(conflictDates));
       
       // Le festività sono SEMPRE incluse, indipendentemente dai dipendenti selezionati
       console.log('🎉 Festività sempre incluse nei conflitti');
@@ -162,6 +169,7 @@ export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: 
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
       console.log('📅 Date con conflitti CRITICI trovate:', conflictDateObjects.length);
+      console.log('📅 Tutte le date di conflitto:', conflictDateObjects.map(d => format(d, 'yyyy-MM-dd')));
       setConflictDates(conflictDateObjects);
       
     } catch (error) {
@@ -190,6 +198,7 @@ export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: 
     console.log('🔍 DEBUG: isDateDisabled chiamata per:', dateStr);
     console.log('🔍 DEBUG: conflictDates disponibili:', conflictDates.map(d => format(d, 'yyyy-MM-dd')));
     console.log('🔍 DEBUG: Risultato isDateDisabled:', isDisabled);
+    console.log('🔍 DEBUG: conflictDates.length:', conflictDates.length);
     
     return isDisabled;
   }, [conflictDates]);
