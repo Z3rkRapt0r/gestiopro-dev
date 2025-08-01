@@ -27,6 +27,13 @@ export default function AdminBusinessTripsManagement() {
 
   // Usa il nuovo hook per i conflitti
   const { conflictDates, isLoading: isCalculatingConflicts, isDateDisabled } = useBusinessTripConflicts(selectedEmployees);
+  
+  // Debug: verifica se le date disabilitate sono ricevute correttamente
+  console.log('🔍 AdminBusinessTripsManagement - Date di conflitto ricevute:', conflictDates.length);
+  console.log('🔍 AdminBusinessTripsManagement - isDateDisabled function:', typeof isDateDisabled);
+  if (conflictDates.length > 0) {
+    console.log('🔍 AdminBusinessTripsManagement - Prime 5 date di conflitto:', conflictDates.slice(0, 5).map(d => format(d, 'yyyy-MM-dd')));
+  }
 
   const handleEmployeeToggle = (employeeId: string) => {
     setSelectedEmployees(prev => 

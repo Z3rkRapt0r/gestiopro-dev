@@ -8,13 +8,21 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
   const [conflictDates, setConflictDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { isHoliday } = useCompanyHolidays();
+  const { isHoliday, holidays } = useCompanyHolidays();
+  
+  // Debug: verifica se le festività sono caricate
+  console.log('🔍 Debug: Festività caricate dal database:', holidays?.length || 0);
+  if (holidays && holidays.length > 0) {
+    console.log('🔍 Debug: Prime 5 festività:', holidays.slice(0, 5).map(h => ({ name: h.name, date: h.date, is_recurring: h.is_recurring })));
+  }
 
   const calculateConflicts = useCallback(async (userIds: string[]) => {
     setIsLoading(true);
     setError(null);
     
     console.log('🔍 Calcolo conflitti RIGOROSO per dipendenti:', userIds);
+    console.log('🔍 Hook useCompanyHolidays - holidays disponibili:', holidays?.length || 0);
+    console.log('🔍 Hook useCompanyHolidays - isHoliday function:', typeof isHoliday);
     
     const conflictDates = new Set<string>();
     const today = new Date();
@@ -26,15 +34,20 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
       const endOfYear = new Date(currentYear, 11, 31);
       const allDaysInYear = eachDayOfInterval({ start: startOfYear, end: endOfYear });
       
-            allDaysInYear.forEach(date => {
-        if (isHoliday(date)) {
+      console.log('🔍 Controllo festività per tutto l\'anno:', currentYear);
+      console.log('🔍 Date da controllare:', allDaysInYear.length);
+      
+      allDaysInYear.forEach(date => {
+        const isHolidayResult = isHoliday(date);
+        if (isHolidayResult) {
           const dateStr = format(date, 'yyyy-MM-dd');
           conflictDates.add(dateStr);
           console.log('🎉 Festività trovata:', dateStr);
         }
       });
       
-      console.log('🔍 Debug: Controllo festività per date specifiche');
+      // Debug: verifica se le festività sono caricate
+      console.log('🔍 Debug: Verifica festività per date specifiche');
       const testDates = [
         new Date('2025-01-01'), // Capodanno
         new Date('2025-12-25'), // Natale
@@ -167,6 +180,9 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
     const isDisabled = conflictDates.some(conflictDate => 
       dateStr === format(conflictDate, 'yyyy-MM-dd')
     );
+    
+    console.log(`🔍 isDateDisabled chiamata per ${dateStr}:`, isDisabled);
+    console.log(`🔍 Date di conflitto disponibili:`, conflictDates.map(d => format(d, 'yyyy-MM-dd')));
     
     if (isDisabled) {
       console.log('🚫 Data disabilitata:', dateStr);
