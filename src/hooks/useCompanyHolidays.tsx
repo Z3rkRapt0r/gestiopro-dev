@@ -42,6 +42,10 @@ export const useCompanyHolidays = () => {
       }
 
       console.log('🎉 Festività caricate dal database:', (data as any[]) || []);
+      console.log('🔍 Numero festività caricate:', (data as any[])?.length || 0);
+      if ((data as any[])?.length === 0) {
+        console.log('⚠️ ATTENZIONE: Nessuna festività trovata nel database!');
+      }
       setHolidays((data as any[]) || []);
     } catch (error) {
       console.error('Error fetching holidays:', error);

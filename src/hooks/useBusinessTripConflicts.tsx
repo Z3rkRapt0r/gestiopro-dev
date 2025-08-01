@@ -26,13 +26,26 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
       const endOfYear = new Date(currentYear, 11, 31);
       const allDaysInYear = eachDayOfInterval({ start: startOfYear, end: endOfYear });
       
-      allDaysInYear.forEach(date => {
+            allDaysInYear.forEach(date => {
         if (isHoliday(date)) {
           const dateStr = format(date, 'yyyy-MM-dd');
           conflictDates.add(dateStr);
           console.log('🎉 Festività trovata:', dateStr);
         }
-            });
+      });
+      
+      console.log('🔍 Debug: Controllo festività per date specifiche');
+      const testDates = [
+        new Date('2025-01-01'), // Capodanno
+        new Date('2025-12-25'), // Natale
+        new Date('2025-05-01'), // 1° Maggio
+        new Date('2025-08-15'), // Ferragosto
+      ];
+      
+      testDates.forEach(date => {
+        const isHolidayResult = isHoliday(date);
+        console.log(`🔍 Data ${format(date, 'yyyy-MM-dd')} è festività:`, isHolidayResult);
+      });
 
       console.log('🎉 Numero totale di festività trovate:', Array.from(conflictDates).length);
 
