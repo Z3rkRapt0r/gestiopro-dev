@@ -169,6 +169,16 @@ export default function AdminBusinessTripsManagement() {
                 )}
               </div>
             )}
+            
+            {/* Debug: mostra sempre il numero di conflitti */}
+            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+              🔍 Debug: {conflictDates.length} date di conflitto rilevate
+              {conflictDates.length > 0 && (
+                <div className="mt-1">
+                  Prime 5 date: {conflictDates.slice(0, 5).map(d => format(d, 'dd/MM/yyyy')).join(', ')}
+                </div>
+              )}
+            </div>
 
             <div>
               <Label>Destinazione</Label>
