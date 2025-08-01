@@ -104,20 +104,25 @@ export const useCompanyHolidays = () => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const monthDay = format(date, 'MM-dd'); // MM-DD format
     
+    console.log('🔍 DEBUG: isHoliday chiamata per:', dateStr);
+    console.log('🔍 DEBUG: Holidays disponibili:', holidays.length);
+    
     const isHolidayResult = holidays.some(holiday => {
       if (holiday.is_recurring) {
         // Per festività ricorrenti, confronta solo mese e giorno
         const holidayMonthDay = holiday.date.substr(5, 5);
-        return holidayMonthDay === monthDay;
+        const match = holidayMonthDay === monthDay;
+        console.log(`🔍 DEBUG: Festività ricorrente ${holiday.name} (${holiday.date}) - ${holidayMonthDay} vs ${monthDay} = ${match}`);
+        return match;
       } else {
         // Per festività specifiche, confronta la data completa
-        return holiday.date === dateStr;
+        const match = holiday.date === dateStr;
+        console.log(`🔍 DEBUG: Festività specifica ${holiday.name} (${holiday.date}) vs ${dateStr} = ${match}`);
+        return match;
       }
     });
     
-    if (isHolidayResult) {
-      console.log('🎉 Festività riconosciuta per la data:', dateStr);
-    }
+    console.log('🔍 DEBUG: Risultato finale isHoliday per', dateStr, ':', isHolidayResult);
     
     return isHolidayResult;
   };

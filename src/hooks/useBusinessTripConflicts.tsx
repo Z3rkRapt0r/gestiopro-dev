@@ -20,6 +20,10 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
     setIsLoading(true);
     setError(null);
     
+    console.log('🔍 DEBUG: Calcolo conflitti iniziato');
+    console.log('🔍 DEBUG: Holidays disponibili:', holidays?.length || 0);
+    console.log('🔍 DEBUG: Holidays array:', holidays);
+    
     const conflictDates = new Set<string>();
     const today = new Date();
     
@@ -30,12 +34,21 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
       const endOfYear = new Date(currentYear, 11, 31);
       const allDaysInYear = eachDayOfInterval({ start: startOfYear, end: endOfYear });
       
+      console.log('🔍 DEBUG: Controllo festività per anno:', currentYear);
+      console.log('🔍 DEBUG: Date da controllare:', allDaysInYear.length);
+      
+      let holidayCount = 0;
       allDaysInYear.forEach(date => {
-        if (isHoliday(date)) {
+        const isHolidayResult = isHoliday(date);
+        if (isHolidayResult) {
           const dateStr = format(date, 'yyyy-MM-dd');
           conflictDates.add(dateStr);
+          holidayCount++;
+          console.log('🎉 DEBUG: Festività trovata:', dateStr);
         }
       });
+      
+      console.log('🔍 DEBUG: Totale festività trovate:', holidayCount);
       
 
 

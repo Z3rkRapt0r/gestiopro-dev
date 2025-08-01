@@ -180,6 +180,34 @@ export default function AdminBusinessTripsManagement() {
             >
               {isCreating ? 'Creando...' : `Crea Trasferta per ${selectedEmployees.length} dipendente/i`}
             </Button>
+            
+            <Button 
+              onClick={async () => {
+                try {
+                  const { createHoliday } = await import('@/hooks/useCompanyHolidays');
+                  await createHoliday({
+                    name: 'Test Capodanno 2025',
+                    date: '2025-01-01',
+                    description: 'Test festività',
+                    is_recurring: false
+                  });
+                  await createHoliday({
+                    name: 'Test Natale 2025',
+                    date: '2025-12-25',
+                    description: 'Test festività',
+                    is_recurring: false
+                  });
+                  console.log('✅ Festività di test aggiunte');
+                  window.location.reload();
+                } catch (error) {
+                  console.error('❌ Errore aggiunta festività test:', error);
+                }
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              Aggiungi Test Festività 2025
+            </Button>
           </CardContent>
         </Card>
 
