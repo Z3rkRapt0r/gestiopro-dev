@@ -13,22 +13,33 @@ import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useBusinessTripConflicts } from '@/hooks/useBusinessTripConflicts';
 import { useCompanyHolidays } from '@/hooks/useCompanyHolidays';
-import { Plane, Calendar as CalendarIcon, Users, Trash2, AlertCircle } from 'lucide-react';
+import { Plane, Calendar as CalendarIcon, Users, Trash2, AlertCircle, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminBusinessTripsManagement() {
   const { businessTrips, createTrip, isCreating, deleteTrip, isDeleting } = useBusinessTrips();
   const { employees } = useActiveEmployees();
   const { holidays } = useCompanyHolidays();
+  const { toast } = useToast();
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [destination, setDestination] = useState('');
   const [reason, setReason] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Usa il nuovo hook per i conflitti, passando le festività
-  const { conflictDates, isLoading: isCalculatingConflicts, isDateDisabled } = useBusinessTripConflicts(selectedEmployees, holidays);
+  const { 
+    conflictDates, 
+    conflictDetails, 
+    conflictSummary, 
+    isLoading: isCalculatingConflicts, 
+    isDateDisabled,
+    getConflictDetailsForDate,
+    validateBusinessTripRange
+  } = useBusinessTripConflicts(selectedEmployees, holidays);
 
   const handleEmployeeToggle = (employeeId: string) => {
     setSelectedEmployees(prev => 
@@ -36,10 +47,30 @@ export default function AdminBusinessTripsManagement() {
         ? prev.filter(id => id !== employeeId)
         : [...prev, employeeId]
     );
+    setValidationError(null); // Reset error when employees change
   };
 
-  const handleCreateTrip = () => {
+  const handleCreateTrip = async () => {
     if (selectedEmployees.length === 0 || !startDate || !endDate || !destination) return;
+
+    // Validazione anticonflitto avanzata
+    const validation = await validateBusinessTripRange(
+      selectedEmployees,
+      format(startDate, 'yyyy-MM-dd'),
+      format(endDate, 'yyyy-MM-dd')
+    );
+
+    if (!validation.isValid) {
+      setValidationError(validation.conflicts.join('; '));
+      toast({
+        title: "Conflitti rilevati",
+        description: validation.conflicts.join('; '),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setValidationError(null);
 
     createTrip({
       user_ids: selectedEmployees,
@@ -55,6 +86,7 @@ export default function AdminBusinessTripsManagement() {
     setEndDate(undefined);
     setDestination('');
     setReason('');
+    setValidationError(null);
   };
 
   const handleDeleteTrip = (tripId: string, employeeName: string) => {
@@ -64,6 +96,11 @@ export default function AdminBusinessTripsManagement() {
       timestamp: new Date().toISOString()
     });
     deleteTrip(tripId);
+  };
+
+  // Funzione per ottenere i dettagli dei conflitti per una data specifica
+  const getConflictDetailsForSelectedDate = (date: Date) => {
+    return getConflictDetailsForDate(date);
   };
 
   return (
@@ -119,7 +156,16 @@ export default function AdminBusinessTripsManagement() {
                       onSelect={setStartDate}
                       locale={it}
                       disabled={isDateDisabled}
-
+                      modifiers={{
+                        conflict: conflictDates
+                      }}
+                      modifiersStyles={{
+                        conflict: {
+                          backgroundColor: '#f3f4f6',
+                          color: '#6b7280',
+                          fontWeight: 'normal'
+                        }
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
@@ -141,19 +187,66 @@ export default function AdminBusinessTripsManagement() {
                       onSelect={setEndDate}
                       locale={it}
                       disabled={isDateDisabled}
-
+                      modifiers={{
+                        conflict: conflictDates
+                      }}
+                      modifiersStyles={{
+                        conflict: {
+                          backgroundColor: '#f3f4f6',
+                          color: '#6b7280',
+                          fontWeight: 'normal'
+                        }
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
               </div>
             </div>
 
-            <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
-              ⚠️ {conflictDates.length} date disabilitate per conflitti con trasferte, ferie, permessi, malattie o festività
-              <div className="text-xs text-gray-600 mt-1">
-                Le festività sono sempre bloccate, indipendentemente dai dipendenti selezionati
+            {/* Riepilogo conflitti avanzato */}
+            {conflictSummary.totalConflicts > 0 && (
+              <div className="text-sm bg-orange-50 p-3 rounded border border-orange-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                  <span className="font-medium text-orange-800">
+                    {conflictSummary.totalConflicts} date disabilitate per conflitti
+                  </span>
+                </div>
+                <div className="text-xs text-orange-700 space-y-1">
+                  {conflictSummary.holidays > 0 && (
+                    <div>• {conflictSummary.holidays} festività</div>
+                  )}
+                  {conflictSummary.businessTrips > 0 && (
+                    <div>• {conflictSummary.businessTrips} giorni in trasferta</div>
+                  )}
+                  {conflictSummary.vacations > 0 && (
+                    <div>• {conflictSummary.vacations} giorni di ferie</div>
+                  )}
+                  {conflictSummary.permissions > 0 && (
+                    <div>• {conflictSummary.permissions} permessi</div>
+                  )}
+                  {conflictSummary.sickLeaves > 0 && (
+                    <div>• {conflictSummary.sickLeaves} giorni di malattia</div>
+                  )}
+                  {conflictSummary.attendances > 0 && (
+                    <div>• {conflictSummary.attendances} presenze registrate</div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Errore di validazione */}
+            {validationError && (
+              <div className="text-sm bg-red-50 p-3 rounded border border-red-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                  <span className="font-medium text-red-800">Conflitti rilevati</span>
+                </div>
+                <div className="text-xs text-red-700">
+                  {validationError}
+                </div>
+              </div>
+            )}
 
             <div>
               <Label>Destinazione</Label>
@@ -180,8 +273,6 @@ export default function AdminBusinessTripsManagement() {
             >
               {isCreating ? 'Creando...' : `Crea Trasferta per ${selectedEmployees.length} dipendente/i`}
             </Button>
-            
-
           </CardContent>
         </Card>
 
@@ -199,107 +290,112 @@ export default function AdminBusinessTripsManagement() {
                 <div className="text-2xl font-bold text-blue-700">{businessTrips?.length || 0}</div>
                 <div className="text-sm text-blue-600">Trasferte Totali</div>
               </div>
-              
-              <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="text-2xl font-bold text-green-700">
-                  {businessTrips?.filter(trip => {
-                    const startDate = new Date(trip.start_date);
-                    const endDate = new Date(trip.end_date);
-                    const today = new Date();
-                    return startDate <= today && endDate >= today;
-                  }).length || 0}
+
+              {/* Dettagli conflitti per data selezionata */}
+              {(startDate || endDate) && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Info className="w-4 h-4" />
+                    Dettagli conflitti
+                  </div>
+                  {startDate && (
+                    <div className="text-xs bg-gray-50 p-2 rounded">
+                      <div className="font-medium">Data inizio ({format(startDate, 'dd/MM/yyyy')}):</div>
+                      {getConflictDetailsForSelectedDate(startDate).length > 0 ? (
+                        <ul className="mt-1 space-y-1">
+                          {getConflictDetailsForSelectedDate(startDate).map((detail, index) => (
+                            <li key={index} className="text-red-600">
+                              • {detail.description}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-green-600">Nessun conflitto</span>
+                      )}
+                    </div>
+                  )}
+                  {endDate && (
+                    <div className="text-xs bg-gray-50 p-2 rounded">
+                      <div className="font-medium">Data fine ({format(endDate, 'dd/MM/yyyy')}):</div>
+                      {getConflictDetailsForSelectedDate(endDate).length > 0 ? (
+                        <ul className="mt-1 space-y-1">
+                          {getConflictDetailsForSelectedDate(endDate).map((detail, index) => (
+                            <li key={index} className="text-red-600">
+                              • {detail.description}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-green-600">Nessun conflitto</span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="text-sm text-green-600">Trasferte Attive</div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tutte le trasferte */}
+      {/* Lista trasferte esistenti */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Tutte le Trasferte
+            <Plane className="w-5 h-5" />
+            Trasferte Esistenti
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {businessTrips?.map((trip) => (
-              <div key={trip.id} className="border rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">
-                    {trip.profiles?.first_name} {trip.profiles?.last_name}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-green-100 text-green-700">
-                      Approvata
-                    </Badge>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          disabled={isDeleting}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          {isDeleting ? (
-                            <AlertCircle className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Elimina Trasferta</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Sei sicuro di voler eliminare questa trasferta per {trip.profiles?.first_name} {trip.profiles?.last_name}? 
-                            <br /><br />
-                            <strong>Questa azione:</strong>
-                            <ul className="list-disc list-inside mt-2 space-y-1">
-                              <li>Eliminerà la trasferta in modo permanente</li>
-                              <li>Rimuoverà tutte le presenze associate alla trasferta</li>
-                              <li>Non può essere annullata</li>
-                            </ul>
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => handleDeleteTrip(trip.id, `${trip.profiles?.first_name} ${trip.profiles?.last_name}`)}
-                            className="bg-red-600 hover:bg-red-700"
-                            disabled={isDeleting}
-                          >
-                            {isDeleting ? (
-                              <div className="flex items-center gap-2">
-                                <AlertCircle className="w-4 h-4 animate-spin" />
-                                Eliminando...
-                              </div>
-                            ) : (
-                              'Elimina Definitivamente'
-                            )}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-
-                <div className="text-sm space-y-1">
-                  <div><strong>Destinazione:</strong> {trip.destination}</div>
-                  <div><strong>Date:</strong> {format(new Date(trip.start_date), 'dd/MM/yyyy', { locale: it })} - {format(new Date(trip.end_date), 'dd/MM/yyyy', { locale: it })}</div>
-                  {trip.reason && <div><strong>Motivo:</strong> {trip.reason}</div>}
-                  {trip.admin_notes && (
-                    <div className="p-2 bg-blue-50 rounded border-l-2 border-blue-200">
-                      <strong>Note:</strong> {trip.admin_notes}
+          <div className="space-y-4">
+            {businessTrips?.map((trip) => {
+              const employee = employees?.find(emp => emp.id === trip.user_id);
+              return (
+                <div key={trip.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                        {trip.status === 'approved' ? 'Approvata' : 'In attesa'}
+                      </Badge>
+                      <span className="text-sm text-gray-600">
+                        {employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente'}
+                      </span>
                     </div>
-                  )}
+                    <div className="text-sm space-y-1">
+                      <div><strong>Destinazione:</strong> {trip.destination}</div>
+                      <div><strong>Periodo:</strong> {format(new Date(trip.start_date), 'dd/MM/yyyy')} - {format(new Date(trip.end_date), 'dd/MM/yyyy')}</div>
+                      {trip.reason && <div><strong>Motivo:</strong> {trip.reason}</div>}
+                    </div>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" disabled={isDeleting}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Elimina Trasferta</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Sei sicuro di voler eliminare la trasferta di {employee ? `${employee.first_name} ${employee.last_name}` : 'questo dipendente'} a {trip.destination}?
+                          Questa azione non può essere annullata.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annulla</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteTrip(trip.id, employee ? `${employee.first_name} ${employee.last_name}` : 'Dipendente')}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Elimina
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
-              </div>
-            )) || (
-              <div className="text-center py-4 text-gray-500">
+              );
+            })}
+            {(!businessTrips || businessTrips.length === 0) && (
+              <div className="text-center py-8 text-gray-500">
                 Nessuna trasferta registrata
               </div>
             )}
