@@ -8,51 +8,30 @@ export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Debug: verifica se le festività sono caricate
-  console.log('🔍 Debug: Festività caricate dal database:', holidays?.length || 0);
-  if (holidays && holidays.length > 0) {
-    console.log('🔍 Debug: Prime 5 festività:', holidays.slice(0, 5).map(h => ({ name: h.name, date: h.date, is_recurring: h.is_recurring })));
-  }
+
 
   // Funzione locale per controllare se una data è festività
   const isHoliday = (date: Date): boolean => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const monthDay = format(date, 'MM-dd');
     
-    console.log('🔍 DEBUG: isHoliday chiamata per:', dateStr);
-    console.log('🔍 DEBUG: Holidays disponibili:', holidays.length);
-    console.log('🔍 DEBUG: Holidays array completo:', holidays);
-    
     if (holidays.length === 0) {
-      console.log('❌ DEBUG: Nessuna festività disponibile!');
       return false;
     }
     
-    const isHolidayResult = holidays.some(holiday => {
+    return holidays.some(holiday => {
       if (holiday.is_recurring) {
         const holidayMonthDay = holiday.date.substr(5, 5);
-        const match = holidayMonthDay === monthDay;
-        console.log(`🔍 DEBUG: Festività ricorrente ${holiday.name} (${holiday.date}) - ${holidayMonthDay} vs ${monthDay} = ${match}`);
-        return match;
+        return holidayMonthDay === monthDay;
       } else {
-        const match = holiday.date === dateStr;
-        console.log(`🔍 DEBUG: Festività specifica ${holiday.name} (${holiday.date}) vs ${dateStr} = ${match}`);
-        return match;
+        return holiday.date === dateStr;
       }
     });
-    
-    console.log('🔍 DEBUG: Risultato finale isHoliday per', dateStr, ':', isHolidayResult);
-    
-    return isHolidayResult;
   };
 
   const calculateConflicts = useCallback(async (userIds: string[]) => {
     setIsLoading(true);
     setError(null);
-    
-    console.log('🔍 DEBUG: Calcolo conflitti iniziato');
-    console.log('🔍 DEBUG: Holidays disponibili:', holidays?.length || 0);
-    console.log('🔍 DEBUG: Holidays array:', holidays);
     
     const conflictDates = new Set<string>();
     const today = new Date();
@@ -64,25 +43,12 @@ export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: 
       const endOfYear = new Date(currentYear, 11, 31);
       const allDaysInYear = eachDayOfInterval({ start: startOfYear, end: endOfYear });
       
-      console.log('🔍 DEBUG: Controllo festività per anno:', currentYear);
-      console.log('🔍 DEBUG: Date da controllare:', allDaysInYear.length);
-      
-      let holidayCount = 0;
       allDaysInYear.forEach(date => {
-        const isHolidayResult = isHoliday(date);
-        if (isHolidayResult) {
+        if (isHoliday(date)) {
           const dateStr = format(date, 'yyyy-MM-dd');
           conflictDates.add(dateStr);
-          holidayCount++;
-          console.log('🎉 DEBUG: Festività trovata:', dateStr);
         }
       });
-      
-      console.log('🔍 DEBUG: Totale festività trovate:', holidayCount);
-      console.log('🔍 DEBUG: Date di conflitto dopo festività:', Array.from(conflictDates));
-      
-      // Le festività sono SEMPRE incluse, indipendentemente dai dipendenti selezionati
-      console.log('🎉 Festività sempre incluse nei conflitti');
 
       // Per ogni dipendente, verifica TUTTI i conflitti critici
       for (const userId of userIds) {
@@ -168,8 +134,6 @@ export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: 
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       
-      console.log('📅 Date con conflitti CRITICI trovate:', conflictDateObjects.length);
-      console.log('📅 Tutte le date di conflitto:', conflictDateObjects.map(d => format(d, 'yyyy-MM-dd')));
       setConflictDates(conflictDateObjects);
       
     } catch (error) {
@@ -194,11 +158,6 @@ export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: 
     const isDisabled = conflictDates.some(conflictDate => 
       dateStr === format(conflictDate, 'yyyy-MM-dd')
     );
-    
-    console.log('🔍 DEBUG: isDateDisabled chiamata per:', dateStr);
-    console.log('🔍 DEBUG: conflictDates disponibili:', conflictDates.map(d => format(d, 'yyyy-MM-dd')));
-    console.log('🔍 DEBUG: Risultato isDateDisabled:', isDisabled);
-    console.log('🔍 DEBUG: conflictDates.length:', conflictDates.length);
     
     return isDisabled;
   }, [conflictDates]);

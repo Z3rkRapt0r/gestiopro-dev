@@ -29,11 +29,6 @@ export default function AdminBusinessTripsManagement() {
 
   // Usa il nuovo hook per i conflitti, passando le festività
   const { conflictDates, isLoading: isCalculatingConflicts, isDateDisabled } = useBusinessTripConflicts(selectedEmployees, holidays);
-  
-  // Debug: verifica quando il componente si aggiorna
-  console.log('🔍 DEBUG: AdminBusinessTripsManagement renderizzato');
-  console.log('🔍 DEBUG: conflictDates ricevute:', conflictDates.length);
-  console.log('🔍 DEBUG: selectedEmployees:', selectedEmployees);
 
   const handleEmployeeToggle = (employeeId: string) => {
     setSelectedEmployees(prev => 
@@ -124,10 +119,7 @@ export default function AdminBusinessTripsManagement() {
                       onSelect={setStartDate}
                       locale={it}
                       disabled={isDateDisabled}
-                      onDayClick={(day) => {
-                        console.log('🔍 DEBUG: Calendario Data Inizio - giorno cliccato:', format(day, 'yyyy-MM-dd'));
-                        console.log('🔍 DEBUG: isDateDisabled per questo giorno:', isDateDisabled(day));
-                      }}
+
                     />
                   </PopoverContent>
                 </Popover>
@@ -149,35 +141,18 @@ export default function AdminBusinessTripsManagement() {
                       onSelect={setEndDate}
                       locale={it}
                       disabled={isDateDisabled}
-                      onDayClick={(day) => {
-                        console.log('🔍 DEBUG: Calendario Data Fine - giorno cliccato:', format(day, 'yyyy-MM-dd'));
-                        console.log('🔍 DEBUG: isDateDisabled per questo giorno:', isDateDisabled(day));
-                      }}
+
                     />
                   </PopoverContent>
                 </Popover>
               </div>
             </div>
 
-            {conflictDates.length > 0 && (
-              <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
-                ⚠️ {conflictDates.length} date disabilitate per conflitti con trasferte, ferie, permessi, malattie o festività
-                {selectedEmployees.length === 0 && (
-                  <div className="text-xs text-gray-600 mt-1">
-                    Le festività sono sempre bloccate, indipendentemente dai dipendenti selezionati
-                  </div>
-                )}
+            <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+              ⚠️ {conflictDates.length} date disabilitate per conflitti con trasferte, ferie, permessi, malattie o festività
+              <div className="text-xs text-gray-600 mt-1">
+                Le festività sono sempre bloccate, indipendentemente dai dipendenti selezionati
               </div>
-            )}
-            
-            {/* Debug: mostra sempre il numero di conflitti */}
-            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-              🔍 Debug: {conflictDates.length} date di conflitto rilevate
-              {conflictDates.length > 0 && (
-                <div className="mt-1">
-                  Prime 5 date: {conflictDates.slice(0, 5).map(d => format(d, 'dd/MM/yyyy')).join(', ')}
-                </div>
-              )}
             </div>
 
             <div>
@@ -206,33 +181,7 @@ export default function AdminBusinessTripsManagement() {
               {isCreating ? 'Creando...' : `Crea Trasferta per ${selectedEmployees.length} dipendente/i`}
             </Button>
             
-            <Button 
-              onClick={async () => {
-                try {
-                  const { createHoliday } = await import('@/hooks/useCompanyHolidays');
-                  await createHoliday({
-                    name: 'Test Capodanno 2025',
-                    date: '2025-01-01',
-                    description: 'Test festività',
-                    is_recurring: false
-                  });
-                  await createHoliday({
-                    name: 'Test Natale 2025',
-                    date: '2025-12-25',
-                    description: 'Test festività',
-                    is_recurring: false
-                  });
-                  console.log('✅ Festività di test aggiunte');
-                  window.location.reload();
-                } catch (error) {
-                  console.error('❌ Errore aggiunta festività test:', error);
-                }
-              }}
-              variant="outline"
-              className="w-full"
-            >
-              Aggiungi Test Festività 2025
-            </Button>
+
           </CardContent>
         </Card>
 
