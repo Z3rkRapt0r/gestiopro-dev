@@ -321,7 +321,7 @@ const ResetPasswordPage = () => {
               target="_blank" 
               rel="noopener noreferrer"
               className="hover:underline font-medium"
-              style={{ color: loginSettings.primary_color }}
+              style={{ color: '#f97316' }}
             >
               License Global
             </a>
