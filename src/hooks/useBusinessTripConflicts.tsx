@@ -50,16 +50,8 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
       
       console.log('🔍 DEBUG: Totale festività trovate:', holidayCount);
       
-
-
-      // Se non ci sono dipendenti selezionati, mostra solo le festività
-      if (!userIds || userIds.length === 0) {
-        const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
-        console.log('🎉 Date di conflitto (solo festività):', conflictDateObjects.map(d => format(d, 'yyyy-MM-dd')));
-        setConflictDates(conflictDateObjects);
-        setIsLoading(false);
-        return;
-      }
+      // Le festività sono SEMPRE incluse, indipendentemente dai dipendenti selezionati
+      console.log('🎉 Festività sempre incluse nei conflitti');
 
       // Per ogni dipendente, verifica TUTTI i conflitti critici
       for (const userId of userIds) {
