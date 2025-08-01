@@ -43,7 +43,7 @@ const DocumentPreview = ({ document, isOpen, onClose, onDownload }: DocumentPrev
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               {isImage ? <ImageIcon className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
-              {document?.title}
+              {document?.file_name}
             </DialogTitle>
             <div className="flex items-center gap-2">
               <Button
@@ -66,7 +66,7 @@ const DocumentPreview = ({ document, isOpen, onClose, onDownload }: DocumentPrev
             <div className="flex justify-center items-center min-h-[400px] bg-gray-50 rounded-lg">
               <img
                 src={getFileUrl()}
-                alt={document?.title}
+                alt={document?.file_name}
                 className="max-w-full max-h-[600px] object-contain"
                 onError={() => setImageError(true)}
               />

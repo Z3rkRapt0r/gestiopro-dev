@@ -144,9 +144,14 @@ export default function AdminBusinessTripsManagement() {
               </div>
             </div>
 
-            {conflictDates.length > 0 && selectedEmployees.length > 0 && (
+            {conflictDates.length > 0 && (
               <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
-                ⚠️ {conflictDates.length} date disabilitate per conflitti con trasferte o ferie esistenti
+                ⚠️ {conflictDates.length} date disabilitate per conflitti con trasferte, ferie, permessi, malattie o festività
+                {selectedEmployees.length === 0 && (
+                  <div className="text-xs text-gray-600 mt-1">
+                    Le festività sono sempre bloccate, indipendentemente dai dipendenti selezionati
+                  </div>
+                )}
               </div>
             )}
 

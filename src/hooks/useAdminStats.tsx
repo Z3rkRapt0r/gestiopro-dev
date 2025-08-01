@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AdminStats {
@@ -38,7 +39,7 @@ export const useAdminStats = () => {
     setLoading(true);
     
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = format(new Date(), 'yyyy-MM-dd');
       
       // Esegui tutte le query in parallelo per velocizzare il caricamento
       const [

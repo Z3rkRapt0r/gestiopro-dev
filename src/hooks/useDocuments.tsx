@@ -141,7 +141,10 @@ export const useDocuments = () => {
       setLoading(true);
 
       const { error } = await supabase.functions.invoke('delete-document', {
-        body: { documentId: document.id }
+        body: { 
+          documentId: document.id,
+          userId: user.id
+        }
       });
 
       if (error) {

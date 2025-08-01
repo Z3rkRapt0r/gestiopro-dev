@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGPSValidation } from './useGPSValidation';
 import { useWorkSchedules } from './useWorkSchedules';
 import { useEmployeeWorkSchedule } from './useEmployeeWorkSchedule';
+import { format } from 'date-fns';
 import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
 
 export const useAttendanceOperations = () => {
@@ -66,7 +67,7 @@ export const useAttendanceOperations = () => {
     let referenceStartTime = workSchedule.start_time;
     let usedPermission = null;
     try {
-      const todayStr = checkInTime.toISOString().split('T')[0];
+      const todayStr = format(checkInTime, 'yyyy-MM-dd');
       const { data: approvedPermissions } = await supabase
         .from('leave_requests')
         .select('*')
@@ -235,7 +236,7 @@ export const useAttendanceOperations = () => {
     }) => {
       console.log('🔐 Inizio check-in con validazione anti-conflitto:', { latitude, longitude, isBusinessTrip });
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = format(new Date(), 'yyyy-MM-dd');
       
       // VALIDAZIONE ANTI-CONFLITTO PRIORITARIA
       await validateEmployeeStatus(user?.id!, today);
@@ -337,7 +338,7 @@ export const useAttendanceOperations = () => {
 
   const checkOutMutation = useMutation({
     mutationFn: async ({ latitude, longitude }: { latitude: number; longitude: number }) => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = format(new Date(), 'yyyy-MM-dd');
       const now = new Date();
       const checkOutTime = now.toTimeString().slice(0, 5);
       

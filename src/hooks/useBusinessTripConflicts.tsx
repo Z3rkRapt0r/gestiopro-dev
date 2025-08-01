@@ -11,12 +11,6 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
   const { isHoliday } = useCompanyHolidays();
 
   const calculateConflicts = useCallback(async (userIds: string[]) => {
-    if (!userIds || userIds.length === 0) {
-      setConflictDates([]);
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     
@@ -26,8 +20,7 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
     const today = new Date();
     
     try {
-      // 1. CONTROLLO FESTIVITÀ GLOBALI
-      const today = new Date();
+      // 1. CONTROLLO FESTIVITÀ GLOBALI (sempre attivo, anche senza dipendenti selezionati)
       const currentYear = today.getFullYear();
       const startOfYear = new Date(currentYear, 0, 1);
       const endOfYear = new Date(currentYear, 11, 31);
@@ -35,9 +28,22 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
       
       allDaysInYear.forEach(date => {
         if (isHoliday(date)) {
-          conflictDates.add(format(date, 'yyyy-MM-dd'));
+          const dateStr = format(date, 'yyyy-MM-dd');
+          conflictDates.add(dateStr);
+          console.log('🎉 Festività trovata:', dateStr);
         }
-      });
+            });
+
+      console.log('🎉 Numero totale di festività trovate:', Array.from(conflictDates).length);
+
+      // Se non ci sono dipendenti selezionati, mostra solo le festività
+      if (!userIds || userIds.length === 0) {
+        const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
+        console.log('🎉 Date di conflitto (solo festività):', conflictDateObjects.map(d => format(d, 'yyyy-MM-dd')));
+        setConflictDates(conflictDateObjects);
+        setIsLoading(false);
+        return;
+      }
 
       // Per ogni dipendente, verifica TUTTI i conflitti critici
       for (const userId of userIds) {
@@ -144,9 +150,16 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
   }, [selectedEmployees, calculateConflicts]);
 
   const isDateDisabled = useCallback((date: Date) => {
-    return conflictDates.some(conflictDate => 
-      format(date, 'yyyy-MM-dd') === format(conflictDate, 'yyyy-MM-dd')
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const isDisabled = conflictDates.some(conflictDate => 
+      dateStr === format(conflictDate, 'yyyy-MM-dd')
     );
+    
+    if (isDisabled) {
+      console.log('🚫 Data disabilitata:', dateStr);
+    }
+    
+    return isDisabled;
   }, [conflictDates]);
 
   return {

@@ -20,6 +20,8 @@ interface AttendanceData {
   leave_requests?: any[];
   vacation_leave?: any;
   permission_leave?: any;
+  // NUOVO: Stato di presenza calcolato considerando festività
+  attendance_status?: string;
 }
 
 interface EmployeeData {
@@ -125,6 +127,12 @@ const getAttendanceTimeDisplay = (att: AttendanceData, attendanceSettings?: Atte
 
 // Funzione per determinare lo stato di presenza
 const getAttendanceStatus = (att: AttendanceData) => {
+  // NUOVO: Se è disponibile lo stato calcolato, usalo (include festività)
+  if (att.attendance_status) {
+    return att.attendance_status;
+  }
+  
+  // Fallback alla logica originale
   // Priority order: Malattia > Trasferta > Ferie > Permesso + Presenza/Assenza > Presente/Assente
   
   if (att.is_sick_leave) return 'Malattia';

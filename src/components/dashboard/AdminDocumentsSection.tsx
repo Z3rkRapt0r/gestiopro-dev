@@ -20,6 +20,7 @@ import {
   ArrowUpDown,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Grid3X3,
   List,
   MoreHorizontal,
@@ -347,16 +348,6 @@ const AdminDocumentsSection = () => {
                           <Badge variant={emp.documentCount > 0 ? "default" : "secondary"}>
                             {emp.documentCount} documenti
                           </Badge>
-                          {emp.documentCount > 0 && (
-                            <div className="flex space-x-1">
-                              {Object.entries(emp.documentTypes).slice(0, 3).map(([type, count]) => (
-                                <div key={type} className="w-2 h-2 bg-blue-400 rounded-full" title={`${type}: ${count}`} />
-                              ))}
-                              {Object.keys(emp.documentTypes).length > 3 && (
-                                <div className="w-2 h-2 bg-gray-300 rounded-full" title="Altri tipi" />
-                              )}
-                            </div>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -369,32 +360,13 @@ const AdminDocumentsSection = () => {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Button
-                            size="sm"
-                            onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Visualizza
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Visualizza Documenti
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Upload className="h-4 w-4 mr-2" />
-                                Carica Documento
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => window.location.assign(`/admin/documents/${emp.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Visualizza
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -423,19 +395,11 @@ const AdminDocumentsSection = () => {
                         <Badge variant="default" className="text-xs">
                           {emp.documentCount} doc
                         </Badge>
-                        <div className="flex space-x-1">
-                          {Object.entries(emp.documentTypes).slice(0, 2).map(([type, count]) => (
-                            <div key={type} className="w-1.5 h-1.5 bg-blue-400 rounded-full" title={`${type}: ${count}`} />
-                          ))}
-                          {Object.keys(emp.documentTypes).length > 2 && (
-                            <div className="w-1.5 h-1.5 bg-gray-300 rounded-full" title="Altri tipi" />
-                          )}
-                        </div>
                       </div>
                     )}
                   </div>
                   <div className="flex-shrink-0">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
                   </div>
                 </div>
               ))}
@@ -540,7 +504,7 @@ const AdminDocumentsSection = () => {
                       <FileText className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <div className="font-medium text-gray-900">{doc.title}</div>
+                      <div className="font-medium text-gray-900">{doc.file_name}</div>
                       <div className="text-sm text-gray-500">
                         {(() => {
                           const emp = employeeList.find(e => e.id === doc.user_id);

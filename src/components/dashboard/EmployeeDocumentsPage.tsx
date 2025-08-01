@@ -9,10 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Eye, Download, ChevronLeft, Filter, Search, Upload } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { FileText, Eye, Download, ChevronLeft, Filter, Search, Upload, Home, Trash2 } from "lucide-react";
 import DocumentPreview from "@/components/documents/DocumentPreview";
 import DocumentUpload from "@/components/documents/DocumentUpload";
 import DocumentUploadDialogController from "@/components/documents/DocumentUploadDialogController";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const documentTypesList = [
   { value: "payslip", label: "Busta Paga" },
@@ -38,8 +41,11 @@ export default function EmployeeDocumentsPage() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const [employee, setEmployee] = useState<EmployeeProfile | null>(null);
-  const { documents, downloadDocument, loading, refreshDocuments } = useDocuments();
+  const { documents, downloadDocument, loading, refreshDocuments, deleteDocument } = useDocuments();
   const [previewDocument, setPreviewDocument] = useState<any>(null);
+  const [documentToDelete, setDocumentToDelete] = useState<any>(null);
+  const { profile } = useAuth();
+  const { toast } = useToast();
 
   // Modifica: aggiungiamo stato per ricerca e filtro
   const [search, setSearch] = useState("");
@@ -91,18 +97,57 @@ export default function EmployeeDocumentsPage() {
     groupedDocuments[type].push(doc);
   });
 
+  // Funzione per confermare l'eliminazione di un documento
+  const handleDeleteDocument = async () => {
+    if (!documentToDelete || !profile || profile.role !== 'admin') {
+      toast({
+        title: "Errore",
+        description: "Non hai i permessi per eliminare documenti",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await deleteDocument(documentToDelete);
+      toast({
+        title: "Successo",
+        description: "Documento eliminato con successo"
+      });
+      refreshDocuments();
+      setDocumentToDelete(null);
+    } catch (error) {
+      console.error('Errore durante l\'eliminazione del documento:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'eliminazione del documento",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (!employeeId) return <div className="p-8">ID dipendente non valido.</div>;
 
   return (
     <div className="max-w-3xl mx-auto py-8">
-      <Button
-        variant="ghost"
-        onClick={() => navigate("/admin?section=documents")}
-        className="mb-4 flex items-center gap-2"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Torna all'elenco dipendenti
-      </Button>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/admin?section=documents")}
+          className="flex items-center gap-2"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Torna all'elenco dipendenti
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/admin")}
+          className="flex items-center gap-2"
+        >
+          <Home className="h-4 w-4" />
+          Torna alla dashboard
+        </Button>
+      </div>
 
       <Card>
         <CardHeader>
@@ -192,21 +237,21 @@ export default function EmployeeDocumentsPage() {
                               <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition-colors">
                                 <FileText className="h-5 w-5 text-blue-600" />
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-gray-900 truncate">{doc.title}</h3>
-                                <div className="flex items-center space-x-4 mt-1">
-                                  <p className="text-sm text-gray-600">{formatDate(doc.created_at)}</p>
-                                  <p className="text-sm text-gray-600">{formatFileSize(doc.file_size)}</p>
-                                  {doc.file_type && (
-                                    <p className="text-sm text-gray-500 uppercase">
-                                      {doc.file_type.split('/')[1]}
-                                    </p>
-                                  )}
-                                </div>
-                                {doc.description && (
-                                  <p className="text-sm text-gray-500 mt-1 truncate">{doc.description}</p>
-                                )}
-                              </div>
+                                                             <div className="flex-1 min-w-0">
+                                 <h3 className="font-medium text-gray-900 truncate">{doc.file_name}</h3>
+                                 <div className="flex items-center space-x-4 mt-1">
+                                   <p className="text-sm text-gray-600">{formatDate(doc.created_at)}</p>
+                                   <p className="text-sm text-gray-600">{formatFileSize(doc.file_size)}</p>
+                                   {doc.file_type && (
+                                     <p className="text-sm text-gray-500 uppercase">
+                                       {doc.file_type.split('/')[1]}
+                                     </p>
+                                   )}
+                                 </div>
+                                 {doc.description && (
+                                   <p className="text-sm text-gray-500 mt-1 truncate">{doc.description}</p>
+                                 )}
+                               </div>
                             </div>
                             <div className="flex items-center space-x-3">
                               <Badge variant="outline" className="whitespace-nowrap">
@@ -228,6 +273,39 @@ export default function EmployeeDocumentsPage() {
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
+                              {profile?.role === 'admin' && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setDocumentToDelete(doc)}
+                                      className="hover:bg-red-50 text-red-600 hover:text-red-700"
+                                      title="Elimina documento"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Sei sicuro di voler eliminare il documento "{doc.file_name}"? 
+                                        Questa azione non può essere annullata.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={handleDeleteDocument}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Elimina
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
                             </div>
                           </div>
                         ))}

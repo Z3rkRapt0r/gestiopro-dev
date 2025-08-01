@@ -4,6 +4,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { it } from 'date-fns/locale';
+import { useCompanyHolidays } from '@/hooks/useCompanyHolidays';
 
 interface WorkSchedule {
   start_time: string;
@@ -29,6 +30,19 @@ export default function AttendanceCalendarSidebar({
   workSchedule 
 }: AttendanceCalendarSidebarProps) {
   console.log('AttendanceCalendarSidebar - workSchedule ricevuto:', workSchedule);
+  
+  // Hook per le festività
+  const { isHoliday, getHolidayName } = useCompanyHolidays();
+  
+  // Funzione per verificare se una data è una festività
+  const isDateHoliday = (date: Date) => {
+    return isHoliday(date);
+  };
+  
+  // Funzione per ottenere il nome della festività
+  const getHolidayNameForDate = (date: Date) => {
+    return getHolidayName(date);
+  };
   
   return (
     <Card className="xl:col-span-1">

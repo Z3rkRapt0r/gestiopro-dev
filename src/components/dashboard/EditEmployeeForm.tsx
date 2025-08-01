@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -257,7 +258,7 @@ const EditEmployeeForm: React.FC<EditEmployeeFormProps> = ({ employee, onClose, 
                     type="date" 
                     {...field} 
                     value={field.value ?? ''} 
-                    max={new Date().toISOString().split('T')[0]}
+                    max={format(new Date(), 'yyyy-MM-dd')}
                   />
                 )}
               />

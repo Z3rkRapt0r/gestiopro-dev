@@ -225,7 +225,7 @@ export default function NewManualAttendanceForm() {
       const currentDate = new Date(startDate);
       
       while (currentDate <= endDate) {
-        dates.push(new Date(currentDate).toISOString().split('T')[0]);
+        dates.push(format(new Date(currentDate), 'yyyy-MM-dd'));
         currentDate.setDate(currentDate.getDate() + 1);
       }
       

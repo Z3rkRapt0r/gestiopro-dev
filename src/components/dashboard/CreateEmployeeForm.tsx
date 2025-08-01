@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -169,7 +170,7 @@ const CreateEmployeeForm = ({ onClose, onEmployeeCreated }: CreateEmployeeFormPr
             type="date"
             value={formData.hireDate}
             onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
-            max={new Date().toISOString().split('T')[0]}
+            max={format(new Date(), 'yyyy-MM-dd')}
           />
         </div>
 

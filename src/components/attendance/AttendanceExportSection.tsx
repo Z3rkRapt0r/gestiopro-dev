@@ -19,6 +19,7 @@ import { generateAttendancePDF } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { useCompanyHolidays } from '@/hooks/useCompanyHolidays';
 import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 
 type PeriodType = 'custom' | 'month' | 'year';
@@ -54,6 +55,7 @@ export default function AttendanceExportSection() {
   const { settings: attendanceSettings } = useAttendanceSettings();
   const { getSickLeavesForDate } = useSickLeavesForCalendars();
   const { workSchedule: companyWorkSchedule } = useWorkSchedules();
+  const { isHoliday, getHolidayName } = useCompanyHolidays();
   
   // Fetch leave requests for the export period
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
@@ -253,11 +255,19 @@ export default function AttendanceExportSection() {
             dayName: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][checkDate.getDay()]
           });
 
-          // NUOVO: Determina lo stato di presenza considerando i giorni non lavorativi
+          // NUOVO: Determina lo stato di presenza considerando i giorni non lavorativi e le festività
           let attendanceStatus = 'Presente';
           
-          // PRIORITÀ ASSOLUTA: Se non è un giorno lavorativo, è sempre "Giorno non lavorativo"
-          if (!isWorkingDayForEmployee) {
+          // Verifica se è una festività
+          const isHolidayDate = isHoliday(checkDate);
+          const holidayName = getHolidayName(checkDate);
+          
+          // PRIORITÀ ASSOLUTA: Se è una festività, è sempre "Festività"
+          if (isHolidayDate) {
+            attendanceStatus = holidayName ? `Festività: ${holidayName}` : 'Festività';
+          }
+          // PRIORITÀ SECONDA: Se non è un giorno lavorativo, è sempre "Giorno non lavorativo"
+          else if (!isWorkingDayForEmployee) {
             attendanceStatus = 'Giorno non lavorativo';
           } else if (isSickLeave) {
             attendanceStatus = 'Malattia';

@@ -13,6 +13,7 @@ import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
+import { useCompanyHolidays } from '@/hooks/useCompanyHolidays';
 import { formatTime, isWorkingDay } from '@/utils/attendanceUtils';
 import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,8 +39,18 @@ export default function NewDailyAttendanceCalendar() {
   const { businessTrips } = useBusinessTrips();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
   const { getSickLeavesForDate, isUserSickOnDate } = useSickLeavesForCalendars();
+  const { isHoliday, getHolidayName } = useCompanyHolidays();
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+
+  // Funzioni per riconoscere le festività
+  const isDateHoliday = (date: Date) => {
+    return isHoliday(date);
+  };
+
+  const getHolidayNameForDate = (date: Date) => {
+    return getHolidayName(date);
+  };
 
   // Carica gli orari personalizzati per tutti i dipendenti
   React.useEffect(() => {
@@ -91,8 +102,11 @@ export default function NewDailyAttendanceCalendar() {
       const employeeWorkSchedule = employeeWorkSchedules[emp.id];
       const isWorkingDayForThisEmployee = isEmployeeWorkingDay(selectedDate, employeeWorkSchedule, workSchedule);
       
-      if (!isWorkingDayForThisEmployee) {
-        continue; // Non è un giorno lavorativo, non mostrare come assente
+      // Verifica se è una festività
+      const isHolidayDate = isDateHoliday(selectedDate);
+      
+      if (!isWorkingDayForThisEmployee || isHolidayDate) {
+        continue; // Non è un giorno lavorativo o è una festività, non mostrare come assente
       }
       
       const shouldTrack = await shouldTrackEmployeeOnDate(emp.id, selectedDateStr);
@@ -415,9 +429,9 @@ export default function NewDailyAttendanceCalendar() {
           <div className="font-medium text-sm">
             {selectedDate ? format(selectedDate, 'dd MMMM yyyy', { locale: it }) : ''}
           </div>
-          {selectedDate && !isWorkingDay(selectedDate, workSchedule) && (
+          {selectedDate && (!isWorkingDay(selectedDate, workSchedule) || isDateHoliday(selectedDate)) && (
             <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs mt-1">
-              Non lavorativo
+              {isDateHoliday(selectedDate) ? 'Festività' : 'Non lavorativo'}
             </Badge>
           )}
         </div>
@@ -462,19 +476,24 @@ export default function NewDailyAttendanceCalendar() {
                 <span className="hidden sm:inline">Presenze del {selectedDate ? format(selectedDate, 'dd MMMM yyyy', { locale: it }) : ''}</span>
                 <span className="sm:hidden">Presenze</span>
               </div>
-              {selectedDate && !isWorkingDay(selectedDate, workSchedule) && (
+              {selectedDate && (!isWorkingDay(selectedDate, workSchedule) || isDateHoliday(selectedDate)) && (
                 <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs sm:text-sm">
-                  Non lavorativo
+                  {isDateHoliday(selectedDate) ? 'Festività' : 'Non lavorativo'}
                 </Badge>
               )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-4">
-            {selectedDate && !isWorkingDay(selectedDate, workSchedule) ? (
+            {selectedDate && (!isWorkingDay(selectedDate, workSchedule) || isDateHoliday(selectedDate)) ? (
               <div className="text-center py-8">
-                <div className="text-gray-500 text-base sm:text-lg mb-2">Giorno non lavorativo</div>
+                <div className="text-gray-500 text-base sm:text-lg mb-2">
+                  {isDateHoliday(selectedDate) ? 'Festività' : 'Giorno non lavorativo'}
+                </div>
                 <div className="text-gray-400 text-sm">
-                  Questo giorno non è configurato come giorno lavorativo
+                  {isDateHoliday(selectedDate) 
+                    ? `Questo giorno è una festività${getHolidayNameForDate(selectedDate) ? `: ${getHolidayNameForDate(selectedDate)}` : ''}`
+                    : 'Questo giorno non è configurato come giorno lavorativo'
+                  }
                 </div>
               </div>
             ) : (

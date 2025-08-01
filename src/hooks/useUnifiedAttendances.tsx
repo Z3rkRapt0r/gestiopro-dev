@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { format } from 'date-fns';
 import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
 import { useEmployeeWorkSchedule } from '@/hooks/useEmployeeWorkSchedule';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
@@ -71,7 +72,7 @@ export const useUnifiedAttendances = () => {
     let referenceStartTime = workSchedule.start_time;
     let usedPermission = null;
     try {
-      const todayStr = checkInDate.toISOString().split('T')[0];
+      const todayStr = format(checkInDate, 'yyyy-MM-dd');
       const { data: approvedPermissions } = await supabase
         .from('leave_requests')
         .select('*')

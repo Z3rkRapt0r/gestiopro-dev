@@ -47,7 +47,7 @@ const DocumentsSection = () => {
   // Filtering and sorting logic
   const filteredAndSortedDocuments = myDocuments
     .filter(doc => {
-      const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = doc.file_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         getDocumentTypeLabel(doc.document_type).toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === 'all' || doc.document_type === filterType;
@@ -60,9 +60,9 @@ const DocumentsSection = () => {
         case 'date_asc':
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         case 'name_asc':
-          return a.title.localeCompare(b.title);
+          return a.file_name.localeCompare(b.file_name);
         case 'name_desc':
-          return b.title.localeCompare(a.title);
+          return b.file_name.localeCompare(a.file_name);
         case 'type':
           return getDocumentTypeLabel(a.document_type).localeCompare(getDocumentTypeLabel(b.document_type));
         default:
@@ -262,7 +262,7 @@ const DocumentsSection = () => {
                                   <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-medium text-gray-900 truncate text-sm sm:text-base">{doc.title}</h3>
+                                  <h3 className="font-medium text-gray-900 truncate text-sm sm:text-base">{doc.file_name}</h3>
                                   <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1">
                                     <p className="text-xs sm:text-sm text-gray-600">
                                       {formatDate(doc.created_at)}

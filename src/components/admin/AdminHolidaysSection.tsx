@@ -133,6 +133,33 @@ const AdminHolidaysSection = () => {
     setShowForm(true);
   };
 
+  const addAllItalianHolidays = async () => {
+    try {
+      for (const holiday of ITALIAN_HOLIDAYS) {
+        const currentYear = new Date().getFullYear();
+        const fullDate = `${currentYear}-${holiday.date}`;
+        
+        await createHoliday({
+          name: holiday.name,
+          date: fullDate,
+          description: holiday.description,
+          is_recurring: true
+        });
+      }
+      
+      toast({
+        title: "Successo",
+        description: "Tutte le festività italiane sono state aggiunte"
+      });
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Errore durante l'aggiunta delle festività italiane",
+        variant: "destructive"
+      });
+    }
+  };
+
   const sortedHolidays = holidays?.sort((a, b) => {
     const dateA = new Date(a.date);
     const dateB = new Date(b.date);
@@ -149,13 +176,23 @@ const AdminHolidaysSection = () => {
             Gestisci le festività aziendali e nazionali
           </p>
         </div>
-        <Button 
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2"
-        >
-          <Plus size={16} />
-          Aggiungi Festività
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Aggiungi Festività
+          </Button>
+          <Button 
+            onClick={addAllItalianHolidays}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Calendar size={16} />
+            Aggiungi Festività Italiane
+          </Button>
+        </div>
       </div>
 
       {/* Form per aggiungere/modificare festività */}

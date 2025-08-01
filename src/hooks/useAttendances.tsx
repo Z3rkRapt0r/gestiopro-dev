@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { format } from 'date-fns';
 import { useAttendanceOperations } from './useAttendanceOperations';
 import { useAttendanceSettings } from './useAttendanceSettings';
 
@@ -128,7 +129,7 @@ export const useAttendances = () => {
   });
 
   const getTodayAttendance = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = format(new Date(), 'yyyy-MM-dd');
     return attendances?.find(att => att.date === today && att.user_id === user?.id);
   };
 

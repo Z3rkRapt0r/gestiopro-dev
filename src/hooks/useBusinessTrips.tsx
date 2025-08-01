@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { useCompanyHolidays } from '@/hooks/useCompanyHolidays';
 import { format, eachDayOfInterval } from 'date-fns';
 
 export interface BusinessTrip {
@@ -35,6 +36,7 @@ export const useBusinessTrips = () => {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const { workSchedule } = useWorkSchedules();
+  const { isHoliday } = useCompanyHolidays();
 
   // Funzione per verificare se un giorno è lavorativo basata sulla configurazione
   const isWorkingDay = (date: Date) => {
@@ -60,7 +62,18 @@ export const useBusinessTrips = () => {
     const conflicts: string[] = [];
     
     try {
-      // 1. CONTROLLO TRASFERTE SOVRAPPOSTE (Conflitto critico)
+      // 1. CONTROLLO FESTIVITÀ (Conflitto critico)
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(endDate);
+      const allDays = eachDayOfInterval({ start: startDateObj, end: endDateObj });
+      
+      for (const day of allDays) {
+        if (isHoliday(day)) {
+          conflicts.push(`Conflitto critico: ${format(day, 'dd/MM/yyyy')} è una festività`);
+        }
+      }
+
+      // 2. CONTROLLO TRASFERTE SOVRAPPOSTE (Conflitto critico)
       const { data: existingTrips } = await supabase
         .from('business_trips')
         .select('*')
@@ -81,7 +94,7 @@ export const useBusinessTrips = () => {
         }
       }
 
-      // 2. CONTROLLO TUTTI I CONGEDI APPROVATI (CONFLITTI CRITICI)
+      // 3. CONTROLLO TUTTI I CONGEDI APPROVATI (CONFLITTI CRITICI)
       const { data: approvedLeaveRequests } = await supabase
         .from('leave_requests')
         .select('*')
@@ -115,7 +128,7 @@ export const useBusinessTrips = () => {
         }
       }
 
-      // 3. CONTROLLO MALATTIE (da tabella sick_leaves)
+      // 4. CONTROLLO MALATTIE (da tabella sick_leaves)
       const { data: sickLeaves } = await supabase
         .from('sick_leaves')
         .select('start_date, end_date, notes')

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -40,6 +41,7 @@ export const useCompanyHolidays = () => {
         return;
       }
 
+      console.log('🎉 Festività caricate dal database:', (data as any[]) || []);
       setHolidays((data as any[]) || []);
     } catch (error) {
       console.error('Error fetching holidays:', error);
@@ -94,10 +96,11 @@ export const useCompanyHolidays = () => {
   };
 
   const isHoliday = (date: Date): boolean => {
-    const dateStr = date.toISOString().split('T')[0];
-    const monthDay = date.toISOString().substr(5, 5); // MM-DD format
+    // Usa format per evitare problemi di fuso orario
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const monthDay = format(date, 'MM-dd'); // MM-DD format
     
-    return holidays.some(holiday => {
+    const isHolidayResult = holidays.some(holiday => {
       if (holiday.is_recurring) {
         // Per festività ricorrenti, confronta solo mese e giorno
         const holidayMonthDay = holiday.date.substr(5, 5);
@@ -107,20 +110,25 @@ export const useCompanyHolidays = () => {
         return holiday.date === dateStr;
       }
     });
+    
+    if (isHolidayResult) {
+      console.log('🎉 Festività riconosciuta per la data:', dateStr);
+    }
+    
+    return isHolidayResult;
   };
 
   const getHolidaysInRange = (startDate: Date, endDate: Date): CompanyHoliday[] => {
     return holidays.filter(holiday => {
-      const holidayDate = new Date(holiday.date);
-      
       if (holiday.is_recurring) {
         // Per festività ricorrenti, controlla se cade nel range per ogni anno
         const startYear = startDate.getFullYear();
         const endYear = endDate.getFullYear();
         
         for (let year = startYear; year <= endYear; year++) {
-          const recurringDate = new Date(holiday.date);
-          recurringDate.setFullYear(year);
+          // Crea una data ricorrente usando il mese e giorno della festività
+          const [month, day] = holiday.date.substr(5, 5).split('-').map(Number);
+          const recurringDate = new Date(year, month - 1, day); // month - 1 perché i mesi in JS sono 0-based
           
           if (recurringDate >= startDate && recurringDate <= endDate) {
             return true;
@@ -128,15 +136,17 @@ export const useCompanyHolidays = () => {
         }
         return false;
       } else {
-        // Per festività specifiche
+        // Per festività specifiche, usa la data come stringa per evitare problemi di fuso orario
+        const holidayDate = new Date(holiday.date + 'T00:00:00');
         return holidayDate >= startDate && holidayDate <= endDate;
       }
     });
   };
 
   const getHolidayName = (date: Date): string | null => {
-    const dateStr = date.toISOString().split('T')[0];
-    const monthDay = date.toISOString().substr(5, 5);
+    // Usa format per evitare problemi di fuso orario
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const monthDay = format(date, 'MM-dd');
     
     const holiday = holidays.find(holiday => {
       if (holiday.is_recurring) {

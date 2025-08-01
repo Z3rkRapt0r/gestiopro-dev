@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Menu, 
   X, 
@@ -56,9 +57,18 @@ const tabIcons = {
 
 export default function ModernAdminDashboard() {
   const { profile } = useAuth();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Gestione parametri URL per la sezione
+  useEffect(() => {
+    const section = searchParams.get('section');
+    if (section && ['dashboard', 'employees', 'attendance', 'overtime', 'leaves', 'documents', 'notifications', 'holidays', 'settings'].includes(section)) {
+      setActiveTab(section);
+    }
+  }, [searchParams]);
 
   // Invalidate queries when changing tabs
   useEffect(() => {
