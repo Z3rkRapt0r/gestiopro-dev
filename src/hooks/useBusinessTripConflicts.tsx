@@ -171,6 +171,10 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
       dateStr === format(conflictDate, 'yyyy-MM-dd')
     );
     
+    console.log('🔍 DEBUG: isDateDisabled chiamata per:', dateStr);
+    console.log('🔍 DEBUG: conflictDates disponibili:', conflictDates.map(d => format(d, 'yyyy-MM-dd')));
+    console.log('🔍 DEBUG: Risultato isDateDisabled:', isDisabled);
+    
     return isDisabled;
   }, [conflictDates]);
 

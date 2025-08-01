@@ -27,6 +27,11 @@ export default function AdminBusinessTripsManagement() {
 
   // Usa il nuovo hook per i conflitti
   const { conflictDates, isLoading: isCalculatingConflicts, isDateDisabled } = useBusinessTripConflicts(selectedEmployees);
+  
+  // Debug: verifica quando il componente si aggiorna
+  console.log('🔍 DEBUG: AdminBusinessTripsManagement renderizzato');
+  console.log('🔍 DEBUG: conflictDates ricevute:', conflictDates.length);
+  console.log('🔍 DEBUG: selectedEmployees:', selectedEmployees);
 
   const handleEmployeeToggle = (employeeId: string) => {
     setSelectedEmployees(prev => 
@@ -117,6 +122,10 @@ export default function AdminBusinessTripsManagement() {
                       onSelect={setStartDate}
                       locale={it}
                       disabled={isDateDisabled}
+                      onDayClick={(day) => {
+                        console.log('🔍 DEBUG: Calendario Data Inizio - giorno cliccato:', format(day, 'yyyy-MM-dd'));
+                        console.log('🔍 DEBUG: isDateDisabled per questo giorno:', isDateDisabled(day));
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
@@ -138,6 +147,10 @@ export default function AdminBusinessTripsManagement() {
                       onSelect={setEndDate}
                       locale={it}
                       disabled={isDateDisabled}
+                      onDayClick={(day) => {
+                        console.log('🔍 DEBUG: Calendario Data Fine - giorno cliccato:', format(day, 'yyyy-MM-dd'));
+                        console.log('🔍 DEBUG: isDateDisabled per questo giorno:', isDateDisabled(day));
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
