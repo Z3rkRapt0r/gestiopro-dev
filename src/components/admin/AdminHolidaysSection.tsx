@@ -193,31 +193,7 @@ const AdminHolidaysSection = () => {
             Aggiungi Festività Italiane
           </Button>
           
-          <Button 
-            onClick={async () => {
-              try {
-                await createHoliday({
-                  name: 'Test Capodanno 2025',
-                  date: '2025-01-01',
-                  description: 'Test festività',
-                  is_recurring: false
-                });
-                await createHoliday({
-                  name: 'Test Natale 2025',
-                  date: '2025-12-25',
-                  description: 'Test festività',
-                  is_recurring: false
-                });
-                console.log('✅ Festività di test aggiunte');
-              } catch (error) {
-                console.error('❌ Errore aggiunta festività test:', error);
-              }
-            }}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            Aggiungi Test 2025
-          </Button>
+
         </div>
       </div>
 

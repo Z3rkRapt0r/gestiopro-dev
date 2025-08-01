@@ -20,10 +20,6 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
     setIsLoading(true);
     setError(null);
     
-    console.log('🔍 Calcolo conflitti RIGOROSO per dipendenti:', userIds);
-    console.log('🔍 Hook useCompanyHolidays - holidays disponibili:', holidays?.length || 0);
-    console.log('🔍 Hook useCompanyHolidays - isHoliday function:', typeof isHoliday);
-    
     const conflictDates = new Set<string>();
     const today = new Date();
     
@@ -34,33 +30,14 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
       const endOfYear = new Date(currentYear, 11, 31);
       const allDaysInYear = eachDayOfInterval({ start: startOfYear, end: endOfYear });
       
-      console.log('🔍 Controllo festività per tutto l\'anno:', currentYear);
-      console.log('🔍 Date da controllare:', allDaysInYear.length);
-      
       allDaysInYear.forEach(date => {
-        const isHolidayResult = isHoliday(date);
-        if (isHolidayResult) {
+        if (isHoliday(date)) {
           const dateStr = format(date, 'yyyy-MM-dd');
           conflictDates.add(dateStr);
-          console.log('🎉 Festività trovata:', dateStr);
         }
       });
       
-      // Debug: verifica se le festività sono caricate
-      console.log('🔍 Debug: Verifica festività per date specifiche');
-      const testDates = [
-        new Date('2025-01-01'), // Capodanno
-        new Date('2025-12-25'), // Natale
-        new Date('2025-05-01'), // 1° Maggio
-        new Date('2025-08-15'), // Ferragosto
-      ];
-      
-      testDates.forEach(date => {
-        const isHolidayResult = isHoliday(date);
-        console.log(`🔍 Data ${format(date, 'yyyy-MM-dd')} è festività:`, isHolidayResult);
-      });
 
-      console.log('🎉 Numero totale di festività trovate:', Array.from(conflictDates).length);
 
       // Se non ci sono dipendenti selezionati, mostra solo le festività
       if (!userIds || userIds.length === 0) {
@@ -180,13 +157,6 @@ export const useBusinessTripConflicts = (selectedEmployees: string[]) => {
     const isDisabled = conflictDates.some(conflictDate => 
       dateStr === format(conflictDate, 'yyyy-MM-dd')
     );
-    
-    console.log(`🔍 isDateDisabled chiamata per ${dateStr}:`, isDisabled);
-    console.log(`🔍 Date di conflitto disponibili:`, conflictDates.map(d => format(d, 'yyyy-MM-dd')));
-    
-    if (isDisabled) {
-      console.log('🚫 Data disabilitata:', dateStr);
-    }
     
     return isDisabled;
   }, [conflictDates]);
