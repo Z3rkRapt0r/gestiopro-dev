@@ -150,7 +150,14 @@ export default function AttendanceExportSection() {
         .select('user_id, date, hours, notes')
         .gte('date', format(from, 'yyyy-MM-dd'))
         .lte('date', format(to, 'yyyy-MM-dd'));
-      
+
+      // NUOVO: Fetch business trips for the period
+      const { data: businessTripsData } = await supabase
+        .from('business_trips')
+        .select('user_id, start_date, end_date, destination, reason')
+        .eq('status', 'approved')
+        .or(`and(start_date.gte.${format(from, 'yyyy-MM-dd')},start_date.lte.${format(to, 'yyyy-MM-dd')}),and(end_date.gte.${format(from, 'yyyy-MM-dd')},end_date.lte.${format(to, 'yyyy-MM-dd')})`);
+
       setLeaveRequests(leaveRequestsData || []);
       setIsLoadingLeaves(false);
 
@@ -242,6 +249,15 @@ export default function AttendanceExportSection() {
           const sickLeavesForDate = getSickLeavesForDate(dateStr);
           const isSickLeave = sickLeavesForDate.some(sl => sl.user_id === employeeId);
 
+          // NUOVO: Check if this date is covered by a business trip
+          const isBusinessTripDate = businessTripsData?.some(trip => {
+            if (trip.user_id !== employeeId) return false;
+            const tripStart = new Date(trip.start_date);
+            const tripEnd = new Date(trip.end_date);
+            const checkDate = new Date(dateStr);
+            return checkDate >= tripStart && checkDate <= tripEnd;
+          }) || false;
+
           // DEBUG: Calcola e logga il giorno lavorativo
           const isWorkingDayForEmployee = isEmployeeWorkingDay(checkDate, employeeWorkSchedules[employeeId], companyWorkSchedule);
           console.log('[PDF EXPORT DEBUG]', {
@@ -249,6 +265,8 @@ export default function AttendanceExportSection() {
             employeeId,
             employeeName: `${employee.first_name} ${employee.last_name}`,
             isWorkingDayForEmployee,
+            isBusinessTripDate,
+            attendanceIsBusinessTrip: attendance?.is_business_trip,
             employeeWorkSchedule: employeeWorkSchedules[employeeId],
             companyWorkSchedule,
             dayOfWeek: checkDate.getDay(),
@@ -266,6 +284,10 @@ export default function AttendanceExportSection() {
           if (isHolidayDate) {
             attendanceStatus = holidayName ? `Festività: ${holidayName}` : 'Festività';
           }
+          // PRIORITÀ: Se è una trasferta (da attendance o da business_trips), è sempre "Trasferta"
+          else if (attendance?.is_business_trip || isBusinessTripDate) {
+            attendanceStatus = 'Trasferta';
+          }
           // PRIORITÀ SECONDA: Se non è un giorno lavorativo, è sempre "Giorno non lavorativo"
           else if (!isWorkingDayForEmployee) {
             attendanceStatus = 'Giorno non lavorativo';
@@ -275,8 +297,6 @@ export default function AttendanceExportSection() {
             attendanceStatus = 'Ferie';
           } else if (leaveForDate.find(l => l.type === 'permesso')) {
             attendanceStatus = 'Permesso';
-          } else if (attendance?.is_business_trip) {
-            attendanceStatus = 'Trasferta';
           } else if (attendance?.check_in_time || attendance?.check_out_time) {
             attendanceStatus = 'Presente';
           } else {

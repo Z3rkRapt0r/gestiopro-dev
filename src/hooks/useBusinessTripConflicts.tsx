@@ -277,25 +277,24 @@ export const useBusinessTripConflicts = (selectedEmployees: string[], holidays: 
           .limit(1)
           .maybeSingle();
         
-        allDaysInYear.forEach(date => {
-          const isWorkingDayForEmployee = isEmployeeWorkingDay(date, employeeWorkSchedule, companyWorkSchedule);
-          if (!isWorkingDayForEmployee) {
-            const dateStr = format(date, 'yyyy-MM-dd');
-            conflictDates.add(dateStr);
-            
-            const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-            const dayName = dayNames[date.getDay()];
-            
-            details.push({
-              date: dateStr,
-              type: 'holiday',
-              description: `${employeeName}: Giorno non lavorativo - ${dayName}`,
-              severity: 'critical',
-              employeeName
-            });
-            summary.holidays += 1;
-          }
-        });
+        // RIMOSSO: Non aggiungere i giorni non lavorativi tra i giorni disabilitati per le trasferte
+        // allDaysInYear.forEach(date => {
+        //   const isWorkingDayForEmployee = isEmployeeWorkingDay(date, employeeWorkSchedule, companyWorkSchedule);
+        //   if (!isWorkingDayForEmployee) {
+        //     const dateStr = format(date, 'yyyy-MM-dd');
+        //     conflictDates.add(dateStr);
+        //     const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+        //     const dayName = dayNames[date.getDay()];
+        //     details.push({
+        //       date: dateStr,
+        //       type: 'holiday',
+        //       description: `${employeeName}: Giorno non lavorativo - ${dayName}`,
+        //       severity: 'critical',
+        //       employeeName
+        //     });
+        //     summary.holidays += 1;
+        //   }
+        // });
       }
 
       // Calcola totale unico (alcune date potrebbero avere conflitti multipli)
