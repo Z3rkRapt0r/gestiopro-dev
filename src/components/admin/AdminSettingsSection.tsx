@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, Settings } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import DashboardCustomizationSection from "./DashboardCustomizationSection";
 import LoginCustomizationSection from "./LoginCustomizationSection";
 import EmployeeLogosSection from "./EmployeeLogosSection";
@@ -17,14 +19,33 @@ import WorkScheduleSettings from "./WorkScheduleSettings";
 
 const AdminSettingsSection = () => {
   const { resendSettings, setResendSettings, loading, saveResendSettings } = useAdminSettings();
+  const navigate = useNavigate();
 
   const handleSaveResendSettings = () => {
     saveResendSettings(resendSettings);
   };
 
+  const handleBackToDashboard = () => {
+    navigate('/');
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-6 bg-white rounded shadow">
-      <h1 className="text-2xl font-bold mb-6">Impostazioni Amministratore</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Settings className="w-6 h-6 text-gray-600" />
+          <h1 className="text-2xl font-bold">Impostazioni Amministratore</h1>
+        </div>
+        <Button 
+          onClick={handleBackToDashboard}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Torna alla Dashboard
+        </Button>
+      </div>
+      
       <Tabs defaultValue="resend" className="w-full">
         <TabsList className="flex flex-wrap justify-start gap-1 mb-6 h-auto bg-gray-100 p-1 rounded-lg w-full">
           <TabsTrigger 
@@ -169,6 +190,22 @@ const AdminSettingsSection = () => {
           <EmployeeLogosSection />
         </TabsContent>
       </Tabs>
+
+      {/* Footer con branding */}
+      <div className="text-center mt-8 pt-6 border-t">
+        <p className="text-xs opacity-75 text-gray-600">
+          Powered by{' '}
+          <a 
+            href="https://licenseglobal.it" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="hover:underline font-medium"
+            style={{ color: '#f97316' }}
+          >
+            License Global
+          </a>
+        </p>
+      </div>
     </div>
   );
 };

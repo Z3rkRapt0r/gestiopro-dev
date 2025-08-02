@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -62,6 +62,70 @@ export default function AttendanceExportSection() {
   const [isLoadingLeaves, setIsLoadingLeaves] = useState(false);
   const { profile } = useAuth();
   const { toast } = useToast();
+
+  // Calcola gli anni disponibili basati sui dati di presenza
+  const availableYears = useMemo(() => {
+    if (!attendances || attendances.length === 0) {
+      return [new Date().getFullYear()]; // Solo anno corrente se non ci sono dati
+    }
+
+    const years = new Set<number>();
+    attendances.forEach(attendance => {
+      if (attendance.date) {
+        const year = new Date(attendance.date).getFullYear();
+        years.add(year);
+      }
+    });
+
+    // Aggiungi anche l'anno corrente se non è già presente
+    const currentYear = new Date().getFullYear();
+    years.add(currentYear);
+
+    // Ordina gli anni in ordine decrescente (dal più recente al più vecchio)
+    return Array.from(years).sort((a, b) => b - a);
+  }, [attendances]);
+
+  // Calcola i mesi disponibili per l'anno selezionato
+  const availableMonths = useMemo(() => {
+    if (!attendances || attendances.length === 0) {
+      return MONTHS; // Tutti i mesi se non ci sono dati
+    }
+
+    const months = new Set<number>();
+    attendances.forEach(attendance => {
+      if (attendance.date) {
+        const date = new Date(attendance.date);
+        if (date.getFullYear() === selectedYear) {
+          months.add(date.getMonth());
+        }
+      }
+    });
+
+    // Se non ci sono dati per l'anno selezionato, mostra tutti i mesi
+    if (months.size === 0) {
+      return MONTHS;
+    }
+
+    // Filtra i mesi che hanno dati
+    return MONTHS.filter(month => months.has(parseInt(month.value)));
+  }, [attendances, selectedYear]);
+
+  // Aggiorna l'anno selezionato se non è più disponibile
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]); // Usa l'anno più recente
+    }
+  }, [availableYears, selectedYear]);
+
+  // Aggiorna il mese selezionato se non è più disponibile per l'anno selezionato
+  useEffect(() => {
+    if (availableMonths.length > 0) {
+      const currentMonthIndex = availableMonths.findIndex(month => month.value === selectedMonth);
+      if (currentMonthIndex === -1) {
+        setSelectedMonth(availableMonths[0].value); // Usa il primo mese disponibile
+      }
+    }
+  }, [availableMonths, selectedMonth]);
 
   // Funzione per validare e formattare le date/orari
   const safeFormatDateTime = (dateTimeStr: string | null, formatStr: string) => {
@@ -526,7 +590,7 @@ export default function AttendanceExportSection() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MONTHS.map((month) => (
+                    {availableMonths.map((month) => (
                       <SelectItem key={month.value} value={month.value}>
                         {month.label}
                       </SelectItem>
@@ -542,14 +606,11 @@ export default function AttendanceExportSection() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 10 }, (_, i) => {
-                      const year = new Date().getFullYear() - i;
-                      return (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}
-                        </SelectItem>
-                      );
-                    })}
+                    {availableYears.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -564,14 +625,11 @@ export default function AttendanceExportSection() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 10 }, (_, i) => {
-                    const year = new Date().getFullYear() - i;
-                    return (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    );
-                  })}
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -606,7 +664,7 @@ export default function AttendanceExportSection() {
                   <div>Formato: PDF</div>
                   <div>Filtro Periodo: {
                     periodType === 'custom' ? 'Personalizzato' :
-                    periodType === 'month' ? `${MONTHS[parseInt(selectedMonth)].label} ${selectedYear}` : 
+                    periodType === 'month' ? `${availableMonths.find(m => m.value === selectedMonth)?.label} ${selectedYear}` : 
                     `Anno ${selectedYear}`
                   }</div>
                 </div>
