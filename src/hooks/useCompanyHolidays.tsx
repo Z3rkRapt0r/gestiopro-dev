@@ -41,11 +41,6 @@ export const useCompanyHolidays = () => {
         return;
       }
 
-      console.log('🎉 Festività caricate dal database:', (data as any[]) || []);
-      console.log('🔍 Numero festività caricate:', (data as any[])?.length || 0);
-      if ((data as any[])?.length === 0) {
-        console.log('⚠️ ATTENZIONE: Nessuna festività trovata nel database!');
-      }
       setHolidays((data as any[]) || []);
     } catch (error) {
       console.error('Error fetching holidays:', error);
@@ -104,25 +99,16 @@ export const useCompanyHolidays = () => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const monthDay = format(date, 'MM-dd'); // MM-DD format
     
-    console.log('🔍 DEBUG: isHoliday chiamata per:', dateStr);
-    console.log('🔍 DEBUG: Holidays disponibili:', holidays.length);
-    
     const isHolidayResult = holidays.some(holiday => {
       if (holiday.is_recurring) {
         // Per festività ricorrenti, confronta solo mese e giorno
         const holidayMonthDay = holiday.date.substr(5, 5);
-        const match = holidayMonthDay === monthDay;
-        console.log(`🔍 DEBUG: Festività ricorrente ${holiday.name} (${holiday.date}) - ${holidayMonthDay} vs ${monthDay} = ${match}`);
-        return match;
+        return holidayMonthDay === monthDay;
       } else {
         // Per festività specifiche, confronta la data completa
-        const match = holiday.date === dateStr;
-        console.log(`🔍 DEBUG: Festività specifica ${holiday.name} (${holiday.date}) vs ${dateStr} = ${match}`);
-        return match;
+        return holiday.date === dateStr;
       }
     });
-    
-    console.log('🔍 DEBUG: Risultato finale isHoliday per', dateStr, ':', isHolidayResult);
     
     return isHolidayResult;
   };

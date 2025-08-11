@@ -26,6 +26,7 @@ import { useLeaveRequestNotifications } from '@/hooks/useLeaveRequestNotificatio
 import { useWorkingHoursValidation } from '@/hooks/useWorkingHoursValidation';
 import WorkingDaysPreview from './WorkingDaysPreview';
 import { LeaveRequestFormValidation } from './LeaveRequestFormValidation';
+import { useCompanyHolidays } from '@/hooks/useCompanyHolidays';
 const leaveRequestSchema = z.object({
   type: z.enum(['ferie', 'permesso']),
   date_from: z.date().optional(),
@@ -101,8 +102,24 @@ export default function LeaveRequestForm({
   // Hook per gestire i conflitti con calcolo preventivo
   const {
     isLoading: isCalculatingConflicts,
-    isDateDisabled
+    isDateDisabled,
+    conflictDates,
+    conflictDetails,
+    conflictSummary
   } = useLeaveConflicts(profile?.id, watchedType);
+
+  // Calcolo conflitti (senza log di debug)
+  useEffect(() => {
+    // I conflitti vengono calcolati automaticamente dall'hook useLeaveConflicts
+  }, [conflictDates, conflictSummary, conflictDetails, isCalculatingConflicts]);
+
+  // Hook per gestire le festività
+  const { isHoliday, holidays, isLoading: isLoadingHolidays } = useCompanyHolidays();
+
+  // Caricamento festività (senza log di debug)
+  useEffect(() => {
+    // Le festività vengono caricate automaticamente dall'hook useCompanyHolidays
+  }, [holidays, isLoadingHolidays, isHoliday]);
 
   // Controllo status dipendente per la data selezionata
   const targetDate = watchedType === 'ferie' ? watchedDateFrom ? format(watchedDateFrom, 'yyyy-MM-dd') : undefined : watchedType === 'permesso' ? watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined : undefined;
@@ -173,7 +190,7 @@ export default function LeaveRequestForm({
     return errors;
   };
 
-  // FUNZIONE MIGLIORATA PER BLOCCARE DATE PASSATE
+  // FUNZIONE MIGLIORATA PER BLOCCARE DATE PASSATE E FESTIVITÀ
   const isDateDisabledWithPastCheck = (date: Date): boolean => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -182,6 +199,29 @@ export default function LeaveRequestForm({
 
     // BLOCCA DATE PASSATE (permette solo oggi e futuro)
     if (checkDate < today) {
+      return true;
+    }
+
+    // CONTROLLO DIRETTO FESTIVITÀ (backup per sicurezza)
+    if (isHoliday && isHoliday(date)) {
+      return true;
+    }
+
+    // TEST SPECIFICO PER FESTIVITÀ IMPORTANTI
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const monthDay = format(date, 'MM-dd');
+    
+    // Test diretto per festività note
+    const isKnownHoliday = holidays?.some(holiday => {
+      if (holiday.is_recurring) {
+        const holidayMonthDay = holiday.date.substr(5, 5);
+        return holidayMonthDay === monthDay;
+      } else {
+        return holiday.date === dateStr;
+      }
+    });
+    
+    if (isKnownHoliday) {
       return true;
     }
 
