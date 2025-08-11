@@ -361,19 +361,35 @@ export default function LeaveRequestForm({
               </AlertDescription>
             </Alert>}
 
-          {/* Mostra bilanci solo se esistono */}
-          {leaveBalance && leaveBalance.hasBalance && <Alert className="border-blue-200 bg-blue-50">
-              <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
-              <AlertDescription className="text-blue-700">
-                <div className="font-medium mb-2">Bilanci disponibili:</div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                    <span>• Ferie: <strong>{leaveBalance.vacation_days_remaining}</strong> giorni su {leaveBalance.vacation_days_total}</span>
-                    <span>• Permessi: <strong>{formatDecimalHours(leaveBalance.permission_hours_remaining)}</strong> su {formatDecimalHours(leaveBalance.permission_hours_total)}</span>
-                  </div>
+          {/* Mostra bilanci solo se esistono - SUPER SEMPLIFICATO E RESPONSIVE */}
+          {leaveBalance && leaveBalance.hasBalance && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-green-600 text-lg">💰</span>
+                <span className="font-medium text-green-700 text-sm">Bilanci Disponibili</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                {/* Ferie */}
+                <div className="text-center p-2 bg-white rounded border border-green-200">
+                  <div className="text-xs text-green-600 mb-1">🏖️ Ferie</div>
+                  <div className="text-lg font-bold text-green-700">{leaveBalance.vacation_days_remaining}</div>
+                  <div className="text-xs text-gray-500">su {leaveBalance.vacation_days_total}</div>
                 </div>
-              </AlertDescription>
-            </Alert>}
+                
+                {/* Permessi */}
+                <div className="text-center p-2 bg-white rounded border border-blue-200">
+                  <div className="text-xs text-blue-600 mb-1">⏰ Permessi</div>
+                  <div className="text-lg font-bold text-blue-700">{formatDecimalHours(leaveBalance.permission_hours_remaining)}</div>
+                  <div className="text-xs text-gray-500">su {formatDecimalHours(leaveBalance.permission_hours_total)}</div>
+                </div>
+              </div>
+              
+              <div className="mt-2 text-center">
+                <span className="text-xs text-green-600">✅ Puoi procedere con la richiesta</span>
+              </div>
+            </div>
+          )}
 
           {workingDaysLabels.length > 0}
 
@@ -485,17 +501,24 @@ export default function LeaveRequestForm({
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={date => {
-                        if (watchedDateFrom && date < watchedDateFrom) return true;
-                        return isDateDisabledWithPastCheck(date);
-                      }} className="pointer-events-auto" />
+                              <Calendar 
+                                mode="single" 
+                                selected={field.value} 
+                                onSelect={field.onChange} 
+                                month={watchedDateFrom || undefined}
+                                disabled={date => {
+                                  if (watchedDateFrom && date < watchedDateFrom) return true;
+                                  return isDateDisabledWithPastCheck(date);
+                                }} 
+                                className="pointer-events-auto" 
+                              />
                             </PopoverContent>
                           </Popover>
                           <FormMessage />
                         </FormItem>} />
                   </div>
 
-                  <WorkingDaysPreview startDate={watchedDateFrom} endDate={watchedDateTo} leaveType="ferie" />
+                  <WorkingDaysPreview startDate={watchedDateFrom} endDate={watchedDateTo} leaveType="ferie" employeeId={profile?.id} />
                 </>}
 
               {watchedType === 'permesso' && <>

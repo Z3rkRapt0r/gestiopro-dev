@@ -9,6 +9,33 @@ export const useWorkingDaysValidation = (employeeId?: string) => {
   const { isHoliday } = useCompanyHolidays();
   const workSchedule = employeeWorkSchedule || companyWorkSchedule;
 
+  // NUOVO: Informazioni dettagliate sugli orari utilizzati
+  const getScheduleInfo = () => {
+    if (employeeWorkSchedule) {
+      return {
+        type: 'personalizzato',
+        source: 'employee_work_schedules',
+        description: 'Orari personalizzati del dipendente',
+        workDays: employeeWorkSchedule.work_days
+      };
+    } else if (companyWorkSchedule) {
+      return {
+        type: 'aziendale',
+        source: 'work_schedules',
+        description: 'Orari aziendali generali',
+        workDays: Object.entries(companyWorkSchedule)
+          .filter(([k, v]) => ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].includes(k) && v)
+          .map(([k]) => k)
+      };
+    }
+    return {
+      type: 'nessuno',
+      source: 'default',
+      description: 'Nessuna configurazione orari disponibile',
+      workDays: []
+    };
+  };
+
   const isWorkingDay = (date: Date): boolean => {
     if (!workSchedule) return true;
     if (isHoliday(date)) return false;
@@ -88,6 +115,7 @@ export const useWorkingDaysValidation = (employeeId?: string) => {
     countWorkingDays,
     getWorkingDaysInRange,
     getWorkingDaysLabels,
-    workSchedule
+    workSchedule,
+    scheduleInfo: getScheduleInfo() // NUOVO: informazioni dettagliate sugli orari
   };
 };
