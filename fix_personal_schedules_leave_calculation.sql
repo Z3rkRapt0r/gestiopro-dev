@@ -1,5 +1,5 @@
--- Migrazione per correggere il calcolo delle ferie con orari personalizzati
--- Nome file: 20250725000000_fix_holiday_exclusion_in_leave_calculation.sql
+-- Script per correggere il calcolo delle ferie con orari personalizzati
+-- Esegui questo script direttamente nel database Supabase
 
 -- Aggiorna la funzione calculate_leave_usage per escludere festività e considerare orari personalizzati
 CREATE OR REPLACE FUNCTION public.calculate_leave_usage()
@@ -317,4 +317,7 @@ BEGIN
     RETURN format('Bilanci ricalcolati con successo! Richieste processate: %s, Bilanci aggiornati: %s', 
                   total_requests, total_updated);
 END;
-$$; 
+$$;
+
+-- Messaggio di conferma
+SELECT 'Funzione calculate_leave_usage aggiornata con successo per utilizzare orari personalizzati!' as status; 
