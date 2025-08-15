@@ -62,6 +62,12 @@ export default function AttendanceCalendarSidebar({
               onDateSelect(date);
             }}
             locale={it}
+            disabled={(date) => {
+              // Blocca i giorni futuri (dopo oggi)
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              return date > today;
+            }}
             className="rounded-lg border shadow-sm w-fit"
           />
         </div>

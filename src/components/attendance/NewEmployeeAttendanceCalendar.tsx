@@ -342,6 +342,12 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                 selected={selectedDate}
                 onSelect={setSelectedDate}
                 locale={it}
+                disabled={(date) => {
+                  // Blocca i giorni futuri (dopo oggi)
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return date > today;
+                }}
                 modifiers={{
                   present: attendanceDates.filter(date => 
                     !sickLeaveDates.some(sickDate => sickDate.getTime() === date.getTime()) &&

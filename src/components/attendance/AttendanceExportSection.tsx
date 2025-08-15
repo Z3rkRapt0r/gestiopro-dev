@@ -546,6 +546,12 @@ export default function AttendanceExportSection() {
                       selected={dateFrom}
                       onSelect={setDateFrom}
                       locale={it}
+                      disabled={(date) => {
+                        // Blocca i giorni futuri (dopo oggi)
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date > today;
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
@@ -573,6 +579,12 @@ export default function AttendanceExportSection() {
                       selected={dateTo}
                       onSelect={setDateTo}
                       locale={it}
+                      disabled={(date) => {
+                        // Blocca i giorni futuri (dopo oggi)
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date > today;
+                      }}
                       initialFocus
                     />
                   </PopoverContent>

@@ -229,6 +229,12 @@ export default function DailyAttendanceCalendar() {
               selected={selectedDate}
               onSelect={setSelectedDate}
               locale={it}
+              disabled={(date) => {
+                // Blocca i giorni futuri (dopo oggi)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return date > today;
+              }}
               modifiers={{
                 hasAttendance: datesWithAttendance
               }}
