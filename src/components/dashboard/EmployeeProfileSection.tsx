@@ -121,6 +121,35 @@ const EmployeeProfileSection = () => {
     }
   }, [profile]);
 
+  // Listener per i cambiamenti di autenticazione (es. cambio email confermato)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'USER_UPDATED' && session?.user && profile) {
+        // Se l'email è stata aggiornata, aggiorna anche il profilo
+        if (session.user.email !== profile.email) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ email: session.user.email })
+            .eq('id', profile.id);
+            
+          if (!error) {
+            // Aggiorna lo stato locale
+            setProfile(prev => prev ? { ...prev, email: session.user.email } : prev);
+            setPersonalForm(prev => ({ ...prev, email: session.user.email }));
+            
+            toast({
+              title: 'Email aggiornata!',
+              description: 'La tua email è stata confermata e aggiornata con successo.',
+              variant: 'default'
+            });
+          }
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [profile]);
+
   // Salva dati personali su auth e profiles
   const handleSavePersonal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,37 +160,101 @@ const EmployeeProfileSection = () => {
         first_name: personalForm.first_name,
         last_name: personalForm.last_name
       };
+      
+      // Se l'email è cambiata, verifica se è già stata confermata
+      if (personalForm.email !== user.email) {
+        // Controlla se l'utente ha già confermato la nuova email
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser && currentUser.email === personalForm.email) {
+          // Email già confermata, aggiorna il profilo
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              first_name: personalForm.first_name,
+              last_name: personalForm.last_name,
+              email: personalForm.email,
+            })
+            .eq('id', profile.id);
+            
+          if (profileError) {
+            toast({ title: 'Errore profilo', description: profileError.message, variant: 'destructive' });
+            return;
+          }
+          
+          toast({ title: 'Profilo aggiornato completamente!' });
+          setEditPersonal(false);
+          setProfile({ ...profile, ...personalForm });
+          return;
+        }
+      }
+      
       let authError = null;
       // Aggiorna email SOLO se è cambiata
       if (personalForm.email !== user.email) {
+        // Per il cambio email, Supabase invia una mail di conferma
         const { error } = await supabase.auth.updateUser({
           email: personalForm.email,
           data: updateData
         });
         authError = error;
+        
+        if (!authError) {
+          // Email di conferma inviata con successo
+          toast({ 
+            title: 'Email di conferma inviata!', 
+            description: 'Controlla la tua nuova email e clicca sul link di conferma per completare il cambio email.',
+            variant: 'default'
+          });
+          
+          // Aggiorna solo i dati personali (nome e cognome) per ora
+          // L'email verrà aggiornata solo dopo la conferma
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              first_name: personalForm.first_name,
+              last_name: personalForm.last_name,
+              // NON aggiornare l'email qui - verrà aggiornata dopo la conferma
+            })
+            .eq('id', profile.id);
+            
+          if (profileError) {
+            toast({ title: 'Errore profilo', description: profileError.message, variant: 'destructive' });
+            return;
+          }
+          
+          toast({ title: 'Profilo aggiornato parzialmente!' });
+          setEditPersonal(false);
+          setProfile({ ...profile, first_name: personalForm.first_name, last_name: personalForm.last_name });
+          return;
+        }
       } else {
+        // Email non cambiata, aggiorna solo i dati personali
         const { error } = await supabase.auth.updateUser({
           data: updateData
         });
         authError = error;
       }
+      
       if (authError) {
         toast({ title: 'Errore email', description: authError.message, variant: 'destructive' });
         return;
       }
-      // Aggiorna su profiles
+      
+      // Aggiorna su profiles (solo nome e cognome se email non cambiata)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: personalForm.first_name,
           last_name: personalForm.last_name,
-          email: personalForm.email,
+          email: personalForm.email, // Aggiorna email solo se non è cambiata
         })
         .eq('id', profile.id);
+        
       if (profileError) {
         toast({ title: 'Errore profilo', description: profileError.message, variant: 'destructive' });
         return;
       }
+      
       toast({ title: 'Profilo aggiornato!' });
       setEditPersonal(false);
       setProfile({ ...profile, ...personalForm });
@@ -211,6 +304,11 @@ const EmployeeProfileSection = () => {
                   <div>
                     <label className="block text-sm font-medium mb-1">Email</label>
                     <Input value={personalForm.email} onChange={e => setPersonalForm(f => ({ ...f, email: e.target.value }))} required type="email" />
+                    {personalForm.email !== profile?.email && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        ⚠️ Cambiando l'email riceverai una mail di conferma. L'email verrà aggiornata solo dopo aver cliccato sul link di conferma.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2 mt-2 justify-end">
