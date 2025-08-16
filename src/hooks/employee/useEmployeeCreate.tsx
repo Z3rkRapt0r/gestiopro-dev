@@ -66,6 +66,7 @@ export const useEmployeeCreate = () => {
           employee_code: employeeData.employee_code || null,
           hire_date: employeeData.hire_date || null,
           tracking_start_type: employeeData.tracking_start_type || 'from_hire_date',
+          // first_login: true, // Temporaneamente commentato - esegui la migrazione del database
           is_active: true
         })
         .select()

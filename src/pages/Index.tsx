@@ -1,6 +1,7 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import AuthPage from "@/components/auth/AuthPage";
+import FirstLoginPasswordChange from "@/components/auth/FirstLoginPasswordChange";
 import { Suspense, lazy } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -39,6 +40,12 @@ const Index = () => {
   }
 
   console.log('User role:', profile.role);
+
+  // Se è un dipendente al primo accesso, reindirizza alla pagina di cambio password
+  // Nota: first_login potrebbe non esistere finché la migrazione del database non è eseguita
+  if (profile.role === 'employee' && profile.first_login === true) {
+    return <FirstLoginPasswordChange />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

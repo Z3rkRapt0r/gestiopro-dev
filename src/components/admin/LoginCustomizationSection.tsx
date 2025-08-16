@@ -71,6 +71,48 @@ const LoginCustomizationSection = () => {
     }
   };
 
+  const handleRemoveLogo = async () => {
+    if (!settings.logo_url || !profile?.id) return;
+
+    setUploading(true);
+    try {
+      // Estrai il nome del file dall'URL
+      const urlParts = settings.logo_url.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      
+      console.log('Removing logo file:', fileName);
+
+      // Elimina il file dal bucket di storage
+      const { error: deleteError } = await supabase.storage
+        .from("company-logos")
+        .remove([`logo Pagina di Login/logo/${fileName}`]);
+
+      if (deleteError) {
+        console.error("Error deleting logo file:", deleteError);
+        throw deleteError;
+      }
+
+      // Aggiorna lo stato locale rimuovendo l'URL del logo
+      setSettings(prev => ({ ...prev, logo_url: null }));
+
+      toast({
+        title: "Logo rimosso",
+        description: "Il logo è stato eliminato con successo dal sistema",
+      });
+
+      console.log('Logo file removed successfully:', fileName);
+    } catch (error: any) {
+      console.error("Error removing logo:", error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la rimozione del logo",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!profile?.id) {
       toast({
@@ -194,7 +236,7 @@ const LoginCustomizationSection = () => {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setSettings(prev => ({ ...prev, logo_url: null }))}
+                  onClick={handleRemoveLogo}
                   disabled={uploading}
                 >
                   <X className="h-4 w-4 mr-2" />
@@ -220,12 +262,12 @@ const LoginCustomizationSection = () => {
 
                         setUploading(true);
                         try {
-                          const fileExt = file.name.split('.').pop();
-                          const fileName = `login-${profile.id}-${Date.now()}.${fileExt}`;
+                                const fileExt = file.name.split('.').pop();
+      const fileName = `logo Pagina di Login/logo/${profile.id}-${Date.now()}.${fileExt}`;
 
-                          const { error: uploadError } = await supabase.storage
-                            .from("company-logos")
-                            .upload(fileName, file);
+      const { error: uploadError } = await supabase.storage
+        .from("company-logos")
+        .upload(fileName, file);
 
                           if (uploadError) {
                             throw uploadError;
@@ -237,10 +279,10 @@ const LoginCustomizationSection = () => {
 
                           setSettings(prev => ({ ...prev, logo_url: publicUrl }));
 
-                          toast({
-                            title: "Logo login caricato",
-                            description: "Il logo per la pagina di login è stato caricato con successo",
-                          });
+                                    toast({
+            title: "Logo login caricato",
+            description: "Il logo per la pagina di login è stato caricato con successo nella cartella 'logo Pagina di Login/logo'",
+          });
                         } catch (error: any) {
                           console.error("Error uploading login logo:", error);
                           toast({

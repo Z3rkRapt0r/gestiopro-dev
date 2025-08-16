@@ -67,7 +67,7 @@ const DashboardCustomizationSection = () => {
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
+      const fileName = `logo dashboard/logo/${profile.id}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("company-logos")
@@ -85,7 +85,7 @@ const DashboardCustomizationSection = () => {
 
       toast({
         title: "Logo caricato",
-        description: "Il logo è stato caricato con successo",
+        description: "Il logo è stato caricato con successo nella cartella 'logo dashboard/logo'",
       });
     } catch (error: any) {
       console.error("Error uploading logo:", error);
@@ -99,8 +99,46 @@ const DashboardCustomizationSection = () => {
     }
   };
 
-  const handleRemoveLogo = () => {
-    setSettings(prev => ({ ...prev, logo_url: null }));
+  const handleRemoveLogo = async () => {
+    if (!settings.logo_url || !profile?.id) return;
+
+    setUploading(true);
+    try {
+      // Estrai il nome del file dall'URL
+      const urlParts = settings.logo_url.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      
+      console.log('Removing dashboard logo file:', fileName);
+
+      // Elimina il file dal bucket di storage
+      const { error: deleteError } = await supabase.storage
+        .from("company-logos")
+        .remove([`logo dashboard/logo/${fileName}`]);
+
+      if (deleteError) {
+        console.error("Error deleting dashboard logo file:", deleteError);
+        throw deleteError;
+      }
+
+      // Aggiorna lo stato locale rimuovendo l'URL del logo
+      setSettings(prev => ({ ...prev, logo_url: null }));
+
+      toast({
+        title: "Logo rimosso",
+        description: "Il logo della dashboard è stato eliminato con successo dal sistema",
+      });
+
+      console.log('Dashboard logo file removed successfully:', fileName);
+    } catch (error: any) {
+      console.error("Error removing dashboard logo:", error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la rimozione del logo",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = async () => {

@@ -56,32 +56,73 @@ const GlobalLogoSection = () => {
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `global-email-logo.${fileExt}`;
-      const filePath = `${profile.id}/${fileName}`;
+      const fileName = `Logo Globale per Email/logo/${profile.id}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('company-assets')
-        .upload(filePath, file, { upsert: true });
+        .from('company-logos')
+        .upload(fileName, file);
 
       if (uploadError) {
         throw uploadError;
       }
 
       const { data: { publicUrl } } = supabase.storage
-        .from('company-assets')
-        .getPublicUrl(filePath);
+        .from('company-logos')
+        .getPublicUrl(fileName);
 
       setGlobalLogoUrl(publicUrl);
       
       toast({
         title: "Logo caricato",
-        description: "Il logo globale è stato caricato con successo.",
+        description: "Il logo globale è stato caricato con successo nella cartella 'Logo Globale per Email/logo'",
       });
     } catch (error: any) {
       console.error("Error uploading logo:", error);
       toast({
         title: "Errore",
         description: "Errore nel caricamento del logo: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!globalLogoUrl || !profile?.id) return;
+
+    setUploading(true);
+    try {
+      // Estrai il nome del file dall'URL
+      const urlParts = globalLogoUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      
+      console.log('Removing global logo file:', fileName);
+
+      // Elimina il file dal bucket di storage
+      const { error: deleteError } = await supabase.storage
+        .from("company-logos")
+        .remove([`Logo Globale per Email/logo/${fileName}`]);
+
+      if (deleteError) {
+        console.error("Error deleting global logo file:", deleteError);
+        throw deleteError;
+      }
+
+      // Aggiorna lo stato locale rimuovendo l'URL del logo
+      setGlobalLogoUrl("");
+
+      toast({
+        title: "Logo rimosso",
+        description: "Il logo globale è stato eliminato con successo dal sistema",
+      });
+
+      console.log('Global logo file removed successfully:', fileName);
+    } catch (error: any) {
+      console.error("Error removing global logo:", error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la rimozione del logo",
         variant: "destructive",
       });
     } finally {
@@ -182,7 +223,7 @@ const GlobalLogoSection = () => {
             {globalLogoUrl && (
               <div className="border rounded-lg p-4 bg-gray-50">
                 <Label className="text-sm font-medium">Anteprima Logo</Label>
-                <div className="mt-2 flex justify-center">
+                <div className="mt-2 flex flex-col items-center space-y-3">
                   <img 
                     src={globalLogoUrl} 
                     alt="Logo globale" 
@@ -192,6 +233,16 @@ const GlobalLogoSection = () => {
                       max-w-48 object-contain
                     `}
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRemoveLogo}
+                    disabled={uploading}
+                  >
+                    <Image className="h-4 w-4 mr-2" />
+                    Rimuovi Logo
+                  </Button>
                 </div>
               </div>
             )}

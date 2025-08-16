@@ -10,6 +10,7 @@ interface Profile {
   email: string | null;
   role: 'admin' | 'employee';
   department: string | null;
+  first_login?: boolean | null; // Opzionale finché la migrazione non è eseguita
   hire_date: string | null;
   employee_code: string | null;
   is_active: boolean;

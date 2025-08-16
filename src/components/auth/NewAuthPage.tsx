@@ -315,11 +315,7 @@ const NewAuthPage = () => {
               </form>
             )}
             
-            <div className="text-center text-sm border-t pt-4">
-              <p style={{ color: loginSettings.secondary_color }}>
-                Contatta l'amministratore per ottenere le credenziali di accesso
-              </p>
-            </div>
+
           </CardContent>
         </Card>
 

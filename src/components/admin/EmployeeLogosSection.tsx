@@ -63,7 +63,7 @@ const EmployeeLogosSection = () => {
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `employee-default-${profile.id}-${Date.now()}.${fileExt}`;
+      const fileName = `Logo per Dashboard Dipendenti/logo/${profile.id}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("company-logos")
@@ -81,7 +81,7 @@ const EmployeeLogosSection = () => {
 
       toast({
         title: "Logo dipendenti caricato",
-        description: "Il logo di default per i dipendenti è stato caricato con successo",
+        description: "Il logo di default per i dipendenti è stato caricato con successo nella cartella 'Logo per Dashboard Dipendenti/logo'",
       });
     } catch (error: any) {
       console.error("Error uploading employee logo:", error);
@@ -95,8 +95,46 @@ const EmployeeLogosSection = () => {
     }
   };
 
-  const handleRemoveLogo = () => {
-    setSettings(prev => ({ ...prev, employee_default_logo_url: null }));
+  const handleRemoveLogo = async () => {
+    if (!settings.employee_default_logo_url || !profile?.id) return;
+
+    setUploading(true);
+    try {
+      // Estrai il nome del file dall'URL
+      const urlParts = settings.employee_default_logo_url.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      
+      console.log('Removing employee logo file:', fileName);
+
+      // Elimina il file dal bucket di storage
+      const { error: deleteError } = await supabase.storage
+        .from("company-logos")
+        .remove([`Logo per Dashboard Dipendenti/logo/${fileName}`]);
+
+      if (deleteError) {
+        console.error("Error deleting employee logo file:", deleteError);
+        throw deleteError;
+      }
+
+      // Aggiorna lo stato locale rimuovendo l'URL del logo
+      setSettings(prev => ({ ...prev, employee_default_logo_url: null }));
+
+      toast({
+        title: "Logo rimosso",
+        description: "Il logo per i dipendenti è stato eliminato con successo dal sistema",
+      });
+
+      console.log('Employee logo file removed successfully:', fileName);
+    } catch (error: any) {
+      console.error("Error removing employee logo:", error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la rimozione del logo",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = async () => {

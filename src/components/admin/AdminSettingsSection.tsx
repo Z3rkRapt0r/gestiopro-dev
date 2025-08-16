@@ -16,6 +16,7 @@ import EmployeeLogosSection from "./EmployeeLogosSection";
 import EmailTemplateManager from "./EmailTemplateManager";
 import AttendanceSettings from "@/components/attendance/AttendanceSettings";
 import WorkScheduleSettings from "./WorkScheduleSettings";
+import AppGeneralSettingsSection from "./AppGeneralSettingsSection";
 
 const AdminSettingsSection = () => {
   const { resendSettings, setResendSettings, loading, saveResendSettings } = useAdminSettings();
@@ -89,6 +90,12 @@ const AdminSettingsSection = () => {
             className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
           >
             Loghi Dipendenti
+          </TabsTrigger>
+          <TabsTrigger 
+            value="app-general" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-3 py-2 whitespace-nowrap flex-shrink-0"
+          >
+            Generali App
           </TabsTrigger>
         </TabsList>
 
@@ -188,6 +195,9 @@ const AdminSettingsSection = () => {
         </TabsContent>
         <TabsContent value="employeelogos">
           <EmployeeLogosSection />
+        </TabsContent>
+        <TabsContent value="app-general">
+          <AppGeneralSettingsSection />
         </TabsContent>
       </Tabs>
 

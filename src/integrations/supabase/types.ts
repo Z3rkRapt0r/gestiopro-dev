@@ -963,6 +963,7 @@ export type Database = {
           department: string | null
           email: string | null
           employee_code: string | null
+          first_login: boolean | null
           first_name: string | null
           hire_date: string | null
           id: string
@@ -977,6 +978,7 @@ export type Database = {
           department?: string | null
           email?: string | null
           employee_code?: string | null
+          first_login?: boolean | null
           first_name?: string | null
           hire_date?: string | null
           id: string
@@ -991,6 +993,7 @@ export type Database = {
           department?: string | null
           email?: string | null
           employee_code?: string | null
+          first_login?: boolean | null
           first_name?: string | null
           hire_date?: string | null
           id?: string

@@ -11,6 +11,7 @@ import ResetPasswordPage from "@/components/auth/ResetPasswordPage";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
 import AdminSettingsSection from "@/components/admin/AdminSettingsSection";
 import EmployeeProfileSection from "@/components/dashboard/EmployeeProfileSection";
+import DocumentTitleManager from "@/components/DocumentTitleManager";
 
 // Create QueryClient outside component to avoid recreation
 const queryClient = new QueryClient({
@@ -27,6 +28,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
+          <DocumentTitleManager />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
