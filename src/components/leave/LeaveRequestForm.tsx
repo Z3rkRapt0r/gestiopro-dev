@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CalendarIcon, AlertCircle, Info } from 'lucide-react';
+import { CalendarIcon, AlertCircle, Info, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
 import { useLeaveRequestNotifications } from '@/hooks/useLeaveRequestNotifications';
 import { useWorkingHoursValidation } from '@/hooks/useWorkingHoursValidation';
+import { usePermissionValidation } from '@/hooks/usePermissionValidation';
+import { useQueryClient } from '@tanstack/react-query';
 import WorkingDaysPreview from './WorkingDaysPreview';
 import { LeaveRequestFormValidation } from './LeaveRequestFormValidation';
 import { useCompanyHolidays } from '@/hooks/useCompanyHolidays';
@@ -36,8 +38,8 @@ const leaveRequestSchema = z.object({
   time_to: z.string().optional(),
   note: z.string().optional()
 }).refine(data => {
-  if (data.type === 'permesso' && data.day) {
-    return data.time_from && data.time_to;
+  if (data.type === 'permesso') {
+    return data.day && data.time_from && data.time_to;
   }
   if (data.type === 'ferie') {
     return data.date_from && data.date_to;
@@ -45,6 +47,22 @@ const leaveRequestSchema = z.object({
   return true;
 }, {
   message: "Compila tutti i campi obbligatori per il tipo di richiesta selezionato"
+}).refine(data => {
+  if (data.type === 'permesso') {
+    return data.day && data.time_from && data.time_to;
+  }
+  return true;
+}, {
+  message: "Per i permessi sono obbligatori: Data del Permesso, Ora Inizio e Ora Fine",
+  path: ["day", "time_from", "time_to"]
+}).refine(data => {
+  if (data.type === 'ferie') {
+    return data.date_from && data.date_to;
+  }
+  return true;
+}, {
+  message: "Per le ferie sono obbligatori: Data Inizio e Data Fine",
+  path: ["date_from", "date_to"]
 });
 type LeaveRequestFormData = z.infer<typeof leaveRequestSchema>;
 interface LeaveRequestFormProps {
@@ -56,14 +74,16 @@ export default function LeaveRequestForm({
   const {
     profile
   } = useAuth();
+  const queryClient = useQueryClient();
   const {
     insertMutation
   } = useLeaveRequests();
   const {
     isWorkingDay,
     countWorkingDays,
-    getWorkingDaysLabels
-  } = useWorkingDaysValidation();
+    getWorkingDaysLabels,
+    scheduleInfo
+  } = useWorkingDaysValidation(profile?.id);
   const {
     validateLeaveRequest,
     balanceValidation,
@@ -79,9 +99,14 @@ export default function LeaveRequestForm({
   const {
     validatePermissionTime
   } = useWorkingHoursValidation();
+  const {
+    validatePermissionHours,
+    getMaxPermissionHoursForDisplay
+  } = usePermissionValidation();
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [balanceValidationErrors, setBalanceValidationErrors] = useState<string[]>([]);
   const [workingHoursErrors, setWorkingHoursErrors] = useState<string[]>([]);
+  const [permissionHoursErrors, setPermissionHoursErrors] = useState<string[]>([]);
   const [formValidationState, setFormValidationState] = useState({
     isValid: true,
     message: ''
@@ -176,6 +201,39 @@ export default function LeaveRequestForm({
       setWorkingHoursErrors([]);
     }
   }, [watchedType, watchedDay, watchedTimeFrom, watchedTimeTo, validatePermissionTime]);
+
+  // VALIDAZIONE ORE MASSIME PERMESSI - Real-time
+  useEffect(() => {
+    if (watchedType === 'permesso' && watchedTimeFrom && watchedTimeTo) {
+      const timeoutId = setTimeout(() => {
+        // Calcola le ore richieste
+        const fromTime = new Date(`2000-01-01T${watchedTimeFrom}:00`);
+        const toTime = new Date(`2000-01-01T${watchedTimeTo}:00`);
+        const diffMs = toTime.getTime() - fromTime.getTime();
+        const requestedHours = diffMs / (1000 * 60 * 60); // Converti in ore
+
+        console.log('🔍 [Permission Hours Validation]', {
+          timeFrom: watchedTimeFrom,
+          timeTo: watchedTimeTo,
+          requestedHours,
+          maxHours: getMaxPermissionHoursForDisplay()
+        });
+
+        const validation = validatePermissionHours(requestedHours);
+        
+        if (!validation.isValid) {
+          console.log('❌ [Permission Hours] Validation failed:', validation);
+          setPermissionHoursErrors([validation.errorMessage || 'Ore richieste superiori al limite']);
+        } else {
+          console.log('✅ [Permission Hours] Validation passed');
+          setPermissionHoursErrors([]);
+        }
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setPermissionHoursErrors([]);
+    }
+  }, [watchedType, watchedTimeFrom, watchedTimeTo, validatePermissionHours, getMaxPermissionHoursForDisplay]);
   const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
     if (type === 'ferie') {
@@ -253,6 +311,34 @@ export default function LeaveRequestForm({
       setShowValidationErrors(true);
       return;
     }
+
+    // CONTROLLO FINALE ORE MASSIME PERMESSI
+    if (permissionHoursErrors.length > 0) {
+      console.log('Invio bloccato per ore massime permessi superate:', permissionHoursErrors);
+      setShowValidationErrors(true);
+      return;
+    }
+
+    // CONTROLLO AGGIUNTIVO ORE MASSIME PERMESSI (per sicurezza)
+    if (data.type === 'permesso' && data.time_from && data.time_to) {
+      const fromTime = new Date(`2000-01-01T${data.time_from}:00`);
+      const toTime = new Date(`2000-01-01T${data.time_to}:00`);
+      const diffMs = toTime.getTime() - fromTime.getTime();
+      const requestedHours = diffMs / (1000 * 60 * 60);
+      
+      const maxHours = getMaxPermissionHoursForDisplay();
+      if (requestedHours > maxHours) {
+        console.log('🚫 INVIO BLOCCATO: Ore richieste superano il limite massimo', {
+          requestedHours,
+          maxHours,
+          timeFrom: data.time_from,
+          timeTo: data.time_to
+        });
+        setShowValidationErrors(true);
+        setPermissionHoursErrors([`❌ Ore richieste (${requestedHours.toFixed(1)}) superano il limite massimo di ${maxHours} ore`]);
+        return;
+      }
+    }
     if (!formValidationState.isValid) {
       setShowValidationErrors(true);
       return;
@@ -320,6 +406,13 @@ export default function LeaveRequestForm({
           console.error('Errore durante invio notifica:', error);
         }
         form.reset();
+        
+        // Salva la sezione attiva nel localStorage prima del reload
+        localStorage.setItem('employee-active-section', 'leaves');
+        
+        // Ricarica la pagina - la sezione sarà ripristinata dal localStorage
+        window.location.reload();
+        
         if (onSuccess) onSuccess();
       },
       onError: error => {
@@ -331,8 +424,8 @@ export default function LeaveRequestForm({
   const validationStartDate = watchedType === 'ferie' ? watchedDateFrom ? format(watchedDateFrom, 'yyyy-MM-dd') : undefined : watchedType === 'permesso' ? watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined : undefined;
   const validationEndDate = watchedType === 'ferie' ? watchedDateTo ? format(watchedDateTo, 'yyyy-MM-dd') : undefined : watchedType === 'permesso' ? watchedDay ? format(watchedDay, 'yyyy-MM-dd') : undefined : undefined;
 
-  // CONTROLLO FINALE PER DISABILITARE PULSANTE - Include controllo bilancio mancante e orari
-  const isFormBlocked = hasNoBalance || !formValidationState.isValid || balanceValidationErrors.length > 0 || workingHoursErrors.length > 0 || employeeStatus && employeeStatus.hasHardBlock;
+  // CONTROLLO FINALE PER DISABILITARE PULSANTE - Include controllo bilancio mancante, orari e ore massime
+  const isFormBlocked = hasNoBalance || !formValidationState.isValid || balanceValidationErrors.length > 0 || workingHoursErrors.length > 0 || permissionHoursErrors.length > 0 || employeeStatus && employeeStatus.hasHardBlock;
   const isPendingRequest = !formValidationState.isValid && formValidationState.message.includes('richiesta in attesa');
 
   // Controllo di sicurezza: se il profilo non è caricato, mostra un messaggio chiaro
@@ -400,7 +493,7 @@ export default function LeaveRequestForm({
               </AlertDescription>
             </Alert>}
 
-          {showValidationErrors && <Alert variant="destructive">
+          {showValidationErrors && (balanceValidationErrors.length > 0 || workingHoursErrors.length > 0 || (!formValidationState.isValid && formValidationState.message) || (employeeStatus && employeeStatus.hasHardBlock)) && <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <AlertDescription>
                 <div className="space-y-2">
@@ -414,6 +507,23 @@ export default function LeaveRequestForm({
 
           {/* ALERT PER SALDO INSUFFICIENTE */}
           {balanceValidationErrors.length > 0}
+
+          {/* ALERT PER ORE MASSIME PERMESSI */}
+          {permissionHoursErrors.length > 0 && (
+            <Alert variant="destructive">
+              <Clock className="h-4 w-4 flex-shrink-0" />
+              <AlertDescription>
+                <div className="space-y-2">
+                  {permissionHoursErrors.map((error, index) => (
+                    <p key={index} className="text-sm font-medium">{error}</p>
+                  ))}
+                  <p className="text-xs text-gray-600">
+                    Limite massimo impostato dall'amministratore: {getMaxPermissionHoursForDisplay()} ore
+                  </p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {employeeStatus && employeeStatus.hasHardBlock && <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -446,7 +556,7 @@ export default function LeaveRequestForm({
               <FormField control={form.control} name="type" render={({
               field
             }) => <FormItem>
-                    <FormLabel className="text-sm sm:text-base">Tipo di Richiesta</FormLabel>
+                    <FormLabel className="text-sm sm:text-base">Tipo di Richiesta *</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-12 sm:h-10 text-base sm:text-sm">
@@ -466,7 +576,7 @@ export default function LeaveRequestForm({
                     <FormField control={form.control} name="date_from" render={({
                   field
                 }) => <FormItem className="flex flex-col">
-                          <FormLabel className="text-sm sm:text-base">Data Inizio</FormLabel>
+                          <FormLabel className="text-sm sm:text-base">Data Inizio *</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -488,7 +598,7 @@ export default function LeaveRequestForm({
                     <FormField control={form.control} name="date_to" render={({
                   field
                 }) => <FormItem className="flex flex-col">
-                          <FormLabel className="text-sm sm:text-base">Data Fine</FormLabel>
+                          <FormLabel className="text-sm sm:text-base">Data Fine *</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -525,7 +635,7 @@ export default function LeaveRequestForm({
                   <FormField control={form.control} name="day" render={({
                 field
               }) => <FormItem className="flex flex-col">
-                        <FormLabel className="text-sm sm:text-base">Data del Permesso</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Data del Permesso *</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -548,7 +658,7 @@ export default function LeaveRequestForm({
                     <FormField control={form.control} name="time_from" render={({
                   field
                 }) => <FormItem>
-                          <FormLabel className="text-sm sm:text-base">Ora Inizio</FormLabel>
+                          <FormLabel className="text-sm sm:text-base">Ora Inizio *</FormLabel>
                           <FormControl>
                             <Input type="time" value={field.value || ''} onChange={field.onChange} onBlur={field.onBlur} className="h-12 sm:h-10 text-base sm:text-sm" placeholder="HH:MM" step="300" />
                           </FormControl>
@@ -558,7 +668,7 @@ export default function LeaveRequestForm({
                     <FormField control={form.control} name="time_to" render={({
                   field
                 }) => <FormItem>
-                          <FormLabel className="text-sm sm:text-base">Ora Fine</FormLabel>
+                          <FormLabel className="text-sm sm:text-base">Ora Fine *</FormLabel>
                           <FormControl>
                             <Input type="time" value={field.value || ''} onChange={field.onChange} onBlur={field.onBlur} className="h-12 sm:h-10 text-base sm:text-sm" placeholder="HH:MM" step="300" />
                           </FormControl>
@@ -572,10 +682,22 @@ export default function LeaveRequestForm({
                         <div className="text-sm">
                           <div className="font-medium mb-1">Giorno non lavorativo</div>
                           <div>Non puoi richiedere un permesso per un giorno non lavorativo.</div>
-                          <div className="mt-1 text-xs">Giorni lavorativi: {workingDaysLabels.join(', ')}</div>
+                          <div className="mt-1 text-xs">
+                            Giorni lavorativi ({scheduleInfo.type}): {getWorkingDaysLabels().join(', ')}
+                          </div>
                         </div>
                       </AlertDescription>
                     </Alert>}
+
+                  {/* Informazione limite ore massime */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Clock className="w-4 h-4" />
+                      <span className="text-sm font-medium">
+                        Limite massimo: {getMaxPermissionHoursForDisplay()} ore per permesso
+                      </span>
+                    </div>
+                  </div>
                 </>}
 
               <FormField control={form.control} name="note" render={({
@@ -589,7 +711,15 @@ export default function LeaveRequestForm({
                   </FormItem>} />
 
               <Button type="submit" className="w-full h-12 sm:h-10 text-base sm:text-sm font-medium" disabled={insertMutation.isPending || isFormBlocked}>
-                {insertMutation.isPending ? 'Invio in corso...' : isPendingRequest ? 'Richiesta in attesa di approvazione' : hasNoBalance ? 'Bilancio non configurato' : isFormBlocked ? balanceValidationErrors.length > 0 ? 'Saldo insufficiente' : 'Impossibile inviare' : 'Invia Richiesta'}
+                {insertMutation.isPending ? 'Invio in corso...' : 
+                 isPendingRequest ? 'Richiesta in attesa di approvazione' : 
+                 hasNoBalance ? 'Bilancio non configurato' : 
+                 isFormBlocked ? 
+                   (balanceValidationErrors.length > 0 ? 'Saldo insufficiente' : 
+                    workingHoursErrors.length > 0 ? 'Orari non validi' :
+                    permissionHoursErrors.length > 0 ? 'Ore superiori al limite' :
+                    'Impossibile inviare') : 
+                 'Invia Richiesta'}
               </Button>
             </form>
           </Form>

@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 interface AppGeneralSettings {
   app_title: string;
   app_description: string;
+  max_permission_hours: number;
 }
 
 export function useAppGeneralSettings() {
@@ -14,6 +15,7 @@ export function useAppGeneralSettings() {
   const [settings, setSettings] = useState<AppGeneralSettings>({
     app_title: "SerramentiCorp - Gestione Aziendale",
     app_description: "Sistema di gestione aziendale per imprese di serramenti",
+    max_permission_hours: 8,
   });
   const [loading, setLoading] = useState(false);
   const [publicSettings, setPublicSettings] = useState<AppGeneralSettings | null>(null);
@@ -47,6 +49,7 @@ export function useAppGeneralSettings() {
           setSettings({
             app_title: "SerramentiCorp - Gestione Aziendale",
             app_description: "Sistema di gestione aziendale per imprese di serramenti",
+            max_permission_hours: 8,
           });
           return;
         }
@@ -58,12 +61,14 @@ export function useAppGeneralSettings() {
         setSettings({
           app_title: data.app_title || "SerramentiCorp - Gestione Aziendale",
           app_description: data.app_description || "Sistema di gestione aziendale per imprese di serramenti",
+          max_permission_hours: data.max_permission_hours || 8,
         });
       } else {
         console.log("No settings found in database, using defaults");
         setSettings({
           app_title: "SerramentiCorp - Gestione Aziendale",
           app_description: "Sistema di gestione aziendale per imprese di serramenti",
+          max_permission_hours: 8,
         });
       }
       
@@ -73,6 +78,7 @@ export function useAppGeneralSettings() {
       setSettings({
         app_title: "SerramentiCorp - Gestione Aziendale",
         app_description: "Sistema di gestione aziendale per imprese di serramenti",
+        max_permission_hours: 8,
       });
     }
   };
@@ -94,6 +100,7 @@ export function useAppGeneralSettings() {
           setPublicSettings({
             app_title: "SerramentiCorp - Gestione Aziendale",
             app_description: "Sistema di gestione aziendale per imprese di serramenti",
+            max_permission_hours: 8,
           });
           return;
         }
@@ -105,12 +112,14 @@ export function useAppGeneralSettings() {
         setPublicSettings({
           app_title: data.app_title || "SerramentiCorp - Gestione Aziendale",
           app_description: data.app_description || "Sistema di gestione aziendale per imprese di serramenti",
+          max_permission_hours: data.max_permission_hours || 8,
         });
       } else {
         console.log("No public settings found in database, using defaults");
         setPublicSettings({
           app_title: "SerramentiCorp - Gestione Aziendale",
           app_description: "Sistema di gestione aziendale per imprese di serramenti",
+          max_permission_hours: 8,
         });
       }
       
@@ -120,6 +129,7 @@ export function useAppGeneralSettings() {
       setPublicSettings({
         app_title: "SerramentiCorp - Gestione Aziendale",
         app_description: "Sistema di gestione aziendale per imprese di serramenti",
+        max_permission_hours: 8,
       });
     }
   };
@@ -143,6 +153,15 @@ export function useAppGeneralSettings() {
       return;
     }
 
+    if (newSettings.max_permission_hours < 1 || newSettings.max_permission_hours > 24) {
+      toast({
+        title: "Errore",
+        description: "Il numero massimo di ore per i permessi deve essere compreso tra 1 e 24.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       // Prova prima a salvare nel database
@@ -153,6 +172,7 @@ export function useAppGeneralSettings() {
             admin_id: profile.id,
             app_title: newSettings.app_title.trim(),
             app_description: newSettings.app_description.trim() || null,
+            max_permission_hours: newSettings.max_permission_hours,
           },
           { 
             onConflict: "admin_id",
@@ -226,6 +246,14 @@ export function useAppGeneralSettings() {
     return publicSettings?.app_description || "Sistema di gestione aziendale per imprese di serramenti";
   };
 
+  // Funzione per ottenere il numero massimo di ore per i permessi
+  const getMaxPermissionHours = () => {
+    if (profile?.role === "admin") {
+      return settings.max_permission_hours;
+    }
+    return publicSettings?.max_permission_hours || 8;
+  };
+
   return {
     settings,
     setSettings,
@@ -233,6 +261,7 @@ export function useAppGeneralSettings() {
     saveSettings,
     getCurrentTitle,
     getCurrentDescription,
+    getMaxPermissionHours,
     publicSettings,
   };
 }

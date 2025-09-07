@@ -24,9 +24,18 @@ import {
 import { BarChart3, Calendar, Clock, FileText, MessageSquare, User } from 'lucide-react';
 
 export default function EmployeeDashboard() {
-  const [activeSection, setActiveSection] = useState<'overview' | 'leaves' | 'attendances' | 'documents' | 'messages'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'leaves' | 'attendances' | 'documents' | 'messages'>(() => {
+    // Controlla se c'è una sezione salvata nel localStorage
+    const savedSection = localStorage.getItem('employee-active-section');
+    return (savedSection as 'overview' | 'leaves' | 'attendances' | 'documents' | 'messages') || 'overview';
+  });
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+
+  // Salva la sezione attiva nel localStorage quando cambia
+  useEffect(() => {
+    localStorage.setItem('employee-active-section', activeSection);
+  }, [activeSection]);
 
   // Aggiorna i dati quando si cambia sezione
   useEffect(() => {

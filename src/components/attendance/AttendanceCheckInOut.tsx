@@ -347,11 +347,11 @@ export default function AttendanceCheckInOut() {
             <div className="space-y-3">
               <Button 
                 onClick={handleCheckIn} 
-                disabled={isCheckingIn || !employeeStatus?.canCheckIn || statusLoading || (employeeStatus?.conflictPriority ?? 0) > 0} 
+                disabled={isCheckingIn || !employeeStatus?.canCheckIn || statusLoading || (employeeStatus?.conflictPriority ?? 0) > 0 || !isWorkingDay()} 
                 className="w-full min-h-[44px] text-sm sm:text-base" 
-                variant={employeeStatus?.canCheckIn ? "default" : "secondary"}
+                variant={employeeStatus?.canCheckIn && isWorkingDay() ? "default" : "secondary"}
               >
-                {isCheckingIn ? 'Registrando entrata...' : !employeeStatus?.canCheckIn ? 'Presenza non consentita' : 'Registra Entrata'}
+                {isCheckingIn ? 'Registrando entrata...' : !employeeStatus?.canCheckIn || !isWorkingDay() ? 'Presenza non consentita' : 'Registra Entrata'}
               </Button>
               
               {/* Indicatore di priorità del conflitto */}
@@ -362,6 +362,15 @@ export default function AttendanceCheckInOut() {
                     {employeeStatus.conflictPriority === 3 && 'BLOCCATO - Permesso attivo'}
                     {employeeStatus.conflictPriority === 2 && 'BLOCCATO - In trasferta'}
                     {employeeStatus.conflictPriority === 1 && 'BLOCCATO - Già presente'}
+                  </Badge>
+                </div>
+              )}
+              
+              {/* Messaggio quando il giorno non è lavorativo */}
+              {!isWorkingDay() && (
+                <div className="text-center">
+                  <Badge variant="secondary" className="text-xs">
+                    BLOCCATO - Giorno non lavorativo
                   </Badge>
                 </div>
               )}
