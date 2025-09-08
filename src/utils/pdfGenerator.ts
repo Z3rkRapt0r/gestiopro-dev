@@ -231,19 +231,13 @@ const addFooter = (doc: jsPDF, logoData?: { url: string; width: number; height: 
       const logoY = y - (logoData.height / 2); // Centrato verticalmente con il testo
       doc.addImage(logoData.url, 'PNG', logoX, logoY, logoData.width, logoData.height);
       
-      // Aggiungi testo cliccabile sotto il logo
-      doc.setTextColor(0, 0, 255); // Blu per indicare che è cliccabile
-      doc.setFontSize(6);
-      const linkText = 'License Global';
-      const linkTextWidth = doc.getTextWidth(linkText);
-      const linkX = logoX + (logoData.width - linkTextWidth) / 2; // Centra il testo sotto il logo
-      const linkY = logoY + logoData.height + 2;
-      doc.text(linkText, linkX, linkY);
+      // Aggiungi area cliccabile trasparente sopra il logo
+      doc.setDrawColor(0, 0, 0);
+      doc.setFillColor(255, 255, 255, 0); // Trasparente
+      doc.rect(logoX, logoY, logoData.width, logoData.height, 'F'); // Riempi trasparente
+      doc.link(logoX, logoY, logoData.width, logoData.height, 'https://licenseglobal.it/');
       
-      // Aggiungi link cliccabile al testo
-      doc.link(linkX, linkY - 2, linkTextWidth, 4, 'https://licenseglobal.it/');
-      
-      console.log('Footer con logo e link cliccabile aggiunto:', { startX, y, logoX, logoY, logoWidth: logoData.width, logoHeight: logoData.height });
+      console.log('Footer con logo cliccabile aggiunto:', { startX, y, logoX, logoY, logoWidth: logoData.width, logoHeight: logoData.height });
     } catch (error) {
       console.error('Errore nel disegnare il footer con logo:', error);
       // Fallback al testo semplice
