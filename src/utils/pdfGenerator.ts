@@ -80,8 +80,8 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
       img.onerror = reject;
     });
     
-    // Calculate logo size (max 30px height, maintain aspect ratio)
-    const maxHeight = 30;
+    // Calculate logo size (max 20px height, maintain aspect ratio)
+    const maxHeight = 20;
     const aspectRatio = img.width / img.height;
     const logoHeight = Math.min(maxHeight, img.height);
     const logoWidth = logoHeight * aspectRatio;
@@ -95,7 +95,7 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
     doc.addImage(`data:image/png;base64,${base64}`, 'PNG', logoX, 10, logoWidth, logoHeight);
     console.log('Logo aggiunto con successo');
     
-    return logoHeight + 15; // Return the height used by logo + spacing
+    return logoHeight + 10; // Return the height used by logo + spacing
   } catch (error) {
     console.error('Errore nel caricamento del logo:', error);
     return createTestLogo(doc);
