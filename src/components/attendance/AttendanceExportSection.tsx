@@ -445,6 +445,9 @@ export default function AttendanceExportSection() {
       const selectedEmployeeData = selectedEmployee ? 
         employees?.find(emp => emp.id === selectedEmployee) : null;
       
+      console.log('Dashboard settings:', dashboardSettings);
+      console.log('Logo URL per PDF:', dashboardSettings.logo_url);
+      
       await generateAttendancePDF({
         data: enrichedData,
         dateFrom: from,
