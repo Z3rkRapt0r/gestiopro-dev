@@ -449,8 +449,7 @@ export default function AttendanceExportSection() {
         dateTo: to,
         exportType,
         selectedEmployee: selectedEmployeeData,
-        attendanceSettings,
-        periodType
+        attendanceSettings
       });
       
       toast({
