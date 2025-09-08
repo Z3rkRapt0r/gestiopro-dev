@@ -454,32 +454,12 @@ export default function LeaveRequestForm({
               </AlertDescription>
             </Alert>}
 
-          {/* Mostra bilanci solo se esistono - SUPER SEMPLIFICATO E RESPONSIVE */}
+          {/* Bilanci Disponibili - SEMPLIFICATO */}
           {leaveBalance && leaveBalance.hasBalance && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-green-600 text-lg">💰</span>
-                <span className="font-medium text-green-700 text-sm">Bilanci Disponibili</span>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                {/* Ferie */}
-                <div className="text-center p-2 bg-white rounded border border-green-200">
-                  <div className="text-xs text-green-600 mb-1">🏖️ Ferie</div>
-                  <div className="text-lg font-bold text-green-700">{leaveBalance.vacation_days_remaining}</div>
-                  <div className="text-xs text-gray-500">su {leaveBalance.vacation_days_total}</div>
-                </div>
-                
-                {/* Permessi */}
-                <div className="text-center p-2 bg-white rounded border border-blue-200">
-                  <div className="text-xs text-blue-600 mb-1">⏰ Permessi</div>
-                  <div className="text-lg font-bold text-blue-700">{formatDecimalHours(leaveBalance.permission_hours_remaining)}</div>
-                  <div className="text-xs text-gray-500">su {formatDecimalHours(leaveBalance.permission_hours_total)}</div>
-                </div>
-              </div>
-              
-              <div className="mt-2 text-center">
-                <span className="text-xs text-green-600">✅ Puoi procedere con la richiesta</span>
+            <div className="p-2 bg-green-50 border border-green-200 rounded text-center">
+              <div className="text-sm text-green-700">
+                <span className="font-medium">Ferie:</span> {leaveBalance.vacation_days_remaining} | 
+                <span className="font-medium"> Permessi:</span> {formatDecimalHours(leaveBalance.permission_hours_remaining)}
               </div>
             </div>
           )}

@@ -1095,6 +1095,55 @@ export type Database = {
           },
         ]
       }
+      multiple_checkins: {
+        Row: {
+          id: string
+          employee_id: string
+          date: string
+          checkin_time: string
+          checkout_time: string | null
+          is_second_checkin: boolean
+          permission_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id: string
+          date: string
+          checkin_time: string
+          checkout_time?: string | null
+          is_second_checkin?: boolean
+          permission_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string
+          date?: string
+          checkin_time?: string
+          checkout_time?: string | null
+          is_second_checkin?: boolean
+          permission_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multiple_checkins_employee_id_fkey"
+            columns: ["employee_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multiple_checkins_permission_id_fkey"
+            columns: ["permission_id"]
+            referencedRelation: "leave_requests"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       unified_attendances: {
         Row: {
           check_in_time: string | null

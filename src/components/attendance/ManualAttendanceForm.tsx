@@ -145,6 +145,23 @@ export default function ManualAttendanceForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Campi obbligatori: data e orario entrata
+    if (!formData.date) {
+      setValidationError('La data è obbligatoria');
+      return;
+    }
+
+    if (!formData.check_in_time) {
+      setValidationError("L'orario di entrata è obbligatorio");
+      return;
+    }
+
+    // Orario di uscita obbligatorio (se la funzionalità di checkout è abilitata)
+    if (!(attendanceSettings && attendanceSettings.checkout_enabled === false) && !formData.check_out_time) {
+      setValidationError("L'orario di uscita è obbligatorio");
+      return;
+    }
+
     // Verifica finale della validazione data di assunzione
     if (!validateDate(formData.date, formData.user_id)) {
       return;
@@ -244,7 +261,7 @@ export default function ManualAttendanceForm() {
 
             {/* DATE PICKER AVANZATO CON BLOCCO CONFLITTI */}
             <div>
-              <Label className="text-sm sm:text-base">Data</Label>
+              <Label className="text-sm sm:text-base">Data *</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -317,17 +334,18 @@ export default function ManualAttendanceForm() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="check_in" className="text-sm sm:text-base">Orario Entrata</Label>
+                <Label htmlFor="check_in" className="text-sm sm:text-base">Orario Entrata *</Label>
                 <Input
                   id="check_in"
                   type="time"
                   value={formData.check_in_time}
                   onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
                   className="mt-1 h-11 sm:h-10"
+                  required
                 />
               </div>
               <div>
-                <Label htmlFor="check_out" className="text-sm sm:text-base">Orario Uscita</Label>
+                <Label htmlFor="check_out" className="text-sm sm:text-base">Orario Uscita *</Label>
                 <Input
                   id="check_out"
                   type="time"
@@ -335,6 +353,7 @@ export default function ManualAttendanceForm() {
                   onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
                   className="mt-1 h-11 sm:h-10"
                   disabled={attendanceSettings && attendanceSettings.checkout_enabled === false}
+                  required={!(attendanceSettings && attendanceSettings.checkout_enabled === false)}
                 />
               </div>
             </div>
@@ -352,7 +371,15 @@ export default function ManualAttendanceForm() {
 
             <Button 
               type="submit" 
-              disabled={isCreating || !formData.user_id || !formData.date || !!validationError || isCalculatingConflicts} 
+              disabled={
+                isCreating 
+                || !formData.user_id 
+                || !formData.date 
+                || !formData.check_in_time 
+                || (!(attendanceSettings && attendanceSettings.checkout_enabled === false) && !formData.check_out_time)
+                || !!validationError 
+                || isCalculatingConflicts
+              } 
               className="w-full h-11 sm:h-10 text-base sm:text-sm"
             >
               {isCreating ? 'Salvando...' : 'Salva Presenza'}

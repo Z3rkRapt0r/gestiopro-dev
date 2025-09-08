@@ -392,10 +392,81 @@ export const useAttendanceOperations = () => {
     },
   });
 
+        // Nuova funzione per il secondo check-in dopo permesso orario
+        const secondCheckInMutation = useMutation({
+          mutationFn: async ({ latitude, longitude }: { latitude: number; longitude: number }) => {
+            console.log('🔄 Inizio secondo check-in post-permesso:', { latitude, longitude });
+
+            const today = format(new Date(), 'yyyy-MM-dd');
+            const now = new Date();
+            const checkInTime = now.toTimeString().slice(0, 8); // HH:MM:SS
+
+            // Validazione GPS per la seconda entrata
+            const gpsValidation = validateLocation(latitude, longitude, false);
+            if (!gpsValidation.isValid) {
+              throw new Error(gpsValidation.message || 'Posizione non valida per la seconda entrata');
+            }
+
+            // Trova il permesso orario per oggi per ottenere l'ID
+            const { data: permission } = await supabase
+              .from('leave_requests')
+              .select('id')
+              .eq('user_id', user?.id)
+              .eq('status', 'approved')
+              .eq('type', 'permesso')
+              .eq('day', today)
+              .not('time_from', 'is', null)
+              .not('time_to', 'is', null)
+              .single();
+
+            // Crea un nuovo record nella tabella multiple_checkins
+            const { data: newCheckIn, error: insertError } = await supabase
+              .from('multiple_checkins')
+              .insert({
+                employee_id: user?.id!,
+                date: today,
+                checkin_time: checkInTime,
+                is_second_checkin: true,
+                permission_id: permission?.id || null
+              })
+              .select()
+              .single();
+
+            if (insertError) {
+              console.error('Errore creazione secondo check-in:', insertError);
+              throw new Error('Errore durante la registrazione della seconda entrata');
+            }
+
+            console.log('✅ Secondo check-in completato con successo');
+            return newCheckIn;
+          },
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['attendances'] });
+            queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
+            queryClient.invalidateQueries({ queryKey: ['multiple-checkins'] });
+            queryClient.invalidateQueries({ queryKey: ['multiple-checkins-today'] });
+            queryClient.invalidateQueries({ queryKey: ['employee-status'] });
+            toast({
+              title: "Seconda Entrata Registrata",
+              description: "La seconda entrata è stata registrata con successo",
+            });
+          },
+    onError: (error: any) => {
+      console.error('❌ Errore secondo check-in:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la registrazione della seconda entrata",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     checkIn: checkInMutation.mutate,
     checkOut: checkOutMutation.mutate,
+    secondCheckIn: secondCheckInMutation.mutate, // Nuova funzione
     isCheckingIn: checkInMutation.isPending,
     isCheckingOut: checkOutMutation.isPending,
+    isSecondCheckingIn: secondCheckInMutation.isPending, // Nuovo stato
   };
 };

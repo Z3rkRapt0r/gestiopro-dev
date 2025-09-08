@@ -235,68 +235,167 @@ export const generateAttendancePDF = async ({
     const dataGenerazione = `Generato il: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: it })}`;
     doc.text(dataGenerazione, 20, 45);
     
-    // Preparazione dati per la tabella
-    const tableData = data.map(att => [
-      safeFormatDate(att.date),
-      att.day_name || '', // Nome del giorno
-      att.employee_name || 'N/A',
-      getAttendanceStatus(att),
-      getAttendanceTimeDisplay(att, attendanceSettings),
-      getOvertimeDisplay(att.overtime_hours)
-    ]);
-    
-    const tableHeaders = [['Data', 'Giorno', 'Nome Dipendente', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
-    
-    console.log('Creazione tabella con', tableData.length, 'righe');
-    
-    // Generazione tabella usando autoTable
-    autoTable(doc, {
-      head: tableHeaders,
-      body: tableData,
-      startY: 55,
-      styles: {
-        fontSize: 8, // Ridotto
-        cellPadding: 2, // Ridotto
-      },
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: 'bold',
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
-      },
-      columnStyles: {
-        0: { cellWidth: 22 }, // Data
-        1: { cellWidth: 22 }, // Giorno
-        2: { cellWidth: 38 }, // Nome Dipendente
-        3: { cellWidth: 38 }, // Stato Presenza
-        4: { cellWidth: 30 }, // Orario Timbratura
-        5: { cellWidth: 25 }, // Straordinari
-      },
-      tableWidth: 'wrap', // Adatta la tabella al contenuto
-      didParseCell: function(data) {
-        // Evidenzia le righe con ritardi
-        if (data.section === 'body') {
-          const rowIndex = data.row.index;
-          const attendanceRecord = data[rowIndex];
-          if (attendanceRecord && attendanceRecord.is_late) {
-            data.cell.styles.fillColor = [255, 245, 157]; // Giallo chiaro per i ritardi
-          }
+    // Se è esportazione generale, dividi per dipendenti
+    if (exportType === 'general') {
+      // Raggruppa i dati per dipendente
+      const employeeGroups = data.reduce((groups, att) => {
+        const employeeId = att.user_id;
+        if (!groups[employeeId]) {
+          groups[employeeId] = {
+            employeeName: att.employee_name || 'N/A',
+            records: []
+          };
         }
-      },
-      margin: { top: 55, left: 20, right: 20 },
-    });
+        groups[employeeId].records.push(att);
+        return groups;
+      }, {} as Record<string, { employeeName: string; records: AttendanceData[] }>);
+
+      // Ordina i dipendenti per nome
+      const sortedEmployees = Object.entries(employeeGroups).sort(([,a], [,b]) => 
+        a.employeeName.localeCompare(b.employeeName)
+      );
+
+      let currentY = 55;
+      const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
+
+      // Genera una sezione per ogni dipendente
+      sortedEmployees.forEach(([employeeId, group], index) => {
+        // Se non è il primo dipendente, aggiungi una nuova pagina
+        if (index > 0) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        // Titolo sezione dipendente
+        doc.setFontSize(16);
+        doc.setTextColor(40, 40, 40);
+        doc.text(`Dipendente: ${group.employeeName}`, 20, currentY);
+        currentY += 15;
+
+        // Preparazione dati per la tabella del dipendente
+        const tableData = group.records.map(att => [
+          safeFormatDate(att.date),
+          att.day_name || '',
+          getAttendanceStatus(att),
+          getAttendanceTimeDisplay(att, attendanceSettings),
+          getOvertimeDisplay(att.overtime_hours)
+        ]);
+
+        // Genera tabella per il dipendente
+        autoTable(doc, {
+          head: tableHeaders,
+          body: tableData,
+          startY: currentY,
+          styles: {
+            fontSize: 8,
+            cellPadding: 2,
+          },
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: 255,
+            fontStyle: 'bold',
+          },
+          alternateRowStyles: {
+            fillColor: [245, 245, 245],
+          },
+          columnStyles: {
+            0: { cellWidth: 30 }, // Data
+            1: { cellWidth: 25 }, // Giorno
+            2: { cellWidth: 40 }, // Stato Presenza
+            3: { cellWidth: 35 }, // Orario Timbratura
+            4: { cellWidth: 30 }, // Straordinari
+          },
+          tableWidth: 'wrap',
+          didParseCell: function(data) {
+            if (data.section === 'body') {
+              const rowIndex = data.row.index;
+              const attendanceRecord = group.records[rowIndex];
+              if (attendanceRecord && attendanceRecord.is_late) {
+                data.cell.styles.fillColor = [255, 245, 157];
+              }
+            }
+          },
+          margin: { top: currentY, left: 20, right: 20 },
+        });
+
+        // Aggiorna la posizione Y per il prossimo elemento
+        currentY = (doc as any).lastAutoTable?.finalY || currentY + 50;
+        
+        // Aggiungi statistiche del dipendente (solo straordinari se presenti)
+        const totalOvertime = group.records.reduce((sum, att) => sum + (att.overtime_hours || 0), 0);
+        if (totalOvertime > 0) {
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 10);
+        }
+      });
+    } else {
+      // Per esportazione singolo dipendente, mantieni il formato originale
+      const tableData = data.map(att => [
+        safeFormatDate(att.date),
+        att.day_name || '',
+        att.employee_name || 'N/A',
+        getAttendanceStatus(att),
+        getAttendanceTimeDisplay(att, attendanceSettings),
+        getOvertimeDisplay(att.overtime_hours)
+      ]);
+      
+      const tableHeaders = [['Data', 'Giorno', 'Nome Dipendente', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
+      
+      autoTable(doc, {
+        head: tableHeaders,
+        body: tableData,
+        startY: 55,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        columnStyles: {
+          0: { cellWidth: 22 }, // Data
+          1: { cellWidth: 22 }, // Giorno
+          2: { cellWidth: 38 }, // Nome Dipendente
+          3: { cellWidth: 38 }, // Stato Presenza
+          4: { cellWidth: 30 }, // Orario Timbratura
+          5: { cellWidth: 25 }, // Straordinari
+        },
+        tableWidth: 'wrap',
+        didParseCell: function(data) {
+          if (data.section === 'body') {
+            const rowIndex = data.row.index;
+            const attendanceRecord = data[rowIndex];
+            if (attendanceRecord && attendanceRecord.is_late) {
+              data.cell.styles.fillColor = [255, 245, 157];
+            }
+          }
+        },
+        margin: { top: 55, left: 20, right: 20 },
+      });
+    }
     
     // Statistiche finali
-    const finalY = (doc as any).lastAutoTable?.finalY || 100;
-    doc.setFontSize(12);
-    doc.setTextColor(40, 40, 40);
-    doc.text(`Totale presenze: ${data.length}`, 20, finalY + 15);
-    
     if (exportType === 'general') {
+      // Per esportazione generale, aggiungi le statistiche finali solo nell'ultima pagina
+      const finalY = (doc as any).lastAutoTable?.finalY || 100;
+      doc.setFontSize(12);
+      doc.setTextColor(40, 40, 40);
+      doc.text(`Totale presenze: ${data.length}`, 20, finalY + 15);
+      
       const uniqueEmployees = new Set(data.map(att => att.user_id)).size;
       doc.text(`Dipendenti coinvolti: ${uniqueEmployees}`, 20, finalY + 25);
+    } else {
+      // Per esportazione singolo dipendente, mantieni il formato originale
+      const finalY = (doc as any).lastAutoTable?.finalY || 100;
+      doc.setFontSize(12);
+      doc.setTextColor(40, 40, 40);
+      doc.text(`Totale presenze: ${data.length}`, 20, finalY + 15);
     }
     
     // Creazione del nome file

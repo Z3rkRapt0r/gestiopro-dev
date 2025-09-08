@@ -79,8 +79,9 @@ export function EmployeeLeaveBalanceList() {
       <CardContent>
         <div className="space-y-4">
           {leaveBalances.map((balance) => {
-            const vacationRemaining = balance.vacation_days_total - balance.vacation_days_used;
-            const permissionRemaining = balance.permission_hours_total - balance.permission_hours_used;
+            // Reset: il totale assegnato rappresenta il disponibile
+            const vacationRemaining = balance.vacation_days_total;
+            const permissionRemaining = balance.permission_hours_total;
             const isEditing = editingId === balance.id;
             
             return (
@@ -182,9 +183,9 @@ export function EmployeeLeaveBalanceList() {
                             Usate: {balance.vacation_days_used}
                           </Badge>
                           <Badge 
-                            variant={editValues.vacation_days_total - balance.vacation_days_used > 0 ? "default" : "destructive"}
+                            variant={editValues.vacation_days_total > 0 ? "default" : "destructive"}
                           >
-                            Rimanenti: {editValues.vacation_days_total - balance.vacation_days_used}
+                            Rimanenti: {editValues.vacation_days_total}
                           </Badge>
                         </div>
                       </div>
@@ -231,9 +232,9 @@ export function EmployeeLeaveBalanceList() {
                             Usate: {formatDecimalHours(balance.permission_hours_used)}
                           </Badge>
                           <Badge 
-                            variant={editValues.permission_hours_total - balance.permission_hours_used > 0 ? "default" : "destructive"}
+                            variant={editValues.permission_hours_total > 0 ? "default" : "destructive"}
                           >
-                            Rimanenti: {formatDecimalHours(editValues.permission_hours_total - balance.permission_hours_used)}
+                            Rimanenti: {formatDecimalHours(editValues.permission_hours_total)}
                           </Badge>
                         </div>
                       </div>
