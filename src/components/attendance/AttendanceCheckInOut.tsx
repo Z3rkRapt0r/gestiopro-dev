@@ -177,7 +177,7 @@ export default function AttendanceCheckInOut() {
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-yellow-600" />
             <span className="font-semibold text-yellow-800">
-              BLOCCATO - Permesso attivo
+              Permesso attivo
             </span>
           </div>
           {employeeStatus.statusDetails && (
