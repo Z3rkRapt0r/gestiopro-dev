@@ -240,19 +240,41 @@ export const generateAttendancePDF = async ({
     const dataGenerazione = `Generato il: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: it })}`;
     doc.text(dataGenerazione, 20, 45);
 
-    // Legend for colors
-    doc.setFontSize(11);
+    // Legend for colors - migliorata graficamente
+    doc.setFontSize(12);
     doc.setTextColor(40, 40, 40);
-    doc.text('Legenda:', 20, 52);
+    doc.setFont('helvetica', 'bold');
+    doc.text('LEGENDA', 20, 52);
+    
+    // Bordo per la legenda
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.rect(18, 45, 160, 20);
+    
     // Red for pure absences
     doc.setFillColor(255, 220, 220);
-    doc.rect(40, 46, 6, 6, 'F');
+    doc.setDrawColor(255, 150, 150);
+    doc.setLineWidth(0.3);
+    doc.rect(25, 48, 8, 8, 'FD');
+    doc.setTextColor(40, 40, 40);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Assenze', 37, 54);
     doc.setTextColor(100, 100, 100);
-    doc.text('Assenze (solo giornate assenti senza giustificazione)', 49, 52);
+    doc.setFontSize(8);
+    doc.text('(giornate senza giustificazione)', 37, 58);
+    
     // Yellow for late
     doc.setFillColor(255, 245, 157);
-    doc.rect(40, 54, 6, 6, 'F');
-    doc.text('Ritardi (righe evidenziate in giallo)', 49, 60);
+    doc.setDrawColor(255, 200, 100);
+    doc.rect(25, 60, 8, 8, 'FD');
+    doc.setTextColor(40, 40, 40);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Ritardi', 37, 66);
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(8);
+    doc.text('(evidenziati in giallo)', 37, 70);
 
     // Reset default text color
     doc.setTextColor(40, 40, 40);
@@ -287,7 +309,7 @@ export const generateAttendancePDF = async ({
         a.employeeName.localeCompare(b.employeeName)
       );
 
-      let currentY = 65;
+      let currentY = 75;
       const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
 
       // Genera una sezione per ogni dipendente
