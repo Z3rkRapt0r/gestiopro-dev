@@ -158,9 +158,16 @@ export default function AttendanceExportSection() {
     switch (periodType) {
       case 'month':
         const monthDate = new Date(selectedYear, parseInt(selectedMonth), 1);
+        const today = new Date();
+        const endOfSelectedMonth = endOfMonth(monthDate);
+        
+        // Per l'esportazione mensile, limita al giorno corrente se il mese selezionato è quello attuale
+        const isCurrentMonth = monthDate.getFullYear() === today.getFullYear() && 
+                              monthDate.getMonth() === today.getMonth();
+        
         return {
           from: startOfMonth(monthDate),
-          to: endOfMonth(monthDate)
+          to: isCurrentMonth ? today : endOfSelectedMonth
         };
       case 'year':
         return {

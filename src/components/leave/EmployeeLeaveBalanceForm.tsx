@@ -14,7 +14,7 @@ interface EmployeeLeaveBalanceFormProps {
 }
 
 export function EmployeeLeaveBalanceForm({ onSuccess }: EmployeeLeaveBalanceFormProps) {
-  const { upsertMutation } = useEmployeeLeaveBalance();
+  const { upsertMutation, leaveBalances } = useEmployeeLeaveBalance();
   const { employees } = useActiveEmployees();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [vacationDays, setVacationDays] = useState("");
@@ -51,7 +51,14 @@ export function EmployeeLeaveBalanceForm({ onSuccess }: EmployeeLeaveBalanceForm
   };
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 6 }, (_, i) => currentYear + i);
+  const years = [currentYear];
+
+  // Build a set of user ids that already have a balance for the current year
+  const userIdsWithCurrentYearBalance = new Set(
+    (leaveBalances || [])
+      .filter(b => b.year === currentYear)
+      .map(b => b.user_id)
+  );
 
   const getTrackingTypeInfo = (trackingType?: string) => {
     if (trackingType === 'from_year_start') {
@@ -86,11 +93,17 @@ export function EmployeeLeaveBalanceForm({ onSuccess }: EmployeeLeaveBalanceForm
                   <SelectValue placeholder="Seleziona dipendente..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {employees?.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
-                      {employee.first_name} {employee.last_name}
-                    </SelectItem>
-                  ))}
+                  {employees?.map((employee) => {
+                    const disabled = userIdsWithCurrentYearBalance.has(employee.id);
+                    return (
+                      <SelectItem key={employee.id} value={employee.id} disabled={disabled}>
+                        {employee.first_name} {employee.last_name}
+                        {disabled && (
+                          <span className="ml-2 text-xs text-gray-500">(bilancio già presente)</span>
+                        )}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               

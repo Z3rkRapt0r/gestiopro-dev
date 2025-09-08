@@ -41,6 +41,11 @@ interface AttendanceSettings {
   checkout_enabled: boolean;
 }
 
+// Helper: determine if the day is a pure absence (no justification)
+const isPureAbsenceDay = (att: AttendanceData): boolean => {
+  return getAttendanceStatus(att) === 'Assente';
+};
+
 interface ExportParams {
   data: AttendanceData[];
   dateFrom: Date;
@@ -234,7 +239,24 @@ export const generateAttendancePDF = async ({
     // Data di generazione
     const dataGenerazione = `Generato il: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: it })}`;
     doc.text(dataGenerazione, 20, 45);
-    
+
+    // Legend for colors
+    doc.setFontSize(11);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Legenda:', 20, 52);
+    // Red for pure absences
+    doc.setFillColor(255, 220, 220);
+    doc.rect(40, 46, 6, 6, 'F');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Assenze (solo giornate assenti senza giustificazione)', 49, 52);
+    // Yellow for late
+    doc.setFillColor(255, 245, 157);
+    doc.rect(40, 54, 6, 6, 'F');
+    doc.text('Ritardi (righe evidenziate in giallo)', 49, 60);
+
+    // Reset default text color
+    doc.setTextColor(40, 40, 40);
+
     // Se è esportazione generale, dividi per dipendenti
     if (exportType === 'general') {
       // Raggruppa i dati per dipendente
@@ -255,7 +277,7 @@ export const generateAttendancePDF = async ({
         a.employeeName.localeCompare(b.employeeName)
       );
 
-      let currentY = 55;
+      let currentY = 65;
       const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
 
       // Genera una sezione per ogni dipendente
@@ -310,8 +332,13 @@ export const generateAttendancePDF = async ({
             if (data.section === 'body') {
               const rowIndex = data.row.index;
               const attendanceRecord = group.records[rowIndex];
-              if (attendanceRecord && attendanceRecord.is_late) {
-                data.cell.styles.fillColor = [255, 245, 157];
+              if (attendanceRecord) {
+                // Priorità: assenza pura (rosso) > ritardo (giallo)
+                if (isPureAbsenceDay(attendanceRecord)) {
+                  data.cell.styles.fillColor = [255, 220, 220];
+                } else if (attendanceRecord.is_late) {
+                  data.cell.styles.fillColor = [255, 245, 157];
+                }
               }
             }
           },
@@ -331,7 +358,8 @@ export const generateAttendancePDF = async ({
       });
     } else {
       // Per esportazione singolo dipendente, mantieni il formato originale
-      const tableData = data.map(att => [
+      const singleRecords = data;
+      const tableData = singleRecords.map(att => [
         safeFormatDate(att.date),
         att.day_name || '',
         att.employee_name || 'N/A',
@@ -345,7 +373,7 @@ export const generateAttendancePDF = async ({
       autoTable(doc, {
         head: tableHeaders,
         body: tableData,
-        startY: 55,
+        startY: 65,
         styles: {
           fontSize: 8,
           cellPadding: 2,
@@ -370,13 +398,17 @@ export const generateAttendancePDF = async ({
         didParseCell: function(data) {
           if (data.section === 'body') {
             const rowIndex = data.row.index;
-            const attendanceRecord = data[rowIndex];
-            if (attendanceRecord && attendanceRecord.is_late) {
-              data.cell.styles.fillColor = [255, 245, 157];
+            const attendanceRecord = singleRecords[rowIndex];
+            if (attendanceRecord) {
+              if (isPureAbsenceDay(attendanceRecord)) {
+                data.cell.styles.fillColor = [255, 220, 220];
+              } else if (attendanceRecord.is_late) {
+                data.cell.styles.fillColor = [255, 245, 157];
+              }
             }
           }
         },
-        margin: { top: 55, left: 20, right: 20 },
+        margin: { top: 65, left: 20, right: 20 },
       });
     }
     
