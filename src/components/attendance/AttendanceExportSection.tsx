@@ -155,10 +155,11 @@ export default function AttendanceExportSection() {
   };
 
   const getDateRange = () => {
+    const today = new Date();
+    
     switch (periodType) {
       case 'month':
         const monthDate = new Date(selectedYear, parseInt(selectedMonth), 1);
-        const today = new Date();
         const endOfSelectedMonth = endOfMonth(monthDate);
         
         // Per l'esportazione mensile, limita al giorno corrente se il mese selezionato è quello attuale
@@ -171,7 +172,6 @@ export default function AttendanceExportSection() {
         };
       case 'year':
         const yearDate = new Date(selectedYear, 0, 1);
-        const today = new Date();
         
         // Trova la data del primo record per l'anno selezionato
         const firstRecordDate = attendances?.reduce((earliest, att) => {
