@@ -296,7 +296,7 @@ export const generateAttendancePDF = async ({
         a.employeeName.localeCompare(b.employeeName)
       );
 
-      let currentY = 70;
+      let currentY = 80;
       const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
 
       // Genera una sezione per ogni dipendente
