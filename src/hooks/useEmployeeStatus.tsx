@@ -250,7 +250,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
           conflictPriority = 1;
           // allowPermissionOverlap rimane true
           // hasHardBlock rimane false
-          blockingReasons.push('Il dipendente ha già registrato la presenza per questa data');
+          // Non aggiungere messaggio di blocco per presenza già registrata
           statusDetails = {
             type: 'Presenza già registrata',
             startDate: targetDate,
