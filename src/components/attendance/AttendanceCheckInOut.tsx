@@ -381,18 +381,19 @@ export default function AttendanceCheckInOut() {
             </div>
           )}
 
-          {/* NUOVO: Tasto seconda entrata - Solo se c'è permesso orario scaduto E non è già stata registrata */}
+          {/* NUOVO: Tasto seconda entrata - Solo se c'è permesso orario scaduto E non è già stata registrata E c'è stata una prima presenza normale */}
           {(() => {
             // Controlla se è già stata registrata una seconda entrata per oggi
             const hasSecondCheckin = todayCheckins?.some(checkin => checkin.is_second_checkin) || false;
             // Controlla se è stata registrata la prima presenza (non seconda entrata)
             const hasFirstCheckin = todayCheckins?.some(checkin => !checkin.is_second_checkin) || false;
-            // Mostra il pulsante se: permesso scaduto E non c'è seconda entrata E (c'è prima entrata OPPURE non c'è nessuna entrata)
+            // Mostra il pulsante SOLO se: permesso scaduto E non c'è seconda entrata E c'è stata una prima presenza normale
+            // NON mostrare se non c'è nessuna presenza (permesso dall'inizio del turno)
             const shouldShow = employeeStatus?.canSecondCheckIn && 
                               employeeStatus?.hasHourlyPermission && 
                               employeeStatus?.isPermissionExpired && 
                               !hasSecondCheckin &&
-                              (hasFirstCheckin || todayCheckins?.length === 0);
+                              hasFirstCheckin; // Solo se c'è stata una presenza normale
             console.log('🔍 Debug tasto seconda entrata:', {
               canSecondCheckIn: employeeStatus?.canSecondCheckIn,
               hasHourlyPermission: employeeStatus?.hasHourlyPermission,
@@ -400,9 +401,6 @@ export default function AttendanceCheckInOut() {
               hasSecondCheckin,
               hasFirstCheckin,
               todayCheckins: todayCheckins?.length || 0,
-              noCheckins: todayCheckins?.length === 0,
-              shouldShowFirstOrNone: hasFirstCheckin || todayCheckins?.length === 0,
-              allConditions: shouldShow,
               shouldShowButton: shouldShow
             });
             return shouldShow;
