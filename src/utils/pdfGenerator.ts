@@ -270,13 +270,17 @@ export const generateAttendancePDF = async ({
         }
         
         // Raggruppa per mese
-        const attDate = parseISO(att.date);
-        if (isValid(attDate)) {
-          const monthKey = format(attDate, 'yyyy-MM', { locale: it });
-          if (!groups[employeeId].months[monthKey]) {
-            groups[employeeId].months[monthKey] = [];
+        try {
+          const attDate = parseISO(att.date);
+          if (isValid(attDate)) {
+            const monthKey = format(attDate, 'yyyy-MM', { locale: it });
+            if (!groups[employeeId].months[monthKey]) {
+              groups[employeeId].months[monthKey] = [];
+            }
+            groups[employeeId].months[monthKey].push(att);
           }
-          groups[employeeId].months[monthKey].push(att);
+        } catch (error) {
+          console.error('Errore nel raggruppamento per mese:', error, att.date);
         }
         
         return groups;
@@ -308,31 +312,59 @@ export const generateAttendancePDF = async ({
         const sortedMonths = Object.entries(group.months).sort(([a], [b]) => a.localeCompare(b));
 
         // Genera una tabella per ogni mese del dipendente
-        sortedMonths.forEach(([monthKey, monthRecords]) => {
+        sortedMonths.forEach(([monthKey, monthRecords], monthIndex) => {
+          // Controllo di sicurezza per evitare loop infiniti
+          if (monthIndex > 50) {
+            console.warn('Troppi mesi per un dipendente, interrompo la generazione');
+            return;
+          }
+
           // Se non è il primo mese, aggiungi spazio minimo
           if (currentY > 65) {
             currentY += 5;
           }
 
           // Titolo mese
-          const monthDate = parseISO(monthKey + '-01');
-          const monthName = format(monthDate, 'MMMM yyyy', { locale: it });
-          doc.setFontSize(12);
-          doc.setTextColor(60, 60, 60);
-          doc.text(`Mese: ${monthName}`, 20, currentY);
-          currentY += 8;
+          try {
+            const monthDate = parseISO(monthKey + '-01');
+            if (!isValid(monthDate)) {
+              console.warn('Data mese non valida:', monthKey);
+              return;
+            }
+            const monthName = format(monthDate, 'MMMM yyyy', { locale: it });
+            doc.setFontSize(12);
+            doc.setTextColor(60, 60, 60);
+            doc.text(`Mese: ${monthName}`, 20, currentY);
+            currentY += 8;
+          } catch (error) {
+            console.error('Errore nella formattazione del mese:', error, monthKey);
+            return;
+          }
+
+          // Controlla se ci sono record per il mese
+          if (!monthRecords || monthRecords.length === 0) {
+            console.warn('Nessun record per il mese:', monthKey);
+            return;
+          }
 
           // Ordina i record del mese per data
           const sortedRecords = monthRecords.sort((a, b) => a.date.localeCompare(b.date));
 
           // Preparazione dati per la tabella del mese
-          const tableData = sortedRecords.map(att => [
-            safeFormatDate(att.date),
-            att.day_name || '',
-            getAttendanceStatus(att),
-            getAttendanceTimeDisplay(att, attendanceSettings),
-            getOvertimeDisplay(att.overtime_hours)
-          ]);
+          const tableData = sortedRecords.map(att => {
+            try {
+              return [
+                safeFormatDate(att.date),
+                att.day_name || '',
+                getAttendanceStatus(att),
+                getAttendanceTimeDisplay(att, attendanceSettings),
+                getOvertimeDisplay(att.overtime_hours)
+              ];
+            } catch (error) {
+              console.error('Errore nella preparazione dati tabella:', error, att);
+              return ['Errore', '', 'Errore', '', ''];
+            }
+          });
 
           // Genera tabella per il mese
           autoTable(doc, {
@@ -377,7 +409,18 @@ export const generateAttendancePDF = async ({
           });
 
           // Aggiorna la posizione Y per il prossimo elemento
-          currentY = (doc as any).lastAutoTable?.finalY || currentY + 20;
+          const finalY = (doc as any).lastAutoTable?.finalY;
+          if (finalY && finalY > 0) {
+            currentY = finalY;
+          } else {
+            currentY += 20;
+          }
+          
+          // Controllo di sicurezza per evitare posizioni Y negative
+          if (currentY < 0) {
+            console.warn('Posizione Y negativa rilevata, reset a 20');
+            currentY = 20;
+          }
         });
         
         // Aggiungi statistiche del dipendente (solo straordinari se presenti)
