@@ -43,7 +43,7 @@ const MONTHS = [
 export default function AttendanceExportSection() {
   const [exportType, setExportType] = useState<'general' | 'operator'>('general');
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
-  const [periodType, setPeriodType] = useState<PeriodType>('custom');
+  const [periodType, setPeriodType] = useState<PeriodType>('month');
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
@@ -174,11 +174,10 @@ export default function AttendanceExportSection() {
           from: startOfYear(new Date(selectedYear, 0, 1)),
           to: endOfYear(new Date(selectedYear, 11, 31))
         };
-      case 'custom':
       default:
         return {
-          from: dateFrom,
-          to: dateTo
+          from: startOfMonth(new Date(selectedYear, parseInt(selectedMonth), 1)),
+          to: new Date()
         };
     }
   };
@@ -522,83 +521,12 @@ export default function AttendanceExportSection() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="custom">Periodo Personalizzato</SelectItem>
                 <SelectItem value="month">Mese Intero</SelectItem>
                 <SelectItem value="year">Anno Intero</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Selezione periodo basata sul tipo */}
-          {periodType === 'custom' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Data Inizio</label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dateFrom && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateFrom ? format(dateFrom, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateFrom}
-                      onSelect={setDateFrom}
-                      locale={it}
-                      disabled={(date) => {
-                        // Blocca i giorni futuri (dopo oggi)
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return date > today;
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Data Fine</label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dateTo && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateTo ? format(dateTo, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateTo}
-                      onSelect={setDateTo}
-                      locale={it}
-                      disabled={(date) => {
-                        // Blocca i giorni futuri (dopo oggi)
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return date > today;
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-          )}
 
           {periodType === 'month' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -659,7 +587,6 @@ export default function AttendanceExportSection() {
             onClick={handleExport} 
             className="w-full"
             disabled={
-              (periodType === 'custom' && (!dateFrom || !dateTo)) ||
               (exportType === 'operator' && !selectedEmployee) || 
               isExporting
             }
@@ -682,7 +609,6 @@ export default function AttendanceExportSection() {
                   )}
                   <div>Formato: PDF</div>
                   <div>Filtro Periodo: {
-                    periodType === 'custom' ? 'Personalizzato' :
                     periodType === 'month' ? `${availableMonths.find(m => m.value === selectedMonth)?.label} ${selectedYear}` : 
                     `Anno ${selectedYear}`
                   }</div>
