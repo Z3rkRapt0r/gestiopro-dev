@@ -166,7 +166,14 @@ const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number;
         const blob = await response.blob();
         const arrayBuffer = await blob.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
-        const base64 = btoa(String.fromCharCode.apply(null, Array.from(uint8Array)));
+        
+        // Convert to base64 in chunks to avoid stack overflow
+        const chunkSize = 8192;
+        let base64 = '';
+        for (let i = 0; i < uint8Array.length; i += chunkSize) {
+          const chunk = uint8Array.slice(i, i + chunkSize);
+          base64 += btoa(String.fromCharCode.apply(null, Array.from(chunk)));
+        }
         
         // Carica l'immagine per ottenere le dimensioni
         const img = new Image();
