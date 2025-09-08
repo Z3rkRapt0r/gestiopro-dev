@@ -48,13 +48,18 @@ const isPureAbsenceDay = (att: AttendanceData): boolean => {
 
 // Helper: add company logo to PDF header
 const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<number> => {
-  if (!logoUrl) return 0;
+  console.log('Tentativo di caricare logo:', logoUrl);
+  if (!logoUrl) {
+    console.log('Nessun logo URL fornito');
+    return 0;
+  }
   
   try {
     // Fetch the logo image
+    console.log('Fetching logo from:', logoUrl);
     const response = await fetch(logoUrl);
     if (!response.ok) {
-      console.warn('Impossibile caricare il logo:', logoUrl);
+      console.warn('Impossibile caricare il logo:', logoUrl, 'Status:', response.status);
       return 0;
     }
     
@@ -83,7 +88,9 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
     const logoX = (pageWidth - logoWidth) / 2;
     
     // Add logo to current page
+    console.log('Aggiungendo logo al PDF:', { logoX, logoY: 10, logoWidth, logoHeight });
     doc.addImage(`data:image/png;base64,${base64}`, 'PNG', logoX, 10, logoWidth, logoHeight);
+    console.log('Logo aggiunto con successo');
     
     return logoHeight + 15; // Return the height used by logo + spacing
   } catch (error) {
@@ -270,7 +277,9 @@ export const generateAttendancePDF = async ({
     doc.setFont('helvetica');
     
     // Aggiungi logo aziendale se disponibile
+    console.log('Company logo URL ricevuto:', companyLogoUrl);
     const logoHeight = await addCompanyLogo(doc, companyLogoUrl);
+    console.log('Logo height calcolato:', logoHeight);
     
     // Titolo (spostato più in basso se c'è il logo)
     const titleY = logoHeight > 0 ? logoHeight + 20 : 25;
