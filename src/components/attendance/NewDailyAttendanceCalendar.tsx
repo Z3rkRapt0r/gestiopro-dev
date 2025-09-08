@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,24 @@ export default function NewDailyAttendanceCalendar() {
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
   const { getSickLeavesForDate, isUserSickOnDate } = useSickLeavesForCalendars();
   const { isHoliday, getHolidayName } = useCompanyHolidays();
-  const { checkins: multipleCheckins } = useMultipleCheckins();
+  // Recupera tutti i check-in multipli per tutti i dipendenti
+  const { data: allMultipleCheckins } = useQuery({
+    queryKey: ['all-multiple-checkins'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('multiple_checkins')
+        .select('*')
+        .order('date', { ascending: false })
+        .order('checkin_time', { ascending: true });
+
+      if (error) {
+        console.error('Errore nel caricamento di tutti i check-in multipli:', error);
+        throw error;
+      }
+
+      return data;
+    },
+  });
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
 
@@ -375,22 +393,11 @@ export default function NewDailyAttendanceCalendar() {
         const isHourlyPermission = leave.time_from && leave.time_to;
         
         // Trova la seconda entrata per questo dipendente nella data selezionata
-        const secondCheckin = multipleCheckins?.find(checkin => 
+        const secondCheckin = allMultipleCheckins?.find(checkin => 
           checkin.employee_id === leave.user_id && 
           checkin.date === selectedDateStr && 
           checkin.is_second_checkin
         );
-        
-        console.log('🔍 Debug seconda entrata:', {
-          employeeId: leave.user_id,
-          selectedDate: selectedDateStr,
-          multipleCheckins: multipleCheckins?.length || 0,
-          secondCheckin: secondCheckin ? {
-            id: secondCheckin.id,
-            checkin_time: secondCheckin.checkin_time,
-            is_second_checkin: secondCheckin.is_second_checkin
-          } : null
-        });
         
         onPermissionEmployees.push({
           ...employee,
@@ -543,6 +550,7 @@ export default function NewDailyAttendanceCalendar() {
                 <PermissionEmployeesSection
                   employees={onPermissionEmployees}
                   formatTime={formatTime}
+                  toleranceMinutes={workSchedule?.tolerance_minutes || 0}
                 />
 
                 <BusinessTripEmployeesSection

@@ -17,12 +17,34 @@ interface Employee {
 interface PermissionEmployeesSectionProps {
   employees: Employee[];
   formatTime: (timeString: string | null) => string;
+  toleranceMinutes?: number;
 }
 
 export default function PermissionEmployeesSection({ 
   employees,
-  formatTime 
+  formatTime,
+  toleranceMinutes = 0
 }: PermissionEmployeesSectionProps) {
+  
+  // Funzione per calcolare se il dipendente è in orario o in ritardo
+  const getPermissionStatus = (permissionTimeTo: string, secondCheckinTime: string) => {
+    if (!permissionTimeTo || !secondCheckinTime) return 'Permesso Orario';
+    
+    // Converte gli orari in oggetti Date per il confronto
+    const permissionEndTime = new Date(`2000-01-01T${permissionTimeTo}`);
+    const checkinTime = new Date(`2000-01-01T${secondCheckinTime}`);
+    
+    // Calcola l'orario di fine permesso + tolleranza
+    const toleranceTime = new Date(permissionEndTime);
+    toleranceTime.setMinutes(toleranceTime.getMinutes() + toleranceMinutes);
+    
+    // Se il check-in è dopo l'orario di fine permesso + tolleranza, è in ritardo
+    if (checkinTime > toleranceTime) {
+      return 'In ritardo';
+    } else {
+      return 'In orario';
+    }
+  };
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-blue-700 text-base mb-3 flex items-center gap-2">
@@ -39,8 +61,15 @@ export default function PermissionEmployeesSection({
                     <span className="font-semibold text-sm">
                       {employee.first_name} {employee.last_name}
                     </span>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs px-1.5 py-0.5">
-                      Permesso Orario
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs px-1.5 py-0.5 ${
+                        getPermissionStatus(employee.permissionTimeTo || '', employee.secondCheckinTime || '') === 'In ritardo'
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : 'bg-green-50 text-green-700 border-green-200'
+                      }`}
+                    >
+                      {getPermissionStatus(employee.permissionTimeTo || '', employee.secondCheckinTime || '')}
                     </Badge>
                   </div>
                   
@@ -57,7 +86,7 @@ export default function PermissionEmployeesSection({
                   </div>
                   
                   <div className="text-xs text-blue-600 font-medium">
-                    Seconda Entrata: {employee.secondCheckinTime ? formatTime(employee.secondCheckinTime) : 'Non registrata'}
+                    Presenza secondaria: {employee.secondCheckinTime ? formatTime(employee.secondCheckinTime) : 'Non registrata'}
                   </div>
                   
                   {employee.leave?.note && (
