@@ -229,13 +229,12 @@ const addFooter = (doc: jsPDF, logoData?: { url: string; width: number; height: 
       // Disegna il logo allineato orizzontalmente al centro con il testo
       const logoX = startX + textWidth + 3;
       const logoY = y - (logoData.height / 2); // Centrato verticalmente con il testo
-      doc.addImage(logoData.url, 'PNG', logoX, logoY, logoData.width, logoData.height);
       
-      // Aggiungi area cliccabile trasparente sopra il logo
-      doc.setDrawColor(0, 0, 0);
-      doc.setFillColor(255, 255, 255, 0); // Trasparente
-      doc.rect(logoX, logoY, logoData.width, logoData.height, 'F'); // Riempi trasparente
+      // Aggiungi link cliccabile prima di disegnare il logo
       doc.link(logoX, logoY, logoData.width, logoData.height, 'https://licenseglobal.it/');
+      
+      // Disegna il logo
+      doc.addImage(logoData.url, 'PNG', logoX, logoY, logoData.width, logoData.height);
       
       console.log('Footer con logo cliccabile aggiunto:', { startX, y, logoX, logoY, logoWidth: logoData.width, logoHeight: logoData.height });
     } catch (error) {
