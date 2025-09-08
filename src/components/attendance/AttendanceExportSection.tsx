@@ -170,9 +170,15 @@ export default function AttendanceExportSection() {
           to: isCurrentMonth ? today : endOfSelectedMonth
         };
       case 'year':
+        const yearDate = new Date(selectedYear, 0, 1);
+        const today = new Date();
+        
+        // Per l'esportazione annuale, limita al giorno corrente se l'anno selezionato è quello attuale
+        const isCurrentYear = yearDate.getFullYear() === today.getFullYear();
+        
         return {
-          from: startOfYear(new Date(selectedYear, 0, 1)),
-          to: endOfYear(new Date(selectedYear, 11, 31))
+          from: startOfYear(yearDate),
+          to: isCurrentYear ? today : endOfYear(yearDate)
         };
       default:
         return {
