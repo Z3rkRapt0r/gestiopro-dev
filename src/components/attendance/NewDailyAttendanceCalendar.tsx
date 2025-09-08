@@ -41,7 +41,7 @@ export default function NewDailyAttendanceCalendar() {
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
   const { getSickLeavesForDate, isUserSickOnDate } = useSickLeavesForCalendars();
   const { isHoliday, getHolidayName } = useCompanyHolidays();
-  const { data: multipleCheckins } = useMultipleCheckins();
+  const { checkins: multipleCheckins } = useMultipleCheckins();
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
 
@@ -376,10 +376,21 @@ export default function NewDailyAttendanceCalendar() {
         
         // Trova la seconda entrata per questo dipendente nella data selezionata
         const secondCheckin = multipleCheckins?.find(checkin => 
-          checkin.user_id === leave.user_id && 
+          checkin.employee_id === leave.user_id && 
           checkin.date === selectedDateStr && 
           checkin.is_second_checkin
         );
+        
+        console.log('🔍 Debug seconda entrata:', {
+          employeeId: leave.user_id,
+          selectedDate: selectedDateStr,
+          multipleCheckins: multipleCheckins?.length || 0,
+          secondCheckin: secondCheckin ? {
+            id: secondCheckin.id,
+            checkin_time: secondCheckin.checkin_time,
+            is_second_checkin: secondCheckin.is_second_checkin
+          } : null
+        });
         
         onPermissionEmployees.push({
           ...employee,
