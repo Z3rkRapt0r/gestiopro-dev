@@ -80,8 +80,8 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
       img.onerror = reject;
     });
     
-    // Calculate logo size (max 20px height, maintain aspect ratio)
-    const maxHeight = 20;
+    // Calculate logo size (max 15px height, maintain aspect ratio)
+    const maxHeight = 15;
     const aspectRatio = img.width / img.height;
     const logoHeight = Math.min(maxHeight, img.height);
     const logoWidth = logoHeight * aspectRatio;
@@ -95,7 +95,7 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
     doc.addImage(`data:image/png;base64,${base64}`, 'PNG', logoX, 10, logoWidth, logoHeight);
     console.log('Logo aggiunto con successo');
     
-    return logoHeight + 10; // Return the height used by logo + spacing
+    return logoHeight + 8; // Return the height used by logo + spacing
   } catch (error) {
     console.error('Errore nel caricamento del logo:', error);
     return createTestLogo(doc);
@@ -105,8 +105,8 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
 // Helper: create a test logo when no logo is available
 const createTestLogo = (doc: jsPDF): number => {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const logoWidth = 40;
-  const logoHeight = 20;
+  const logoWidth = 30;
+  const logoHeight = 15;
   const logoX = (pageWidth - logoWidth) / 2;
   
   // Background rectangle
@@ -116,13 +116,13 @@ const createTestLogo = (doc: jsPDF): number => {
   
   // Text
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('A.L.M.', logoX + 3, 18);
-  doc.setFontSize(7);
-  doc.text('INFISSI', logoX + 3, 25);
+  doc.text('A.L.M.', logoX + 2, 16);
+  doc.setFontSize(6);
+  doc.text('INFISSI', logoX + 2, 21);
   
-  return logoHeight + 10; // 20 + 10 spacing
+  return logoHeight + 8; // 15 + 8 spacing
 };
 
 // Helper: load License Global logo from bucket
@@ -441,8 +441,8 @@ export const generateAttendancePDF = async ({
     console.log('Logo height calcolato:', logoHeight);
     
     // Titolo (spostato più in basso se c'è il logo)
-    const titleY = logoHeight > 0 ? logoHeight + 20 : 25;
-    doc.setFontSize(20);
+    const titleY = logoHeight > 0 ? logoHeight + 15 : 20;
+    doc.setFontSize(16);
     doc.setTextColor(40, 40, 40);
     const title = exportType === 'general' 
       ? 'Calendario Presenze Generale'
