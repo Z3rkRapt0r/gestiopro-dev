@@ -163,21 +163,10 @@ const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number;
           continue;
         }
         
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        
-        // Convert to base64 in chunks to avoid stack overflow
-        const chunkSize = 8192;
-        let base64 = '';
-        for (let i = 0; i < uint8Array.length; i += chunkSize) {
-          const chunk = uint8Array.slice(i, i + chunkSize);
-          base64 += btoa(String.fromCharCode.apply(null, Array.from(chunk)));
-        }
-        
-        // Carica l'immagine per ottenere le dimensioni
+        // Usa direttamente l'URL invece di convertire in base64
         const img = new Image();
-        img.src = `data:image/png;base64,${base64}`;
+        img.crossOrigin = 'anonymous';
+        img.src = publicUrl;
         
         await new Promise((resolve, reject) => {
           img.onload = resolve;
@@ -192,7 +181,7 @@ const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number;
         
         console.log(`Logo caricato con successo da ${path}:`, { width: logoWidth, height: logoHeight });
         
-        logoData = { base64, width: logoWidth, height: logoHeight };
+        logoData = { url: publicUrl, width: logoWidth, height: logoHeight };
         break; // Trovato il logo, esci dal loop
         
       } catch (pathError) {
@@ -214,13 +203,13 @@ const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number;
 };
 
 // Helper: add footer with License Global logo (sincrono)
-const addFooter = (doc: jsPDF, logoData?: { base64: string; width: number; height: number } | null) => {
+const addFooter = (doc: jsPDF, logoData?: { url: string; width: number; height: number } | null) => {
   const pageHeight = doc.internal.pageSize.getHeight();
   const pageWidth = doc.internal.pageSize.getWidth();
   
   console.log('Aggiungendo footer, logo data:', logoData ? 'presente' : 'assente');
   
-  if (logoData && logoData.base64) {
+  if (logoData && logoData.url) {
     try {
       // Testo "Powered by"
       doc.setFontSize(8);
@@ -237,10 +226,10 @@ const addFooter = (doc: jsPDF, logoData?: { base64: string; width: number; heigh
       // Disegna il testo
       doc.text(poweredByText, startX, y);
       
-      // Disegna il logo
+      // Disegna il logo usando l'URL diretto
       const logoX = startX + textWidth + 8;
       const logoY = y - logoData.height + 2;
-      doc.addImage(`data:image/png;base64,${logoData.base64}`, 'PNG', logoX, logoY, logoData.width, logoData.height);
+      doc.addImage(logoData.url, 'PNG', logoX, logoY, logoData.width, logoData.height);
       
       console.log('Footer con logo aggiunto:', { startX, y, logoX, logoY, logoWidth: logoData.width, logoHeight: logoData.height });
     } catch (error) {
