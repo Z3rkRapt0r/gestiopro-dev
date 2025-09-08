@@ -270,17 +270,13 @@ export const generateAttendancePDF = async ({
         }
         
         // Raggruppa per mese
-        try {
-          const attDate = parseISO(att.date);
-          if (isValid(attDate)) {
-            const monthKey = format(attDate, 'yyyy-MM', { locale: it });
-            if (!groups[employeeId].months[monthKey]) {
-              groups[employeeId].months[monthKey] = [];
-            }
-            groups[employeeId].months[monthKey].push(att);
+        const attDate = parseISO(att.date);
+        if (isValid(attDate)) {
+          const monthKey = format(attDate, 'yyyy-MM', { locale: it });
+          if (!groups[employeeId].months[monthKey]) {
+            groups[employeeId].months[monthKey] = [];
           }
-        } catch (error) {
-          console.error('Errore nel raggruppamento per mese:', error, att.date);
+          groups[employeeId].months[monthKey].push(att);
         }
         
         return groups;
@@ -313,58 +309,35 @@ export const generateAttendancePDF = async ({
 
         // Genera una tabella per ogni mese del dipendente
         sortedMonths.forEach(([monthKey, monthRecords], monthIndex) => {
-          // Controllo di sicurezza per evitare loop infiniti
-          if (monthIndex > 50) {
-            console.warn('Troppi mesi per un dipendente, interrompo la generazione');
-            return;
-          }
-
-          // Se non è il primo mese, aggiungi spazio minimo
-          if (currentY > 65) {
+          // Controlla se c'è spazio sufficiente per la tabella, altrimenti nuova pagina
+          const estimatedTableHeight = monthRecords.length * 6 + 20; // Stima altezza tabella
+          if (currentY + estimatedTableHeight > 250) { // 250 è circa l'altezza utile della pagina
+            doc.addPage();
+            currentY = 20;
+          } else if (monthIndex > 0) {
+            // Solo un piccolo spazio tra le tabelle dello stesso dipendente
             currentY += 5;
           }
 
           // Titolo mese
-          try {
-            const monthDate = parseISO(monthKey + '-01');
-            if (!isValid(monthDate)) {
-              console.warn('Data mese non valida:', monthKey);
-              return;
-            }
-            const monthName = format(monthDate, 'MMMM yyyy', { locale: it });
-            doc.setFontSize(12);
-            doc.setTextColor(60, 60, 60);
-            doc.text(`Mese: ${monthName}`, 20, currentY);
-            currentY += 8;
-          } catch (error) {
-            console.error('Errore nella formattazione del mese:', error, monthKey);
-            return;
-          }
-
-          // Controlla se ci sono record per il mese
-          if (!monthRecords || monthRecords.length === 0) {
-            console.warn('Nessun record per il mese:', monthKey);
-            return;
-          }
+          const monthDate = parseISO(monthKey + '-01');
+          const monthName = format(monthDate, 'MMMM yyyy', { locale: it });
+          doc.setFontSize(12);
+          doc.setTextColor(60, 60, 60);
+          doc.text(`Mese: ${monthName}`, 20, currentY);
+          currentY += 8;
 
           // Ordina i record del mese per data
           const sortedRecords = monthRecords.sort((a, b) => a.date.localeCompare(b.date));
 
           // Preparazione dati per la tabella del mese
-          const tableData = sortedRecords.map(att => {
-            try {
-              return [
-                safeFormatDate(att.date),
-                att.day_name || '',
-                getAttendanceStatus(att),
-                getAttendanceTimeDisplay(att, attendanceSettings),
-                getOvertimeDisplay(att.overtime_hours)
-              ];
-            } catch (error) {
-              console.error('Errore nella preparazione dati tabella:', error, att);
-              return ['Errore', '', 'Errore', '', ''];
-            }
-          });
+          const tableData = sortedRecords.map(att => [
+            safeFormatDate(att.date),
+            att.day_name || '',
+            getAttendanceStatus(att),
+            getAttendanceTimeDisplay(att, attendanceSettings),
+            getOvertimeDisplay(att.overtime_hours)
+          ]);
 
           // Genera tabella per il mese
           autoTable(doc, {
@@ -372,13 +345,16 @@ export const generateAttendancePDF = async ({
             body: tableData,
             startY: currentY,
             styles: {
-              fontSize: 8,
+              fontSize: 7,
               cellPadding: 1,
+              lineWidth: 0.1,
             },
             headStyles: {
               fillColor: [41, 128, 185],
               textColor: 255,
               fontStyle: 'bold',
+              fontSize: 7,
+              cellPadding: 1,
             },
             alternateRowStyles: {
               fillColor: [245, 245, 245],
@@ -391,6 +367,7 @@ export const generateAttendancePDF = async ({
               4: { cellWidth: 30 }, // Straordinari
             },
             tableWidth: 'wrap',
+            margin: { top: currentY, left: 20, right: 20 },
             didParseCell: function(data) {
               if (data.section === 'body') {
                 const rowIndex = data.row.index;
@@ -405,30 +382,19 @@ export const generateAttendancePDF = async ({
                 }
               }
             },
-            margin: { top: currentY, left: 20, right: 20 },
           });
 
           // Aggiorna la posizione Y per il prossimo elemento
-          const finalY = (doc as any).lastAutoTable?.finalY;
-          if (finalY && finalY > 0) {
-            currentY = finalY;
-          } else {
-            currentY += 20;
-          }
-          
-          // Controllo di sicurezza per evitare posizioni Y negative
-          if (currentY < 0) {
-            console.warn('Posizione Y negativa rilevata, reset a 20');
-            currentY = 20;
-          }
+          currentY = (doc as any).lastAutoTable?.finalY || currentY + 50;
         });
         
         // Aggiungi statistiche del dipendente (solo straordinari se presenti)
         const totalOvertime = Object.values(group.months).flat().reduce((sum, att) => sum + (att.overtime_hours || 0), 0);
         if (totalOvertime > 0) {
-          doc.setFontSize(10);
+          doc.setFontSize(9);
           doc.setTextColor(100, 100, 100);
           doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 5);
+          currentY += 10;
         }
       });
     } else {
