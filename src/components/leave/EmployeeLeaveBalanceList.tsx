@@ -182,11 +182,7 @@ export function EmployeeLeaveBalanceList() {
                           <Badge variant="secondary">
                             Usate: {balance.vacation_days_used}
                           </Badge>
-                          <Badge 
-                            variant={editValues.vacation_days_total - balance.vacation_days_used > 0 ? "default" : "destructive"}
-                          >
-                            Rimanenti: {editValues.vacation_days_total - balance.vacation_days_used}
-                          </Badge>
+                          {/* Hidden during assignment: remaining badge */}
                         </div>
                       </div>
                     ) : (
@@ -231,11 +227,7 @@ export function EmployeeLeaveBalanceList() {
                           <Badge variant="secondary">
                             Usate: {formatDecimalHours(balance.permission_hours_used)}
                           </Badge>
-                          <Badge 
-                            variant={editValues.permission_hours_total - balance.permission_hours_used > 0 ? "default" : "destructive"}
-                          >
-                            Rimanenti: {formatDecimalHours(editValues.permission_hours_total - balance.permission_hours_used)}
-                          </Badge>
+                          {/* Hidden during assignment: remaining badge */}
                         </div>
                       </div>
                     ) : (
