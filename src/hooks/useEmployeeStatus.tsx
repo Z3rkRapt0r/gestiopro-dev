@@ -247,10 +247,10 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
 
         if (existingAttendance && !existingAttendance.is_business_trip) {
           currentStatus = 'already_present';
-          conflictPriority = 1;
+          // Non impostare conflictPriority per presenza già registrata
           // allowPermissionOverlap rimane true
           // hasHardBlock rimane false
-          // Non aggiungere messaggio di blocco per presenza già registrata
+          // Non aggiungere blockingReasons per presenza già registrata
           statusDetails = {
             type: 'Presenza già registrata',
             startDate: targetDate,

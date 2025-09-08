@@ -352,14 +352,13 @@ export default function AttendanceCheckInOut() {
               </Button>
 
               
-              {/* Indicatore di priorità del conflitto */}
-              {employeeStatus && employeeStatus.conflictPriority > 0 && (
+              {/* Indicatore di priorità del conflitto - Escludi presenza già registrata */}
+              {employeeStatus && employeeStatus.conflictPriority > 1 && (
                 <div className="text-center">
                   <Badge variant={getConflictAlertVariant(employeeStatus.conflictPriority)} className="text-xs">
                     {employeeStatus.conflictPriority >= 4 && 'BLOCCATO - Conflitto critico'}
                     {employeeStatus.conflictPriority === 3 && !employeeStatus?.isPermissionExpired && 'BLOCCATO - Permesso attivo'}
                     {employeeStatus.conflictPriority === 2 && 'BLOCCATO - In trasferta'}
-                    {employeeStatus.conflictPriority === 1 && 'BLOCCATO - Già presente'}
                   </Badge>
                 </div>
               )}
@@ -471,8 +470,8 @@ export default function AttendanceCheckInOut() {
         </Card>
       )}
 
-      {/* Avvisi di conflitto con priorità - Nascondi se è permesso attivo */}
-      {employeeStatus && employeeStatus.conflictPriority > 0 && employeeStatus.conflictPriority !== 3 && (
+      {/* Avvisi di conflitto con priorità - Nascondi se è permesso attivo o presenza già registrata */}
+      {employeeStatus && employeeStatus.conflictPriority > 1 && employeeStatus.conflictPriority !== 3 && (
         <Card className={`border-2 hover:shadow-lg transition-all duration-300 ${
           employeeStatus.conflictPriority >= 4 
             ? 'border-red-200 bg-red-50' 
@@ -522,10 +521,7 @@ export default function AttendanceCheckInOut() {
                 ))}
               </div>
 
-              {employeeStatus.statusDetails && 
-               !(employeeStatus?.hasHourlyPermission && !employeeStatus?.isPermissionExpired) && 
-               employeeStatus.statusDetails.type !== 'Presenza già registrata' &&
-               employeeStatus.conflictPriority !== 1 && (
+              {employeeStatus.statusDetails && !(employeeStatus?.hasHourlyPermission && !employeeStatus?.isPermissionExpired) && (
                 <div className={`mt-3 p-3 rounded-md text-xs ${
                   employeeStatus.conflictPriority >= 4 
                     ? 'bg-red-100 text-red-800' 
