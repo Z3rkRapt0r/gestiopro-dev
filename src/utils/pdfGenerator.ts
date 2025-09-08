@@ -46,6 +46,43 @@ const isPureAbsenceDay = (att: AttendanceData): boolean => {
   return getAttendanceStatus(att) === 'Assente';
 };
 
+// Helper: add company logo to PDF header
+const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null) => {
+  if (!logoUrl) return;
+  
+  try {
+    // Fetch the logo image
+    const response = await fetch(logoUrl);
+    const blob = await response.blob();
+    const arrayBuffer = await blob.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    // Get image dimensions and calculate size
+    const img = new Image();
+    img.src = `data:image/png;base64,${base64}`;
+    
+    // Wait for image to load
+    await new Promise((resolve) => {
+      img.onload = resolve;
+    });
+    
+    // Calculate logo size (max 60px height, maintain aspect ratio)
+    const maxHeight = 60;
+    const aspectRatio = img.width / img.height;
+    const logoHeight = Math.min(maxHeight, img.height);
+    const logoWidth = logoHeight * aspectRatio;
+    
+    // Center the logo horizontally
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const logoX = (pageWidth - logoWidth) / 2;
+    
+    // Add logo to current page
+    doc.addImage(`data:image/png;base64,${base64}`, 'PNG', logoX, 10, logoWidth, logoHeight);
+  } catch (error) {
+    console.error('Errore nel caricamento del logo:', error);
+  }
+};
+
 interface ExportParams {
   data: AttendanceData[];
   dateFrom: Date;
@@ -53,6 +90,7 @@ interface ExportParams {
   exportType: 'general' | 'operator';
   selectedEmployee?: EmployeeData | null;
   attendanceSettings?: AttendanceSettings | null;
+  companyLogoUrl?: string | null;
 }
 
 // Funzione per formattare in modo sicuro le date
@@ -211,7 +249,8 @@ export const generateAttendancePDF = async ({
   dateTo,
   exportType,
   selectedEmployee,
-  attendanceSettings
+  attendanceSettings,
+  companyLogoUrl
 }: ExportParams) => {
   try {
     console.log('Inizializzazione PDF con dati:', data.length, 'record');
@@ -221,14 +260,20 @@ export const generateAttendancePDF = async ({
     // Configurazione del documento
     doc.setFont('helvetica');
     
-    // Titolo
+    // Aggiungi logo aziendale se disponibile
+    if (companyLogoUrl) {
+      await addCompanyLogo(doc, companyLogoUrl);
+    }
+    
+    // Titolo (spostato più in basso se c'è il logo)
+    const titleY = companyLogoUrl ? 35 : 25;
     doc.setFontSize(20);
     doc.setTextColor(40, 40, 40);
     const title = exportType === 'general' 
       ? 'Calendario Presenze Generale'
       : `Calendario Presenze - ${selectedEmployee?.first_name} ${selectedEmployee?.last_name}`;
     
-    doc.text(title, 20, 25);
+    doc.text(title, 20, titleY);
     
     // Periodo
     doc.setFontSize(12);
@@ -304,7 +349,11 @@ export const generateAttendancePDF = async ({
         // Se non è il primo dipendente, aggiungi una nuova pagina
         if (index > 0) {
           doc.addPage();
-          currentY = 20;
+          // Aggiungi logo anche alle pagine successive
+          if (companyLogoUrl) {
+            await addCompanyLogo(doc, companyLogoUrl);
+          }
+          currentY = companyLogoUrl ? 80 : 20;
         }
 
         // Titolo sezione dipendente
@@ -322,7 +371,11 @@ export const generateAttendancePDF = async ({
           const estimatedTableHeight = monthRecords.length * 6 + 20; // Stima altezza tabella
           if (currentY + estimatedTableHeight > 250) { // 250 è circa l'altezza utile della pagina
             doc.addPage();
-            currentY = 20;
+            // Aggiungi logo anche alle pagine successive
+            if (companyLogoUrl) {
+              await addCompanyLogo(doc, companyLogoUrl);
+            }
+            currentY = companyLogoUrl ? 80 : 20;
           } else if (monthIndex > 0) {
             // Solo un piccolo spazio tra le tabelle dello stesso dipendente
             currentY += 5;

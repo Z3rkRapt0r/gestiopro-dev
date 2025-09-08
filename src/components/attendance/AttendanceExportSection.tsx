@@ -13,6 +13,7 @@ import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useAuth } from '@/hooks/useAuth';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
+import { useDashboardSettings } from '@/hooks/useDashboardSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { generateAttendancePDF } from '@/utils/pdfGenerator';
@@ -56,6 +57,7 @@ export default function AttendanceExportSection() {
   const { getSickLeavesForDate } = useSickLeavesForCalendars();
   const { workSchedule: companyWorkSchedule } = useWorkSchedules();
   const { isHoliday, getHolidayName } = useCompanyHolidays();
+  const { settings: dashboardSettings } = useDashboardSettings();
   
   // Fetch leave requests for the export period
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
@@ -449,7 +451,8 @@ export default function AttendanceExportSection() {
         dateTo: to,
         exportType,
         selectedEmployee: selectedEmployeeData,
-        attendanceSettings
+        attendanceSettings,
+        companyLogoUrl: dashboardSettings?.logo_url
       });
       
       toast({
