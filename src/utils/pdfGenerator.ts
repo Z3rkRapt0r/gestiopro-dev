@@ -209,7 +209,7 @@ const addFooter = (doc: jsPDF, logoData?: { base64: string; width: number; heigh
     } catch (error) {
       console.error('Errore nel disegnare il footer con logo:', error);
       // Fallback al testo semplice
-      const footerText = 'Powered by License Global';
+      const footerText = 'Powered by [logo.png]';
       const textWidth = doc.getTextWidth(footerText);
       const x = (pageWidth - textWidth) / 2;
       const y = pageHeight - 10;
@@ -220,7 +220,7 @@ const addFooter = (doc: jsPDF, logoData?: { base64: string; width: number; heigh
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
     doc.setFont('helvetica', 'normal');
-    const footerText = 'Powered by License Global';
+    const footerText = 'Powered by [logo.png]';
     const textWidth = doc.getTextWidth(footerText);
     const x = (pageWidth - textWidth) / 2;
     const y = pageHeight - 10;
