@@ -522,6 +522,7 @@ export default function NewDailyAttendanceCalendar() {
                 <PermissionEmployeesSection
                   employees={onPermissionEmployees}
                   formatTime={formatTime}
+                  selectedDate={selectedDate}
                 />
 
                 <BusinessTripEmployeesSection

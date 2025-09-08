@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { useMultipleCheckins } from '@/hooks/useMultipleCheckins';
 
 interface Employee {
   id: string;
@@ -16,12 +17,35 @@ interface Employee {
 interface PermissionEmployeesSectionProps {
   employees: Employee[];
   formatTime: (timeString: string | null) => string;
+  selectedDate?: Date;
 }
 
 export default function PermissionEmployeesSection({ 
   employees,
-  formatTime 
+  formatTime,
+  selectedDate
 }: PermissionEmployeesSectionProps) {
+  // Hook per ottenere i check-in multipli per tutti i dipendenti
+  const allMultipleCheckins = employees.map(employee => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { data: multipleCheckins } = useMultipleCheckins(employee.id);
+    return { employeeId: employee.id, multipleCheckins };
+  });
+
+  // Funzione per ottenere la seconda entrata per un dipendente specifico
+  const getSecondCheckin = (employeeId: string) => {
+    if (!selectedDate) return null;
+    
+    const employeeData = allMultipleCheckins.find(data => data.employeeId === employeeId);
+    if (!employeeData?.multipleCheckins) return null;
+    
+    const selectedDateStr = selectedDate.toISOString().split('T')[0];
+    const secondCheckins = employeeData.multipleCheckins.filter(checkin => 
+      checkin.date === selectedDateStr && checkin.is_second_checkin
+    );
+    
+    return secondCheckins.length > 0 ? secondCheckins[0] : null;
+  };
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-blue-700 text-base mb-3 flex items-center gap-2">
@@ -43,7 +67,7 @@ export default function PermissionEmployeesSection({
                     </Badge>
                   </div>
                   
-                  <div className="text-xs text-blue-600 font-medium">
+                  <div className="text-xs text-blue-600 font-medium space-y-1">
                     {employee.permissionTimeFrom && employee.permissionTimeTo ? (
                       `Orario: ${employee.permissionTimeFrom} - ${employee.permissionTimeTo}`
                     ) : employee.attendance && employee.attendance.check_in_time && employee.attendance.check_out_time ? (
@@ -53,6 +77,16 @@ export default function PermissionEmployeesSection({
                     ) : (
                       'Permesso Orario'
                     )}
+                    
+                    {/* Mostra la seconda entrata se disponibile */}
+                    {(() => {
+                      const secondCheckin = getSecondCheckin(employee.id);
+                      return secondCheckin ? (
+                        <div className="text-blue-700 font-semibold">
+                          Seconda Entrata: {formatTime(secondCheckin.checkin_time)}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                   
                   {employee.leave?.note && (
