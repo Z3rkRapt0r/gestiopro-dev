@@ -173,11 +173,30 @@ export default function AttendanceExportSection() {
         const yearDate = new Date(selectedYear, 0, 1);
         const today = new Date();
         
+        // Trova la data del primo record per l'anno selezionato
+        const firstRecordDate = attendances?.reduce((earliest, att) => {
+          try {
+            const attDate = parseISO(att.date);
+            if (!isValid(attDate)) return earliest;
+            
+            // Se il record è dell'anno selezionato e precedente al record più antico trovato
+            if (attDate.getFullYear() === selectedYear && (!earliest || attDate < earliest)) {
+              return attDate;
+            }
+          } catch (error) {
+            console.error('Errore parsing data:', error, att.date);
+          }
+          return earliest;
+        }, null as Date | null);
+        
+        // Se non ci sono dati per l'anno, usa l'inizio dell'anno
+        const fromDate = firstRecordDate || startOfYear(yearDate);
+        
         // Per l'esportazione annuale, limita al giorno corrente se l'anno selezionato è quello attuale
         const isCurrentYear = yearDate.getFullYear() === today.getFullYear();
         
         return {
-          from: startOfYear(yearDate),
+          from: fromDate,
           to: isCurrentYear ? today : endOfYear(yearDate)
         };
       default:
