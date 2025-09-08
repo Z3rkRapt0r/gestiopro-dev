@@ -110,10 +110,13 @@ export const useEmployeeLeaveBalance = () => {
     }) => {
       console.log('Upsert bilancio:', balanceData);
 
+      // Nuova logica: quando si assegna un nuovo totale, resetta i giorni/ore usate a 0
       const { data, error } = await supabase
         .from('employee_leave_balance')
         .upsert({
           ...balanceData,
+          vacation_days_used: 0, // Reset: azzera i giorni usati
+          permission_hours_used: 0, // Reset: azzera le ore usate
           created_by: profile?.id,
         }, {
           onConflict: 'user_id,year'
@@ -122,14 +125,14 @@ export const useEmployeeLeaveBalance = () => {
         .single();
 
       if (error) throw error;
-      console.log('Bilancio salvato:', data);
+      console.log('Bilancio salvato con reset:', data);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employee-leave-balance'] });
       toast({
         title: "Bilancio salvato",
-        description: "Il bilancio ferie è stato salvato con successo",
+        description: "Il bilancio ferie è stato salvato con successo. I giorni/ore usate sono stati resettati.",
       });
     },
     onError: (error: any) => {

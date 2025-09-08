@@ -46,15 +46,14 @@ export const useEmployeeLeaveBalanceStats = (employeeId?: string) => {
       }
 
       // Se c'è un bilancio configurato, ritorna i valori effettivi
+      // Nuova logica: i rimanenti sono sempre uguali al totale assegnato (reset del sistema)
       return {
         vacation_days_total: data.vacation_days_total,
         vacation_days_used: data.vacation_days_used,
-        // Comportamento desiderato: il valore assegnato rappresenta il disponibile
-        vacation_days_remaining: Math.max(0, data.vacation_days_total),
+        vacation_days_remaining: Math.max(0, data.vacation_days_total - data.vacation_days_used),
         permission_hours_total: data.permission_hours_total,
         permission_hours_used: data.permission_hours_used,
-        // Comportamento desiderato: il valore assegnato rappresenta il disponibile
-        permission_hours_remaining: Math.max(0, data.permission_hours_total),
+        permission_hours_remaining: Math.max(0, data.permission_hours_total - data.permission_hours_used),
         year: data.year,
         hasBalance: true,
       };

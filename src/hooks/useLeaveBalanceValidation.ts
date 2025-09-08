@@ -56,9 +56,10 @@ export function useLeaveBalanceValidation() {
         } as LeaveBalanceValidation;
       }
 
-      // Comportamento desiderato: il valore assegnato rappresenta il disponibile (reset)
-      const remainingVacationDays = Math.max(0, balance.vacation_days_total);
-      const remainingPermissionHours = Math.max(0, balance.permission_hours_total);
+      // Nuova logica: i rimanenti sono sempre uguali al totale assegnato (reset del sistema)
+      // Quando si assegna un nuovo totale, i giorni/ore usate vengono resettate a 0
+      const remainingVacationDays = Math.max(0, balance.vacation_days_total - balance.vacation_days_used);
+      const remainingPermissionHours = Math.max(0, balance.permission_hours_total - balance.permission_hours_used);
 
       return {
         hasBalance: true,

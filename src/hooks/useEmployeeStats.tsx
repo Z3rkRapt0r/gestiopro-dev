@@ -64,13 +64,14 @@ export const useEmployeeStats = () => {
       const approvedLeaveRequests = leaveRequestsData.data?.filter(req => req.status === 'approved').length || 0;
       const rejectedLeaveRequests = leaveRequestsData.data?.filter(req => req.status === 'rejected').length || 0;
 
+      // Nuova logica: i rimanenti sono sempre uguali al totale assegnato (reset del sistema)
       const vacationDaysRemaining = leaveBalanceData.data 
-        ? Math.max(0, leaveBalanceData.data.vacation_days_total)
+        ? Math.max(0, leaveBalanceData.data.vacation_days_total - leaveBalanceData.data.vacation_days_used)
         : 0;
       
       // Keep as decimal hours to preserve minutes precision
       const permissionHoursRemaining = leaveBalanceData.data 
-        ? Math.max(0, leaveBalanceData.data.permission_hours_total)
+        ? Math.max(0, leaveBalanceData.data.permission_hours_total - leaveBalanceData.data.permission_hours_used)
         : 0;
 
       if (mountedRef.current) {
