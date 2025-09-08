@@ -373,18 +373,6 @@ export default function AttendanceCheckInOut() {
                 </div>
               )}
 
-              {/* Messaggio per permesso scaduto - secondo check-in disponibile */}
-              {employeeStatus?.hasHourlyPermission && employeeStatus?.isPermissionExpired && employeeStatus?.canSecondCheckIn && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2">
-                    <Info className="h-4 w-4 text-green-600" />
-                    <span className="text-sm text-green-800">
-                      Permesso terminato alle {employeeStatus.permissionEndTime}. 
-                      Puoi registrare la seconda entrata.
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
