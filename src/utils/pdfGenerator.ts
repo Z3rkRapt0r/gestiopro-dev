@@ -133,7 +133,7 @@ const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number;
     // Prova a caricare il logo dal bucket company-logos
     const { data: { publicUrl } } = supabase.storage
       .from('company-logos')
-      .getPublicUrl('Logo License Global/logo.png');
+      .getPublicUrl('LicenseGlobal/logo.png');
     
     console.log('URL del logo License Global:', publicUrl);
     
