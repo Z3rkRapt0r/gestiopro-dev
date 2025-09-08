@@ -306,22 +306,69 @@ export const generateAttendancePDF = async ({
     const logoHeight = await addCompanyLogo(doc, companyLogoUrl);
     console.log('Logo height calcolato:', logoHeight);
     
-    // Aggiungi footer "Powered by License Global" a ogni pagina
+    // Pre-carica il logo di License Global
+    let licenseGlobalLogoBase64: string | null = null;
+    let licenseGlobalLogoWidth = 0;
+    let licenseGlobalLogoHeight = 0;
+    
+    try {
+      const logoUrl = 'https://ibb.co/CsB6q4R2';
+      const response = await fetch(logoUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        licenseGlobalLogoBase64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        
+        // Carica l'immagine per ottenere le dimensioni
+        const img = new Image();
+        img.src = `data:image/png;base64,${licenseGlobalLogoBase64}`;
+        
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+        
+        // Calcola dimensioni del logo (max 20px di altezza)
+        const maxHeight = 20;
+        const aspectRatio = img.width / img.height;
+        licenseGlobalLogoHeight = Math.min(maxHeight, img.height);
+        licenseGlobalLogoWidth = licenseGlobalLogoHeight * aspectRatio;
+      }
+    } catch (error) {
+      console.error('Errore nel pre-caricamento del logo License Global:', error);
+    }
+    
+    // Aggiungi footer "Powered by" con logo License Global a ogni pagina
     const addFooter = (doc: jsPDF) => {
       const pageHeight = doc.internal.pageSize.getHeight();
       const pageWidth = doc.internal.pageSize.getWidth();
       
-      // Testo del footer
-      doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
-      doc.setFont('helvetica', 'normal');
-      
-      const footerText = 'Powered by License Global';
-      const textWidth = doc.getTextWidth(footerText);
-      const x = (pageWidth - textWidth) / 2; // Centra il testo
-      const y = pageHeight - 10; // 10px dal fondo
-      
-      doc.text(footerText, x, y);
+      if (licenseGlobalLogoBase64 && licenseGlobalLogoWidth > 0) {
+        // Testo "Powered by"
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.setFont('helvetica', 'normal');
+        const poweredByText = 'Powered by';
+        const textWidth = doc.getTextWidth(poweredByText);
+        
+        // Posiziona il testo e il logo centrati
+        const totalWidth = textWidth + 5 + licenseGlobalLogoWidth; // 5px di spazio tra testo e logo
+        const startX = (pageWidth - totalWidth) / 2;
+        const y = pageHeight - 15; // 15px dal fondo
+        
+        // Disegna il testo
+        doc.text(poweredByText, startX, y);
+        
+        // Disegna il logo
+        doc.addImage(`data:image/png;base64,${licenseGlobalLogoBase64}`, 'PNG', startX + textWidth + 5, y - licenseGlobalLogoHeight + 2, licenseGlobalLogoWidth, licenseGlobalLogoHeight);
+      } else {
+        // Fallback al testo se il logo non è disponibile
+        const footerText = 'Powered by License Global';
+        const textWidth = doc.getTextWidth(footerText);
+        const x = (pageWidth - textWidth) / 2;
+        const y = pageHeight - 10;
+        doc.text(footerText, x, y);
+      }
     };
     
     // Titolo (spostato più in basso se c'è il logo)
