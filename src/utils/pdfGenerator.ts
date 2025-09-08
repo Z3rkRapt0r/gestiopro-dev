@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, isValid, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AttendanceData {
   id: string;
@@ -122,6 +123,78 @@ const createTestLogo = (doc: jsPDF): number => {
   doc.text('INFISSI', logoX + 3, 25);
   
   return logoHeight + 10; // 20 + 10 spacing
+};
+
+// Helper: load License Global logo from bucket
+const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number; height: number } | null> => {
+  try {
+    // Prova a caricare il logo dal bucket company-logos
+    const { data: { publicUrl } } = supabase.storage
+      .from('company-logos')
+      .getPublicUrl('Logo License Global/logo.png');
+    
+    if (!publicUrl) return null;
+    
+    const response = await fetch(publicUrl);
+    if (!response.ok) return null;
+    
+    const blob = await response.blob();
+    const arrayBuffer = await blob.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    // Carica l'immagine per ottenere le dimensioni
+    const img = new Image();
+    img.src = `data:image/png;base64,${base64}`;
+    
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+    
+    // Calcola dimensioni del logo (max 15px di altezza)
+    const maxHeight = 15;
+    const aspectRatio = img.width / img.height;
+    const logoHeight = Math.min(maxHeight, img.height);
+    const logoWidth = logoHeight * aspectRatio;
+    
+    return { base64, width: logoWidth, height: logoHeight };
+  } catch (error) {
+    console.error('Errore nel caricamento del logo License Global:', error);
+    return null;
+  }
+};
+
+// Helper: add footer with License Global logo (sincrono)
+const addFooter = (doc: jsPDF, logoData?: { base64: string; width: number; height: number } | null) => {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  if (logoData) {
+    // Testo "Powered by"
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.setFont('helvetica', 'normal');
+    const poweredByText = 'Powered by';
+    const textWidth = doc.getTextWidth(poweredByText);
+    
+    // Posiziona il testo e il logo centrati
+    const totalWidth = textWidth + 5 + logoData.width; // 5px di spazio tra testo e logo
+    const startX = (pageWidth - totalWidth) / 2;
+    const y = pageHeight - 15; // 15px dal fondo
+    
+    // Disegna il testo
+    doc.text(poweredByText, startX, y);
+    
+    // Disegna il logo
+    doc.addImage(`data:image/png;base64,${logoData.base64}`, 'PNG', startX + textWidth + 5, y - logoData.height + 2, logoData.width, logoData.height);
+  } else {
+    // Fallback al testo se il logo non è disponibile
+    const footerText = 'Powered by License Global';
+    const textWidth = doc.getTextWidth(footerText);
+    const x = (pageWidth - textWidth) / 2;
+    const y = pageHeight - 10;
+    doc.text(footerText, x, y);
+  }
 };
 
 interface ExportParams {
@@ -306,71 +379,6 @@ export const generateAttendancePDF = async ({
     const logoHeight = await addCompanyLogo(doc, companyLogoUrl);
     console.log('Logo height calcolato:', logoHeight);
     
-    // Pre-carica il logo di License Global
-    let licenseGlobalLogoBase64: string | null = null;
-    let licenseGlobalLogoWidth = 0;
-    let licenseGlobalLogoHeight = 0;
-    
-    try {
-      const logoUrl = 'https://ibb.co/CsB6q4R2';
-      const response = await fetch(logoUrl);
-      if (response.ok) {
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        licenseGlobalLogoBase64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        
-        // Carica l'immagine per ottenere le dimensioni
-        const img = new Image();
-        img.src = `data:image/png;base64,${licenseGlobalLogoBase64}`;
-        
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-        });
-        
-        // Calcola dimensioni del logo (max 20px di altezza)
-        const maxHeight = 20;
-        const aspectRatio = img.width / img.height;
-        licenseGlobalLogoHeight = Math.min(maxHeight, img.height);
-        licenseGlobalLogoWidth = licenseGlobalLogoHeight * aspectRatio;
-      }
-    } catch (error) {
-      console.error('Errore nel pre-caricamento del logo License Global:', error);
-    }
-    
-    // Aggiungi footer "Powered by" con logo License Global a ogni pagina
-    const addFooter = (doc: jsPDF) => {
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      
-      if (licenseGlobalLogoBase64 && licenseGlobalLogoWidth > 0) {
-        // Testo "Powered by"
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.setFont('helvetica', 'normal');
-        const poweredByText = 'Powered by';
-        const textWidth = doc.getTextWidth(poweredByText);
-        
-        // Posiziona il testo e il logo centrati
-        const totalWidth = textWidth + 5 + licenseGlobalLogoWidth; // 5px di spazio tra testo e logo
-        const startX = (pageWidth - totalWidth) / 2;
-        const y = pageHeight - 15; // 15px dal fondo
-        
-        // Disegna il testo
-        doc.text(poweredByText, startX, y);
-        
-        // Disegna il logo
-        doc.addImage(`data:image/png;base64,${licenseGlobalLogoBase64}`, 'PNG', startX + textWidth + 5, y - licenseGlobalLogoHeight + 2, licenseGlobalLogoWidth, licenseGlobalLogoHeight);
-      } else {
-        // Fallback al testo se il logo non è disponibile
-        const footerText = 'Powered by License Global';
-        const textWidth = doc.getTextWidth(footerText);
-        const x = (pageWidth - textWidth) / 2;
-        const y = pageHeight - 10;
-        doc.text(footerText, x, y);
-      }
-    };
-    
     // Titolo (spostato più in basso se c'è il logo)
     const titleY = logoHeight > 0 ? logoHeight + 20 : 25;
     doc.setFontSize(20);
@@ -418,8 +426,11 @@ export const generateAttendancePDF = async ({
     // Reset default text color
     doc.setTextColor(40, 40, 40);
     
+    // Pre-carica il logo License Global
+    const licenseGlobalLogoData = await loadLicenseGlobalLogo();
+    
     // Aggiungi footer alla prima pagina
-    addFooter(doc);
+    addFooter(doc, licenseGlobalLogoData);
 
     // Se è esportazione generale, dividi per dipendenti
     if (exportType === 'general') {
@@ -464,7 +475,7 @@ export const generateAttendancePDF = async ({
           // Aggiungi logo anche alle pagine successive
           await addCompanyLogo(doc, companyLogoUrl);
           // Aggiungi footer alla nuova pagina
-          addFooter(doc);
+          addFooter(doc, licenseGlobalLogoData);
           currentY = logoHeight > 0 ? logoHeight + 20 : 20;
         }
 
@@ -488,7 +499,7 @@ export const generateAttendancePDF = async ({
             // Aggiungi logo anche alle pagine successive
             await addCompanyLogo(doc, companyLogoUrl);
             // Aggiungi footer alla nuova pagina
-            addFooter(doc);
+            addFooter(doc, licenseGlobalLogoData);
             currentY = logoHeight > 0 ? logoHeight + 20 : 20;
           } else if (monthIndex > 0) {
             // Solo un piccolo spazio tra le tabelle dello stesso dipendente
@@ -521,8 +532,8 @@ export const generateAttendancePDF = async ({
             body: tableData,
             startY: currentY,
             didDrawPage: (data) => {
-              // Aggiungi footer a ogni pagina
-              addFooter(doc);
+              // Aggiungi footer a ogni pagina (sincrono)
+              addFooter(doc, licenseGlobalLogoData);
             },
             styles: {
               fontSize: 7,
@@ -596,8 +607,8 @@ export const generateAttendancePDF = async ({
         body: tableData,
         startY: legendY + 25,
         didDrawPage: (data) => {
-          // Aggiungi footer a ogni pagina
-          addFooter(doc);
+          // Aggiungi footer a ogni pagina (sincrono)
+          addFooter(doc, licenseGlobalLogoData);
         },
         styles: {
           fontSize: 8,
