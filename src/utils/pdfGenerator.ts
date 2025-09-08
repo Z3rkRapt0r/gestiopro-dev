@@ -306,6 +306,24 @@ export const generateAttendancePDF = async ({
     const logoHeight = await addCompanyLogo(doc, companyLogoUrl);
     console.log('Logo height calcolato:', logoHeight);
     
+    // Aggiungi footer "Powered by License Global" a ogni pagina
+    const addFooter = (doc: jsPDF) => {
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Testo del footer
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.setFont('helvetica', 'normal');
+      
+      const footerText = 'Powered by License Global';
+      const textWidth = doc.getTextWidth(footerText);
+      const x = (pageWidth - textWidth) / 2; // Centra il testo
+      const y = pageHeight - 10; // 10px dal fondo
+      
+      doc.text(footerText, x, y);
+    };
+    
     // Titolo (spostato più in basso se c'è il logo)
     const titleY = logoHeight > 0 ? logoHeight + 20 : 25;
     doc.setFontSize(20);
@@ -352,6 +370,9 @@ export const generateAttendancePDF = async ({
 
     // Reset default text color
     doc.setTextColor(40, 40, 40);
+    
+    // Aggiungi footer alla prima pagina
+    addFooter(doc);
 
     // Se è esportazione generale, dividi per dipendenti
     if (exportType === 'general') {
@@ -395,6 +416,8 @@ export const generateAttendancePDF = async ({
           doc.addPage();
           // Aggiungi logo anche alle pagine successive
           await addCompanyLogo(doc, companyLogoUrl);
+          // Aggiungi footer alla nuova pagina
+          addFooter(doc);
           currentY = logoHeight > 0 ? logoHeight + 20 : 20;
         }
 
@@ -417,6 +440,8 @@ export const generateAttendancePDF = async ({
             doc.addPage();
             // Aggiungi logo anche alle pagine successive
             await addCompanyLogo(doc, companyLogoUrl);
+            // Aggiungi footer alla nuova pagina
+            addFooter(doc);
             currentY = logoHeight > 0 ? logoHeight + 20 : 20;
           } else if (monthIndex > 0) {
             // Solo un piccolo spazio tra le tabelle dello stesso dipendente
@@ -448,6 +473,10 @@ export const generateAttendancePDF = async ({
             head: tableHeaders,
             body: tableData,
             startY: currentY,
+            didDrawPage: (data) => {
+              // Aggiungi footer a ogni pagina
+              addFooter(doc);
+            },
             styles: {
               fontSize: 7,
               cellPadding: 1,
@@ -519,6 +548,10 @@ export const generateAttendancePDF = async ({
         head: tableHeaders,
         body: tableData,
         startY: legendY + 25,
+        didDrawPage: (data) => {
+          // Aggiungi footer a ogni pagina
+          addFooter(doc);
+        },
         styles: {
           fontSize: 8,
           cellPadding: 2,
