@@ -57,7 +57,7 @@ export default function PermissionEmployeesSection({
                   </div>
                   
                   {employee.secondCheckinTime && (
-                    <div className="text-xs text-green-600 font-medium">
+                    <div className="text-xs text-blue-600 font-medium">
                       Seconda Entrata: {formatTime(employee.secondCheckinTime)}
                     </div>
                   )}
