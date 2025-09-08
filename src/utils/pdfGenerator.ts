@@ -130,48 +130,77 @@ const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number;
   try {
     console.log('Tentativo di caricare logo License Global...');
     
-    // Prova a caricare il logo dal bucket company-logos
-    const { data: { publicUrl } } = supabase.storage
-      .from('company-logos')
-      .getPublicUrl('LicenseGlobal/logo.png');
+    // Prova diversi percorsi possibili
+    const possiblePaths = [
+      'LicenseGlobal/logo.png',
+      'licenseglobal/logo.png',
+      'License Global/logo.png',
+      'logo-license-global/logo.png'
+    ];
     
-    console.log('URL del logo License Global:', publicUrl);
+    let logoData = null;
     
-    if (!publicUrl) {
-      console.log('Nessun URL pubblico trovato per il logo License Global');
+    for (const path of possiblePaths) {
+      console.log(`Tentativo percorso: ${path}`);
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(path);
+      
+      console.log(`URL generato per ${path}:`, publicUrl);
+      
+      if (!publicUrl) {
+        console.log(`Nessun URL pubblico per ${path}`);
+        continue;
+      }
+      
+      try {
+        const response = await fetch(publicUrl);
+        console.log(`Response per ${path}:`, response.status, response.statusText);
+        
+        if (!response.ok) {
+          console.log(`Errore nel fetch per ${path}:`, response.status);
+          continue;
+        }
+        
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        
+        // Carica l'immagine per ottenere le dimensioni
+        const img = new Image();
+        img.src = `data:image/png;base64,${base64}`;
+        
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+        
+        // Calcola dimensioni del logo (max 15px di altezza)
+        const maxHeight = 15;
+        const aspectRatio = img.width / img.height;
+        const logoHeight = Math.min(maxHeight, img.height);
+        const logoWidth = logoHeight * aspectRatio;
+        
+        console.log(`Logo caricato con successo da ${path}:`, { width: logoWidth, height: logoHeight });
+        
+        logoData = { base64, width: logoWidth, height: logoHeight };
+        break; // Trovato il logo, esci dal loop
+        
+      } catch (pathError) {
+        console.log(`Errore nel caricamento da ${path}:`, pathError);
+        continue;
+      }
+    }
+    
+    if (!logoData) {
+      console.log('Nessun logo trovato in nessun percorso');
       return null;
     }
     
-    const response = await fetch(publicUrl);
-    if (!response.ok) {
-      console.log('Errore nel fetch del logo:', response.status, response.statusText);
-      return null;
-    }
-    
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    
-    // Carica l'immagine per ottenere le dimensioni
-    const img = new Image();
-    img.src = `data:image/png;base64,${base64}`;
-    
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-    });
-    
-    // Calcola dimensioni del logo (max 15px di altezza)
-    const maxHeight = 15;
-    const aspectRatio = img.width / img.height;
-    const logoHeight = Math.min(maxHeight, img.height);
-    const logoWidth = logoHeight * aspectRatio;
-    
-    console.log('Logo License Global caricato con successo:', { width: logoWidth, height: logoHeight });
-    
-    return { base64, width: logoWidth, height: logoHeight };
+    return logoData;
   } catch (error) {
-    console.error('Errore nel caricamento del logo License Global:', error);
+    console.error('Errore generale nel caricamento del logo License Global:', error);
     return null;
   }
 };
