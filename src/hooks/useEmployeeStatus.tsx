@@ -21,6 +21,10 @@ export interface EmployeeStatus {
   conflictPriority: number; // 0=no conflict, 1=lowest, 5=highest
   allowPermissionOverlap: boolean; // Permette sovrapposizione con permessi
   hasHardBlock: boolean; // Solo per malattia, ferie, trasferte - blocca le date nel calendario
+  hasHourlyPermission?: boolean; // Se ha un permesso orario attivo
+  isPermissionExpired?: boolean; // Se il permesso orario è scaduto
+  canSecondCheckIn?: boolean; // Se può fare la seconda entrata
+  permissionEndTime?: string; // Orario di fine permesso
 }
 
 export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
@@ -149,6 +153,11 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
       }
 
       // 4. CONTROLLO PERMESSI APPROVATI - Terza priorità, NON BLOCCA DATE
+      let hasHourlyPermission = false;
+      let isPermissionExpired = false;
+      let canSecondCheckIn = false;
+      let permissionEndTime = '';
+
       if (conflictPriority < 3) {
         const { data: approvedPermissions } = await supabase
           .from('leave_requests')
@@ -177,6 +186,12 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             const isWithinPermissionTime = currentMinutes >= permissionStartMinutes && 
                                           currentMinutes <= permissionEndMinutes;
             
+            // Imposta i flag per i permessi orari
+            hasHourlyPermission = true;
+            isPermissionExpired = !isWithinPermissionTime && currentMinutes > permissionEndMinutes;
+            canSecondCheckIn = isPermissionExpired;
+            permissionEndTime = permission.time_to;
+            
             console.log('🕐 Controllo permesso orario:', {
               currentMinutes,
               permissionStartMinutes,
@@ -184,7 +199,10 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               currentTime: format(currentTime, 'HH:mm:ss'),
               permissionStart: permission.time_from,
               permissionEnd: permission.time_to,
-              isWithinRange: isWithinPermissionTime
+              isWithinRange: isWithinPermissionTime,
+              hasHourlyPermission,
+              isPermissionExpired,
+              canSecondCheckIn
             });
             
             if (isWithinPermissionTime) {
@@ -310,7 +328,11 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         statusDetails,
         conflictPriority,
         allowPermissionOverlap,
-        hasHardBlock
+        hasHardBlock,
+        hasHourlyPermission,
+        isPermissionExpired,
+        canSecondCheckIn,
+        permissionEndTime
       };
     },
     enabled: !!targetUserId,
