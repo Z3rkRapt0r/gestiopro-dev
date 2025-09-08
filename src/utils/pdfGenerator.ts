@@ -387,7 +387,9 @@ export const generateAttendancePDF = async ({
       const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
 
       // Genera una sezione per ogni dipendente
-      sortedEmployees.forEach(([employeeId, group], index) => {
+      for (let index = 0; index < sortedEmployees.length; index++) {
+        const [employeeId, group] = sortedEmployees[index];
+        
         // Se non è il primo dipendente, aggiungi una nuova pagina
         if (index > 0) {
           doc.addPage();
@@ -406,7 +408,9 @@ export const generateAttendancePDF = async ({
         const sortedMonths = Object.entries(group.months).sort(([a], [b]) => a.localeCompare(b));
 
         // Genera una tabella per ogni mese del dipendente
-        sortedMonths.forEach(([monthKey, monthRecords], monthIndex) => {
+        for (let monthIndex = 0; monthIndex < sortedMonths.length; monthIndex++) {
+          const [monthKey, monthRecords] = sortedMonths[monthIndex];
+          
           // Controlla se c'è spazio sufficiente per la tabella, altrimenti nuova pagina
           const estimatedTableHeight = monthRecords.length * 6 + 20; // Stima altezza tabella
           if (currentY + estimatedTableHeight > 250) { // 250 è circa l'altezza utile della pagina
@@ -486,7 +490,7 @@ export const generateAttendancePDF = async ({
 
           // Aggiorna la posizione Y per il prossimo elemento
           currentY = (doc as any).lastAutoTable?.finalY || currentY + 50;
-        });
+        }
         
         // Aggiungi statistiche del dipendente (solo straordinari se presenti)
         const totalOvertime = Object.values(group.months).flat().reduce((sum, att) => sum + (att.overtime_hours || 0), 0);
@@ -496,7 +500,7 @@ export const generateAttendancePDF = async ({
           doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 5);
           currentY += 10;
         }
-      });
+      }
     } else {
       // Per esportazione singolo dipendente, mantieni il formato originale
       const singleRecords = data;
