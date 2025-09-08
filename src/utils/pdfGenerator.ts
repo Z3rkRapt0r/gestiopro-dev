@@ -79,8 +79,8 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
       img.onerror = reject;
     });
     
-    // Calculate logo size (max 50px height, maintain aspect ratio)
-    const maxHeight = 50;
+    // Calculate logo size (max 30px height, maintain aspect ratio)
+    const maxHeight = 30;
     const aspectRatio = img.width / img.height;
     const logoHeight = Math.min(maxHeight, img.height);
     const logoWidth = logoHeight * aspectRatio;
@@ -104,8 +104,8 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
 // Helper: create a test logo when no logo is available
 const createTestLogo = (doc: jsPDF): number => {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const logoWidth = 60;
-  const logoHeight = 30;
+  const logoWidth = 40;
+  const logoHeight = 20;
   const logoX = (pageWidth - logoWidth) / 2;
   
   // Background rectangle
@@ -115,13 +115,13 @@ const createTestLogo = (doc: jsPDF): number => {
   
   // Text
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('A.L.M.', logoX + 5, 25);
   doc.setFontSize(10);
-  doc.text('INFISSI', logoX + 5, 35);
+  doc.setFont('helvetica', 'bold');
+  doc.text('A.L.M.', logoX + 3, 18);
+  doc.setFontSize(7);
+  doc.text('INFISSI', logoX + 3, 25);
   
-  return logoHeight + 15; // 30 + 15 spacing
+  return logoHeight + 10; // 20 + 10 spacing
 };
 
 interface ExportParams {
