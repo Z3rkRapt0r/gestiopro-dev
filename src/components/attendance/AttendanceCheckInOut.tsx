@@ -357,7 +357,8 @@ export default function AttendanceCheckInOut() {
                 <div className="text-center">
                   <Badge variant={getConflictAlertVariant(employeeStatus.conflictPriority)} className="text-xs">
                     {employeeStatus.conflictPriority >= 4 && 'BLOCCATO - Conflitto critico'}
-                    {employeeStatus.conflictPriority === 3 && !employeeStatus?.isPermissionExpired && 'BLOCCATO - Permesso attivo'}
+                    {employeeStatus.conflictPriority === 3 && !employeeStatus?.isPermissionExpired && 
+                      `BLOCCATO - Permesso dalle ${employeeStatus.statusDetails?.timeFrom || 'N/A'} alle ${employeeStatus.statusDetails?.timeTo || 'N/A'}`}
                     {employeeStatus.conflictPriority === 2 && 'BLOCCATO - In trasferta'}
                   </Badge>
                 </div>
@@ -502,7 +503,8 @@ export default function AttendanceCheckInOut() {
                     : 'text-blue-800'
                 }`}>
                   {employeeStatus.conflictPriority >= 4 && 'PRESENZA VIETATA'}
-                  {employeeStatus.conflictPriority === 3 && !employeeStatus?.isPermissionExpired && 'BLOCCATO - Permesso attivo'}
+                  {employeeStatus.conflictPriority === 3 && !employeeStatus?.isPermissionExpired && 
+                    `BLOCCATO - Permesso dalle ${employeeStatus.statusDetails?.timeFrom || 'N/A'} alle ${employeeStatus.statusDetails?.timeTo || 'N/A'}`}
                   {employeeStatus.conflictPriority === 3 && employeeStatus?.isPermissionExpired && 'CONFLITTO RILEVATO'}
                   {employeeStatus.conflictPriority === 2 && 'CONFLITTO RILEVATO'}
                   {employeeStatus.conflictPriority === 1 && 'INFORMAZIONE'}
