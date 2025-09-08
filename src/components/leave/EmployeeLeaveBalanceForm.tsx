@@ -51,7 +51,7 @@ export function EmployeeLeaveBalanceForm({ onSuccess }: EmployeeLeaveBalanceForm
   };
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => currentYear + i - 2);
+  const years = Array.from({ length: 6 }, (_, i) => currentYear + i);
 
   const getTrackingTypeInfo = (trackingType?: string) => {
     if (trackingType === 'from_year_start') {
