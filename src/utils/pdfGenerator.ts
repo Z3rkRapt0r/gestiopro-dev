@@ -173,8 +173,8 @@ const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number;
           img.onerror = reject;
         });
         
-        // Calcola dimensioni del logo (max 15px di altezza)
-        const maxHeight = 15;
+        // Calcola dimensioni del logo (max 10px di altezza)
+        const maxHeight = 10;
         const aspectRatio = img.width / img.height;
         const logoHeight = Math.min(maxHeight, img.height);
         const logoWidth = logoHeight * aspectRatio;
