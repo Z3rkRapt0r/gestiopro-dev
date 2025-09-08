@@ -226,9 +226,9 @@ const addFooter = (doc: jsPDF, logoData?: { url: string; width: number; height: 
       // Disegna il testo
       doc.text(poweredByText, startX, y);
       
-      // Disegna il logo usando l'URL diretto
+      // Disegna il logo allineato orizzontalmente al centro con il testo
       const logoX = startX + textWidth + 8;
-      const logoY = y - logoData.height + 2;
+      const logoY = y - (logoData.height / 2); // Centrato verticalmente con il testo
       doc.addImage(logoData.url, 'PNG', logoX, logoY, logoData.width, logoData.height);
       
       console.log('Footer con logo aggiunto:', { startX, y, logoX, logoY, logoWidth: logoData.width, logoHeight: logoData.height });
