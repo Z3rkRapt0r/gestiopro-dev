@@ -49,17 +49,11 @@ const isPureAbsenceDay = (att: AttendanceData): boolean => {
 // Helper: add company logo to PDF header
 const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<number> => {
   console.log('Tentativo di caricare logo:', logoUrl);
+  
+  // Se non c'è logo URL, crea un logo di test
   if (!logoUrl) {
-    console.log('Nessun logo URL fornito - usando logo di test');
-    // Logo di test: un rettangolo con testo "LOGO"
-    doc.setFillColor(0, 100, 200);
-    doc.setDrawColor(0, 100, 200);
-    doc.rect(80, 10, 40, 20, 'FD');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('LOGO', 95, 23);
-    return 35; // 20 + 15 spacing
+    console.log('Nessun logo URL fornito - creando logo di test');
+    return createTestLogo(doc);
   }
   
   try {
@@ -68,7 +62,7 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
     const response = await fetch(logoUrl);
     if (!response.ok) {
       console.warn('Impossibile caricare il logo:', logoUrl, 'Status:', response.status);
-      return 0;
+      return createTestLogo(doc);
     }
     
     const blob = await response.blob();
@@ -103,8 +97,31 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<numbe
     return logoHeight + 15; // Return the height used by logo + spacing
   } catch (error) {
     console.error('Errore nel caricamento del logo:', error);
-    return 0;
+    return createTestLogo(doc);
   }
+};
+
+// Helper: create a test logo when no logo is available
+const createTestLogo = (doc: jsPDF): number => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const logoWidth = 60;
+  const logoHeight = 30;
+  const logoX = (pageWidth - logoWidth) / 2;
+  
+  // Background rectangle
+  doc.setFillColor(0, 100, 200);
+  doc.setDrawColor(0, 100, 200);
+  doc.rect(logoX, 10, logoWidth, logoHeight, 'FD');
+  
+  // Text
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('A.L.M.', logoX + 5, 25);
+  doc.setFontSize(10);
+  doc.text('INFISSI', logoX + 5, 35);
+  
+  return logoHeight + 15; // 30 + 15 spacing
 };
 
 interface ExportParams {
