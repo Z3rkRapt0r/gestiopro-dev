@@ -524,7 +524,8 @@ export default function AttendanceCheckInOut() {
 
               {employeeStatus.statusDetails && 
                !(employeeStatus?.hasHourlyPermission && !employeeStatus?.isPermissionExpired) && 
-               employeeStatus.statusDetails.type !== 'Presenza già registrata' && (
+               employeeStatus.statusDetails.type !== 'Presenza già registrata' &&
+               employeeStatus.conflictPriority !== 1 && (
                 <div className={`mt-3 p-3 rounded-md text-xs ${
                   employeeStatus.conflictPriority >= 4 
                     ? 'bg-red-100 text-red-800' 
