@@ -13,6 +13,7 @@ import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useRealisticAttendanceStats } from '@/hooks/useRealisticAttendanceStats';
 import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceStats';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
+import { useMultipleCheckins } from '@/hooks/useMultipleCheckins';
 import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
@@ -28,6 +29,7 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
 
   const { workSchedule: companyWorkSchedule } = useWorkSchedules();
   const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(employee?.id);
+  const { data: multipleCheckins } = useMultipleCheckins(employee?.id);
   const { leaveRequests } = useLeaveRequests();
   const stats = useRealisticAttendanceStats(employee, attendances, companyWorkSchedule, employeeWorkSchedule);
   
@@ -67,6 +69,11 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
   // Formattiamo la data selezionata in modo consistente
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
+  
+  // Trova i multiple check-ins per la data selezionata
+  const selectedDateMultipleCheckins = multipleCheckins?.filter(checkin => 
+    checkin.date === selectedDateStr && checkin.is_second_checkin
+  ) || [];
 
   // Date con presenze per il calendario (escludendo ferie e malattie)
   const attendanceDates = useMemo(() => {
@@ -540,6 +547,14 @@ export default function NewEmployeeAttendanceCalendar({ employee, attendances }:
                           {formatTime(selectedDateAttendance.check_in_time)}
                         </div>
                       </div>
+                      {selectedDateMultipleCheckins.length > 0 && (
+                        <div>
+                          <span className="text-gray-600">Seconda Entrata:</span>
+                          <div className="font-medium">
+                            {formatTime(selectedDateMultipleCheckins[0].checkin_time)}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <span className="text-gray-600">Uscita:</span>
                         <div className="font-medium">

@@ -16,6 +16,7 @@ import { getEmployeeStatusForDate, formatHireDate } from '@/utils/employeeStatus
 import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
+import { useMultipleCheckins } from '@/hooks/useMultipleCheckins';
 
 interface EmployeeAttendanceCalendarProps {
   employee: EmployeeProfile;
@@ -121,6 +122,14 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
   // Ottieni le presenze per la data selezionata
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined;
   const selectedDateAttendance = attendances.find(att => att.date === selectedDateStr);
+  
+  // Ottieni i multiple check-ins per il dipendente
+  const { data: multipleCheckins } = useMultipleCheckins(employee?.id);
+  
+  // Trova i multiple check-ins per la data selezionata
+  const selectedDateMultipleCheckins = multipleCheckins?.filter(checkin => 
+    checkin.date === selectedDateStr && checkin.is_second_checkin
+  ) || [];
 
   // Ottieni le date con presenze (escludendo ferie)
   const attendanceDates = attendances
@@ -664,6 +673,14 @@ export default function EmployeeAttendanceCalendar({ employee, attendances }: Em
                         {formatTime(selectedDateAttendance.check_in_time)}
                       </div>
                     </div>
+                    {selectedDateMultipleCheckins.length > 0 && (
+                      <div>
+                        <span className="text-gray-600">Seconda Entrata:</span>
+                        <div className="font-medium">
+                          {formatTime(selectedDateMultipleCheckins[0].checkin_time)}
+                        </div>
+                      </div>
+                    )}
                     <div>
                       <span className="text-gray-600">Uscita:</span>
                       <div className="font-medium">
