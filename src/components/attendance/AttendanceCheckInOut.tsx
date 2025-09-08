@@ -388,19 +388,23 @@ export default function AttendanceCheckInOut() {
             </div>
           )}
 
-          {/* NUOVO: Tasto seconda entrata - Solo se c'è permesso orario scaduto E non è già stata registrata */}
+          {/* NUOVO: Tasto seconda entrata - Solo se c'è permesso orario scaduto E non è già stata registrata E prima presenza registrata */}
           {(() => {
             // Controlla se è già stata registrata una seconda entrata per oggi
             const hasSecondCheckin = todayCheckins?.some(checkin => checkin.is_second_checkin) || false;
+            // Controlla se è stata registrata la prima presenza (non seconda entrata)
+            const hasFirstCheckin = todayCheckins?.some(checkin => !checkin.is_second_checkin) || false;
             const shouldShow = employeeStatus?.canSecondCheckIn && 
                               employeeStatus?.hasHourlyPermission && 
                               employeeStatus?.isPermissionExpired && 
-                              !hasSecondCheckin;
+                              !hasSecondCheckin &&
+                              hasFirstCheckin;
             console.log('🔍 Debug tasto seconda entrata:', {
               canSecondCheckIn: employeeStatus?.canSecondCheckIn,
               hasHourlyPermission: employeeStatus?.hasHourlyPermission,
               isPermissionExpired: employeeStatus?.isPermissionExpired,
               hasSecondCheckin,
+              hasFirstCheckin,
               todayCheckins: todayCheckins?.length || 0,
               allConditions: shouldShow,
               shouldShowButton: shouldShow
