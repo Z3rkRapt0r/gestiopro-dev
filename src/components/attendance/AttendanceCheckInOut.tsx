@@ -186,7 +186,18 @@ export default function AttendanceCheckInOut() {
                 {employeeStatus.statusDetails.timeFrom} - {employeeStatus.statusDetails.timeTo}
               </div>
               <div className="mt-1 text-xs text-yellow-600">
-                Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso
+                {(() => {
+                  // Controlla se c'è stata una prima entrata normale
+                  const hasFirstCheckin = todayCheckins?.some(checkin => !checkin.is_second_checkin) || false;
+                  
+                  if (hasFirstCheckin) {
+                    // Permesso in mezzo alla giornata - serve seconda entrata
+                    return "Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso";
+                  } else {
+                    // Permesso dall'inizio del turno - non serve seconda entrata
+                    return "La prima registrazione di ingresso che effettuerai sarà considerata come entrata principale";
+                  }
+                })()}
               </div>
             </div>
           )}
