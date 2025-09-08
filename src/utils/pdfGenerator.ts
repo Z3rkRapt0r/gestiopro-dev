@@ -231,8 +231,7 @@ const addFooter = (doc: jsPDF, logoData?: { url: string; width: number; height: 
       const logoY = y - (logoData.height / 2); // Centrato verticalmente con il testo
       doc.addImage(logoData.url, 'PNG', logoX, logoY, logoData.width, logoData.height);
       
-      // Aggiungi link cliccabile al logo (jsPDF non supporta target: '_blank' nativamente)
-      // Il comportamento di apertura in nuova finestra dipende dal lettore PDF
+      // Aggiungi link cliccabile al logo
       doc.link(logoX, logoY, logoData.width, logoData.height, 'https://licenseglobal.it/');
       
       console.log('Footer con logo aggiunto:', { startX, y, logoX, logoY, logoWidth: logoData.width, logoHeight: logoData.height });
