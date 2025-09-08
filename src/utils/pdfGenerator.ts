@@ -309,9 +309,9 @@ export const generateAttendancePDF = async ({
 
         // Genera una tabella per ogni mese del dipendente
         sortedMonths.forEach(([monthKey, monthRecords]) => {
-          // Se non è il primo mese, aggiungi spazio
+          // Se non è il primo mese, aggiungi spazio minimo
           if (currentY > 65) {
-            currentY += 10;
+            currentY += 5;
           }
 
           // Titolo mese
@@ -320,7 +320,7 @@ export const generateAttendancePDF = async ({
           doc.setFontSize(12);
           doc.setTextColor(60, 60, 60);
           doc.text(`Mese: ${monthName}`, 20, currentY);
-          currentY += 10;
+          currentY += 8;
 
           // Ordina i record del mese per data
           const sortedRecords = monthRecords.sort((a, b) => a.date.localeCompare(b.date));
@@ -341,7 +341,7 @@ export const generateAttendancePDF = async ({
             startY: currentY,
             styles: {
               fontSize: 8,
-              cellPadding: 2,
+              cellPadding: 1,
             },
             headStyles: {
               fillColor: [41, 128, 185],
@@ -377,7 +377,7 @@ export const generateAttendancePDF = async ({
           });
 
           // Aggiorna la posizione Y per il prossimo elemento
-          currentY = (doc as any).lastAutoTable?.finalY || currentY + 50;
+          currentY = (doc as any).lastAutoTable?.finalY || currentY + 20;
         });
         
         // Aggiungi statistiche del dipendente (solo straordinari se presenti)
@@ -385,7 +385,7 @@ export const generateAttendancePDF = async ({
         if (totalOvertime > 0) {
           doc.setFontSize(10);
           doc.setTextColor(100, 100, 100);
-          doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 10);
+          doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 5);
         }
       });
     } else {
