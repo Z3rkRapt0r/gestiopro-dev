@@ -47,12 +47,17 @@ const isPureAbsenceDay = (att: AttendanceData): boolean => {
 };
 
 // Helper: add company logo to PDF header
-const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null) => {
-  if (!logoUrl) return;
+const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<number> => {
+  if (!logoUrl) return 0;
   
   try {
     // Fetch the logo image
     const response = await fetch(logoUrl);
+    if (!response.ok) {
+      console.warn('Impossibile caricare il logo:', logoUrl);
+      return 0;
+    }
+    
     const blob = await response.blob();
     const arrayBuffer = await blob.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
@@ -62,12 +67,13 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null) => {
     img.src = `data:image/png;base64,${base64}`;
     
     // Wait for image to load
-    await new Promise((resolve) => {
+    await new Promise((resolve, reject) => {
       img.onload = resolve;
+      img.onerror = reject;
     });
     
-    // Calculate logo size (max 60px height, maintain aspect ratio)
-    const maxHeight = 60;
+    // Calculate logo size (max 50px height, maintain aspect ratio)
+    const maxHeight = 50;
     const aspectRatio = img.width / img.height;
     const logoHeight = Math.min(maxHeight, img.height);
     const logoWidth = logoHeight * aspectRatio;
@@ -78,8 +84,11 @@ const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null) => {
     
     // Add logo to current page
     doc.addImage(`data:image/png;base64,${base64}`, 'PNG', logoX, 10, logoWidth, logoHeight);
+    
+    return logoHeight + 15; // Return the height used by logo + spacing
   } catch (error) {
     console.error('Errore nel caricamento del logo:', error);
+    return 0;
   }
 };
 
@@ -261,12 +270,10 @@ export const generateAttendancePDF = async ({
     doc.setFont('helvetica');
     
     // Aggiungi logo aziendale se disponibile
-    if (companyLogoUrl) {
-      await addCompanyLogo(doc, companyLogoUrl);
-    }
+    const logoHeight = await addCompanyLogo(doc, companyLogoUrl);
     
     // Titolo (spostato più in basso se c'è il logo)
-    const titleY = companyLogoUrl ? 35 : 25;
+    const titleY = logoHeight > 0 ? logoHeight + 20 : 25;
     doc.setFontSize(20);
     doc.setTextColor(40, 40, 40);
     const title = exportType === 'general' 
@@ -279,34 +286,35 @@ export const generateAttendancePDF = async ({
     doc.setFontSize(12);
     doc.setTextColor(100, 100, 100);
     const periodo = `Periodo: ${format(dateFrom, 'dd/MM/yyyy', { locale: it })} - ${format(dateTo, 'dd/MM/yyyy', { locale: it })}`;
-    doc.text(periodo, 20, 35);
+    doc.text(periodo, 20, titleY + 10);
     
     // Data di generazione
     const dataGenerazione = `Generato il: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: it })}`;
-    doc.text(dataGenerazione, 20, 45);
+    doc.text(dataGenerazione, 20, titleY + 20);
 
     // Legend for colors - compatta e visibile
+    const legendY = titleY + 30;
     doc.setFontSize(10);
     doc.setTextColor(40, 40, 40);
     doc.setFont('helvetica', 'bold');
-    doc.text('LEGENDA:', 20, 52);
+    doc.text('LEGENDA:', 20, legendY);
     
     // Red for pure absences - in linea
     doc.setFillColor(255, 220, 220);
     doc.setDrawColor(255, 150, 150);
     doc.setLineWidth(0.2);
-    doc.rect(20, 55, 6, 6, 'FD');
+    doc.rect(20, legendY + 3, 6, 6, 'FD');
     doc.setTextColor(40, 40, 40);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text('Assenze (giornate senza giustificazione)', 30, 60);
+    doc.text('Assenze (giornate senza giustificazione)', 30, legendY + 8);
     
     // Yellow for late - in linea
     doc.setFillColor(255, 245, 157);
     doc.setDrawColor(255, 200, 100);
-    doc.rect(20, 63, 6, 6, 'FD');
+    doc.rect(20, legendY + 11, 6, 6, 'FD');
     doc.setTextColor(40, 40, 40);
-    doc.text('Ritardi (evidenziati in giallo)', 30, 68);
+    doc.text('Ritardi (evidenziati in giallo)', 30, legendY + 16);
 
     // Reset default text color
     doc.setTextColor(40, 40, 40);
@@ -341,7 +349,7 @@ export const generateAttendancePDF = async ({
         a.employeeName.localeCompare(b.employeeName)
       );
 
-      let currentY = 80;
+      let currentY = legendY + 25;
       const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
 
       // Genera una sezione per ogni dipendente
@@ -350,10 +358,8 @@ export const generateAttendancePDF = async ({
         if (index > 0) {
           doc.addPage();
           // Aggiungi logo anche alle pagine successive
-          if (companyLogoUrl) {
-            await addCompanyLogo(doc, companyLogoUrl);
-          }
-          currentY = companyLogoUrl ? 80 : 20;
+          await addCompanyLogo(doc, companyLogoUrl);
+          currentY = logoHeight > 0 ? logoHeight + 20 : 20;
         }
 
         // Titolo sezione dipendente
@@ -372,10 +378,8 @@ export const generateAttendancePDF = async ({
           if (currentY + estimatedTableHeight > 250) { // 250 è circa l'altezza utile della pagina
             doc.addPage();
             // Aggiungi logo anche alle pagine successive
-            if (companyLogoUrl) {
-              await addCompanyLogo(doc, companyLogoUrl);
-            }
-            currentY = companyLogoUrl ? 80 : 20;
+            await addCompanyLogo(doc, companyLogoUrl);
+            currentY = logoHeight > 0 ? logoHeight + 20 : 20;
           } else if (monthIndex > 0) {
             // Solo un piccolo spazio tra le tabelle dello stesso dipendente
             currentY += 5;
@@ -476,7 +480,7 @@ export const generateAttendancePDF = async ({
       autoTable(doc, {
         head: tableHeaders,
         body: tableData,
-        startY: 65,
+        startY: legendY + 25,
         styles: {
           fontSize: 8,
           cellPadding: 2,

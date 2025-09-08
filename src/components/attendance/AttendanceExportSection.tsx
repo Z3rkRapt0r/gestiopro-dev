@@ -54,10 +54,10 @@ export default function AttendanceExportSection() {
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { settings: attendanceSettings } = useAttendanceSettings();
+  const { settings: dashboardSettings } = useDashboardSettings();
   const { getSickLeavesForDate } = useSickLeavesForCalendars();
   const { workSchedule: companyWorkSchedule } = useWorkSchedules();
   const { isHoliday, getHolidayName } = useCompanyHolidays();
-  const { settings: dashboardSettings } = useDashboardSettings();
   
   // Fetch leave requests for the export period
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
@@ -452,7 +452,7 @@ export default function AttendanceExportSection() {
         exportType,
         selectedEmployee: selectedEmployeeData,
         attendanceSettings,
-        companyLogoUrl: dashboardSettings?.logo_url
+        companyLogoUrl: dashboardSettings.logo_url
       });
       
       toast({
