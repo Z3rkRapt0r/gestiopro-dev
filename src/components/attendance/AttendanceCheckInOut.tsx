@@ -411,13 +411,15 @@ export default function AttendanceCheckInOut() {
             const hasMainCheckin = todayAttendance?.check_in_time ? true : false;
             const hasFirstCheckin = todayCheckins?.some(checkin => !checkin.is_second_checkin) || false;
             const hasAnyFirstCheckin = hasMainCheckin || hasFirstCheckin;
-            // Mostra il pulsante SOLO se: permesso scaduto E non c'è seconda entrata E c'è stata una prima presenza normale
-            // NON mostrare se non c'è nessuna presenza (permesso dall'inizio del turno)
+            
+            // Logica coerente con il messaggio: mostra il pulsante solo se il messaggio dice che serve seconda entrata
+            // Il messaggio dice "serve seconda entrata" quando hasAnyFirstCheckin = true
+            // Il messaggio dice "non serve seconda entrata" quando hasAnyFirstCheckin = false
             const shouldShow = employeeStatus?.canSecondCheckIn && 
                               employeeStatus?.hasHourlyPermission && 
                               employeeStatus?.isPermissionExpired && 
                               !hasSecondCheckin &&
-                              hasAnyFirstCheckin; // Solo se c'è stata una presenza normale
+                              hasAnyFirstCheckin; // Solo se c'è stata una presenza normale (coerente con il messaggio)
             console.log('🔍 Debug tasto seconda entrata:', {
               canSecondCheckIn: employeeStatus?.canSecondCheckIn,
               hasHourlyPermission: employeeStatus?.hasHourlyPermission,
@@ -427,7 +429,15 @@ export default function AttendanceCheckInOut() {
               hasFirstCheckin,
               hasAnyFirstCheckin,
               todayCheckins: todayCheckins?.length || 0,
-              shouldShowButton: shouldShow
+              todayAttendance: !!todayAttendance,
+              todayAttendanceCheckIn: todayAttendance?.check_in_time,
+              shouldShowButton: shouldShow,
+              // Debug delle condizioni
+              condition1: employeeStatus?.canSecondCheckIn,
+              condition2: employeeStatus?.hasHourlyPermission,
+              condition3: employeeStatus?.isPermissionExpired,
+              condition4: !hasSecondCheckin,
+              condition5: hasAnyFirstCheckin
             });
             return shouldShow;
           })() && (
