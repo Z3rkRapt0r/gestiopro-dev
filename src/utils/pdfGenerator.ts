@@ -128,15 +128,25 @@ const createTestLogo = (doc: jsPDF): number => {
 // Helper: load License Global logo from bucket
 const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number; height: number } | null> => {
   try {
+    console.log('Tentativo di caricare logo License Global...');
+    
     // Prova a caricare il logo dal bucket company-logos
     const { data: { publicUrl } } = supabase.storage
       .from('company-logos')
       .getPublicUrl('Logo License Global/logo.png');
     
-    if (!publicUrl) return null;
+    console.log('URL del logo License Global:', publicUrl);
+    
+    if (!publicUrl) {
+      console.log('Nessun URL pubblico trovato per il logo License Global');
+      return null;
+    }
     
     const response = await fetch(publicUrl);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.log('Errore nel fetch del logo:', response.status, response.statusText);
+      return null;
+    }
     
     const blob = await response.blob();
     const arrayBuffer = await blob.arrayBuffer();
@@ -157,6 +167,8 @@ const loadLicenseGlobalLogo = async (): Promise<{ base64: string; width: number;
     const logoHeight = Math.min(maxHeight, img.height);
     const logoWidth = logoHeight * aspectRatio;
     
+    console.log('Logo License Global caricato con successo:', { width: logoWidth, height: logoHeight });
+    
     return { base64, width: logoWidth, height: logoHeight };
   } catch (error) {
     console.error('Errore nel caricamento del logo License Global:', error);
@@ -169,31 +181,51 @@ const addFooter = (doc: jsPDF, logoData?: { base64: string; width: number; heigh
   const pageHeight = doc.internal.pageSize.getHeight();
   const pageWidth = doc.internal.pageSize.getWidth();
   
-  if (logoData) {
-    // Testo "Powered by"
+  console.log('Aggiungendo footer, logo data:', logoData ? 'presente' : 'assente');
+  
+  if (logoData && logoData.base64) {
+    try {
+      // Testo "Powered by"
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.setFont('helvetica', 'normal');
+      const poweredByText = 'Powered by';
+      const textWidth = doc.getTextWidth(poweredByText);
+      
+      // Posiziona il testo e il logo centrati
+      const totalWidth = textWidth + 8 + logoData.width; // 8px di spazio tra testo e logo
+      const startX = (pageWidth - totalWidth) / 2;
+      const y = pageHeight - 15; // 15px dal fondo
+      
+      // Disegna il testo
+      doc.text(poweredByText, startX, y);
+      
+      // Disegna il logo
+      const logoX = startX + textWidth + 8;
+      const logoY = y - logoData.height + 2;
+      doc.addImage(`data:image/png;base64,${logoData.base64}`, 'PNG', logoX, logoY, logoData.width, logoData.height);
+      
+      console.log('Footer con logo aggiunto:', { startX, y, logoX, logoY, logoWidth: logoData.width, logoHeight: logoData.height });
+    } catch (error) {
+      console.error('Errore nel disegnare il footer con logo:', error);
+      // Fallback al testo semplice
+      const footerText = 'Powered by License Global';
+      const textWidth = doc.getTextWidth(footerText);
+      const x = (pageWidth - textWidth) / 2;
+      const y = pageHeight - 10;
+      doc.text(footerText, x, y);
+    }
+  } else {
+    // Fallback al testo se il logo non è disponibile
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
     doc.setFont('helvetica', 'normal');
-    const poweredByText = 'Powered by';
-    const textWidth = doc.getTextWidth(poweredByText);
-    
-    // Posiziona il testo e il logo centrati
-    const totalWidth = textWidth + 5 + logoData.width; // 5px di spazio tra testo e logo
-    const startX = (pageWidth - totalWidth) / 2;
-    const y = pageHeight - 15; // 15px dal fondo
-    
-    // Disegna il testo
-    doc.text(poweredByText, startX, y);
-    
-    // Disegna il logo
-    doc.addImage(`data:image/png;base64,${logoData.base64}`, 'PNG', startX + textWidth + 5, y - logoData.height + 2, logoData.width, logoData.height);
-  } else {
-    // Fallback al testo se il logo non è disponibile
     const footerText = 'Powered by License Global';
     const textWidth = doc.getTextWidth(footerText);
     const x = (pageWidth - textWidth) / 2;
     const y = pageHeight - 10;
     doc.text(footerText, x, y);
+    console.log('Footer solo testo aggiunto:', { x, y });
   }
 };
 
