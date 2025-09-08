@@ -50,8 +50,16 @@ const isPureAbsenceDay = (att: AttendanceData): boolean => {
 const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<number> => {
   console.log('Tentativo di caricare logo:', logoUrl);
   if (!logoUrl) {
-    console.log('Nessun logo URL fornito');
-    return 0;
+    console.log('Nessun logo URL fornito - usando logo di test');
+    // Logo di test: un rettangolo con testo "LOGO"
+    doc.setFillColor(0, 100, 200);
+    doc.setDrawColor(0, 100, 200);
+    doc.rect(80, 10, 40, 20, 'FD');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('LOGO', 95, 23);
+    return 35; // 20 + 15 spacing
   }
   
   try {
