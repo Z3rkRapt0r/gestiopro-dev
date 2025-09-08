@@ -182,7 +182,12 @@ export default function AttendanceCheckInOut() {
           </div>
           {employeeStatus.statusDetails && (
             <div className="mt-2 text-sm text-yellow-700">
-              {employeeStatus.statusDetails.timeFrom} - {employeeStatus.statusDetails.timeTo}
+              <div className="font-medium">
+                {employeeStatus.statusDetails.timeFrom} - {employeeStatus.statusDetails.timeTo}
+              </div>
+              <div className="mt-1 text-xs text-yellow-600">
+                Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso
+              </div>
             </div>
           )}
         </div>
