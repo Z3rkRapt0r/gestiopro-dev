@@ -554,8 +554,8 @@ export const generateAttendancePDF = async ({
           const [monthKey, monthRecords] = sortedMonths[monthIndex];
           
           // Controlla se c'è spazio sufficiente per la tabella, altrimenti nuova pagina
-          const estimatedTableHeight = monthRecords.length * 6 + 20; // Stima altezza tabella
-          if (currentY + estimatedTableHeight > 250) { // 250 è circa l'altezza utile della pagina
+          const estimatedTableHeight = monthRecords.length * 4 + 15; // Stima altezza tabella ridotta
+          if (currentY + estimatedTableHeight > 280) { // 280 è l'altezza utile della pagina (aumentata)
             doc.addPage();
             // Aggiungi logo anche alle pagine successive
             await addCompanyLogo(doc, companyLogoUrl);
@@ -564,16 +564,16 @@ export const generateAttendancePDF = async ({
             currentY = logoHeight > 0 ? logoHeight + 20 : 20;
           } else if (monthIndex > 0) {
             // Solo un piccolo spazio tra le tabelle dello stesso dipendente
-            currentY += 5;
+            currentY += 3;
           }
 
           // Titolo mese
           const monthDate = parseISO(monthKey + '-01');
           const monthName = format(monthDate, 'MMMM yyyy', { locale: it });
-          doc.setFontSize(12);
+          doc.setFontSize(10);
           doc.setTextColor(60, 60, 60);
           doc.text(`Mese: ${monthName}`, 20, currentY);
-          currentY += 8;
+          currentY += 5;
 
           // Ordina i record del mese per data
           const sortedRecords = monthRecords.sort((a, b) => a.date.localeCompare(b.date));
@@ -637,16 +637,16 @@ export const generateAttendancePDF = async ({
           });
 
           // Aggiorna la posizione Y per il prossimo elemento
-          currentY = (doc as any).lastAutoTable?.finalY || currentY + 50;
+          currentY = (doc as any).lastAutoTable?.finalY || currentY + 30;
         }
         
         // Aggiungi statistiche del dipendente (solo straordinari se presenti)
         const totalOvertime = Object.values(group.months).flat().reduce((sum, att) => sum + (att.overtime_hours || 0), 0);
         if (totalOvertime > 0) {
-          doc.setFontSize(9);
+          doc.setFontSize(8);
           doc.setTextColor(100, 100, 100);
-          doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 5);
-          currentY += 10;
+          doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 3);
+          currentY += 6;
         }
       }
     } else {
@@ -672,8 +672,8 @@ export const generateAttendancePDF = async ({
           addFooter(doc, licenseGlobalLogoData);
         },
         styles: {
-          fontSize: 8,
-          cellPadding: 2,
+          fontSize: 7,
+          cellPadding: 1,
         },
         headStyles: {
           fillColor: [41, 128, 185],
