@@ -494,10 +494,7 @@ export default function AttendanceExportSection() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="w-5 h-5" />
-            Esportazione Presenze
-            {profile?.role === 'admin' && (
-              <Badge variant="outline" className="ml-2">Vista Admin</Badge>
-            )}
+            Esportazione massiva presenze dipendenti
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -512,13 +509,13 @@ export default function AttendanceExportSection() {
                 <SelectItem value="general">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    Calendario Generale
+                    Resoconto di tutti i dipendenti
                   </div>
                 </SelectItem>
                 <SelectItem value="operator">
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="w-4 h-4" />
-                    Calendario per Operatore
+                    Resoconto per singolo dipendente
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -552,8 +549,8 @@ export default function AttendanceExportSection() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="month">Mese Intero</SelectItem>
-                <SelectItem value="year">Anno Intero</SelectItem>
+                <SelectItem value="month">Mese</SelectItem>
+                <SelectItem value="year">Anno</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -634,7 +631,7 @@ export default function AttendanceExportSection() {
                 <div className="text-sm font-medium text-blue-700 mb-2">Anteprima Esportazione</div>
                 <div className="text-xs text-blue-600 space-y-1">
                   <div>Periodo: {format(from, 'dd/MM/yyyy', { locale: it })} - {format(to, 'dd/MM/yyyy', { locale: it })}</div>
-                  <div>Tipo: {exportType === 'general' ? 'Calendario Generale' : 'Calendario per Operatore'}</div>
+                  <div>Tipo: {exportType === 'general' ? 'Resoconto di tutti i dipendenti' : 'Resoconto per singolo dipendente'}</div>
                   {exportType === 'operator' && selectedEmployee && (
                     <div>Operatore: {employees?.find(e => e.id === selectedEmployee)?.first_name} {employees?.find(e => e.id === selectedEmployee)?.last_name}</div>
                   )}

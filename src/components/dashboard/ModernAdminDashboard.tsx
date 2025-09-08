@@ -30,6 +30,7 @@ import AdminOvertimeSection from '../overtime/AdminOvertimeSection';
 // Import new modern components
 import ModernAdminSidebar from './ModernAdminSidebar';
 import ModernAdminHeader from './ModernAdminHeader';
+import AppFooter from '../ui/AppFooter';
 
 const tabTitles = {
   dashboard: 'Dashboard',
@@ -250,6 +251,7 @@ export default function ModernAdminDashboard() {
                 {renderContent()}
               </div>
             </div>
+            <AppFooter />
           </main>
         </div>
       </div>

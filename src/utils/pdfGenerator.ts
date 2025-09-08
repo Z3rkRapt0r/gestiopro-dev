@@ -231,7 +231,10 @@ const addFooter = (doc: jsPDF, logoData?: { url: string; width: number; height: 
       const logoY = y - (logoData.height / 2); // Centrato verticalmente con il testo
       doc.addImage(logoData.url, 'PNG', logoX, logoY, logoData.width, logoData.height);
       
-      console.log('Footer con logo aggiunto:', { startX, y, logoX, logoY, logoWidth: logoData.width, logoHeight: logoData.height });
+      // Aggiungi link cliccabile al logo
+      doc.link(logoX, logoY, logoData.width, logoData.height, { url: 'https://licenseglobal.it/' });
+      
+      console.log('Footer con logo cliccabile aggiunto:', { startX, y, logoX, logoY, logoWidth: logoData.width, logoHeight: logoData.height });
     } catch (error) {
       console.error('Errore nel disegnare il footer con logo:', error);
       // Fallback al testo semplice

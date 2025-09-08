@@ -22,6 +22,7 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import { BarChart3, Calendar, Clock, FileText, MessageSquare, User } from 'lucide-react';
+import AppFooter from '../ui/AppFooter';
 
 export default function EmployeeDashboard() {
   const [activeSection, setActiveSection] = useState<'overview' | 'leaves' | 'attendances' | 'documents' | 'messages'>(() => {
@@ -188,6 +189,7 @@ export default function EmployeeDashboard() {
                 <div className="animate-fade-in">
                   {renderContent()}
                 </div>
+                <AppFooter />
               </div>
             </div>
           </SidebarInset>
