@@ -219,7 +219,7 @@ const addFooter = (doc: jsPDF, logoData?: { url: string; width: number; height: 
       const textWidth = doc.getTextWidth(poweredByText);
       
       // Posiziona il testo e il logo centrati
-      const totalWidth = textWidth + 8 + logoData.width; // 8px di spazio tra testo e logo
+      const totalWidth = textWidth + 3 + logoData.width; // 3px di spazio tra testo e logo
       const startX = (pageWidth - totalWidth) / 2;
       const y = pageHeight - 15; // 15px dal fondo
       
@@ -227,7 +227,7 @@ const addFooter = (doc: jsPDF, logoData?: { url: string; width: number; height: 
       doc.text(poweredByText, startX, y);
       
       // Disegna il logo allineato orizzontalmente al centro con il testo
-      const logoX = startX + textWidth + 8;
+      const logoX = startX + textWidth + 3;
       const logoY = y - (logoData.height / 2); // Centrato verticalmente con il testo
       doc.addImage(logoData.url, 'PNG', logoX, logoY, logoData.width, logoData.height);
       
