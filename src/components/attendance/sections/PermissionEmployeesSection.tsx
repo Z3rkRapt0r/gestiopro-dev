@@ -56,11 +56,9 @@ export default function PermissionEmployeesSection({
                     )}
                   </div>
                   
-                  {employee.secondCheckinTime && (
-                    <div className="text-xs text-blue-600 font-medium">
-                      Seconda Entrata: {formatTime(employee.secondCheckinTime)}
-                    </div>
-                  )}
+                  <div className="text-xs text-blue-600 font-medium">
+                    Seconda Entrata: {employee.secondCheckinTime ? formatTime(employee.secondCheckinTime) : 'Non registrata'}
+                  </div>
                   
                   {employee.leave?.note && (
                     <p className="text-xs text-gray-600">{employee.leave.note}</p>
