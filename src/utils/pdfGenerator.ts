@@ -53,6 +53,7 @@ interface ExportParams {
   exportType: 'general' | 'operator';
   selectedEmployee?: EmployeeData | null;
   attendanceSettings?: AttendanceSettings | null;
+  periodType?: 'month' | 'year';
 }
 
 // Funzione per formattare in modo sicuro le date
@@ -211,7 +212,8 @@ export const generateAttendancePDF = async ({
   dateTo,
   exportType,
   selectedEmployee,
-  attendanceSettings
+  attendanceSettings,
+  periodType
 }: ExportParams) => {
   try {
     console.log('Inizializzazione PDF con dati:', data.length, 'record');
@@ -294,66 +296,168 @@ export const generateAttendancePDF = async ({
         doc.text(`Dipendente: ${group.employeeName}`, 20, currentY);
         currentY += 15;
 
-        // Preparazione dati per la tabella del dipendente
-        const tableData = group.records.map(att => [
-          safeFormatDate(att.date),
-          att.day_name || '',
-          getAttendanceStatus(att),
-          getAttendanceTimeDisplay(att, attendanceSettings),
-          getOvertimeDisplay(att.overtime_hours)
-        ]);
+        // Se è esportazione annuale, dividi per mesi
+        if (periodType === 'year') {
+          // Raggruppa i record per mese
+          const monthlyGroups = group.records.reduce((months, att) => {
+            try {
+              const attDate = parseISO(att.date);
+              if (!isValid(attDate)) return months;
+              
+              const monthKey = `${attDate.getFullYear()}-${attDate.getMonth()}`;
+              if (!months[monthKey]) {
+                months[monthKey] = {
+                  monthName: format(attDate, 'MMMM yyyy', { locale: it }),
+                  records: []
+                };
+              }
+              months[monthKey].records.push(att);
+            } catch (error) {
+              console.error('Errore parsing data per raggruppamento mensile:', error, att.date);
+            }
+            return months;
+          }, {} as Record<string, { monthName: string; records: AttendanceData[] }>);
 
-        // Genera tabella per il dipendente
-        autoTable(doc, {
-          head: tableHeaders,
-          body: tableData,
-          startY: currentY,
-          styles: {
-            fontSize: 8,
-            cellPadding: 2,
-          },
-          headStyles: {
-            fillColor: [41, 128, 185],
-            textColor: 255,
-            fontStyle: 'bold',
-          },
-          alternateRowStyles: {
-            fillColor: [245, 245, 245],
-          },
-          columnStyles: {
-            0: { cellWidth: 30 }, // Data
-            1: { cellWidth: 25 }, // Giorno
-            2: { cellWidth: 40 }, // Stato Presenza
-            3: { cellWidth: 35 }, // Orario Timbratura
-            4: { cellWidth: 30 }, // Straordinari
-          },
-          tableWidth: 'wrap',
-          didParseCell: function(data) {
-            if (data.section === 'body') {
-              const rowIndex = data.row.index;
-              const attendanceRecord = group.records[rowIndex];
-              if (attendanceRecord) {
-                // Priorità: assenza pura (rosso) > ritardo (giallo)
-                if (isPureAbsenceDay(attendanceRecord)) {
-                  data.cell.styles.fillColor = [255, 220, 220];
-                } else if (attendanceRecord.is_late) {
-                  data.cell.styles.fillColor = [255, 245, 157];
+          // Ordina i mesi cronologicamente
+          const sortedMonths = Object.entries(monthlyGroups).sort(([a], [b]) => a.localeCompare(b));
+
+          // Genera una tabella per ogni mese
+          sortedMonths.forEach(([monthKey, monthData], monthIndex) => {
+            // Se non è il primo mese, aggiungi spazio
+            if (monthIndex > 0) {
+              currentY += 20;
+            }
+
+            // Titolo mese
+            doc.setFontSize(14);
+            doc.setTextColor(60, 60, 60);
+            doc.text(`${monthData.monthName}`, 20, currentY);
+            currentY += 10;
+
+            // Preparazione dati per la tabella del mese
+            const tableData = monthData.records.map(att => [
+              safeFormatDate(att.date),
+              att.day_name || '',
+              getAttendanceStatus(att),
+              getAttendanceTimeDisplay(att, attendanceSettings),
+              getOvertimeDisplay(att.overtime_hours)
+            ]);
+
+            // Genera tabella per il mese
+            autoTable(doc, {
+              head: tableHeaders,
+              body: tableData,
+              startY: currentY,
+              styles: {
+                fontSize: 8,
+                cellPadding: 2,
+              },
+              headStyles: {
+                fillColor: [41, 128, 185],
+                textColor: 255,
+                fontStyle: 'bold',
+              },
+              alternateRowStyles: {
+                fillColor: [245, 245, 245],
+              },
+              columnStyles: {
+                0: { cellWidth: 30 }, // Data
+                1: { cellWidth: 25 }, // Giorno
+                2: { cellWidth: 40 }, // Stato Presenza
+                3: { cellWidth: 35 }, // Orario Timbratura
+                4: { cellWidth: 30 }, // Straordinari
+              },
+              tableWidth: 'wrap',
+              didParseCell: function(data) {
+                if (data.section === 'body') {
+                  const rowIndex = data.row.index;
+                  const attendanceRecord = monthData.records[rowIndex];
+                  if (attendanceRecord) {
+                    // Priorità: assenza pura (rosso) > ritardo (giallo)
+                    if (isPureAbsenceDay(attendanceRecord)) {
+                      data.cell.styles.fillColor = [255, 220, 220];
+                    } else if (attendanceRecord.is_late) {
+                      data.cell.styles.fillColor = [255, 245, 157];
+                    }
+                  }
+                }
+              },
+              margin: { top: currentY, left: 20, right: 20 },
+            });
+
+            // Aggiorna la posizione Y per il prossimo elemento
+            currentY = (doc as any).lastAutoTable?.finalY || currentY + 50;
+          });
+
+          // Aggiungi statistiche totali del dipendente
+          const totalOvertime = group.records.reduce((sum, att) => sum + (att.overtime_hours || 0), 0);
+          if (totalOvertime > 0) {
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 10);
+          }
+        } else {
+          // Per esportazione mensile, mantieni la logica originale
+          const tableData = group.records.map(att => [
+            safeFormatDate(att.date),
+            att.day_name || '',
+            getAttendanceStatus(att),
+            getAttendanceTimeDisplay(att, attendanceSettings),
+            getOvertimeDisplay(att.overtime_hours)
+          ]);
+
+          // Genera tabella per il dipendente
+          autoTable(doc, {
+            head: tableHeaders,
+            body: tableData,
+            startY: currentY,
+            styles: {
+              fontSize: 8,
+              cellPadding: 2,
+            },
+            headStyles: {
+              fillColor: [41, 128, 185],
+              textColor: 255,
+              fontStyle: 'bold',
+            },
+            alternateRowStyles: {
+              fillColor: [245, 245, 245],
+            },
+            columnStyles: {
+              0: { cellWidth: 30 }, // Data
+              1: { cellWidth: 25 }, // Giorno
+              2: { cellWidth: 40 }, // Stato Presenza
+              3: { cellWidth: 35 }, // Orario Timbratura
+              4: { cellWidth: 30 }, // Straordinari
+            },
+            tableWidth: 'wrap',
+            didParseCell: function(data) {
+              if (data.section === 'body') {
+                const rowIndex = data.row.index;
+                const attendanceRecord = group.records[rowIndex];
+                if (attendanceRecord) {
+                  // Priorità: assenza pura (rosso) > ritardo (giallo)
+                  if (isPureAbsenceDay(attendanceRecord)) {
+                    data.cell.styles.fillColor = [255, 220, 220];
+                  } else if (attendanceRecord.is_late) {
+                    data.cell.styles.fillColor = [255, 245, 157];
+                  }
                 }
               }
-            }
-          },
-          margin: { top: currentY, left: 20, right: 20 },
-        });
+            },
+            margin: { top: currentY, left: 20, right: 20 },
+          });
 
-        // Aggiorna la posizione Y per il prossimo elemento
-        currentY = (doc as any).lastAutoTable?.finalY || currentY + 50;
-        
-        // Aggiungi statistiche del dipendente (solo straordinari se presenti)
-        const totalOvertime = group.records.reduce((sum, att) => sum + (att.overtime_hours || 0), 0);
-        if (totalOvertime > 0) {
-          doc.setFontSize(10);
-          doc.setTextColor(100, 100, 100);
-          doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 10);
+          // Aggiorna la posizione Y per il prossimo elemento
+          currentY = (doc as any).lastAutoTable?.finalY || currentY + 50;
+          
+          // Aggiungi statistiche del dipendente (solo straordinari se presenti)
+          const totalOvertime = group.records.reduce((sum, att) => sum + (att.overtime_hours || 0), 0);
+          if (totalOvertime > 0) {
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Straordinari totali: ${totalOvertime.toFixed(1)} ore`, 20, currentY + 10);
+          }
         }
       });
     } else {
