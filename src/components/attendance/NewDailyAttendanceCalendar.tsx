@@ -14,6 +14,7 @@ import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
 import { useCompanyHolidays } from '@/hooks/useCompanyHolidays';
+import { useMultipleCheckins } from '@/hooks/useMultipleCheckins';
 import { formatTime, isWorkingDay } from '@/utils/attendanceUtils';
 import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +41,7 @@ export default function NewDailyAttendanceCalendar() {
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();
   const { getSickLeavesForDate, isUserSickOnDate } = useSickLeavesForCalendars();
   const { isHoliday, getHolidayName } = useCompanyHolidays();
+  const { data: multipleCheckins } = useMultipleCheckins();
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
 
@@ -372,6 +374,13 @@ export default function NewDailyAttendanceCalendar() {
         
         const isHourlyPermission = leave.time_from && leave.time_to;
         
+        // Trova la seconda entrata per questo dipendente nella data selezionata
+        const secondCheckin = multipleCheckins?.find(checkin => 
+          checkin.user_id === leave.user_id && 
+          checkin.date === selectedDateStr && 
+          checkin.is_second_checkin
+        );
+        
         onPermissionEmployees.push({
           ...employee,
           attendance: automaticAttendance || null,
@@ -379,6 +388,7 @@ export default function NewDailyAttendanceCalendar() {
           permissionType: isHourlyPermission ? 'orario' : 'giornaliero',
           permissionTimeFrom: leave.time_from,
           permissionTimeTo: leave.time_to,
+          secondCheckinTime: secondCheckin?.checkin_time || null,
         });
       }
     }

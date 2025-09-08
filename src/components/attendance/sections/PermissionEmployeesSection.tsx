@@ -11,6 +11,7 @@ interface Employee {
   permissionType?: string;
   permissionTimeFrom?: string;
   permissionTimeTo?: string;
+  secondCheckinTime?: string;
 }
 
 interface PermissionEmployeesSectionProps {
@@ -54,6 +55,12 @@ export default function PermissionEmployeesSection({
                       'Permesso Orario'
                     )}
                   </div>
+                  
+                  {employee.secondCheckinTime && (
+                    <div className="text-xs text-green-600 font-medium">
+                      Seconda Entrata: {formatTime(employee.secondCheckinTime)}
+                    </div>
+                  )}
                   
                   {employee.leave?.note && (
                     <p className="text-xs text-gray-600">{employee.leave.note}</p>
