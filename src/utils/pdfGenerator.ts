@@ -563,7 +563,7 @@ export const generateAttendancePDF = async ({
     doc.text(dataGenerazione, 20, titleY + 20);
 
     // Legend for colors - compatta e visibile (solo se includeLegend è true)
-    let legendY = titleY + 30;
+    let legendY = titleY + 25; // Ridotto da 30 a 25
     
     if (includeLegend) {
       doc.setFontSize(10);
@@ -573,7 +573,7 @@ export const generateAttendancePDF = async ({
       
       // Prima riga: Assenze e Ferie affiancate
       const firstRowY = legendY + 3;
-      const secondRowY = legendY + 15; // Ridotto da 19 a 15 per più spazio
+      const secondRowY = legendY + 12; // Ridotto da 15 a 12 per più compattezza
       
       // Red for pure absences - prima colonna
       doc.setFillColor(255, 220, 220);
@@ -600,7 +600,7 @@ export const generateAttendancePDF = async ({
       doc.text('Permessi (giornate con permesso)', 30, secondRowY + 5);
       
       // Aggiorna legendY per il posizionamento delle tabelle
-      legendY = secondRowY + 20; // Spazio dopo la legenda
+      legendY = secondRowY + 12; // Ridotto da 20 a 12 per meno spazio vuoto
     } else {
       // Se non c'è legenda, inizia le tabelle più in alto
       legendY = titleY + 20;
@@ -645,7 +645,7 @@ export const generateAttendancePDF = async ({
         a.employeeName.localeCompare(b.employeeName)
       );
 
-      let currentY = legendY + 30; // Ridotto da 35 a 30 per compensare font size più piccolo
+      let currentY = legendY + 20; // Ridotto da 30 a 20 per ottimizzare spazio prima pagina
       const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
 
       // Genera una sezione per ogni dipendente
@@ -666,7 +666,7 @@ export const generateAttendancePDF = async ({
         doc.setFontSize(12); // Ridotto da 16 a 12
         doc.setTextColor(40, 40, 40);
         doc.text(`Dipendente: ${group.employeeName}`, 20, currentY);
-        currentY += 10; // Ridotto da 15 a 10 per spostare tabella più in alto
+        currentY += 6; // Ridotto da 10 a 6 per ottimizzare spazio prima pagina
 
         // Ordina i mesi cronologicamente
         const sortedMonths = Object.entries(group.months).sort(([a], [b]) => a.localeCompare(b));
