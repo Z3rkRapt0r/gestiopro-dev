@@ -206,10 +206,16 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             // Imposta i flag per i permessi orari
             hasHourlyPermission = true;
             isPermissionExpired = !isWithinPermissionTime && currentMinutes > permissionEndMinutes;
-            canSecondCheckIn = isPermissionExpired && isMidDay; // Solo per permessi in mezzo alla giornata
+            // canSecondCheckIn è true SOLO per permessi in mezzo alla giornata E scaduti
+            canSecondCheckIn = isPermissionExpired && isMidDay;
             permissionEndTime = permission.time_to;
             isStartOfDayPermission = isStartOfDay;
             isMidDayPermission = isMidDay;
+            
+            // CORREZIONE: Per permessi di inizio giornata, canSecondCheckIn deve essere sempre false
+            if (isStartOfDay) {
+              canSecondCheckIn = false;
+            }
             
             console.log('🕐 Controllo permesso orario:', {
               currentMinutes,
@@ -270,6 +276,11 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             const workEndMinutes = timeToMinutes(workEndTime);
             isPermissionExpired = currentMinutes > workEndMinutes;
             canSecondCheckIn = isPermissionExpired && isMidDayDaily;
+            
+            // CORREZIONE: Per permessi giornalieri di inizio giornata, canSecondCheckIn deve essere sempre false
+            if (isStartOfDayDaily) {
+              canSecondCheckIn = false;
+            }
             
             // Blocca sempre per tutto il giorno
             currentStatus = 'permission';
