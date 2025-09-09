@@ -427,10 +427,16 @@ const getAttendanceTimeDisplay = (att: AttendanceData, attendanceSettings?: Atte
 
 // Funzione per determinare lo stato di presenza
 const getAttendanceStatus = (att: AttendanceData) => {
-  // NUOVO: Se è disponibile lo stato calcolato, usalo
-  if (att.attendance_status) {
+  // NUOVO: Se è disponibile lo stato calcolato, usalo MA non per i permessi
+  // Per i permessi, calcoliamo sempre dinamicamente per mostrare l'intervallo
+  if (att.attendance_status && !att.permission_leave) {
     console.log('Using pre-calculated attendance_status:', att.attendance_status, 'for date:', att.date);
     return att.attendance_status;
+  }
+  
+  // Se c'è un permesso, calcoliamo dinamicamente per mostrare l'intervallo
+  if (att.permission_leave) {
+    console.log('Calculating permission status dynamically for date:', att.date, 'permission_leave:', att.permission_leave);
   }
   
   // Fallback alla logica originale
