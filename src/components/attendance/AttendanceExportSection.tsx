@@ -455,7 +455,9 @@ export default function AttendanceExportSection() {
         exportType,
         selectedEmployee: selectedEmployeeData,
         attendanceSettings,
-        companyLogoUrl: dashboardSettings.logo_url
+        companyLogoUrl: dashboardSettings.logo_url,
+        workSchedule: companyWorkSchedule,
+        isHoliday: isHoliday
       });
       
       toast({

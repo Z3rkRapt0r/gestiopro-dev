@@ -52,9 +52,46 @@ const isPermissionDay = (att: AttendanceData): boolean => {
   return !!(att.permission_leave && (att.permission_leave.time_from || att.permission_leave.time_to));
 };
 
-// Helper: determine if the day is a vacation day
-const isVacationDay = (att: AttendanceData): boolean => {
-  return !!att.vacation_leave;
+// Helper: determine if the day is a vacation day (only for working days)
+const isVacationDay = (att: AttendanceData, workSchedule?: any, isHoliday?: (date: Date) => boolean): boolean => {
+  if (!att.vacation_leave) return false;
+  
+  // If no work schedule or holiday check provided, assume it's a vacation day
+  if (!workSchedule || !isHoliday) return true;
+  
+  // Check if the day is a working day and not a holiday
+  const date = parseISO(att.date);
+  const isWorkingDay = checkIfWorkingDay(date, workSchedule);
+  const isHolidayDay = isHoliday(date);
+  
+  // Only consider it a vacation day if it's a working day and not a holiday
+  return isWorkingDay && !isHolidayDay;
+};
+
+// Helper: check if a date is a working day
+const checkIfWorkingDay = (date: Date, workSchedule: any): boolean => {
+  if (!workSchedule) return true;
+  
+  const dayOfWeek = date.getDay();
+  
+  if ('work_days' in workSchedule) {
+    // Employee work schedule: work_days is an array of strings
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const currentDayName = dayNames[dayOfWeek];
+    return workSchedule.work_days.includes(currentDayName);
+  } else {
+    // Company work schedule: use boolean properties
+    switch (dayOfWeek) {
+      case 0: return workSchedule.sunday;
+      case 1: return workSchedule.monday;
+      case 2: return workSchedule.tuesday;
+      case 3: return workSchedule.wednesday;
+      case 4: return workSchedule.thursday;
+      case 5: return workSchedule.friday;
+      case 6: return workSchedule.saturday;
+      default: return false;
+    }
+  }
 };
 
 // Helper: add company logo to PDF header
@@ -276,6 +313,8 @@ interface ExportParams {
   selectedEmployee?: EmployeeData | null;
   attendanceSettings?: AttendanceSettings | null;
   companyLogoUrl?: string | null;
+  workSchedule?: any;
+  isHoliday?: (date: Date) => boolean;
 }
 
 // Funzione per formattare in modo sicuro le date
@@ -435,7 +474,9 @@ export const generateAttendancePDF = async ({
   exportType,
   selectedEmployee,
   attendanceSettings,
-  companyLogoUrl
+  companyLogoUrl,
+  workSchedule,
+  isHoliday
 }: ExportParams) => {
   try {
     console.log('Inizializzazione PDF con dati:', data.length, 'record');
@@ -645,7 +686,7 @@ export const generateAttendancePDF = async ({
                   // Priorità: assenza pura (rosso) > ferie (celeste) > permesso (verde)
                   if (isPureAbsenceDay(attendanceRecord)) {
                     data.cell.styles.fillColor = [255, 220, 220];
-                  } else if (isVacationDay(attendanceRecord)) {
+                  } else if (isVacationDay(attendanceRecord, workSchedule, isHoliday)) {
                     data.cell.styles.fillColor = [200, 230, 255];
                   } else if (isPermissionDay(attendanceRecord)) {
                     data.cell.styles.fillColor = [200, 255, 200];
@@ -719,7 +760,7 @@ export const generateAttendancePDF = async ({
               // Priorità: assenza pura (rosso) > ferie (celeste) > permesso (verde)
               if (isPureAbsenceDay(attendanceRecord)) {
                 data.cell.styles.fillColor = [255, 220, 220];
-              } else if (isVacationDay(attendanceRecord)) {
+              } else if (isVacationDay(attendanceRecord, workSchedule, isHoliday)) {
                 data.cell.styles.fillColor = [200, 230, 255];
               } else if (isPermissionDay(attendanceRecord)) {
                 data.cell.styles.fillColor = [200, 255, 200];
