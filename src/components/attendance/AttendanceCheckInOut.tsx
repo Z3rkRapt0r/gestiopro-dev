@@ -187,25 +187,47 @@ export default function AttendanceCheckInOut() {
               </div>
               <div className="mt-1 text-xs text-yellow-600">
                 {(() => {
-                  // Controlla se c'è stata una prima entrata normale
-                  // Può essere nell'entrata principale (todayAttendance) o nei check-in multipli
+                  // Controlla se c'è stata una prima entrata normale PRIMA dell'inizio del permesso
                   const hasMainCheckin = todayAttendance?.check_in_time ? true : false;
                   const hasFirstCheckin = todayCheckins?.some(checkin => !checkin.is_second_checkin) || false;
-                  const hasAnyFirstCheckin = hasMainCheckin || hasFirstCheckin;
+                  
+                  // Controlla se l'entrata principale è stata fatta PRIMA dell'inizio del permesso
+                  let isMainCheckinBeforePermission = false;
+                  if (hasMainCheckin && todayAttendance?.check_in_time && employeeStatus?.statusDetails?.timeFrom) {
+                    const checkinTime = todayAttendance.check_in_time;
+                    const permissionStartTime = employeeStatus.statusDetails.timeFrom;
+                    
+                    // Confronta gli orari (formato HH:mm:ss)
+                    isMainCheckinBeforePermission = checkinTime < permissionStartTime;
+                  }
+                  
+                  // Controlla se ci sono check-in multipli PRIMA dell'inizio del permesso
+                  let isFirstCheckinBeforePermission = false;
+                  if (hasFirstCheckin && employeeStatus?.statusDetails?.timeFrom) {
+                    const permissionStartTime = employeeStatus.statusDetails.timeFrom;
+                    isFirstCheckinBeforePermission = todayCheckins?.some(checkin => 
+                      !checkin.is_second_checkin && checkin.checkin_time < permissionStartTime
+                    ) || false;
+                  }
+                  
+                  // È un permesso "in mezzo alla giornata" solo se c'è stata un'entrata PRIMA del permesso
+                  const isPermissionInMiddleOfDay = isMainCheckinBeforePermission || isFirstCheckinBeforePermission;
                   
                   console.log('🔍 Debug messaggio permesso:', {
                     hasMainCheckin,
                     hasFirstCheckin,
-                    hasAnyFirstCheckin,
+                    isMainCheckinBeforePermission,
+                    isFirstCheckinBeforePermission,
+                    isPermissionInMiddleOfDay,
+                    checkinTime: todayAttendance?.check_in_time,
+                    permissionStartTime: employeeStatus?.statusDetails?.timeFrom,
                     todayAttendance: !!todayAttendance,
                     todayCheckins: todayCheckins?.length || 0,
                     isPermissionExpired: employeeStatus?.isPermissionExpired,
                     conflictPriority: employeeStatus?.conflictPriority
                   });
                   
-                  // Logica coerente: il messaggio deve riflettere cosa succederà quando il permesso scadrà
-                  // Se c'è già stata una prima entrata normale, servirà una seconda entrata
-                  if (hasAnyFirstCheckin) {
+                  if (isPermissionInMiddleOfDay) {
                     // Permesso in mezzo alla giornata - serve seconda entrata
                     return "Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso";
                   } else {
@@ -407,23 +429,41 @@ export default function AttendanceCheckInOut() {
             </div>
           )}
 
-          {/* NUOVO: Tasto seconda entrata - Solo se c'è permesso orario scaduto E non è già stata registrata E c'è stata una prima presenza normale */}
+          {/* NUOVO: Tasto seconda entrata - Solo se c'è permesso orario scaduto E non è già stata registrata E c'è stata una prima presenza PRIMA del permesso */}
           {(() => {
             // Controlla se è già stata registrata una seconda entrata per oggi
             const hasSecondCheckin = todayCheckins?.some(checkin => checkin.is_second_checkin) || false;
-            // Controlla se è stata registrata la prima presenza (può essere nell'entrata principale o nei check-in multipli)
+            
+            // Controlla se c'è stata una prima entrata PRIMA dell'inizio del permesso
             const hasMainCheckin = todayAttendance?.check_in_time ? true : false;
             const hasFirstCheckin = todayCheckins?.some(checkin => !checkin.is_second_checkin) || false;
-            const hasAnyFirstCheckin = hasMainCheckin || hasFirstCheckin;
+            
+            // Controlla se l'entrata principale è stata fatta PRIMA dell'inizio del permesso
+            let isMainCheckinBeforePermission = false;
+            if (hasMainCheckin && todayAttendance?.check_in_time && employeeStatus?.statusDetails?.timeFrom) {
+              const checkinTime = todayAttendance.check_in_time;
+              const permissionStartTime = employeeStatus.statusDetails.timeFrom;
+              isMainCheckinBeforePermission = checkinTime < permissionStartTime;
+            }
+            
+            // Controlla se ci sono check-in multipli PRIMA dell'inizio del permesso
+            let isFirstCheckinBeforePermission = false;
+            if (hasFirstCheckin && employeeStatus?.statusDetails?.timeFrom) {
+              const permissionStartTime = employeeStatus.statusDetails.timeFrom;
+              isFirstCheckinBeforePermission = todayCheckins?.some(checkin => 
+                !checkin.is_second_checkin && checkin.checkin_time < permissionStartTime
+              ) || false;
+            }
+            
+            // È un permesso "in mezzo alla giornata" solo se c'è stata un'entrata PRIMA del permesso
+            const isPermissionInMiddleOfDay = isMainCheckinBeforePermission || isFirstCheckinBeforePermission;
             
             // Logica coerente con il messaggio: mostra il pulsante solo se il messaggio dice che serve seconda entrata
-            // Il messaggio dice "serve seconda entrata" quando hasAnyFirstCheckin = true
-            // Il messaggio dice "non serve seconda entrata" quando hasAnyFirstCheckin = false
             const shouldShow = employeeStatus?.canSecondCheckIn && 
                               employeeStatus?.hasHourlyPermission && 
                               employeeStatus?.isPermissionExpired && 
                               !hasSecondCheckin &&
-                              hasAnyFirstCheckin; // Solo se c'è stata una presenza normale (coerente con il messaggio)
+                              isPermissionInMiddleOfDay; // Solo se è un permesso in mezzo alla giornata
             console.log('🔍 Debug tasto seconda entrata:', {
               canSecondCheckIn: employeeStatus?.canSecondCheckIn,
               hasHourlyPermission: employeeStatus?.hasHourlyPermission,
@@ -431,17 +471,20 @@ export default function AttendanceCheckInOut() {
               hasSecondCheckin,
               hasMainCheckin,
               hasFirstCheckin,
-              hasAnyFirstCheckin,
+              isMainCheckinBeforePermission,
+              isFirstCheckinBeforePermission,
+              isPermissionInMiddleOfDay,
+              checkinTime: todayAttendance?.check_in_time,
+              permissionStartTime: employeeStatus?.statusDetails?.timeFrom,
               todayCheckins: todayCheckins?.length || 0,
               todayAttendance: !!todayAttendance,
-              todayAttendanceCheckIn: todayAttendance?.check_in_time,
               shouldShowButton: shouldShow,
               // Debug delle condizioni
               condition1: employeeStatus?.canSecondCheckIn,
               condition2: employeeStatus?.hasHourlyPermission,
               condition3: employeeStatus?.isPermissionExpired,
               condition4: !hasSecondCheckin,
-              condition5: hasAnyFirstCheckin
+              condition5: isPermissionInMiddleOfDay
             });
             return shouldShow;
           })() && (
