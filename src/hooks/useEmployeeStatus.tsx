@@ -31,24 +31,16 @@ export interface EmployeeStatus {
 }
 
 export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
-  console.log('🚀 [useEmployeeStatus] Chiamata con:', { userId, checkDate });
-  
   const { user } = useAuth();
   const { workSchedule } = useWorkSchedules();
   const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(userId || user?.id);
   const targetUserId = userId || user?.id;
   const targetDate = checkDate || format(new Date(), 'yyyy-MM-dd');
-  
-  console.log('🚀 [useEmployeeStatus] Parametri finali:', { targetUserId, targetDate });
 
   const { data: employeeStatus, isLoading } = useQuery({
     queryKey: ['employee-status', targetUserId, targetDate],
-    staleTime: 0, // Forza il refetch per debug
     queryFn: async (): Promise<EmployeeStatus> => {
-      console.log('🔍 [useEmployeeStatus] Query function chiamata per:', { targetUserId, targetDate });
-      
       if (!targetUserId) {
-        console.log('❌ [useEmployeeStatus] Nessun targetUserId');
         return {
           canCheckIn: false,
           canCheckOut: false,
