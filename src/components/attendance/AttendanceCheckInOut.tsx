@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -349,11 +348,37 @@ export default function AttendanceCheckInOut() {
             <div className="space-y-3">
               <Button 
                 onClick={handleCheckIn} 
-                disabled={isCheckingIn || !employeeStatus?.canCheckIn || statusLoading || (employeeStatus?.conflictPriority ?? 0) > 0 || !isWorkingDay()} 
+                disabled={(() => {
+                  // Se ha un permesso di inizio giornata, il pulsante è abilitato solo se il permesso è scaduto
+                  if (employeeStatus?.isStartOfDayPermission) {
+                    return isCheckingIn || statusLoading || !employeeStatus?.isPermissionExpired;
+                  }
+                  // Altrimenti usa la logica normale
+                  return isCheckingIn || !employeeStatus?.canCheckIn || statusLoading || (employeeStatus?.conflictPriority ?? 0) > 0 || !isWorkingDay();
+                })()} 
                 className="w-full min-h-[44px] text-sm sm:text-base" 
-                variant={employeeStatus?.canCheckIn && isWorkingDay() ? "default" : "secondary"}
+                variant={(() => {
+                  // Se ha un permesso di inizio giornata, usa variant default solo se scaduto
+                  if (employeeStatus?.isStartOfDayPermission) {
+                    return employeeStatus?.isPermissionExpired ? "default" : "secondary";
+                  }
+                  // Altrimenti usa la logica normale
+                  return employeeStatus?.canCheckIn && isWorkingDay() ? "default" : "secondary";
+                })()}
               >
-                {isCheckingIn ? 'Registrando entrata...' : !employeeStatus?.canCheckIn || !isWorkingDay() ? 'Presenza non consentita' : 'Registra Entrata'}
+                {(() => {
+                  if (isCheckingIn) return 'Registrando entrata...';
+                  
+                  // Se ha un permesso di inizio giornata, mostra testo specifico
+                  if (employeeStatus?.isStartOfDayPermission) {
+                    return employeeStatus?.isPermissionExpired 
+                      ? 'Registra Entrata (Permesso di inizio giornata terminato)'
+                      : 'Registra Entrata (Permesso di inizio giornata attivo)';
+                  }
+                  
+                  // Altrimenti usa la logica normale
+                  return !employeeStatus?.canCheckIn || !isWorkingDay() ? 'Presenza non consentita' : 'Registra Entrata';
+                })()}
               </Button>
 
               
@@ -363,7 +388,9 @@ export default function AttendanceCheckInOut() {
                   <Badge variant={getConflictAlertVariant(employeeStatus.conflictPriority)} className="text-xs">
                     {employeeStatus.conflictPriority >= 4 && 'BLOCCATO - Conflitto critico'}
                     {employeeStatus.conflictPriority === 3 && !employeeStatus?.isPermissionExpired && 
-                      `BLOCCATO - Permesso dalle ${employeeStatus.statusDetails?.timeFrom || 'N/A'} alle ${employeeStatus.statusDetails?.timeTo || 'N/A'}`}
+                      (employeeStatus?.isStartOfDayPermission 
+                        ? `Permesso di inizio giornata attivo dalle ${employeeStatus.statusDetails?.timeFrom || 'N/A'} alle ${employeeStatus.statusDetails?.timeTo || 'N/A'} - Attendi la fine del permesso`
+                        : `Permesso dalle ${employeeStatus.statusDetails?.timeFrom || 'N/A'} alle ${employeeStatus.statusDetails?.timeTo || 'N/A'}`)}
                     {employeeStatus.conflictPriority === 2 && 'BLOCCATO - In trasferta'}
                   </Badge>
                 </div>
@@ -381,26 +408,36 @@ export default function AttendanceCheckInOut() {
             </div>
           )}
 
-          {/* NUOVO: Tasto seconda entrata - Solo se c'è permesso orario scaduto E non è già stata registrata E prima presenza registrata */}
+          {/* Tasto seconda entrata - Solo per permessi in mezzo alla giornata */}
           {(() => {
             // Controlla se è già stata registrata una seconda entrata per oggi
             const hasSecondCheckin = todayCheckins?.some(checkin => checkin.is_second_checkin) || false;
-            // Controlla se è stata registrata la prima presenza (non seconda entrata)
-            const hasFirstCheckin = todayCheckins?.some(checkin => !checkin.is_second_checkin) || false;
-            const shouldShow = employeeStatus?.canSecondCheckIn && 
-                              employeeStatus?.hasHourlyPermission && 
-                              employeeStatus?.isPermissionExpired && 
-                              !hasSecondCheckin &&
-                              hasFirstCheckin;
-            console.log('🔍 Debug tasto seconda entrata:', {
-              canSecondCheckIn: employeeStatus?.canSecondCheckIn,
-              hasHourlyPermission: employeeStatus?.hasHourlyPermission,
-              isPermissionExpired: employeeStatus?.isPermissionExpired,
-              hasSecondCheckin,
+            // Prima entrata: usa la presenza principale del giorno
+            const hasFirstCheckin = !!todayAttendance?.check_in_time;
+            // Controlla se ha un permesso in mezzo alla giornata
+            const hasMidDayPermission = employeeStatus?.isMidDayPermission || false;
+            // Controlla se il permesso è scaduto (per mostrare il pulsante solo dopo la fine del permesso)
+            const isPermissionExpired = employeeStatus?.isPermissionExpired || false;
+
+            // Il pulsante appare solo se:
+            // 1. Ha registrato la prima entrata
+            // 2. Ha un permesso in mezzo alla giornata
+            // 3. Il permesso è scaduto (terminato)
+            // 4. Non ha già registrato la seconda entrata
+            const shouldShow = hasFirstCheckin && hasMidDayPermission && isPermissionExpired && !hasSecondCheckin;
+
+            console.log('🔍 Debug tasto seconda entrata (nuova logica):', {
               hasFirstCheckin,
+              hasMidDayPermission,
+              isPermissionExpired,
+              hasSecondCheckin,
+              isStartOfDayPermission: employeeStatus?.isStartOfDayPermission,
+              isMidDayPermission: employeeStatus?.isMidDayPermission,
+              hasHourlyPermission: employeeStatus?.hasHourlyPermission,
+              permissionType: employeeStatus?.statusDetails?.type,
               todayCheckins: todayCheckins?.length || 0,
-              allConditions: shouldShow,
-              shouldShowButton: shouldShow
+              checkInTime: todayAttendance?.check_in_time,
+              shouldShow
             });
             return shouldShow;
           })() && (

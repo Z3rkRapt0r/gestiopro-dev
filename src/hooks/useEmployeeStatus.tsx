@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
+import { useEmployeeWorkSchedule } from '@/hooks/useEmployeeWorkSchedule';
 import { format, isAfter, isBefore, isToday, parseISO, isWithinInterval } from 'date-fns';
 
 export interface EmployeeStatus {
@@ -25,11 +26,14 @@ export interface EmployeeStatus {
   isPermissionExpired?: boolean; // Se il permesso orario è scaduto
   canSecondCheckIn?: boolean; // Se può fare la seconda entrata
   permissionEndTime?: string; // Orario di fine permesso
+  isStartOfDayPermission?: boolean; // Se il permesso è di inizio giornata
+  isMidDayPermission?: boolean; // Se il permesso è in mezzo alla giornata
 }
 
 export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
   const { user } = useAuth();
   const { workSchedule } = useWorkSchedules();
+  const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(userId || user?.id);
   const targetUserId = userId || user?.id;
   const targetDate = checkDate || format(new Date(), 'yyyy-MM-dd');
 
@@ -157,6 +161,8 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
       let isPermissionExpired = false;
       let canSecondCheckIn = false;
       let permissionEndTime = '';
+      let isStartOfDayPermission = false;
+      let isMidDayPermission = false;
 
       if (conflictPriority < 3) {
         const { data: approvedPermissions } = await supabase
@@ -177,6 +183,11 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               return hours * 60 + minutes;
             };
             
+            // Determina l'orario di inizio lavorativo (personalizzato o aziendale)
+            const effectiveWorkSchedule = employeeWorkSchedule || workSchedule;
+            const workStartTime = effectiveWorkSchedule?.start_time || '08:00:00';
+            const workStartMinutes = timeToMinutes(workStartTime);
+            
             // Per permessi orari, controlla se l'orario attuale è dentro il range
             const currentTime = new Date();
             const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
@@ -186,23 +197,35 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             const isWithinPermissionTime = currentMinutes >= permissionStartMinutes && 
                                           currentMinutes <= permissionEndMinutes;
             
+            // Determina se il permesso è di inizio giornata o in mezzo alla giornata
+            // Un permesso è di inizio giornata se inizia entro 1 ora dall'orario di inizio lavorativo
+            const oneHourInMinutes = 60;
+            const isStartOfDay = permissionStartMinutes <= (workStartMinutes + oneHourInMinutes);
+            const isMidDay = !isStartOfDay;
+            
             // Imposta i flag per i permessi orari
             hasHourlyPermission = true;
             isPermissionExpired = !isWithinPermissionTime && currentMinutes > permissionEndMinutes;
-            canSecondCheckIn = isPermissionExpired;
+            canSecondCheckIn = isPermissionExpired && isMidDay; // Solo per permessi in mezzo alla giornata
             permissionEndTime = permission.time_to;
+            isStartOfDayPermission = isStartOfDay;
+            isMidDayPermission = isMidDay;
             
             console.log('🕐 Controllo permesso orario:', {
               currentMinutes,
               permissionStartMinutes,
               permissionEndMinutes,
+              workStartMinutes,
               currentTime: format(currentTime, 'HH:mm:ss'),
               permissionStart: permission.time_from,
               permissionEnd: permission.time_to,
+              workStartTime,
               isWithinRange: isWithinPermissionTime,
               hasHourlyPermission,
               isPermissionExpired,
-              canSecondCheckIn
+              canSecondCheckIn,
+              isStartOfDayPermission,
+              isMidDayPermission
             });
             
             if (isWithinPermissionTime) {
@@ -332,7 +355,9 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         hasHourlyPermission,
         isPermissionExpired,
         canSecondCheckIn,
-        permissionEndTime
+        permissionEndTime,
+        isStartOfDayPermission,
+        isMidDayPermission
       };
     },
     enabled: !!targetUserId,
