@@ -567,29 +567,33 @@ export const generateAttendancePDF = async ({
     doc.setFont('helvetica', 'bold');
     doc.text('LEGENDA:', 20, legendY);
     
-    // Red for pure absences - in linea
+    // Prima riga: Assenze e Ferie affiancate
+    const firstRowY = legendY + 3;
+    const secondRowY = legendY + 19;
+    
+    // Red for pure absences - prima colonna
     doc.setFillColor(255, 220, 220);
     doc.setDrawColor(255, 150, 150);
     doc.setLineWidth(0.2);
-    doc.rect(20, legendY + 3, 6, 6, 'FD');
+    doc.rect(20, firstRowY, 6, 6, 'FD');
     doc.setTextColor(40, 40, 40);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text('Assenze (giornate senza giustificazione)', 30, legendY + 8);
+    doc.text('Assenze (giornate senza giustificazione)', 30, firstRowY + 5);
     
-    // Green for permissions - in linea
-    doc.setFillColor(200, 255, 200);
-    doc.setDrawColor(100, 200, 100);
-    doc.rect(20, legendY + 11, 6, 6, 'FD');
-    doc.setTextColor(40, 40, 40);
-    doc.text('Permessi (giornate con permesso)', 30, legendY + 16);
-    
-    // Light blue for vacations - in linea
+    // Light blue for vacations - seconda colonna (affianco)
     doc.setFillColor(200, 230, 255);
     doc.setDrawColor(100, 150, 255);
-    doc.rect(20, legendY + 19, 6, 6, 'FD');
+    doc.rect(120, firstRowY, 6, 6, 'FD');
     doc.setTextColor(40, 40, 40);
-    doc.text('Ferie (giornate di ferie)', 30, legendY + 24);
+    doc.text('Ferie (giornate di ferie)', 130, firstRowY + 5);
+    
+    // Green for permissions - seconda riga
+    doc.setFillColor(200, 255, 200);
+    doc.setDrawColor(100, 200, 100);
+    doc.rect(20, secondRowY, 6, 6, 'FD');
+    doc.setTextColor(40, 40, 40);
+    doc.text('Permessi (giornate con permesso)', 30, secondRowY + 5);
 
     // Reset default text color
     doc.setTextColor(40, 40, 40);
