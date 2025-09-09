@@ -451,9 +451,27 @@ const getAttendanceStatus = (att: AttendanceData) => {
       : `Assente + Permesso (${permissionTime})`;
   }
   
-  // Full day permission (rare case)
+  // Permission with only start time
+  if (att.permission_leave && att.permission_leave.time_from && !att.permission_leave.time_to) {
+    const hasAttendance = att.check_in_time || att.check_out_time;
+    const permissionTime = `dalle ${att.permission_leave.time_from.slice(0,5)}`;
+    return hasAttendance 
+      ? `Presente + Permesso (${permissionTime})`
+      : `Assente + Permesso (${permissionTime})`;
+  }
+  
+  // Permission with only end time
+  if (att.permission_leave && !att.permission_leave.time_from && att.permission_leave.time_to) {
+    const hasAttendance = att.check_in_time || att.check_out_time;
+    const permissionTime = `fino alle ${att.permission_leave.time_to.slice(0,5)}`;
+    return hasAttendance 
+      ? `Presente + Permesso (${permissionTime})`
+      : `Assente + Permesso (${permissionTime})`;
+  }
+  
+  // Full day permission (no time specified)
   if (att.permission_leave && !att.permission_leave.time_from && !att.permission_leave.time_to) {
-    return 'Permesso';
+    return 'Permesso (giornata intera)';
   }
   
   // Regular attendance
