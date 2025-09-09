@@ -198,9 +198,13 @@ export default function AttendanceCheckInOut() {
                     hasFirstCheckin,
                     hasAnyFirstCheckin,
                     todayAttendance: !!todayAttendance,
-                    todayCheckins: todayCheckins?.length || 0
+                    todayCheckins: todayCheckins?.length || 0,
+                    isPermissionExpired: employeeStatus?.isPermissionExpired,
+                    conflictPriority: employeeStatus?.conflictPriority
                   });
                   
+                  // Logica coerente: il messaggio deve riflettere cosa succederà quando il permesso scadrà
+                  // Se c'è già stata una prima entrata normale, servirà una seconda entrata
                   if (hasAnyFirstCheckin) {
                     // Permesso in mezzo alla giornata - serve seconda entrata
                     return "Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso";
