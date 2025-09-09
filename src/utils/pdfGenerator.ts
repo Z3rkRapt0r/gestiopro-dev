@@ -645,7 +645,7 @@ export const generateAttendancePDF = async ({
         a.employeeName.localeCompare(b.employeeName)
       );
 
-      let currentY = legendY + 20; // Ridotto da 30 a 20 per ottimizzare spazio prima pagina
+      let currentY = legendY + 12; // Ridotto da 20 a 12 per minimizzare spazio vuoto
       const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
 
       // Genera una sezione per ogni dipendente
