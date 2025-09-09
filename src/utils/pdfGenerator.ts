@@ -634,7 +634,7 @@ export const generateAttendancePDF = async ({
         a.employeeName.localeCompare(b.employeeName)
       );
 
-      let currentY = legendY + 35; // Aumentato da 25 a 35 per più spazio alla legenda
+      let currentY = legendY + 30; // Ridotto da 35 a 30 per compensare font size più piccolo
       const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
 
       // Genera una sezione per ogni dipendente
@@ -652,10 +652,10 @@ export const generateAttendancePDF = async ({
         }
 
         // Titolo sezione dipendente
-        doc.setFontSize(16);
+        doc.setFontSize(12); // Ridotto da 16 a 12
         doc.setTextColor(40, 40, 40);
         doc.text(`Dipendente: ${group.employeeName}`, 20, currentY);
-        currentY += 15;
+        currentY += 10; // Ridotto da 15 a 10 per spostare tabella più in alto
 
         // Ordina i mesi cronologicamente
         const sortedMonths = Object.entries(group.months).sort(([a], [b]) => a.localeCompare(b));
