@@ -183,7 +183,7 @@ export default function AttendanceCheckInOut() {
           {employeeStatus.statusDetails && (
             <div className="mt-2 text-sm text-yellow-700">
               <div className="font-medium">
-                {employeeStatus.statusDetails.timeFrom} - {employeeStatus.statusDetails.timeTo}
+              {employeeStatus.statusDetails.timeFrom} - {employeeStatus.statusDetails.timeTo}
               </div>
               <div className="mt-1 text-xs text-yellow-600">
                 {(() => {
@@ -449,6 +449,7 @@ export default function AttendanceCheckInOut() {
             // Controlla se c'è stata una prima entrata PRIMA dell'inizio del permesso
             const hasMainCheckin = todayAttendance?.check_in_time ? true : false;
             const hasFirstCheckin = todayCheckins?.some(checkin => !checkin.is_second_checkin) || false;
+            const hasAnyFirstCheckin = hasMainCheckin || hasFirstCheckin; // Considera sia la presenza principale che i check-in multipli
             
             // Controlla se l'entrata principale è stata fatta PRIMA dell'inizio del permesso
             let isMainCheckinBeforePermission = false;
@@ -480,11 +481,13 @@ export default function AttendanceCheckInOut() {
             }
             
             // Condizione primaria: il pulsante appare solo se c'è stata una prima entrata E il permesso è in mezzo alla giornata
-            const shouldShow = hasFirstCheckin && // C'è stata una prima entrata
+            const shouldShow = hasAnyFirstCheckin && // C'è stata una prima entrata (principale o multipla)
                               !isPermissionFromStartOfShift && // Permesso in mezzo alla giornata (non dall'inizio del turno)
                               !hasSecondCheckin; // Nessuna seconda entrata già registrata
             console.log('🔍 Debug tasto seconda entrata:', {
+              hasMainCheckin,
               hasFirstCheckin,
+              hasAnyFirstCheckin,
               isPermissionFromStartOfShift,
               isPermissionExpired: employeeStatus?.isPermissionExpired,
               hasSecondCheckin,
@@ -492,7 +495,7 @@ export default function AttendanceCheckInOut() {
               workStartTime: workSchedule?.start_time,
               shouldShowButton: shouldShow,
               // Debug delle condizioni corrette
-              condition1: hasFirstCheckin, // C'è stata una prima entrata
+              condition1: hasAnyFirstCheckin, // C'è stata una prima entrata (principale o multipla)
               condition2: !isPermissionFromStartOfShift, // Permesso in mezzo alla giornata
               condition3: !hasSecondCheckin // Nessuna seconda entrata già registrata
             });
