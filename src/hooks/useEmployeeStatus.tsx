@@ -176,7 +176,18 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         if (approvedPermissions && approvedPermissions.length > 0) {
           const permission = approvedPermissions[0];
           
+          console.log('🔍 Debug permesso trovato:', {
+            permission,
+            hasTimeFrom: !!permission.time_from,
+            hasTimeTo: !!permission.time_to,
+            timeFrom: permission.time_from,
+            timeTo: permission.time_to,
+            type: permission.type,
+            day: permission.day
+          });
+          
           if (permission.time_from && permission.time_to) {
+            console.log('✅ Percorso PERMESSO ORARIO');
             // Helper per convertire "HH:mm:ss" in minuti dall'inizio della giornata
             const timeToMinutes = (timeString: string): number => {
               const [hours, minutes] = timeString.split(':').map(Number);
@@ -267,6 +278,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               console.log('✅ Permesso orario scaduto, check-in permesso');
             }
           } else {
+            console.log('✅ Percorso PERMESSO GIORNALIERO');
             // Permesso giornaliero - determina se è di inizio giornata o in mezzo alla giornata
             let isStartOfDayDaily = false;
             let isMidDayDaily = false;
