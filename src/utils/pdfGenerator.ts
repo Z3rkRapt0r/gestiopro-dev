@@ -743,7 +743,7 @@ export const generateAttendancePDF = async ({
             tableWidth: 'wrap',
             margin: { top: currentY, left: 20, right: 20 },
             didParseCell: function(data) {
-              if (data.section === 'body') {
+              if (data.section === 'body' && includeLegend) {
                 const rowIndex = data.row.index;
                 const attendanceRecord = sortedRecords[rowIndex];
                 if (attendanceRecord) {
@@ -817,7 +817,7 @@ export const generateAttendancePDF = async ({
         },
         tableWidth: 'wrap',
         didParseCell: function(data) {
-          if (data.section === 'body') {
+          if (data.section === 'body' && includeLegend) {
             const rowIndex = data.row.index;
             const attendanceRecord = singleRecords[rowIndex];
             if (attendanceRecord) {
