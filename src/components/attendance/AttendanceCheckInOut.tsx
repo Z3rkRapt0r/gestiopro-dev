@@ -210,24 +210,36 @@ export default function AttendanceCheckInOut() {
                     ) || false;
                   }
                   
-                  // È un permesso "in mezzo alla giornata" solo se c'è stata un'entrata PRIMA del permesso
-                  const isPermissionInMiddleOfDay = isMainCheckinBeforePermission || isFirstCheckinBeforePermission;
+                  // Distingui tra permesso dall'inizio del turno e permesso in mezzo alla giornata
+                  // Permesso dall'inizio del turno: il permesso inizia all'orario di inizio lavorativo (non serve seconda entrata)
+                  // Permesso in mezzo alla giornata: il permesso inizia dopo l'orario di inizio lavorativo (serve seconda entrata)
+                  let isPermissionFromStartOfShift = false;
+                  if (employeeStatus?.statusDetails?.timeFrom && workSchedule?.start_time) {
+                    const permissionStartTime = employeeStatus.statusDetails.timeFrom;
+                    const workStartTime = workSchedule.start_time;
+                    
+                    // Se il permesso inizia all'orario di inizio lavorativo (entro 30 minuti), è dall'inizio del turno
+                    const timeDiff = new Date(`2000-01-01 ${permissionStartTime}`).getTime() - new Date(`2000-01-01 ${workStartTime}`).getTime();
+                    const minutesDiff = Math.abs(timeDiff / (1000 * 60));
+                    isPermissionFromStartOfShift = minutesDiff <= 30; // Entro 30 minuti dall'inizio lavorativo = permesso dall'inizio del turno
+                  }
                   
                   console.log('🔍 Debug messaggio permesso:', {
                     hasMainCheckin,
                     hasFirstCheckin,
                     isMainCheckinBeforePermission,
                     isFirstCheckinBeforePermission,
-                    isPermissionInMiddleOfDay,
+                    isPermissionFromStartOfShift,
                     checkinTime: todayAttendance?.check_in_time,
                     permissionStartTime: employeeStatus?.statusDetails?.timeFrom,
+                    workStartTime: workSchedule?.start_time,
                     todayAttendance: !!todayAttendance,
                     todayCheckins: todayCheckins?.length || 0,
                     isPermissionExpired: employeeStatus?.isPermissionExpired,
                     conflictPriority: employeeStatus?.conflictPriority
                   });
                   
-                  if (isPermissionInMiddleOfDay) {
+                  if (!isPermissionFromStartOfShift) {
                     // Permesso in mezzo alla giornata - serve seconda entrata
                     return "Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso";
                   } else {
@@ -455,36 +467,33 @@ export default function AttendanceCheckInOut() {
               ) || false;
             }
             
-            // È un permesso "in mezzo alla giornata" solo se c'è stata un'entrata PRIMA del permesso
-            const isPermissionInMiddleOfDay = isMainCheckinBeforePermission || isFirstCheckinBeforePermission;
+            // Distingui tra permesso dall'inizio del turno e permesso in mezzo alla giornata
+            let isPermissionFromStartOfShift = false;
+            if (employeeStatus?.statusDetails?.timeFrom && workSchedule?.start_time) {
+              const permissionStartTime = employeeStatus.statusDetails.timeFrom;
+              const workStartTime = workSchedule.start_time;
+              
+              // Se il permesso inizia all'orario di inizio lavorativo (entro 30 minuti), è dall'inizio del turno
+              const timeDiff = new Date(`2000-01-01 ${permissionStartTime}`).getTime() - new Date(`2000-01-01 ${workStartTime}`).getTime();
+              const minutesDiff = Math.abs(timeDiff / (1000 * 60));
+              isPermissionFromStartOfShift = minutesDiff <= 30; // Entro 30 minuti dall'inizio lavorativo = permesso dall'inizio del turno
+            }
             
-            // Logica coerente con il messaggio: mostra il pulsante solo se il messaggio dice che serve seconda entrata
-            const shouldShow = employeeStatus?.canSecondCheckIn && 
-                              employeeStatus?.hasHourlyPermission && 
-                              employeeStatus?.isPermissionExpired && 
-                              !hasSecondCheckin &&
-                              isPermissionInMiddleOfDay; // Solo se è un permesso in mezzo alla giornata
+            // Condizione primaria: il pulsante appare solo se il permesso è in mezzo alla giornata (dopo l'orario di inizio lavorativo)
+            const shouldShow = !isPermissionFromStartOfShift && // Permesso in mezzo alla giornata
+                              employeeStatus?.isPermissionExpired && // Permesso scaduto
+                              !hasSecondCheckin; // Nessuna seconda entrata già registrata
             console.log('🔍 Debug tasto seconda entrata:', {
-              canSecondCheckIn: employeeStatus?.canSecondCheckIn,
-              hasHourlyPermission: employeeStatus?.hasHourlyPermission,
+              isPermissionFromStartOfShift,
               isPermissionExpired: employeeStatus?.isPermissionExpired,
               hasSecondCheckin,
-              hasMainCheckin,
-              hasFirstCheckin,
-              isMainCheckinBeforePermission,
-              isFirstCheckinBeforePermission,
-              isPermissionInMiddleOfDay,
-              checkinTime: todayAttendance?.check_in_time,
               permissionStartTime: employeeStatus?.statusDetails?.timeFrom,
-              todayCheckins: todayCheckins?.length || 0,
-              todayAttendance: !!todayAttendance,
+              workStartTime: workSchedule?.start_time,
               shouldShowButton: shouldShow,
-              // Debug delle condizioni
-              condition1: employeeStatus?.canSecondCheckIn,
-              condition2: employeeStatus?.hasHourlyPermission,
-              condition3: employeeStatus?.isPermissionExpired,
-              condition4: !hasSecondCheckin,
-              condition5: isPermissionInMiddleOfDay
+              // Debug delle condizioni semplificate
+              condition1: !isPermissionFromStartOfShift, // Permesso in mezzo alla giornata
+              condition2: employeeStatus?.isPermissionExpired, // Permesso scaduto
+              condition3: !hasSecondCheckin // Nessuna seconda entrata già registrata
             });
             return shouldShow;
           })() && (
