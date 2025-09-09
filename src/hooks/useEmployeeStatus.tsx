@@ -238,7 +238,16 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               isStartOfDayCalculation: `${permissionStartMinutes} <= ${workStartMinutes + 60}`,
               employeeWorkSchedule: employeeWorkSchedule?.start_time,
               companyWorkSchedule: workSchedule?.start_time,
-              effectiveWorkSchedule: effectiveWorkSchedule?.start_time
+              effectiveWorkSchedule: effectiveWorkSchedule?.start_time,
+              // Debug dettagliato per il calcolo
+              calculation: {
+                permissionStartMinutes,
+                workStartMinutes,
+                oneHourInMinutes,
+                threshold: workStartMinutes + 60,
+                isStartOfDay: permissionStartMinutes <= (workStartMinutes + 60),
+                isMidDay: !(permissionStartMinutes <= (workStartMinutes + 60))
+              }
             });
             
             if (isWithinPermissionTime) {
