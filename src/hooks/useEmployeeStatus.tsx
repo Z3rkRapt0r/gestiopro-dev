@@ -231,7 +231,14 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               isPermissionExpired,
               canSecondCheckIn,
               isStartOfDayPermission,
-              isMidDayPermission
+              isMidDayPermission,
+              // Debug aggiuntivo per capire il calcolo
+              oneHourInMinutes: 60,
+              startOfDayThreshold: workStartMinutes + 60,
+              isStartOfDayCalculation: `${permissionStartMinutes} <= ${workStartMinutes + 60}`,
+              employeeWorkSchedule: employeeWorkSchedule?.start_time,
+              companyWorkSchedule: workSchedule?.start_time,
+              effectiveWorkSchedule: effectiveWorkSchedule?.start_time
             });
             
             if (isWithinPermissionTime) {
