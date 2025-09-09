@@ -569,7 +569,7 @@ export const generateAttendancePDF = async ({
     
     // Prima riga: Assenze e Ferie affiancate
     const firstRowY = legendY + 3;
-    const secondRowY = legendY + 19;
+    const secondRowY = legendY + 15; // Ridotto da 19 a 15 per più spazio
     
     // Red for pure absences - prima colonna
     doc.setFillColor(255, 220, 220);
@@ -634,7 +634,7 @@ export const generateAttendancePDF = async ({
         a.employeeName.localeCompare(b.employeeName)
       );
 
-      let currentY = legendY + 25;
+      let currentY = legendY + 35; // Aumentato da 25 a 35 per più spazio alla legenda
       const tableHeaders = [['Data', 'Giorno', 'Stato Presenza', 'Orario Timbratura', 'Straordinari']];
 
       // Genera una sezione per ogni dipendente
