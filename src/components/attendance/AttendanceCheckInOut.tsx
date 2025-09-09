@@ -480,9 +480,10 @@ export default function AttendanceCheckInOut() {
               isPermissionFromStartOfShift = minutesDiff <= 30; // Entro 30 minuti dall'inizio lavorativo = permesso dall'inizio del turno
             }
             
-            // Condizione primaria: il pulsante appare solo se c'è stata una prima entrata E il permesso è in mezzo alla giornata
+            // Condizione primaria: il pulsante appare solo quando il banner giallo dice di registrare un secondo ingresso
             const shouldShow = hasAnyFirstCheckin && // C'è stata una prima entrata (principale o multipla)
                               !isPermissionFromStartOfShift && // Permesso in mezzo alla giornata (non dall'inizio del turno)
+                              employeeStatus?.isPermissionExpired && // Permesso scaduto (banner giallo dice di registrare secondo ingresso)
                               !hasSecondCheckin; // Nessuna seconda entrata già registrata
             console.log('🔍 Debug tasto seconda entrata:', {
               hasMainCheckin,
@@ -497,7 +498,8 @@ export default function AttendanceCheckInOut() {
               // Debug delle condizioni corrette
               condition1: hasAnyFirstCheckin, // C'è stata una prima entrata (principale o multipla)
               condition2: !isPermissionFromStartOfShift, // Permesso in mezzo alla giornata
-              condition3: !hasSecondCheckin // Nessuna seconda entrata già registrata
+              condition3: employeeStatus?.isPermissionExpired, // Permesso scaduto (banner giallo dice di registrare secondo ingresso)
+              condition4: !hasSecondCheckin // Nessuna seconda entrata già registrata
             });
             return shouldShow;
           })() && (
