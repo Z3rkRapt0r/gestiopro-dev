@@ -183,7 +183,12 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             timeFrom: permission.time_from,
             timeTo: permission.time_to,
             type: permission.type,
-            day: permission.day
+            day: permission.day,
+            timeFromType: typeof permission.time_from,
+            timeToType: typeof permission.time_to,
+            timeFromLength: permission.time_from?.length,
+            timeToLength: permission.time_to?.length,
+            condition: `${!!permission.time_from} && ${!!permission.time_to} = ${!!permission.time_from && !!permission.time_to}`
           });
           
           if (permission.time_from && permission.time_to) {
