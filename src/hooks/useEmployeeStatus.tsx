@@ -43,6 +43,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
 
   const { data: employeeStatus, isLoading } = useQuery({
     queryKey: ['employee-status', targetUserId, targetDate],
+    staleTime: 0, // Forza il refetch per debug
     queryFn: async (): Promise<EmployeeStatus> => {
       console.log('🔍 [useEmployeeStatus] Query function chiamata per:', { targetUserId, targetDate });
       
