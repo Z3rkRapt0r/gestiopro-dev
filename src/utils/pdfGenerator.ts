@@ -442,10 +442,29 @@ const getAttendanceStatus = (att: AttendanceData) => {
   // Check for vacation
   if (att.vacation_leave) return 'Ferie';
   
+  // Debug: Check if permission_leave exists but doesn't match any condition
+  if (att.permission_leave) {
+    console.log('🔍 Permission leave found but no time match:', {
+      date: att.date,
+      permission_leave: att.permission_leave,
+      time_from: att.permission_leave.time_from,
+      time_to: att.permission_leave.time_to,
+      hasTimeFrom: !!att.permission_leave.time_from,
+      hasTimeTo: !!att.permission_leave.time_to
+    });
+  }
+  
   // Check for permission with time range
   if (att.permission_leave && att.permission_leave.time_from && att.permission_leave.time_to) {
     const hasAttendance = att.check_in_time || att.check_out_time;
     const permissionTime = `${att.permission_leave.time_from.slice(0,5)}-${att.permission_leave.time_to.slice(0,5)}`;
+    console.log('🔍 Permission with time range:', {
+      date: att.date,
+      permission_leave: att.permission_leave,
+      time_from: att.permission_leave.time_from,
+      time_to: att.permission_leave.time_to,
+      permissionTime
+    });
     return hasAttendance 
       ? `Presente + Permesso (${permissionTime})`
       : `Assente + Permesso (${permissionTime})`;
@@ -471,6 +490,12 @@ const getAttendanceStatus = (att: AttendanceData) => {
   
   // Full day permission (no time specified)
   if (att.permission_leave && !att.permission_leave.time_from && !att.permission_leave.time_to) {
+    console.log('🔍 Full day permission:', {
+      date: att.date,
+      permission_leave: att.permission_leave,
+      time_from: att.permission_leave.time_from,
+      time_to: att.permission_leave.time_to
+    });
     return 'Permesso (giornata intera)';
   }
   
