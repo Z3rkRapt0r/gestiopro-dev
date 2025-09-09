@@ -481,25 +481,12 @@ export default function AttendanceCheckInOut() {
             }
             
             // Condizione primaria: il pulsante appare solo quando il banner giallo dice di registrare un secondo ingresso
-            const shouldShow = hasAnyFirstCheckin && // C'è stata una prima entrata (principale o multipla)
-                              !isPermissionFromStartOfShift && // Permesso in mezzo alla giornata (non dall'inizio del turno)
-                              employeeStatus?.isPermissionExpired && // Permesso scaduto (banner giallo dice di registrare secondo ingresso)
-                              !hasSecondCheckin; // Nessuna seconda entrata già registrata
+            const shouldShow = employeeStatus?.isPermissionExpired; // Permesso scaduto (banner giallo dice di registrare secondo ingresso)
             console.log('🔍 Debug tasto seconda entrata:', {
-              hasMainCheckin,
-              hasFirstCheckin,
-              hasAnyFirstCheckin,
-              isPermissionFromStartOfShift,
               isPermissionExpired: employeeStatus?.isPermissionExpired,
-              hasSecondCheckin,
-              permissionStartTime: employeeStatus?.statusDetails?.timeFrom,
-              workStartTime: workSchedule?.start_time,
               shouldShowButton: shouldShow,
-              // Debug delle condizioni corrette
-              condition1: hasAnyFirstCheckin, // C'è stata una prima entrata (principale o multipla)
-              condition2: !isPermissionFromStartOfShift, // Permesso in mezzo alla giornata
-              condition3: employeeStatus?.isPermissionExpired, // Permesso scaduto (banner giallo dice di registrare secondo ingresso)
-              condition4: !hasSecondCheckin // Nessuna seconda entrata già registrata
+              // Debug della condizione semplificata
+              condition: employeeStatus?.isPermissionExpired // Permesso scaduto (banner giallo dice di registrare secondo ingresso)
             });
             return shouldShow;
           })() && (
