@@ -481,7 +481,6 @@ export default function AttendanceCheckInOut() {
             
             // Condizione primaria: il pulsante appare solo se il permesso è in mezzo alla giornata (dopo l'orario di inizio lavorativo)
             const shouldShow = !isPermissionFromStartOfShift && // Permesso in mezzo alla giornata
-                              employeeStatus?.isPermissionExpired && // Permesso scaduto
                               !hasSecondCheckin; // Nessuna seconda entrata già registrata
             console.log('🔍 Debug tasto seconda entrata:', {
               isPermissionFromStartOfShift,
@@ -492,8 +491,7 @@ export default function AttendanceCheckInOut() {
               shouldShowButton: shouldShow,
               // Debug delle condizioni semplificate
               condition1: !isPermissionFromStartOfShift, // Permesso in mezzo alla giornata
-              condition2: employeeStatus?.isPermissionExpired, // Permesso scaduto
-              condition3: !hasSecondCheckin // Nessuna seconda entrata già registrata
+              condition2: !hasSecondCheckin // Nessuna seconda entrata già registrata
             });
             return shouldShow;
           })() && (
