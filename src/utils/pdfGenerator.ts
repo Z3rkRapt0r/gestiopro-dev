@@ -47,6 +47,16 @@ const isPureAbsenceDay = (att: AttendanceData): boolean => {
   return getAttendanceStatus(att) === 'Assente';
 };
 
+// Helper: determine if the day is a permission day
+const isPermissionDay = (att: AttendanceData): boolean => {
+  return !!(att.permission_leave && (att.permission_leave.time_from || att.permission_leave.time_to));
+};
+
+// Helper: determine if the day is a vacation day
+const isVacationDay = (att: AttendanceData): boolean => {
+  return !!att.vacation_leave;
+};
+
 // Helper: add company logo to PDF header
 const addCompanyLogo = async (doc: jsPDF, logoUrl: string | null): Promise<number> => {
   console.log('Tentativo di caricare logo:', logoUrl);
@@ -477,12 +487,19 @@ export const generateAttendancePDF = async ({
     doc.setFontSize(9);
     doc.text('Assenze (giornate senza giustificazione)', 30, legendY + 8);
     
-    // Yellow for late - in linea
-    doc.setFillColor(255, 245, 157);
-    doc.setDrawColor(255, 200, 100);
+    // Green for permissions - in linea
+    doc.setFillColor(200, 255, 200);
+    doc.setDrawColor(100, 200, 100);
     doc.rect(20, legendY + 11, 6, 6, 'FD');
     doc.setTextColor(40, 40, 40);
-    doc.text('Ritardi (evidenziati in giallo)', 30, legendY + 16);
+    doc.text('Permessi (giornate con permesso)', 30, legendY + 16);
+    
+    // Light blue for vacations - in linea
+    doc.setFillColor(200, 230, 255);
+    doc.setDrawColor(100, 150, 255);
+    doc.rect(20, legendY + 19, 6, 6, 'FD');
+    doc.setTextColor(40, 40, 40);
+    doc.text('Ferie (giornate di ferie)', 30, legendY + 24);
 
     // Reset default text color
     doc.setTextColor(40, 40, 40);
@@ -625,11 +642,13 @@ export const generateAttendancePDF = async ({
                 const rowIndex = data.row.index;
                 const attendanceRecord = sortedRecords[rowIndex];
                 if (attendanceRecord) {
-                  // Priorità: assenza pura (rosso) > ritardo (giallo)
+                  // Priorità: assenza pura (rosso) > ferie (celeste) > permesso (verde)
                   if (isPureAbsenceDay(attendanceRecord)) {
                     data.cell.styles.fillColor = [255, 220, 220];
-                  } else if (attendanceRecord.is_late) {
-                    data.cell.styles.fillColor = [255, 245, 157];
+                  } else if (isVacationDay(attendanceRecord)) {
+                    data.cell.styles.fillColor = [200, 230, 255];
+                  } else if (isPermissionDay(attendanceRecord)) {
+                    data.cell.styles.fillColor = [200, 255, 200];
                   }
                 }
               }
@@ -697,10 +716,13 @@ export const generateAttendancePDF = async ({
             const rowIndex = data.row.index;
             const attendanceRecord = singleRecords[rowIndex];
             if (attendanceRecord) {
+              // Priorità: assenza pura (rosso) > ferie (celeste) > permesso (verde)
               if (isPureAbsenceDay(attendanceRecord)) {
                 data.cell.styles.fillColor = [255, 220, 220];
-              } else if (attendanceRecord.is_late) {
-                data.cell.styles.fillColor = [255, 245, 157];
+              } else if (isVacationDay(attendanceRecord)) {
+                data.cell.styles.fillColor = [200, 230, 255];
+              } else if (isPermissionDay(attendanceRecord)) {
+                data.cell.styles.fillColor = [200, 255, 200];
               }
             }
           }
