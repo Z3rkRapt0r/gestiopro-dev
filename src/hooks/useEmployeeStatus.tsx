@@ -232,6 +232,16 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             const isStartOfDay = permissionStartMinutes <= (workStartMinutes + oneHourInMinutes);
             const isMidDay = !isStartOfDay;
             
+            console.log('🔍 Debug calcolo permesso tipo:', {
+              permissionStartMinutes,
+              workStartMinutes,
+              oneHourInMinutes,
+              threshold: workStartMinutes + oneHourInMinutes,
+              isStartOfDayCalculation: `${permissionStartMinutes} <= ${workStartMinutes + oneHourInMinutes} = ${isStartOfDay}`,
+              isStartOfDay,
+              isMidDay
+            });
+            
             // Imposta i flag per i permessi orari
             hasHourlyPermission = true;
             isPermissionExpired = !isWithinPermissionTime && currentMinutes > permissionEndMinutes;
