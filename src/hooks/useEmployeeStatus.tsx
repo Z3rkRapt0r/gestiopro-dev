@@ -245,7 +245,33 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               console.log('✅ Permesso orario scaduto, check-in permesso');
             }
           } else {
-            // Permesso giornaliero - blocca sempre per tutto il giorno
+            // Permesso giornaliero - determina se è di inizio giornata o in mezzo alla giornata
+            let isStartOfDayDaily = false;
+            let isMidDayDaily = false;
+            
+            if (permission.time_from) {
+              // Se ha un orario di inizio, determina il tipo di permesso
+              const permissionStartTime = permission.time_from;
+              const permissionStartMinutes = timeToMinutes(permissionStartTime);
+              const oneHourInMinutes = 60;
+              isStartOfDayDaily = permissionStartMinutes <= (workStartMinutes + oneHourInMinutes);
+              isMidDayDaily = !isStartOfDayDaily;
+            } else {
+              // Se non ha orario di inizio, considera come permesso di inizio giornata
+              isStartOfDayDaily = true;
+              isMidDayDaily = false;
+            }
+            
+            // Aggiorna i flag globali
+            isStartOfDayPermission = isStartOfDayDaily;
+            isMidDayPermission = isMidDayDaily;
+            
+            // Per i permessi giornalieri, considera sempre scaduto dopo l'orario di fine lavoro
+            const workEndMinutes = timeToMinutes(workEndTime);
+            isPermissionExpired = currentMinutes > workEndMinutes;
+            canSecondCheckIn = isPermissionExpired && isMidDayDaily;
+            
+            // Blocca sempre per tutto il giorno
             currentStatus = 'permission';
             conflictPriority = 3;
             blockingReasons.push('Il dipendente ha un permesso giornaliero per oggi');
@@ -254,6 +280,17 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               startDate: permission.day,
               notes: permission.note || undefined
             };
+            
+            console.log('📅 Controllo permesso giornaliero:', {
+              permissionStartTime: permission.time_from,
+              workStartTime,
+              workEndTime,
+              currentTime: format(currentTime, 'HH:mm:ss'),
+              isStartOfDayDaily,
+              isMidDayDaily,
+              isPermissionExpired,
+              canSecondCheckIn
+            });
           }
         }
       }

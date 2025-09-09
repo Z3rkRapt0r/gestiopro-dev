@@ -414,21 +414,24 @@ export default function AttendanceCheckInOut() {
             const hasSecondCheckin = todayCheckins?.some(checkin => checkin.is_second_checkin) || false;
             // Prima entrata: usa la presenza principale del giorno
             const hasFirstCheckin = !!todayAttendance?.check_in_time;
-            // Controlla se ha un permesso in mezzo alla giornata
+            // Controlla se ha un permesso in mezzo alla giornata (orario o giornaliero)
             const hasMidDayPermission = employeeStatus?.isMidDayPermission || false;
+            // Controlla se ha un permesso giornaliero (che può essere considerato come permesso in mezzo alla giornata)
+            const hasDailyPermission = employeeStatus?.statusDetails?.type === 'Permesso giornaliero';
             // Controlla se il permesso è scaduto (per mostrare il pulsante solo dopo la fine del permesso)
             const isPermissionExpired = employeeStatus?.isPermissionExpired || false;
 
             // Il pulsante appare solo se:
             // 1. Ha registrato la prima entrata
-            // 2. Ha un permesso in mezzo alla giornata
+            // 2. Ha un permesso in mezzo alla giornata (orario) O un permesso giornaliero
             // 3. Il permesso è scaduto (terminato)
             // 4. Non ha già registrato la seconda entrata
-            const shouldShow = hasFirstCheckin && hasMidDayPermission && isPermissionExpired && !hasSecondCheckin;
+            const shouldShow = hasFirstCheckin && (hasMidDayPermission || hasDailyPermission) && isPermissionExpired && !hasSecondCheckin;
 
             console.log('🔍 Debug tasto seconda entrata (nuova logica):', {
               hasFirstCheckin,
               hasMidDayPermission,
+              hasDailyPermission,
               isPermissionExpired,
               hasSecondCheckin,
               isStartOfDayPermission: employeeStatus?.isStartOfDayPermission,
