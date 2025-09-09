@@ -16,6 +16,8 @@ import { useLeaveConflicts } from "@/hooks/useLeaveConflicts";
 import { useLeaveRequestNotifications } from "@/hooks/useLeaveRequestNotifications";
 import { useWorkingHoursValidation } from "@/hooks/useWorkingHoursValidation";
 import { useEmployeeLeaveBalanceValidation } from "@/hooks/useEmployeeLeaveBalanceValidation";
+import { useWorkSchedules } from "@/hooks/useWorkSchedules";
+import { useEmployeeWorkSchedule } from "@/hooks/useEmployeeWorkSchedule";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -34,8 +36,10 @@ export function ManualLeaveEntryForm({
   const [timeTo, setTimeTo] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [notifyEmployee, setNotifyEmployee] = useState<boolean>(true);
+  const [permissionType, setPermissionType] = useState<'start_of_day' | 'mid_day'>('mid_day');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [workingHoursErrors, setWorkingHoursErrors] = useState<string[]>([]);
+  const [permissionConstraintErrors, setPermissionConstraintErrors] = useState<string[]>([]);
   const [balanceValidationError, setBalanceValidationError] = useState<string | null>(null);
   const {
     employees
@@ -54,6 +58,97 @@ export function ManualLeaveEntryForm({
     validateLeaveRequest,
     formatDecimalHours
   } = useEmployeeLeaveBalanceValidation(selectedUserId);
+  const { workSchedule: companyWorkSchedule } = useWorkSchedules();
+  const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(selectedUserId);
+
+  // Funzioni helper per calcolare orari (stesse del form dipendenti)
+  const getWorkStartTime = () => {
+    const effectiveSchedule = employeeWorkSchedule || companyWorkSchedule;
+    return effectiveSchedule?.start_time || '08:00:00';
+  };
+
+  const getMinTimeForMidDay = () => {
+    const startTime = getWorkStartTime();
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + 30; // +30 minuti
+    const newHours = Math.floor(totalMinutes / 60);
+    const newMinutes = totalMinutes % 60;
+    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+  };
+
+  // Validazione personalizzata per i vincoli del permesso
+  const validatePermissionConstraints = (timeFromValue: string, timeToValue: string): string[] => {
+    const errors: string[] = [];
+    
+    if (!timeFromValue || !timeToValue) return errors;
+    
+    const workStartTime = getWorkStartTime().substring(0, 5); // Rimuove secondi
+    const minTimeForMidDay = getMinTimeForMidDay();
+    
+    if (permissionType === 'start_of_day') {
+      // Permesso inizio turno: l'orario di inizio deve essere quello del turno
+      if (timeFromValue !== workStartTime) {
+        errors.push('Per Permessi Inizio Turno, l\'orario di inizio deve corrispondere all\'inizio del turno');
+      }
+    } else if (permissionType === 'mid_day') {
+      // Permesso all'interno del turno: controlli rigorosi
+      if (timeFromValue === workStartTime) {
+        errors.push(`Per Permessi all'interno del Turno, l'orario di inizio non può essere uguale all'orario di inizio turno (${workStartTime})`);
+      }
+      
+      if (timeFromValue < workStartTime) {
+        errors.push(`Per Permessi all'interno del Turno, l'orario di inizio non può essere precedente all'orario di inizio turno (${workStartTime})`);
+      }
+      
+      if (timeFromValue < minTimeForMidDay) {
+        errors.push(`Per Permessi all'interno del Turno, l'orario di inizio deve essere almeno alle ${minTimeForMidDay} (30 minuti dopo l'inizio turno)`);
+      }
+    }
+    
+    return errors;
+  };
+
+  // Effetto per gestire automaticamente il tipo di permesso e l'orario
+  useEffect(() => {
+    if (leaveType === 'permesso') {
+      const workStartTime = getWorkStartTime();
+      
+      if (permissionType === 'start_of_day') {
+        // Permesso inizio turno: blocca orario inizio al turno
+        setTimeFrom(workStartTime.substring(0, 5)); // Rimuove i secondi
+      } else if (permissionType === 'mid_day') {
+        // Permesso mezzo turno: resetta se l'orario è troppo presto
+        const minTime = getMinTimeForMidDay();
+        
+        if (timeFrom && timeFrom < minTime) {
+          setTimeFrom(minTime);
+        }
+      }
+    }
+  }, [leaveType, permissionType, employeeWorkSchedule, companyWorkSchedule]);
+
+  // Effetto per validare i vincoli del permesso in tempo reale
+  useEffect(() => {
+    if (leaveType === 'permesso') {
+      // Prima pulisci sempre gli errori di vincoli
+      setPermissionConstraintErrors([]);
+
+      // Solo se TUTTI i campi obbligatori sono compilati, valida i vincoli
+      if (selectedUserId && startDate && timeFrom && timeTo) {
+        const constraintErrors = validatePermissionConstraints(timeFrom, timeTo);
+        setPermissionConstraintErrors(constraintErrors);
+      }
+    } else {
+      // Se non è un permesso, pulisci tutti gli errori di permesso
+      setPermissionConstraintErrors([]);
+    }
+  }, [selectedUserId, startDate, timeFrom, timeTo, permissionType, leaveType, employeeWorkSchedule, companyWorkSchedule]);
+
+  // Effetto per pulire errori quando si cambia tipo di permesso
+  useEffect(() => {
+    setPermissionConstraintErrors([]);
+  }, [permissionType]);
+
   const {
     isLoading: isCalculatingConflicts,
     isDateDisabled,
@@ -259,9 +354,32 @@ export function ManualLeaveEntryForm({
       return;
     }
 
-    // Validazione orari di lavoro per permessi
-    if (leaveType === 'permesso' && !validateWorkingHours(startDate, timeFrom, timeTo)) {
-      return;
+    // Controlli obbligatori per permessi
+    if (leaveType === 'permesso') {
+      if (!startDate) {
+        alert("La data del permesso è obbligatoria");
+        return;
+      }
+      if (!timeFrom) {
+        alert("L'orario di inizio è obbligatorio");
+        return;
+      }
+      if (!timeTo) {
+        alert("L'orario di fine è obbligatorio");
+        return;
+      }
+
+      // Validazione vincoli tipo permesso
+      const constraintErrors = validatePermissionConstraints(timeFrom, timeTo);
+      if (constraintErrors.length > 0) {
+        alert(`Errore vincoli permesso: ${constraintErrors.join(', ')}`);
+        return;
+      }
+
+      // Validazione orari di lavoro per permessi
+      if (!validateWorkingHours(startDate, timeFrom, timeTo)) {
+        return;
+      }
     }
     const employeeProfile = employees?.find(emp => emp.id === selectedUserId);
     if (leaveType === "ferie") {
@@ -413,6 +531,16 @@ export function ManualLeaveEntryForm({
               </AlertDescription>
             </Alert>}
 
+          {permissionConstraintErrors.length > 0 && <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1">
+                  <strong className="text-sm">Errori vincoli permesso:</strong>
+                  {permissionConstraintErrors.map((error, index) => <div key={index} className="text-sm">{error}</div>)}
+                </div>
+              </AlertDescription>
+            </Alert>}
+
           {/* Disabilita campi se non ci sono bilanci configurati */}
           {leaveType === "ferie" ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -482,16 +610,127 @@ export function ManualLeaveEntryForm({
                 </Popover>
               </div>
 
+              {/* Selezione tipo di permesso - Design identico al form dipendenti */}
+              <Card className="border-2 border-blue-100 bg-blue-50/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-blue-800 flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Che tipo di permesso vuoi inserire?
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Permesso inizio turno */}
+                    <div 
+                      className={cn(
+                        "p-4 rounded-lg border-2 cursor-pointer transition-all duration-200",
+                        permissionType === 'start_of_day' 
+                          ? "border-blue-500 bg-blue-100 shadow-md" 
+                          : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50"
+                      )}
+                      onClick={() => setPermissionType('start_of_day')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          "w-4 h-4 rounded-full border-2 mt-0.5 flex items-center justify-center",
+                          permissionType === 'start_of_day' ? "border-blue-500 bg-blue-500" : "border-gray-300"
+                        )}>
+                          {permissionType === 'start_of_day' && (
+                            <div className="w-2 h-2 rounded-full bg-white" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm">Permesso Inizio Turno</h4>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Orario inizio: <strong>{getWorkStartTime().substring(0, 5)}</strong> (bloccato)
+                          </p>
+                          <p className="text-xs text-blue-600 mt-1">
+                            Imposta solo l'orario di fine
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Permesso interno turno */}
+                    <div 
+                      className={cn(
+                        "p-4 rounded-lg border-2 cursor-pointer transition-all duration-200",
+                        permissionType === 'mid_day' 
+                          ? "border-green-500 bg-green-100 shadow-md" 
+                          : "border-gray-200 bg-white hover:border-green-300 hover:bg-green-50"
+                      )}
+                      onClick={() => setPermissionType('mid_day')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          "w-4 h-4 rounded-full border-2 mt-0.5 flex items-center justify-center",
+                          permissionType === 'mid_day' ? "border-green-500 bg-green-500" : "border-gray-300"
+                        )}>
+                          {permissionType === 'mid_day' && (
+                            <div className="w-2 h-2 rounded-full bg-white" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm">Permesso all'interno del Turno</h4>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Deve essere <strong>maggiore</strong> di {getWorkStartTime().substring(0, 5)}
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">
+                            Minimo: <strong>{getMinTimeForMidDay()}</strong> (+30 min)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info dinamica */}
+                  <Alert className={permissionType === 'start_of_day' ? 'border-blue-200 bg-blue-50' : 'border-green-200 bg-green-50'}>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription className={permissionType === 'start_of_day' ? 'text-blue-700' : 'text-green-700'}>
+                      {permissionType === 'start_of_day' ? (
+                        <>
+                          <strong>Permesso Inizio Turno:</strong> L'orario di inizio è automaticamente impostato alle {getWorkStartTime().substring(0, 5)} (inizio del turno del dipendente)
+                        </>
+                      ) : (
+                        <>
+                          <strong>Permesso all'interno del Turno:</strong> L'orario di inizio deve essere maggiore di {getWorkStartTime().substring(0, 5)} e almeno alle {getMinTimeForMidDay()} (30 minuti dopo l'inizio del turno)
+                        </>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="timeFrom">Ora inizio</Label>
+                  <Label htmlFor="timeFrom">
+                    Ora inizio *
+                    {permissionType === 'start_of_day' && (
+                      <span className="text-xs text-blue-600 ml-2">(Bloccato all'inizio turno)</span>
+                    )}
+                  </Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input id="timeFrom" type="time" value={timeFrom} onChange={handleTimeFromChange} className="pl-10" placeholder="HH:MM" step="300" disabled={!!balanceValidationError} />
+                    <Input 
+                      id="timeFrom" 
+                      type="time" 
+                      value={timeFrom} 
+                      onChange={handleTimeFromChange} 
+                      className="pl-10" 
+                      placeholder="HH:MM" 
+                      step="300" 
+                      disabled={!!balanceValidationError || permissionType === 'start_of_day'}
+                      min={permissionType === 'mid_day' ? getMinTimeForMidDay() : undefined}
+                    />
                   </div>
+                  {permissionType === 'mid_day' && (
+                    <div className="text-xs text-gray-500">
+                      Minimo: {getMinTimeForMidDay()} (per permessi all'interno del turno)
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="timeTo">Ora fine</Label>
+                  <Label htmlFor="timeTo">Ora fine *</Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input id="timeTo" type="time" value={timeTo} onChange={handleTimeToChange} className="pl-10" placeholder="HH:MM" step="300" disabled={!!balanceValidationError} />
@@ -530,11 +769,19 @@ export function ManualLeaveEntryForm({
               !!validationError ||
               !!balanceValidationError ||
               workingHoursErrors.length > 0 ||
+              permissionConstraintErrors.length > 0 ||
               isCalculatingConflicts ||
-              (leaveType === 'permesso' && (!startDate || !timeFrom || !timeTo))
+              (leaveType === 'permesso' && (!startDate || !timeFrom || !timeTo)) ||
+              (leaveType === 'ferie' && (!startDate || !endDate))
             }
           >
-            {insertMutation.isPending ? "Salvando..." : "Salva Richiesta"}
+            {insertMutation.isPending ? "Salvando..." : 
+             !!balanceValidationError ? "Bilancio non configurato" :
+             workingHoursErrors.length > 0 ? "Correggi orari di lavoro" :
+             permissionConstraintErrors.length > 0 ? "Correggi vincoli permesso" :
+             (leaveType === 'permesso' && (!startDate || !timeFrom || !timeTo)) ? "Compila tutti i campi" :
+             (leaveType === 'ferie' && (!startDate || !endDate)) ? "Compila tutte le date" :
+             "Salva Richiesta"}
           </Button>
         </form>
       </CardContent>

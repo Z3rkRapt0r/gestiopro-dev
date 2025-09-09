@@ -37,6 +37,14 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
   const targetUserId = userId || user?.id;
   const targetDate = checkDate || format(new Date(), 'yyyy-MM-dd');
 
+  // Debug per capire perché il query non si esegue
+  console.log('🔍 [useEmployeeStatus] Debug enabled condition:', {
+    targetUserId: !!targetUserId,
+    employeeWorkSchedule: !!employeeWorkSchedule,
+    workSchedule: !!workSchedule,
+    enabledCondition: !!targetUserId && (!!employeeWorkSchedule || !!workSchedule)
+  });
+
   const { data: employeeStatus, isLoading } = useQuery({
     queryKey: ['employee-status', targetUserId, targetDate],
     queryFn: async (): Promise<EmployeeStatus> => {
@@ -176,23 +184,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         if (approvedPermissions && approvedPermissions.length > 0) {
           const permission = approvedPermissions[0];
           
-          console.log('🔍 Debug permesso trovato:', {
-            permission,
-            hasTimeFrom: !!permission.time_from,
-            hasTimeTo: !!permission.time_to,
-            timeFrom: permission.time_from,
-            timeTo: permission.time_to,
-            type: permission.type,
-            day: permission.day,
-            timeFromType: typeof permission.time_from,
-            timeToType: typeof permission.time_to,
-            timeFromLength: permission.time_from?.length,
-            timeToLength: permission.time_to?.length,
-            condition: `${!!permission.time_from} && ${!!permission.time_to} = ${!!permission.time_from && !!permission.time_to}`
-          });
-          
           if (permission.time_from && permission.time_to) {
-            console.log('✅ Percorso PERMESSO ORARIO');
             // Helper per convertire "HH:mm:ss" in minuti dall'inizio della giornata
             const timeToMinutes = (timeString: string): number => {
               const [hours, minutes] = timeString.split(':').map(Number);
@@ -200,21 +192,18 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             };
             
             // Determina l'orario di inizio lavorativo (personalizzato o aziendale)
-            console.log('🔍 Debug work schedules:', {
-              employeeWorkSchedule,
-              workSchedule,
-              employeeWorkScheduleStartTime: employeeWorkSchedule?.start_time,
-              workScheduleStartTime: workSchedule?.start_time
-            });
-            
             const effectiveWorkSchedule = employeeWorkSchedule || workSchedule;
             const workStartTime = effectiveWorkSchedule?.start_time || '08:00:00';
             const workStartMinutes = timeToMinutes(workStartTime);
             
-            console.log('🔍 Debug effective work schedule:', {
-              effectiveWorkSchedule,
+            console.log('🔍 [useEmployeeStatus] Debug orari per calcolo permesso:', {
+              employeeWorkSchedule: employeeWorkSchedule ? 'Disponibile' : 'Non disponibile',
+              workSchedule: workSchedule ? 'Disponibile' : 'Non disponibile',
+              effectiveWorkSchedule: effectiveWorkSchedule ? 'Disponibile' : 'Non disponibile',
               workStartTime,
-              workStartMinutes
+              workStartMinutes,
+              employeeStartTime: employeeWorkSchedule?.start_time,
+              companyStartTime: workSchedule?.start_time
             });
             
             // Per permessi orari, controlla se l'orario attuale è dentro il range
@@ -232,29 +221,13 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             const isStartOfDay = permissionStartMinutes <= (workStartMinutes + oneHourInMinutes);
             const isMidDay = !isStartOfDay;
             
-            console.log('🔍 Debug calcolo permesso tipo:', {
-              permissionStartMinutes,
-              workStartMinutes,
-              oneHourInMinutes,
-              threshold: workStartMinutes + oneHourInMinutes,
-              isStartOfDayCalculation: `${permissionStartMinutes} <= ${workStartMinutes + oneHourInMinutes} = ${isStartOfDay}`,
-              isStartOfDay,
-              isMidDay
-            });
-            
             // Imposta i flag per i permessi orari
             hasHourlyPermission = true;
             isPermissionExpired = !isWithinPermissionTime && currentMinutes > permissionEndMinutes;
-            // canSecondCheckIn è true SOLO per permessi in mezzo alla giornata E scaduti
-            canSecondCheckIn = isPermissionExpired && isMidDay;
+            canSecondCheckIn = isPermissionExpired && isMidDay; // Solo per permessi in mezzo alla giornata
             permissionEndTime = permission.time_to;
             isStartOfDayPermission = isStartOfDay;
             isMidDayPermission = isMidDay;
-            
-            // CORREZIONE: Per permessi di inizio giornata, canSecondCheckIn deve essere sempre false
-            if (isStartOfDay) {
-              canSecondCheckIn = false;
-            }
             
             console.log('🕐 Controllo permesso orario:', {
               currentMinutes,
@@ -264,28 +237,21 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               currentTime: format(currentTime, 'HH:mm:ss'),
               permissionStart: permission.time_from,
               permissionEnd: permission.time_to,
+              permissionStartFormat: typeof permission.time_from,
+              permissionEndFormat: typeof permission.time_to,
               workStartTime,
+              workStartTimeFormat: typeof workStartTime,
               isWithinRange: isWithinPermissionTime,
               hasHourlyPermission,
               isPermissionExpired,
               canSecondCheckIn,
-              isStartOfDayPermission,
-              isMidDayPermission,
-              // Debug aggiuntivo per capire il calcolo
-              oneHourInMinutes: 60,
-              startOfDayThreshold: workStartMinutes + 60,
-              isStartOfDayCalculation: `${permissionStartMinutes} <= ${workStartMinutes + 60}`,
-              employeeWorkSchedule: employeeWorkSchedule?.start_time,
-              companyWorkSchedule: workSchedule?.start_time,
-              effectiveWorkSchedule: effectiveWorkSchedule?.start_time,
-              // Debug dettagliato per il calcolo
-              calculation: {
-                permissionStartMinutes,
-                workStartMinutes,
-                oneHourInMinutes,
-                threshold: workStartMinutes + 60,
-                isStartOfDay: permissionStartMinutes <= (workStartMinutes + 60),
-                isMidDay: !(permissionStartMinutes <= (workStartMinutes + 60))
+              isStartOfDayPermission: isStartOfDay,
+              isMidDayPermission: isMidDay,
+              calculationDetails: {
+                oneHourInMinutes: 60,
+                workStartPlusOneHour: workStartMinutes + 60,
+                isStartOfDayCheck: `${permissionStartMinutes} <= ${workStartMinutes + 60}`,
+                isStartOfDayResult: isStartOfDay
               }
             });
             
@@ -306,39 +272,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               console.log('✅ Permesso orario scaduto, check-in permesso');
             }
           } else {
-            console.log('✅ Percorso PERMESSO GIORNALIERO');
-            // Permesso giornaliero - determina se è di inizio giornata o in mezzo alla giornata
-            let isStartOfDayDaily = false;
-            let isMidDayDaily = false;
-            
-            if (permission.time_from) {
-              // Se ha un orario di inizio, determina il tipo di permesso
-              const permissionStartTime = permission.time_from;
-              const permissionStartMinutes = timeToMinutes(permissionStartTime);
-              const oneHourInMinutes = 60;
-              isStartOfDayDaily = permissionStartMinutes <= (workStartMinutes + oneHourInMinutes);
-              isMidDayDaily = !isStartOfDayDaily;
-            } else {
-              // Se non ha orario di inizio, considera come permesso di inizio giornata
-              isStartOfDayDaily = true;
-              isMidDayDaily = false;
-            }
-            
-            // Aggiorna i flag globali
-            isStartOfDayPermission = isStartOfDayDaily;
-            isMidDayPermission = isMidDayDaily;
-            
-            // Per i permessi giornalieri, considera sempre scaduto dopo l'orario di fine lavoro
-            const workEndMinutes = timeToMinutes(workEndTime);
-            isPermissionExpired = currentMinutes > workEndMinutes;
-            canSecondCheckIn = isPermissionExpired && isMidDayDaily;
-            
-            // CORREZIONE: Per permessi giornalieri di inizio giornata, canSecondCheckIn deve essere sempre false
-            if (isStartOfDayDaily) {
-              canSecondCheckIn = false;
-            }
-            
-            // Blocca sempre per tutto il giorno
+            // Permesso giornaliero - blocca sempre per tutto il giorno
             currentStatus = 'permission';
             conflictPriority = 3;
             blockingReasons.push('Il dipendente ha un permesso giornaliero per oggi');
@@ -347,17 +281,6 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
               startDate: permission.day,
               notes: permission.note || undefined
             };
-            
-            console.log('📅 Controllo permesso giornaliero:', {
-              permissionStartTime: permission.time_from,
-              workStartTime,
-              workEndTime,
-              currentTime: format(currentTime, 'HH:mm:ss'),
-              isStartOfDayDaily,
-              isMidDayDaily,
-              isPermissionExpired,
-              canSecondCheckIn
-            });
           }
         }
       }
@@ -464,7 +387,7 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
         isMidDayPermission
       };
     },
-    enabled: !!targetUserId,
+    enabled: !!targetUserId && (!!employeeWorkSchedule || !!workSchedule),
   });
 
   return {

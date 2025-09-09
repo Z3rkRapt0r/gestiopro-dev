@@ -414,28 +414,32 @@ export default function AttendanceCheckInOut() {
             const hasSecondCheckin = todayCheckins?.some(checkin => checkin.is_second_checkin) || false;
             // Prima entrata: usa la presenza principale del giorno
             const hasFirstCheckin = !!todayAttendance?.check_in_time;
-            // Controlla se ha un permesso in mezzo alla giornata (orario o giornaliero con orario di inizio)
+            // Controlla se ha un permesso in mezzo alla giornata
             const hasMidDayPermission = employeeStatus?.isMidDayPermission || false;
-            // Controlla se ha un permesso di inizio giornata (che deve essere escluso)
-            const hasStartOfDayPermission = employeeStatus?.isStartOfDayPermission || false;
             // Controlla se il permesso è scaduto (per mostrare il pulsante solo dopo la fine del permesso)
             const isPermissionExpired = employeeStatus?.isPermissionExpired || false;
 
             // Il pulsante appare solo se:
-            // 1. Ha registrato la prima entrata (presenza effettiva)
-            // 2. Ha un permesso in mezzo alla giornata (NON di inizio giornata)
+            // 1. Ha registrato la prima entrata
+            // 2. Ha un permesso in mezzo alla giornata
             // 3. Il permesso è scaduto (terminato)
             // 4. Non ha già registrato la seconda entrata
-            const shouldShow = hasFirstCheckin && hasMidDayPermission && !hasStartOfDayPermission && isPermissionExpired && !hasSecondCheckin;
+            // 5. NON è un permesso di inizio giornata (protezione extra)
+            const isStartOfDayPermission = employeeStatus?.isStartOfDayPermission || false;
+            const shouldShow = hasFirstCheckin && 
+                              hasMidDayPermission && 
+                              isPermissionExpired && 
+                              !hasSecondCheckin &&
+                              !isStartOfDayPermission; // Protezione extra: mai per permessi di inizio giornata
 
-            console.log('🔍 Debug tasto seconda entrata (logica corretta):', {
+            console.log('🔍 Debug tasto seconda entrata (nuova logica):', {
               hasFirstCheckin,
               hasMidDayPermission,
-              hasStartOfDayPermission,
               isPermissionExpired,
               hasSecondCheckin,
-              isStartOfDayPermission: employeeStatus?.isStartOfDayPermission,
-              isMidDayPermission: employeeStatus?.isMidDayPermission,
+              isStartOfDayPermission,
+              fromEmployeeStatus_isStartOfDayPermission: employeeStatus?.isStartOfDayPermission,
+              fromEmployeeStatus_isMidDayPermission: employeeStatus?.isMidDayPermission,
               hasHourlyPermission: employeeStatus?.hasHourlyPermission,
               permissionType: employeeStatus?.statusDetails?.type,
               todayCheckins: todayCheckins?.length || 0,
