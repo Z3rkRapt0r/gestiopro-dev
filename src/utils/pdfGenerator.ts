@@ -315,6 +315,7 @@ interface ExportParams {
   companyLogoUrl?: string | null;
   workSchedule?: any;
   isHoliday?: (date: Date) => boolean;
+  includeLegend?: boolean;
 }
 
 // Funzione per formattare in modo sicuro le date
@@ -525,7 +526,8 @@ export const generateAttendancePDF = async ({
   attendanceSettings,
   companyLogoUrl,
   workSchedule,
-  isHoliday
+  isHoliday,
+  includeLegend = true
 }: ExportParams) => {
   try {
     console.log('Inizializzazione PDF con dati:', data.length, 'record');
@@ -560,40 +562,49 @@ export const generateAttendancePDF = async ({
     const dataGenerazione = `Generato il: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: it })}`;
     doc.text(dataGenerazione, 20, titleY + 20);
 
-    // Legend for colors - compatta e visibile
-    const legendY = titleY + 30;
-    doc.setFontSize(10);
-    doc.setTextColor(40, 40, 40);
-    doc.setFont('helvetica', 'bold');
-    doc.text('LEGENDA:', 20, legendY);
+    // Legend for colors - compatta e visibile (solo se includeLegend è true)
+    let legendY = titleY + 30;
     
-    // Prima riga: Assenze e Ferie affiancate
-    const firstRowY = legendY + 3;
-    const secondRowY = legendY + 15; // Ridotto da 19 a 15 per più spazio
-    
-    // Red for pure absences - prima colonna
-    doc.setFillColor(255, 220, 220);
-    doc.setDrawColor(255, 150, 150);
-    doc.setLineWidth(0.2);
-    doc.rect(20, firstRowY, 6, 6, 'FD');
-    doc.setTextColor(40, 40, 40);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text('Assenze (giornate senza giustificazione)', 30, firstRowY + 5);
-    
-    // Light blue for vacations - seconda colonna (affianco)
-    doc.setFillColor(200, 230, 255);
-    doc.setDrawColor(100, 150, 255);
-    doc.rect(120, firstRowY, 6, 6, 'FD');
-    doc.setTextColor(40, 40, 40);
-    doc.text('Ferie (giornate di ferie)', 130, firstRowY + 5);
-    
-    // Green for permissions - seconda riga
-    doc.setFillColor(200, 255, 200);
-    doc.setDrawColor(100, 200, 100);
-    doc.rect(20, secondRowY, 6, 6, 'FD');
-    doc.setTextColor(40, 40, 40);
-    doc.text('Permessi (giornate con permesso)', 30, secondRowY + 5);
+    if (includeLegend) {
+      doc.setFontSize(10);
+      doc.setTextColor(40, 40, 40);
+      doc.setFont('helvetica', 'bold');
+      doc.text('LEGENDA:', 20, legendY);
+      
+      // Prima riga: Assenze e Ferie affiancate
+      const firstRowY = legendY + 3;
+      const secondRowY = legendY + 15; // Ridotto da 19 a 15 per più spazio
+      
+      // Red for pure absences - prima colonna
+      doc.setFillColor(255, 220, 220);
+      doc.setDrawColor(255, 150, 150);
+      doc.setLineWidth(0.2);
+      doc.rect(20, firstRowY, 6, 6, 'FD');
+      doc.setTextColor(40, 40, 40);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('Assenze (giornate senza giustificazione)', 30, firstRowY + 5);
+      
+      // Light blue for vacations - seconda colonna (affianco)
+      doc.setFillColor(200, 230, 255);
+      doc.setDrawColor(100, 150, 255);
+      doc.rect(120, firstRowY, 6, 6, 'FD');
+      doc.setTextColor(40, 40, 40);
+      doc.text('Ferie (giornate di ferie)', 130, firstRowY + 5);
+      
+      // Green for permissions - seconda riga
+      doc.setFillColor(200, 255, 200);
+      doc.setDrawColor(100, 200, 100);
+      doc.rect(20, secondRowY, 6, 6, 'FD');
+      doc.setTextColor(40, 40, 40);
+      doc.text('Permessi (giornate con permesso)', 30, secondRowY + 5);
+      
+      // Aggiorna legendY per il posizionamento delle tabelle
+      legendY = secondRowY + 20; // Spazio dopo la legenda
+    } else {
+      // Se non c'è legenda, inizia le tabelle più in alto
+      legendY = titleY + 20;
+    }
 
     // Reset default text color
     doc.setTextColor(40, 40, 40);

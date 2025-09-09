@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Download, FileText, Calendar as CalendarIcon, Users } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -50,6 +51,7 @@ export default function AttendanceExportSection() {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [isExporting, setIsExporting] = useState(false);
+  const [includeLegend, setIncludeLegend] = useState<boolean>(true); // Default: include legend
   
   const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
@@ -457,7 +459,8 @@ export default function AttendanceExportSection() {
         attendanceSettings,
         companyLogoUrl: dashboardSettings.logo_url,
         workSchedule: companyWorkSchedule,
-        isHoliday: isHoliday
+        isHoliday: isHoliday,
+        includeLegend: includeLegend
       });
       
       toast({
@@ -612,6 +615,26 @@ export default function AttendanceExportSection() {
             </div>
           )}
 
+          {/* Opzione legenda */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="includeLegend" 
+                checked={includeLegend} 
+                onCheckedChange={(checked) => setIncludeLegend(checked as boolean)}
+              />
+              <label 
+                htmlFor="includeLegend" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Includi legenda nel PDF
+              </label>
+            </div>
+            <div className="text-xs text-gray-500 ml-6">
+              La legenda spiega i colori utilizzati per evidenziare assenze (rosso), ferie (celeste) e permessi (verde) nel documento.
+            </div>
+          </div>
+
           {/* Pulsante esportazione */}
           <Button 
             onClick={handleExport} 
@@ -638,6 +661,7 @@ export default function AttendanceExportSection() {
                     <div>Operatore: {employees?.find(e => e.id === selectedEmployee)?.first_name} {employees?.find(e => e.id === selectedEmployee)?.last_name}</div>
                   )}
                   <div>Formato: PDF</div>
+                  <div>Legenda: {includeLegend ? 'Inclusa' : 'Esclusa'}</div>
                   <div>Filtro Periodo: {
                     periodType === 'month' ? `${availableMonths.find(m => m.value === selectedMonth)?.label} ${selectedYear}` : 
                     `Anno ${selectedYear}`
