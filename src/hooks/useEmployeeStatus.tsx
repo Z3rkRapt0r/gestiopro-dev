@@ -195,9 +195,22 @@ export const useEmployeeStatus = (userId?: string, checkDate?: string) => {
             };
             
             // Determina l'orario di inizio lavorativo (personalizzato o aziendale)
+            console.log('🔍 Debug work schedules:', {
+              employeeWorkSchedule,
+              workSchedule,
+              employeeWorkScheduleStartTime: employeeWorkSchedule?.start_time,
+              workScheduleStartTime: workSchedule?.start_time
+            });
+            
             const effectiveWorkSchedule = employeeWorkSchedule || workSchedule;
             const workStartTime = effectiveWorkSchedule?.start_time || '08:00:00';
             const workStartMinutes = timeToMinutes(workStartTime);
+            
+            console.log('🔍 Debug effective work schedule:', {
+              effectiveWorkSchedule,
+              workStartTime,
+              workStartMinutes
+            });
             
             // Per permessi orari, controlla se l'orario attuale è dentro il range
             const currentTime = new Date();
