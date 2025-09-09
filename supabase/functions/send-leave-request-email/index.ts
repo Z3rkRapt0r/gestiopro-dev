@@ -184,7 +184,7 @@ function buildNewRequestEmail(
         ` : ''}
         
         <div style="text-align: center; margin-top: 30px;">
-          <a href="https://alm-app.lovable.app/" 
+          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
              style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
             Gestisci Richiesta
           </a>
@@ -229,7 +229,7 @@ function buildApprovalEmail(
         ` : ''}
         
         <div style="text-align: center; margin-top: 30px;">
-          <a href="https://alm-app.lovable.app/" 
+          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
              style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
             Accedi alla Dashboard
           </a>
@@ -278,7 +278,7 @@ function buildRejectionEmail(
         </p>
         
         <div style="text-align: center; margin-top: 30px;">
-          <a href="https://alm-app.lovable.app/" 
+          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
              style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
             Accedi alla Dashboard
           </a>

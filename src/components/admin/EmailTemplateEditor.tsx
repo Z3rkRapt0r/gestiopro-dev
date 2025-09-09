@@ -70,7 +70,7 @@ const EmailTemplateEditor = ({
   // NEW: Button configuration
   const [showButton, setShowButton] = useState(true);
   const [buttonText, setButtonText] = useState("Accedi alla Dashboard");
-  const [buttonUrl, setButtonUrl] = useState("https://alm-app.lovable.app/");
+  const [buttonUrl, setButtonUrl] = useState("https://finestra-gestione-aziendale-pro.vercel.app/");
   
   // State
   const [loading, setLoading] = useState(false);
@@ -167,7 +167,7 @@ const EmailTemplateEditor = ({
         // NEW: Load button configuration
         setShowButton(data.show_button !== undefined ? data.show_button : true);
         setButtonText(data.button_text || "Accedi alla Dashboard");
-        setButtonUrl(data.button_url || "https://alm-app.lovable.app/");
+        setButtonUrl(data.button_url || "https://finestra-gestione-aziendale-pro.vercel.app/");
       } else {
         console.log('No existing template found, using defaults');
         setExistingTemplateId(null);
@@ -568,7 +568,7 @@ const EmailTemplateEditor = ({
                       id="button-url"
                       value={buttonUrl}
                       onChange={(e) => setButtonUrl(e.target.value)}
-                      placeholder="https://alm-app.lovable.app/"
+                      placeholder="https://finestra-gestione-aziendale-pro.vercel.app/"
                       type="url"
                     />
                     <p className="text-xs text-gray-500 mt-1">

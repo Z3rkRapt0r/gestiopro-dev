@@ -238,7 +238,7 @@ serve(async (req) => {
         admin_message_text_color: '#1565c0',
         show_button: true,
         button_text: 'Accedi alla Dashboard',
-        button_url: 'https://alm-app.lovable.app/',
+        button_url: 'https://finestra-gestione-aziendale-pro.vercel.app/',
       };
       console.log("[Notification Email] No custom template found, using minimal fallback styling only");
     }

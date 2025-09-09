@@ -4,7 +4,7 @@
 -- Aggiorna tutti i template email per usare il nuovo dominio
 UPDATE public.email_templates 
 SET button_url = 'https://finestra-gestione-aziendale-pro.vercel.app/'
-WHERE button_url = 'https://alm-app.lovable.app/'
+WHERE button_url = 'https://finestra-gestione-aziendale-pro.vercel.app/'
    OR button_url IS NULL;
 
 -- Aggiorna le impostazioni admin per assicurarsi che app_url sia impostato

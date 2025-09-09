@@ -14,7 +14,7 @@ function buildTestHtmlContent(template: any, subject: string, content: string) {
   // Pulsante per email documenti
   const dashboardButton = isDocumentEmail ? `
     <div style="width:100%;text-align:center;margin:28px 0 0 0;">
-      <a href="https://alm-app.lovable.app/" target="_blank" style="
+      <a href="https://finestra-gestione-aziendale-pro.vercel.app/" target="_blank" style="
         background-color:${template.button_color || '#007bff'};
         color:${template.button_text_color || '#ffffff'};
         padding:12px 26px;
