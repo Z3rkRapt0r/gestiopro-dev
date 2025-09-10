@@ -164,6 +164,49 @@ export default function LeaveRequestForm({
     return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
   };
 
+  // Controlla se è troppo tardi per richiedere un permesso inizio turno
+  const isTooLateForStartOfDay = () => {
+    if (!watchedDay) return false;
+    
+    const today = new Date();
+    const selectedDate = new Date(watchedDay);
+    
+    // Solo per richieste dello stesso giorno
+    if (selectedDate.toDateString() !== today.toDateString()) {
+      return false;
+    }
+    
+    const currentTime = new Date();
+    const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+    
+    const workStartTime = getWorkStartTime();
+    const [workHours, workMinutes] = workStartTime.split(':').map(Number);
+    const workStartMinutes = workHours * 60 + workMinutes;
+    
+    // È troppo tardi se sono passati almeno 30 minuti dall'inizio del turno
+    return currentMinutes >= (workStartMinutes + 30);
+  };
+
+  // Calcola quanto tempo è passato dall'inizio del turno
+  const getTimeSinceWorkStart = () => {
+    const currentTime = new Date();
+    const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+    
+    const workStartTime = getWorkStartTime();
+    const [workHours, workMinutes] = workStartTime.split(':').map(Number);
+    const workStartMinutes = workHours * 60 + workMinutes;
+    
+    const diffMinutes = currentMinutes - workStartMinutes;
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}min`;
+    } else {
+      return `${minutes}min`;
+    }
+  };
+
   // Validazione personalizzata per i vincoli del permesso
   const validatePermissionConstraints = (timeFrom: string, timeTo: string): string[] => {
     const errors: string[] = [];
@@ -220,6 +263,16 @@ export default function LeaveRequestForm({
       }
     }
   }, [watchedType, permissionType, employeeWorkSchedule, companyWorkSchedule]);
+
+  // Effetto per controllare se è troppo tardi per permesso inizio turno
+  useEffect(() => {
+    if (watchedType === 'permesso' && watchedDay) {
+      if (isTooLateForStartOfDay() && permissionType === 'start_of_day') {
+        // Forza il cambio a permesso interno turno
+        setPermissionType('mid_day');
+      }
+    }
+  }, [watchedDay, watchedType, employeeWorkSchedule, companyWorkSchedule]);
 
   // Effetto per validare i vincoli del permesso in tempo reale
   useEffect(() => {
@@ -795,12 +848,18 @@ export default function LeaveRequestForm({
                         {/* Permesso inizio giornata */}
                         <div 
                           className={cn(
-                            "p-4 rounded-lg border-2 cursor-pointer transition-all duration-200",
-                            permissionType === 'start_of_day' 
-                              ? "border-blue-500 bg-blue-100 shadow-md" 
-                              : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50"
+                            "p-4 rounded-lg border-2 transition-all duration-200",
+                            isTooLateForStartOfDay() 
+                              ? "border-red-200 bg-red-50 cursor-not-allowed opacity-60" 
+                              : permissionType === 'start_of_day' 
+                                ? "border-blue-500 bg-blue-100 shadow-md cursor-pointer" 
+                                : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 cursor-pointer"
                           )}
-                          onClick={() => setPermissionType('start_of_day')}
+                          onClick={() => {
+                            if (!isTooLateForStartOfDay()) {
+                              setPermissionType('start_of_day');
+                            }
+                          }}
                         >
                           <div className="flex items-start gap-3">
                             <div className={cn(
@@ -812,13 +871,34 @@ export default function LeaveRequestForm({
                               )}
                             </div>
                             <div className="flex-1">
-                              <h4 className="font-medium text-sm">Permesso Inizio Turno</h4>
-                              <p className="text-xs text-gray-600 mt-1">
-                                Orario inizio: <strong>{getWorkStartTime().substring(0, 5)}</strong> (bloccato)
-                              </p>
-                              <p className="text-xs text-blue-600 mt-1">
-                                Scegli solo l'orario di fine
-                              </p>
+                              <h4 className={cn(
+                                "font-medium text-sm",
+                                isTooLateForStartOfDay() ? "text-red-600" : ""
+                              )}>
+                                Permesso Inizio Turno
+                                {isTooLateForStartOfDay() && (
+                                  <span className="text-xs font-normal text-red-500 ml-2">(Non disponibile)</span>
+                                )}
+                              </h4>
+                              {isTooLateForStartOfDay() ? (
+                                <>
+                                  <p className="text-xs text-red-600 mt-1">
+                                    ⚠️ Troppo tardi! Sono passati {getTimeSinceWorkStart()}
+                                  </p>
+                                  <p className="text-xs text-red-500 mt-1">
+                                    Puoi richiedere solo permessi interni
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    Orario inizio: <strong>{getWorkStartTime().substring(0, 5)}</strong> (bloccato)
+                                  </p>
+                                  <p className="text-xs text-blue-600 mt-1">
+                                    Scegli solo l'orario di fine
+                                  </p>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -855,21 +935,46 @@ export default function LeaveRequestForm({
                         </div>
                       </div>
 
+                      {/* Alert per permesso troppo tardi */}
+                      {isTooLateForStartOfDay() && (
+                        <Alert variant="destructive" className="border-red-300 bg-red-50">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription className="text-red-700">
+                            <strong>⏰ Permesso Inizio Turno non disponibile</strong><br />
+                            Sono già passati {getTimeSinceWorkStart()} dall'inizio del tuo turno ({getWorkStartTime().substring(0, 5)}). 
+                            Per richieste dello stesso giorno dopo 30 minuti dall'inizio turno, puoi richiedere solo <strong>Permessi all'interno del Turno</strong>.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
                       {/* Info dinamica */}
-                      <Alert className={permissionType === 'start_of_day' ? 'border-blue-200 bg-blue-50' : 'border-green-200 bg-green-50'}>
-                        <Info className="h-4 w-4" />
-                        <AlertDescription className={permissionType === 'start_of_day' ? 'text-blue-700' : 'text-green-700'}>
-                          {permissionType === 'start_of_day' ? (
-                            <>
-                              <strong>Permesso Inizio Turno:</strong> L'orario di inizio è automaticamente impostato alle {getWorkStartTime().substring(0, 5)} (inizio del tuo turno)
-                            </>
-                          ) : (
-                            <>
-                              <strong>Permesso all'interno del Turno:</strong> L'orario di inizio deve essere maggiore di {getWorkStartTime().substring(0, 5)} e almeno alle {getMinTimeForMidDay()} (30 minuti dopo l'inizio del turno)
-                            </>
-                          )}
-                        </AlertDescription>
-                      </Alert>
+                      {!isTooLateForStartOfDay() && (
+                        <Alert className={permissionType === 'start_of_day' ? 'border-blue-200 bg-blue-50' : 'border-green-200 bg-green-50'}>
+                          <Info className="h-4 w-4" />
+                          <AlertDescription className={permissionType === 'start_of_day' ? 'text-blue-700' : 'text-green-700'}>
+                            {permissionType === 'start_of_day' ? (
+                              <>
+                                <strong>Permesso Inizio Turno:</strong> L'orario di inizio è automaticamente impostato alle {getWorkStartTime().substring(0, 5)} (inizio del tuo turno)
+                              </>
+                            ) : (
+                              <>
+                                <strong>Permesso all'interno del Turno:</strong> L'orario di inizio deve essere maggiore di {getWorkStartTime().substring(0, 5)} e almeno alle {getMinTimeForMidDay()} (30 minuti dopo l'inizio del turno)
+                              </>
+                            )}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Alert per permesso interno quando è troppo tardi */}
+                      {isTooLateForStartOfDay() && permissionType === 'mid_day' && (
+                        <Alert className="border-green-200 bg-green-50">
+                          <Info className="h-4 w-4" />
+                          <AlertDescription className="text-green-700">
+                            <strong>✅ Permesso all'interno del Turno disponibile</strong><br />
+                            Puoi richiedere un permesso con orario di inizio dalle {getMinTimeForMidDay()} in poi.
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     </CardContent>
                   </Card>
 
