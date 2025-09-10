@@ -47,6 +47,11 @@ const isPureAbsenceDay = (att: AttendanceData): boolean => {
   return getAttendanceStatus(att) === 'Assente';
 };
 
+// Helper: determine if the day is a sick leave day
+const isSickLeaveDay = (att: AttendanceData): boolean => {
+  return att.is_sick_leave || getAttendanceStatus(att) === 'Malattia';
+};
+
 // Helper: determine if the day is a permission day
 const isPermissionDay = (att: AttendanceData): boolean => {
   return !!(att.permission_leave && (att.permission_leave.time_from || att.permission_leave.time_to));
@@ -574,6 +579,7 @@ export const generateAttendancePDF = async ({
       // Prima riga: Assenze e Ferie affiancate
       const firstRowY = legendY + 3;
       const secondRowY = legendY + 12; // Ridotto da 15 a 12 per più compattezza
+      const thirdRowY = legendY + 21; // Nuova riga per malattia
       
       // Red for pure absences - prima colonna
       doc.setFillColor(255, 220, 220);
@@ -592,12 +598,19 @@ export const generateAttendancePDF = async ({
       doc.setTextColor(40, 40, 40);
       doc.text('Ferie (giornate di ferie)', 130, firstRowY + 5);
       
-      // Green for permissions - seconda riga
+      // Green for permissions - seconda riga, prima colonna
       doc.setFillColor(200, 255, 200);
       doc.setDrawColor(100, 200, 100);
       doc.rect(20, secondRowY, 6, 6, 'FD');
       doc.setTextColor(40, 40, 40);
       doc.text('Permessi (giornate con permesso)', 30, secondRowY + 5);
+      
+      // Orange for sick leave - seconda riga, seconda colonna
+      doc.setFillColor(255, 220, 180);
+      doc.setDrawColor(255, 165, 80);
+      doc.rect(120, secondRowY, 6, 6, 'FD');
+      doc.setTextColor(40, 40, 40);
+      doc.text('Malattia (giornate di malattia)', 130, secondRowY + 5);
       
       // Aggiorna legendY per il posizionamento delle tabelle
       legendY = secondRowY + 12; // Ridotto da 20 a 12 per meno spazio vuoto
@@ -747,8 +760,10 @@ export const generateAttendancePDF = async ({
                 const rowIndex = data.row.index;
                 const attendanceRecord = sortedRecords[rowIndex];
                 if (attendanceRecord) {
-                  // Priorità: assenza pura (rosso) > ferie (celeste) > permesso (verde)
-                  if (isPureAbsenceDay(attendanceRecord)) {
+                  // Priorità: malattia (arancione) > assenza pura (rosso) > ferie (celeste) > permesso (verde)
+                  if (isSickLeaveDay(attendanceRecord)) {
+                    data.cell.styles.fillColor = [255, 220, 180];
+                  } else if (isPureAbsenceDay(attendanceRecord)) {
                     data.cell.styles.fillColor = [255, 220, 220];
                   } else if (isVacationDay(attendanceRecord, workSchedule, isHoliday)) {
                     data.cell.styles.fillColor = [200, 230, 255];
@@ -821,8 +836,10 @@ export const generateAttendancePDF = async ({
             const rowIndex = data.row.index;
             const attendanceRecord = singleRecords[rowIndex];
             if (attendanceRecord) {
-              // Priorità: assenza pura (rosso) > ferie (celeste) > permesso (verde)
-              if (isPureAbsenceDay(attendanceRecord)) {
+              // Priorità: malattia (arancione) > assenza pura (rosso) > ferie (celeste) > permesso (verde)
+              if (isSickLeaveDay(attendanceRecord)) {
+                data.cell.styles.fillColor = [255, 220, 180];
+              } else if (isPureAbsenceDay(attendanceRecord)) {
                 data.cell.styles.fillColor = [255, 220, 220];
               } else if (isVacationDay(attendanceRecord, workSchedule, isHoliday)) {
                 data.cell.styles.fillColor = [200, 230, 255];

@@ -631,7 +631,7 @@ export default function AttendanceExportSection() {
               </label>
             </div>
             <div className="text-xs text-gray-500 ml-6">
-              La legenda spiega i colori utilizzati per evidenziare assenze (rosso), ferie (celeste) e permessi (verde) nel documento.
+              La legenda spiega i colori utilizzati per evidenziare malattia (arancione), assenze (rosso), ferie (celeste) e permessi (verde) nel documento.
             </div>
           </div>
 

@@ -52,13 +52,7 @@ export default function AdminAttendanceSection() {
                   <Calendar className="h-3 w-3 flex-shrink-0" />
                   <span>Cal. Generale</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="operator" 
-                  className="flex-shrink-0 flex items-center gap-1 px-2 py-1.5 text-xs whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm rounded transition-all duration-200"
-                >
-                  <User className="h-3 w-3 flex-shrink-0" />
-                  <span>Cal. Operatore</span>
-                </TabsTrigger>
+{/* Tab Calendario Operatore nascosto */}
                 <TabsTrigger 
                   value="sick-form" 
                   className="flex-shrink-0 flex items-center gap-1 px-2 py-1.5 text-xs whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm rounded transition-all duration-200"
@@ -114,13 +108,7 @@ export default function AdminAttendanceSection() {
                 <span className="truncate">Calendario Generale</span>
               </TabsTrigger>
               
-              <TabsTrigger 
-                value="operator" 
-                className="flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs lg:text-sm font-medium whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:scale-105 rounded-lg transition-all duration-200 hover:bg-background/50 hover:shadow-sm group flex-1 min-w-0"
-              >
-                <User className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0 group-data-[state=active]:text-primary" />
-                <span className="truncate">Calendario Operatore</span>
-              </TabsTrigger>
+{/* Tab Calendario Operatore nascosto */}
               
               <TabsTrigger 
                 value="sick-form" 
@@ -181,11 +169,7 @@ export default function AdminAttendanceSection() {
             </div>
           </TabsContent>
 
-          <TabsContent value="operator" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
-            <div className="bg-gradient-to-br from-background to-muted/20 rounded-lg p-3 lg:p-4 shadow-sm border border-muted/40">
-              <OperatorCalendarSection />
-            </div>
-          </TabsContent>
+{/* TabsContent per operator rimosso */}
 
           <TabsContent value="sick-form" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
             <div className="bg-gradient-to-br from-background to-muted/20 rounded-lg p-3 lg:p-4 shadow-sm border border-muted/40">
