@@ -52,7 +52,7 @@ export function ManualLeaveEntryForm({
   } = useLeaveRequestNotifications();
   const {
     validatePermissionTime
-  } = useWorkingHoursValidation();
+  } = useWorkingHoursValidation(selectedUserId);
   const {
     leaveBalance,
     validateLeaveRequest,
@@ -84,6 +84,20 @@ export function ManualLeaveEntryForm({
     
     const workStartTime = getWorkStartTime().substring(0, 5); // Rimuove secondi
     const minTimeForMidDay = getMinTimeForMidDay();
+    
+    // VALIDAZIONE 1: L'orario di fine non può essere antecedente all'orario di inizio
+    if (timeToValue <= timeFromValue) {
+      errors.push('L\'orario di fine deve essere successivo all\'orario di inizio');
+    }
+    
+    // VALIDAZIONE 2: L'orario di fine non può superare l'orario di fine lavorativo
+    const effectiveSchedule = employeeWorkSchedule || companyWorkSchedule;
+    if (effectiveSchedule?.end_time) {
+      const workEndTime = effectiveSchedule.end_time.substring(0, 5); // Rimuove secondi se presenti
+      if (timeToValue > workEndTime) {
+        errors.push(`Orario di fine non valido: ${timeToValue} è troppo tardi. L'orario di lavoro termina alle ${workEndTime}`);
+      }
+    }
     
     if (permissionType === 'start_of_day') {
       // Permesso inizio turno: l'orario di inizio deve essere quello del turno
@@ -536,15 +550,6 @@ export function ManualLeaveEntryForm({
               </AlertDescription>
             </Alert>}
 
-          {permissionConstraintErrors.length > 0 && <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-1">
-                  <strong className="text-sm">Errori vincoli permesso:</strong>
-                  {permissionConstraintErrors.map((error, index) => <div key={index} className="text-sm">{error}</div>)}
-                </div>
-              </AlertDescription>
-            </Alert>}
 
           {/* Disabilita campi se non ci sono bilanci configurati */}
           {leaveType === "ferie" ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -774,7 +779,6 @@ export function ManualLeaveEntryForm({
               !!validationError ||
               !!balanceValidationError ||
               workingHoursErrors.filter(error => !error.includes('orario di fine deve essere successivo')).length > 0 ||
-              permissionConstraintErrors.length > 0 ||
               isCalculatingConflicts ||
               (leaveType === 'permesso' && (!startDate || !timeFrom || !timeTo)) ||
               (leaveType === 'ferie' && (!startDate || !endDate))

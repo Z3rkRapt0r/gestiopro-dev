@@ -60,11 +60,11 @@ export const useWorkingHoursValidation = (employeeId?: string) => {
       const workEnd = workSchedule.end_time;
 
       if (timeFrom < workStart) {
-        errors.push(`L'orario di inizio (${timeFrom}) deve essere dopo l'inizio dell'orario di lavoro (${workStart})`);
+        errors.push(`Orario di inizio non valido: ${timeFrom} è troppo presto. L'orario di lavoro inizia alle ${workStart.substring(0, 5)}`);
       }
 
       if (timeTo > workEnd) {
-        errors.push(`L'orario di fine (${timeTo}) deve essere prima della fine dell'orario di lavoro (${workEnd})`);
+        errors.push(`Orario di fine non valido: ${timeTo} è troppo tardi. L'orario di lavoro termina alle ${workEnd.substring(0, 5)}`);
       }
 
       if (timeFrom >= timeTo) {

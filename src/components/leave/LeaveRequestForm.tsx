@@ -77,6 +77,15 @@ const leaveRequestSchema = z.object({
   message: "L'Ora Fine è obbligatoria", 
   path: ["time_to"]
 }).refine(data => {
+  // Validazione: orario fine non può essere antecedente all'orario inizio
+  if (data.type === 'permesso' && data.time_from && data.time_to) {
+    return data.time_to > data.time_from;
+  }
+  return true;
+}, {
+  message: "L'orario di fine deve essere successivo all'orario di inizio",
+  path: ["time_to"]
+}).refine(data => {
   if (data.type === 'ferie') {
     return data.date_from && data.date_to;
   }
@@ -216,6 +225,20 @@ export default function LeaveRequestForm({
     const workStartTime = getWorkStartTime();
     const minTimeForMidDay = getMinTimeForMidDay();
     
+    // VALIDAZIONE 1: L'orario di fine non può essere antecedente all'orario di inizio
+    if (timeTo <= timeFrom) {
+      errors.push('L\'orario di fine deve essere successivo all\'orario di inizio');
+    }
+    
+    // VALIDAZIONE 2: L'orario di fine non può superare l'orario di fine lavorativo
+    const effectiveSchedule = employeeWorkSchedule || companyWorkSchedule;
+    if (effectiveSchedule?.end_time) {
+      const workEndTime = effectiveSchedule.end_time.substring(0, 5); // Rimuove secondi se presenti
+      if (timeTo > workEndTime) {
+        errors.push(`Orario di fine non valido: ${timeTo} è troppo tardi. L'orario di lavoro termina alle ${workEndTime}`);
+      }
+    }
+    
     if (permissionType === 'start_of_day') {
       // Permesso inizio turno: l'orario di inizio deve essere quello del turno
       if (timeFrom !== workStartTime.substring(0, 5)) {
@@ -283,7 +306,9 @@ export default function LeaveRequestForm({
           !error.includes('orario di inizio deve essere') && 
           !error.includes('orario di inizio deve corrispondere') &&
           !error.includes('orario di inizio non può essere uguale') &&
-          !error.includes('orario di inizio non può essere precedente')
+          !error.includes('orario di inizio non può essere precedente') &&
+          !error.includes('orario di fine deve essere successivo') &&
+          !error.includes('Orario di fine non valido') && !error.includes('è troppo tardi')
         )
       );
 
@@ -309,7 +334,9 @@ export default function LeaveRequestForm({
         !error.includes('orario di inizio deve essere') && 
         !error.includes('orario di inizio deve corrispondere') &&
         !error.includes('orario di inizio non può essere uguale') &&
-        !error.includes('orario di inizio non può essere precedente')
+        !error.includes('orario di inizio non può essere precedente') &&
+        !error.includes('orario di fine deve essere successivo') &&
+        !error.includes('Orario di fine non valido') && !error.includes('è troppo tardi')
       )
     );
   }, [permissionType]);
