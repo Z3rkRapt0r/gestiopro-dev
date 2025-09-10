@@ -277,7 +277,7 @@ export default function LeaveRequestForm({
   // Effetto per validare i vincoli del permesso in tempo reale
   useEffect(() => {
     if (watchedType === 'permesso') {
-      // Prima pulisci sempre gli errori di vincoli
+      // Prima pulisci solo gli errori di vincoli (mantieni errori ore massime)
       setPermissionHoursErrors(prev => 
         prev.filter(error => 
           !error.includes('orario di inizio deve essere') && 
@@ -406,29 +406,40 @@ export default function LeaveRequestForm({
           timeFrom: watchedTimeFrom,
           timeTo: watchedTimeTo,
           requestedHours,
-          maxHours: getMaxPermissionHoursForDisplay()
+          maxHours: getMaxPermissionHoursForDisplay(),
+          fromTimeDate: fromTime.toISOString(),
+          toTimeDate: toTime.toISOString(),
+          diffMs,
+          calculatedHours: requestedHours.toFixed(2)
         });
 
         const validation = validatePermissionHours(requestedHours);
         
+        console.log('🔍 [Permission Hours Validation Result]', {
+          isValid: validation.isValid,
+          errorMessage: validation.errorMessage,
+          currentErrors: permissionHoursErrors
+        });
+        
         if (!validation.isValid) {
           console.log('❌ [Permission Hours] Validation failed:', validation);
           setPermissionHoursErrors(prev => {
-            // Rimuovi errori di limite massimo precedenti
+            // Rimuovi errori di ore massime precedenti e aggiungi il nuovo
             const filteredErrors = prev.filter(error => 
               !error.includes('Ore richieste superiori al limite') &&
-              !error.includes('superano il limite massimo')
+              !error.includes('superano il limite massimo') &&
+              !error.includes('❌ Ore richieste')
             );
-            // Aggiungi il nuovo errore di limite massimo
             return [...filteredErrors, validation.errorMessage || 'Ore richieste superiori al limite'];
           });
         } else {
           console.log('✅ [Permission Hours] Validation passed');
           setPermissionHoursErrors(prev => 
-            // Rimuovi solo gli errori di limite massimo, mantieni gli altri
+            // Rimuovi solo gli errori di ore massime, mantieni gli errori di vincoli
             prev.filter(error => 
               !error.includes('Ore richieste superiori al limite') &&
-              !error.includes('superano il limite massimo')
+              !error.includes('superano il limite massimo') &&
+              !error.includes('❌ Ore richieste')
             )
           );
         }
