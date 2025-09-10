@@ -932,9 +932,9 @@ export default function LeaveRequestForm({
                         </div>
                       </div>
 
-                      {/* Alert per permesso troppo tardi */}
+                      {/* Alert per permesso troppo tardi - Nascosto su mobile */}
                       {isTooLateForStartOfDay() && (
-                        <Alert variant="destructive" className="border-red-300 bg-red-50">
+                        <Alert variant="destructive" className="border-red-300 bg-red-50 hidden sm:block">
                           <AlertCircle className="h-4 w-4" />
                           <AlertDescription className="text-red-700">
                             <strong>⏰ Permesso Inizio Turno non disponibile</strong><br />
@@ -962,9 +962,9 @@ export default function LeaveRequestForm({
                         </Alert>
                       )}
 
-                      {/* Alert per permesso interno quando è troppo tardi */}
+                      {/* Alert per permesso interno quando è troppo tardi - Nascosto su mobile */}
                       {isTooLateForStartOfDay() && permissionType === 'mid_day' && (
-                        <Alert className="border-green-200 bg-green-50">
+                        <Alert className="border-green-200 bg-green-50 hidden sm:block">
                           <Info className="h-4 w-4" />
                           <AlertDescription className="text-green-700">
                             <strong>✅ Permesso all'interno del Turno disponibile</strong><br />
