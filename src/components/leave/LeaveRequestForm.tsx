@@ -303,7 +303,7 @@ export default function LeaveRequestForm({
 
   // Effetto per pulire errori quando si cambia tipo di permesso
   useEffect(() => {
-    // Pulisci gli errori di vincoli quando si cambia tipo di permesso
+    // Pulisci solo gli errori di vincoli quando si cambia tipo di permesso (mantieni errori ore massime)
     setPermissionHoursErrors(prev => 
       prev.filter(error => 
         !error.includes('orario di inizio deve essere') && 
@@ -406,20 +406,10 @@ export default function LeaveRequestForm({
           timeFrom: watchedTimeFrom,
           timeTo: watchedTimeTo,
           requestedHours,
-          maxHours: getMaxPermissionHoursForDisplay(),
-          fromTimeDate: fromTime.toISOString(),
-          toTimeDate: toTime.toISOString(),
-          diffMs,
-          calculatedHours: requestedHours.toFixed(2)
+          maxHours: getMaxPermissionHoursForDisplay()
         });
 
         const validation = validatePermissionHours(requestedHours);
-        
-        console.log('🔍 [Permission Hours Validation Result]', {
-          isValid: validation.isValid,
-          errorMessage: validation.errorMessage,
-          currentErrors: permissionHoursErrors
-        });
         
         if (!validation.isValid) {
           console.log('❌ [Permission Hours] Validation failed:', validation);
