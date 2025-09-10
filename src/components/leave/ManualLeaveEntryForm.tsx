@@ -781,7 +781,7 @@ export function ManualLeaveEntryForm({
             }
           >
             {insertMutation.isPending ? "Salvando..." : 
-             !!balanceValidationError ? "Configura bilancio dipendente" :
+             !!balanceValidationError ? "Compila i campi correttamente" :
              workingHoursErrors.filter(error => !error.includes('orario di fine deve essere successivo')).length > 0 ? "Correggi orari di lavoro" :
              permissionConstraintErrors.length > 0 ? "Correggi vincoli permesso" :
              (leaveType === 'permesso' && (!startDate || !timeFrom || !timeTo)) ? "Compila tutti i campi" :
