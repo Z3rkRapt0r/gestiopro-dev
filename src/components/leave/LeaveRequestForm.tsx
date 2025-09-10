@@ -392,39 +392,39 @@ export default function LeaveRequestForm({
     }
   }, [watchedType, watchedDay, watchedTimeFrom, watchedTimeTo, validatePermissionTime]);
 
-  // VALIDAZIONE ORE MASSIME PERMESSI - Real-time
+  // VALIDAZIONE ORE MASSIME PERMESSI - Real-time con controllo loop
   useEffect(() => {
     if (watchedType === 'permesso' && watchedTimeFrom && watchedTimeTo) {
-      // Calcola le ore richieste IMMEDIATAMENTE (senza timeout)
+      // Calcola le ore richieste
       const fromTime = new Date(`2000-01-01T${watchedTimeFrom}:00`);
       const toTime = new Date(`2000-01-01T${watchedTimeTo}:00`);
       const diffMs = toTime.getTime() - fromTime.getTime();
-      const requestedHours = diffMs / (1000 * 60 * 60); // Converti in ore
-
-      console.log('🔍 [Permission Hours Validation - Real Time]', {
-        timeFrom: watchedTimeFrom,
-        timeTo: watchedTimeTo,
-        requestedHours,
-        maxHours: getMaxPermissionHoursForDisplay()
-      });
+      const requestedHours = diffMs / (1000 * 60 * 60);
 
       const validation = validatePermissionHours(requestedHours);
+      const maxHoursError = validation.errorMessage || 'Ore richieste superiori al limite';
       
-      // Rimuovi sempre gli errori di ore massime precedenti
-      setPermissionHoursErrors(prev => 
-        prev.filter(error => 
+      setPermissionHoursErrors(prev => {
+        // Filtra errori di ore massime esistenti
+        const filteredErrors = prev.filter(error => 
           !error.includes('Ore richieste superiori al limite') &&
           !error.includes('superano il limite massimo') &&
-          !error.includes('❌ Ore richieste')
-        )
-      );
-      
-      if (!validation.isValid) {
-        console.log('❌ [Permission Hours] Real-time validation failed:', validation);
-        setPermissionHoursErrors(prev => [...prev, validation.errorMessage || 'Ore richieste superiori al limite']);
-      } else {
-        console.log('✅ [Permission Hours] Real-time validation passed');
-      }
+          !error.includes('❌ Ore richieste') &&
+          !error.includes('Il numero massimo di ore')
+        );
+        
+        // Aggiungi errore solo se validation non è valida E l'errore non è già presente
+        if (!validation.isValid && !prev.includes(maxHoursError)) {
+          console.log('❌ [Permission Hours] Real-time validation failed:', validation);
+          return [...filteredErrors, maxHoursError];
+        } else if (validation.isValid) {
+          console.log('✅ [Permission Hours] Real-time validation passed');
+          return filteredErrors;
+        }
+        
+        // Nessun cambiamento necessario
+        return prev;
+      });
     } else if (watchedType !== 'permesso') {
       // Se non è un permesso, pulisci tutti gli errori di permesso
       setPermissionHoursErrors([]);
@@ -434,11 +434,12 @@ export default function LeaveRequestForm({
         prev.filter(error => 
           !error.includes('Ore richieste superiori al limite') &&
           !error.includes('superano il limite massimo') &&
-          !error.includes('❌ Ore richieste')
+          !error.includes('❌ Ore richieste') &&
+          !error.includes('Il numero massimo di ore')
         )
       );
     }
-  }, [watchedType, watchedTimeFrom, watchedTimeTo, validatePermissionHours, getMaxPermissionHoursForDisplay]);
+  }, [watchedType, watchedTimeFrom, watchedTimeTo]);
   const validateWorkingDays = (startDate: Date, endDate: Date, type: string): string[] => {
     const errors: string[] = [];
     if (type === 'ferie') {
