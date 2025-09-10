@@ -413,10 +413,24 @@ export default function LeaveRequestForm({
         
         if (!validation.isValid) {
           console.log('❌ [Permission Hours] Validation failed:', validation);
-          setPermissionHoursErrors([validation.errorMessage || 'Ore richieste superiori al limite']);
+          setPermissionHoursErrors(prev => {
+            // Rimuovi errori di limite massimo precedenti
+            const filteredErrors = prev.filter(error => 
+              !error.includes('Ore richieste superiori al limite') &&
+              !error.includes('superano il limite massimo')
+            );
+            // Aggiungi il nuovo errore di limite massimo
+            return [...filteredErrors, validation.errorMessage || 'Ore richieste superiori al limite'];
+          });
         } else {
           console.log('✅ [Permission Hours] Validation passed');
-          setPermissionHoursErrors([]);
+          setPermissionHoursErrors(prev => 
+            // Rimuovi solo gli errori di limite massimo, mantieni gli altri
+            prev.filter(error => 
+              !error.includes('Ore richieste superiori al limite') &&
+              !error.includes('superano il limite massimo')
+            )
+          );
         }
       }, 300);
       return () => clearTimeout(timeoutId);
