@@ -522,11 +522,16 @@ export function ManualLeaveEntryForm({
               <AlertDescription>{validationError}</AlertDescription>
             </Alert>}
 
-          {workingHoursErrors.length > 0 && <Alert variant="destructive">
+          {workingHoursErrors.filter(error => 
+            !error.includes('orario di fine deve essere successivo')
+          ).length > 0 && <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-1">
-                  {workingHoursErrors.map((error, index) => <div key={index} className="text-sm">{error}</div>)}
+                  {workingHoursErrors
+                    .filter(error => !error.includes('orario di fine deve essere successivo'))
+                    .map((error, index) => <div key={index} className="text-sm">{error}</div>)
+                  }
                 </div>
               </AlertDescription>
             </Alert>}
@@ -547,7 +552,7 @@ export function ManualLeaveEntryForm({
                 <Label>Data inizio ferie *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground", balanceValidationError && "opacity-50 cursor-not-allowed")} disabled={!!balanceValidationError}>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground", )} disabled={false}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {startDate ? format(startDate, "dd/MM/yyyy", {
                     locale: it
@@ -569,7 +574,7 @@ export function ManualLeaveEntryForm({
                 <Label>Data fine ferie *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground", balanceValidationError && "opacity-50 cursor-not-allowed")} disabled={!!balanceValidationError}>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground", )} disabled={false}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {endDate ? format(endDate, "dd/MM/yyyy", {
                     locale: it
@@ -592,7 +597,7 @@ export function ManualLeaveEntryForm({
                 <Label>Data permesso *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground", balanceValidationError && "opacity-50 cursor-not-allowed")} disabled={!!balanceValidationError}>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground", )} disabled={false}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {startDate ? format(startDate, "dd/MM/yyyy", {
                     locale: it
@@ -719,7 +724,7 @@ export function ManualLeaveEntryForm({
                       className="pl-10" 
                       placeholder="HH:MM" 
                       step="300" 
-                      disabled={!!balanceValidationError || permissionType === 'start_of_day'}
+                      disabled={permissionType === 'start_of_day'}
                       min={permissionType === 'mid_day' ? getMinTimeForMidDay() : undefined}
                     />
                   </div>
@@ -733,7 +738,7 @@ export function ManualLeaveEntryForm({
                   <Label htmlFor="timeTo">Ora fine *</Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input id="timeTo" type="time" value={timeTo} onChange={handleTimeToChange} className="pl-10" placeholder="HH:MM" step="300" disabled={!!balanceValidationError} />
+                    <Input id="timeTo" type="time" value={timeTo} onChange={handleTimeToChange} className="pl-10" placeholder="HH:MM" step="300" disabled={false} />
                   </div>
                 </div>
               </div>
@@ -768,7 +773,7 @@ export function ManualLeaveEntryForm({
               insertMutation.isPending ||
               !!validationError ||
               !!balanceValidationError ||
-              workingHoursErrors.length > 0 ||
+              workingHoursErrors.filter(error => !error.includes('orario di fine deve essere successivo')).length > 0 ||
               permissionConstraintErrors.length > 0 ||
               isCalculatingConflicts ||
               (leaveType === 'permesso' && (!startDate || !timeFrom || !timeTo)) ||
@@ -776,8 +781,8 @@ export function ManualLeaveEntryForm({
             }
           >
             {insertMutation.isPending ? "Salvando..." : 
-             !!balanceValidationError ? "Bilancio non configurato" :
-             workingHoursErrors.length > 0 ? "Correggi orari di lavoro" :
+             !!balanceValidationError ? "Configura bilancio dipendente" :
+             workingHoursErrors.filter(error => !error.includes('orario di fine deve essere successivo')).length > 0 ? "Correggi orari di lavoro" :
              permissionConstraintErrors.length > 0 ? "Correggi vincoli permesso" :
              (leaveType === 'permesso' && (!startDate || !timeFrom || !timeTo)) ? "Compila tutti i campi" :
              (leaveType === 'ferie' && (!startDate || !endDate)) ? "Compila tutte le date" :
