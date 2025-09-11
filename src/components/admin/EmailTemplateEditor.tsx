@@ -67,8 +67,8 @@ const EmailTemplateEditor = ({
   const [buttonColor, setButtonColor] = useState("#007bff");
   const [buttonTextColor, setButtonTextColor] = useState("#ffffff");
   
-  // NEW: Button configuration
-  const [showButton, setShowButton] = useState(true);
+  // NEW: Button configuration - DISABLED
+  const [showButton, setShowButton] = useState(false);
   const [buttonText, setButtonText] = useState("Accedi alla Dashboard");
   const [buttonUrl, setButtonUrl] = useState("https://finestra-gestione-aziendale-pro.vercel.app/");
   
@@ -102,9 +102,9 @@ const EmailTemplateEditor = ({
     return templateType === 'notifiche' && templateCategory === 'amministratori';
   };
 
-  // NEW: Check if this template should show button configuration (exclude document templates)
+  // NEW: Check if this template should show button configuration (exclude document templates) - DISABLED
   const shouldShowButtonConfig = () => {
-    return templateType !== 'documenti';
+    return false; // Always false to hide button configuration
   };
 
   // NEW: Check if content section should be shown (hide for admin notifications)

@@ -120,7 +120,7 @@ export function buildHtmlContent({
   // NEW: Recipient name parameter
   recipientName = '',
   // NEW: Button configuration parameters
-  showButton = true,
+  showButton = false,
   buttonText = 'Accedi alla Dashboard',
   buttonUrl = 'https://finestra-gestione-aziendale-pro.vercel.app/',
 }: EmailContentParams & {
@@ -284,15 +284,14 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // NEW: Updated button generation logic - now for ALL templates (except documents if showButton is false)
+  // NEW: Updated button generation logic - buttons disabled by default
   let customButton = '';
-  const shouldShowCustomButton = showButton && templateType !== 'documenti';
+  const shouldShowCustomButton = false; // Always false to disable buttons
   
   console.log("[Mail Templates] Custom button decision:");
   console.log("  showButton:", showButton);
   console.log("  templateType:", templateType);
   console.log("  shouldShowCustomButton:", shouldShowCustomButton);
-  console.log("  buttonUrl parameter:", buttonUrl);
   
   if (shouldShowCustomButton) {
     customButton = `
@@ -317,26 +316,8 @@ export function buildHtmlContent({
     console.log("[Mail Templates] Custom button created:", buttonText);
   }
 
-  // Dashboard button for document emails only (legacy support)
-  const dashboardButton = (isDocumentEmail && showDetailsButton && templateType === 'documenti') ? `
-    <div style="width:100%;text-align:center;margin:28px 0 0 0;">
-      <a href="${buttonUrl}" target="_blank" style="
-        background-color:${buttonColor};
-        color:${buttonTextColor};
-        padding:12px 26px;
-        border-radius:${borderRadius};
-        text-decoration:none;
-        font-size:16px;
-        font-weight:bold;
-        letter-spacing:0.5px;
-        display:inline-block;
-        box-shadow:0 1px 6px rgba(40,82,180,.06);
-        margin:auto;
-      ">
-        Visualizza documento
-      </a>
-    </div>
-  ` : "";
+  // Dashboard button for document emails only (legacy support) - DISABLED
+  const dashboardButton = ""; // Always empty to disable document buttons
 
   // ENHANCED: Build the complete HTML with properly separated sections
   const htmlContent = `

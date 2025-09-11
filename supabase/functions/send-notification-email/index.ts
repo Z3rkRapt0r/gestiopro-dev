@@ -64,7 +64,7 @@ serve(async (req) => {
     // Get Resend settings for admin including sender configuration and global logo
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
-      .select("resend_api_key, sender_name, sender_email, reply_to, app_url, global_logo_url, global_logo_alignment, global_logo_size")
+      .select("resend_api_key, sender_name, sender_email, reply_to, global_logo_url, global_logo_alignment, global_logo_size")
       .eq("admin_id", adminSettingsUserId)
       .single();
 
@@ -195,22 +195,12 @@ serve(async (req) => {
       console.log("[Notification Email] Template button config - button_text:", emailTemplate.button_text);
       console.log("[Notification Email] Template button config - button_url:", emailTemplate.button_url);
     }
-    
-    // ENHANCED LOGGING FOR APP URL DEBUGGING
-    console.log("[Notification Email] Admin setting app_url:", adminSetting?.app_url);
-    console.log("[Notification Email] Fallback app_url:", adminSetting?.app_url || 'https://finestra-gestione-aziendale-pro.vercel.app/');
-    console.log("[Notification Email] Template button_url from database:", emailTemplate?.button_url);
 
     // Template data handling - prioritize database template or use minimal fallback
     let templateData;
     if (emailTemplate) {
       templateData = emailTemplate;
-      // ENHANCED: If template doesn't have button_url, use admin app_url
-      if (!templateData.button_url || templateData.button_url.trim() === '') {
-        templateData.button_url = adminSetting?.app_url || 'https://finestra-gestione-aziendale-pro.vercel.app/';
-        console.log("[Notification Email] Template missing button_url, using admin app_url:", templateData.button_url);
-      }
-      console.log("[Notification Email] Using custom template from database with button_url:", templateData.button_url);
+      console.log("[Notification Email] Using custom template from database");
     } else {
       // Minimal fallback template with basic styling only
       templateData = {
@@ -248,7 +238,7 @@ serve(async (req) => {
         admin_message_text_color: '#1565c0',
         show_button: true,
         button_text: 'Accedi alla Dashboard',
-        button_url: adminSetting?.app_url || 'https://finestra-gestione-aziendale-pro.vercel.app/',
+        button_url: 'https://finestra-gestione-aziendale-pro.vercel.app/',
       };
       console.log("[Notification Email] No custom template found, using minimal fallback styling only");
     }
@@ -581,8 +571,6 @@ serve(async (req) => {
             buttonText: templateData.button_text,
             buttonUrl: templateData.button_url,
           });
-          
-          console.log("[Notification Email] Final buttonUrl passed to template:", templateData.button_url);
           
           console.log("[Notification Email] HTML content built successfully");
           console.log("[Notification Email] HTML content length:", htmlContent?.length || 0);
