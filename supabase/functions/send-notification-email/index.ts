@@ -199,6 +199,7 @@ serve(async (req) => {
     // ENHANCED LOGGING FOR APP URL DEBUGGING
     console.log("[Notification Email] Admin setting app_url:", adminSetting?.app_url);
     console.log("[Notification Email] Fallback app_url:", adminSetting?.app_url || 'https://finestra-gestione-aziendale-pro.vercel.app/');
+    console.log("[Notification Email] Template button_url from database:", emailTemplate?.button_url);
 
     // Template data handling - prioritize database template or use minimal fallback
     let templateData;
@@ -580,6 +581,8 @@ serve(async (req) => {
             buttonText: templateData.button_text,
             buttonUrl: templateData.button_url,
           });
+          
+          console.log("[Notification Email] Final buttonUrl passed to template:", templateData.button_url);
           
           console.log("[Notification Email] HTML content built successfully");
           console.log("[Notification Email] HTML content length:", htmlContent?.length || 0);

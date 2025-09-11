@@ -292,6 +292,7 @@ export function buildHtmlContent({
   console.log("  showButton:", showButton);
   console.log("  templateType:", templateType);
   console.log("  shouldShowCustomButton:", shouldShowCustomButton);
+  console.log("  buttonUrl parameter:", buttonUrl);
   
   if (shouldShowCustomButton) {
     customButton = `
