@@ -151,7 +151,35 @@ export const useLeaveRequestNotifications = () => {
         date_from: details.includes('Dal:') ? details.split('Dal: ')[1]?.split('\n')[0] : null,
         date_to: details.includes('Al:') ? details.split('Al: ')[1]?.split('\n')[0] : null,
         day: details.includes('Giorno:') ? details.split('Giorno: ')[1]?.split('\n')[0] : null,
+        // Parse time info for permissions
+        time_from: null,
+        time_to: null,
       };
+
+      // Extract time information for permissions
+      if (type === 'permesso' && details.includes('Orario:')) {
+        const orarioLine = details.split('Orario: ')[1]?.split('\n')[0];
+        console.log('🔍 [notifyEmployee] Parsing orario line:', orarioLine);
+        
+        if (orarioLine && 
+            orarioLine !== 'null - null' && 
+            orarioLine !== 'undefined - undefined' &&
+            orarioLine !== 'giornata intera') {
+          const timeParts = orarioLine.split(' - ');
+          if (timeParts.length === 2) {
+            mockLeaveRequest.time_from = timeParts[0].trim();
+            mockLeaveRequest.time_to = timeParts[1].trim();
+            console.log('✅ [notifyEmployee] Extracted times:', {
+              time_from: mockLeaveRequest.time_from,
+              time_to: mockLeaveRequest.time_to
+            });
+          }
+        } else {
+          console.log('ℹ️ [notifyEmployee] Using giornata intera for permission');
+        }
+      }
+
+      console.log('📧 [notifyEmployee] Final mockLeaveRequest:', mockLeaveRequest);
 
       return await sendLeaveRequestNotification(
         mockLeaveRequest,

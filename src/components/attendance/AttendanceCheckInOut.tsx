@@ -42,6 +42,30 @@ export default function AttendanceCheckInOut() {
   // Usa orari personalizzati se disponibili, altrimenti orari aziendali
   const workSchedule = employeeWorkSchedule || companyWorkSchedule;
 
+  // Helper function to check if permission end time matches work end time
+  const isPermissionEndMatchingWorkEnd = () => {
+    if (!employeeStatus?.permissionEndTime) return false;
+    
+    // Get the effective work schedule (employee's personal or company's general)
+    const effectiveSchedule = employeeWorkSchedule || companyWorkSchedule;
+    if (!effectiveSchedule?.end_time) return false;
+    
+    // Convert times to comparable format (HH:mm)
+    const permissionEndTime = employeeStatus.permissionEndTime.substring(0, 5); // Remove seconds if present
+    const workEndTime = effectiveSchedule.end_time.substring(0, 5); // Remove seconds if present
+    
+    console.log('🔍 [AttendanceCheckInOut] Controllo orari fine:', {
+      permissionEndTime,
+      workEndTime,
+      employeeScheduleEndTime: employeeWorkSchedule?.end_time,
+      companyScheduleEndTime: companyWorkSchedule?.end_time,
+      effectiveScheduleEndTime: effectiveSchedule.end_time,
+      matches: permissionEndTime === workEndTime
+    });
+    
+    return permissionEndTime === workEndTime;
+  };
+
   // Debug: Log per diagnosticare il problema
   console.log('🔍 [AttendanceCheckInOut] Debug orari:', {
     userId: user?.id,
@@ -49,7 +73,8 @@ export default function AttendanceCheckInOut() {
     employeeWorkSchedule: employeeWorkSchedule,
     companyWorkSchedule: companyWorkSchedule,
     finalWorkSchedule: workSchedule,
-    isUsingPersonalized: !!employeeWorkSchedule
+    isUsingPersonalized: !!employeeWorkSchedule,
+    isPermissionEndMatchingWorkEnd: isPermissionEndMatchingWorkEnd()
   });
 
   // Trova la presenza di oggi dalla tabella unificata
@@ -425,12 +450,15 @@ export default function AttendanceCheckInOut() {
             // 3. Il permesso è scaduto (terminato)
             // 4. Non ha già registrato la seconda entrata
             // 5. NON è un permesso di inizio giornata (protezione extra)
+            // 6. L'orario di fine permesso NON coincide con l'orario di fine lavorativo
             const isStartOfDayPermission = employeeStatus?.isStartOfDayPermission || false;
+            const permissionEndsWithWorkDay = isPermissionEndMatchingWorkEnd();
             const shouldShow = hasFirstCheckin && 
                               hasMidDayPermission && 
                               isPermissionExpired && 
                               !hasSecondCheckin &&
-                              !isStartOfDayPermission; // Protezione extra: mai per permessi di inizio giornata
+                              !isStartOfDayPermission && // Protezione extra: mai per permessi di inizio giornata
+                              !permissionEndsWithWorkDay; // NUOVO: mai se il permesso finisce con la giornata lavorativa
 
             console.log('🔍 Debug tasto seconda entrata (nuova logica):', {
               hasFirstCheckin,
@@ -438,10 +466,12 @@ export default function AttendanceCheckInOut() {
               isPermissionExpired,
               hasSecondCheckin,
               isStartOfDayPermission,
+              permissionEndsWithWorkDay,
               fromEmployeeStatus_isStartOfDayPermission: employeeStatus?.isStartOfDayPermission,
               fromEmployeeStatus_isMidDayPermission: employeeStatus?.isMidDayPermission,
               hasHourlyPermission: employeeStatus?.hasHourlyPermission,
               permissionType: employeeStatus?.statusDetails?.type,
+              permissionEndTime: employeeStatus?.permissionEndTime,
               todayCheckins: todayCheckins?.length || 0,
               checkInTime: todayAttendance?.check_in_time,
               shouldShow

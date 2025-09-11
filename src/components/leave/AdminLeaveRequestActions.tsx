@@ -24,7 +24,11 @@ export default function AdminLeaveRequestActions({ request, onUpdate }: AdminLea
 
   const getRequestDetails = () => {
     if (request.type === "permesso") {
-      return `Giorno: ${request.day}\nOrario: ${request.time_from} - ${request.time_to}${request.note ? `\nNote dipendente: ${request.note}` : ''}`;
+      // Handle time display for permissions
+      const timeInfo = request.time_from && request.time_to 
+        ? `${request.time_from} - ${request.time_to}`
+        : 'giornata intera';
+      return `Giorno: ${request.day}\nOrario: ${timeInfo}${request.note ? `\nNote dipendente: ${request.note}` : ''}`;
     } else {
       return `Dal: ${request.date_from}\nAl: ${request.date_to}${request.note ? `\nNote dipendente: ${request.note}` : ''}`;
     }
