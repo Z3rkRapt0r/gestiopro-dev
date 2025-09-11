@@ -319,7 +319,7 @@ export function buildHtmlContent({
   // Dashboard button for document emails only (legacy support)
   const dashboardButton = (isDocumentEmail && showDetailsButton && templateType === 'documenti') ? `
     <div style="width:100%;text-align:center;margin:28px 0 0 0;">
-      <a href="https://finestra-gestione-aziendale-pro.vercel.app/" target="_blank" style="
+      <a href="${buttonUrl}" target="_blank" style="
         background-color:${buttonColor};
         color:${buttonTextColor};
         padding:12px 26px;

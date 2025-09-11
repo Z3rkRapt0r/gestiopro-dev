@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     // Get sender settings from admin_settings table
     const { data: adminSettings, error: adminError } = await supabase
       .from('admin_settings')
-      .select('sender_name, sender_email')
+      .select('sender_name, sender_email, app_url')
       .single();
 
     if (adminError || !adminSettings) {
@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
 
     const senderName = adminSettings.sender_name || 'Sistema Gestionale';
     const senderEmail = adminSettings.sender_email || 'noreply@example.com';
+    const appUrl = adminSettings.app_url || 'https://finestra-gestione-aziendale-pro.vercel.app/';
 
     console.log('[Leave Request Email] Using Resend sender:', `${senderName} <${senderEmail}>`);
 
@@ -104,13 +105,13 @@ Deno.serve(async (req) => {
 
     if (isApproval) {
       subject = `✅ Richiesta ${leaveType} approvata`;
-      htmlContent = buildApprovalEmail(employeeName, leaveType, leaveDetails, adminNote);
+      htmlContent = buildApprovalEmail(employeeName, leaveType, leaveDetails, adminNote, appUrl);
     } else if (isRejection) {
       subject = `❌ Richiesta ${leaveType} rifiutata`;
-      htmlContent = buildRejectionEmail(employeeName, leaveType, leaveDetails, adminNote);
+      htmlContent = buildRejectionEmail(employeeName, leaveType, leaveDetails, adminNote, appUrl);
     } else {
       subject = `📋 Nuova richiesta ${leaveType} da ${employeeName}`;
-      htmlContent = buildNewRequestEmail(employeeName, leaveType, leaveDetails, employeeNote);
+      htmlContent = buildNewRequestEmail(employeeName, leaveType, leaveDetails, employeeNote, appUrl);
     }
 
     console.log('[Leave Request Email] Prepared email:', { subject, recipientCount: recipients.length });
@@ -157,7 +158,8 @@ function buildNewRequestEmail(
   employeeName: string, 
   leaveType: string, 
   leaveDetails: string, 
-  employeeNote?: string
+  employeeNote?: string,
+  appUrl: string = 'https://finestra-gestione-aziendale-pro.vercel.app/'
 ): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -184,7 +186,7 @@ function buildNewRequestEmail(
         ` : ''}
         
         <div style="text-align: center; margin-top: 30px;">
-          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
+          <a href="${appUrl}" 
              style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
             Gestisci Richiesta
           </a>
@@ -202,7 +204,8 @@ function buildApprovalEmail(
   employeeName: string, 
   leaveType: string, 
   leaveDetails: string, 
-  adminNote?: string
+  adminNote?: string,
+  appUrl: string = 'https://finestra-gestione-aziendale-pro.vercel.app/'
 ): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -229,7 +232,7 @@ function buildApprovalEmail(
         ` : ''}
         
         <div style="text-align: center; margin-top: 30px;">
-          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
+          <a href="${appUrl}" 
              style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
             Accedi alla Dashboard
           </a>
@@ -247,7 +250,8 @@ function buildRejectionEmail(
   employeeName: string, 
   leaveType: string, 
   leaveDetails: string, 
-  adminNote?: string
+  adminNote?: string,
+  appUrl: string = 'https://finestra-gestione-aziendale-pro.vercel.app/'
 ): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -278,7 +282,7 @@ function buildRejectionEmail(
         </p>
         
         <div style="text-align: center; margin-top: 30px;">
-          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
+          <a href="${appUrl}" 
              style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
             Accedi alla Dashboard
           </a>

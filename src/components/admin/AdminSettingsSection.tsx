@@ -163,6 +163,20 @@ const AdminSettingsSection = () => {
                   />
                 </div>
 
+                <div>
+                  <Label htmlFor="app-url">URL Applicazione</Label>
+                  <Input
+                    id="app-url"
+                    type="url"
+                    placeholder="https://finestra-gestione-aziendale-pro.vercel.app/"
+                    value={resendSettings.appUrl}
+                    onChange={e => setResendSettings(prev => ({ ...prev, appUrl: e.target.value }))}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    URL utilizzato nei pulsanti delle email
+                  </p>
+                </div>
+
                 <div className="pt-4">
                   <Button
                     onClick={handleSaveResendSettings}

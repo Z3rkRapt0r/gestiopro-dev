@@ -8,6 +8,7 @@ interface ResendSettings {
   senderName: string;
   senderEmail: string;
   replyTo: string;
+  appUrl: string;
   enableNotifications: boolean;
   enableDocumentNotifications: boolean;
   enableAttendanceNotifications: boolean;
@@ -29,6 +30,7 @@ export function useAdminSettings() {
     senderName: '',
     senderEmail: '',
     replyTo: '',
+    appUrl: 'https://finestra-gestione-aziendale-pro.vercel.app/',
     enableNotifications: true,
     enableDocumentNotifications: true,
     enableAttendanceNotifications: true,
@@ -60,6 +62,7 @@ export function useAdminSettings() {
               senderName: data.sender_name || '',
               senderEmail: data.sender_email || '',
               replyTo: data.reply_to || '',
+              appUrl: data.app_url || 'https://finestra-gestione-aziendale-pro.vercel.app/',
               enableNotifications: data.enable_notifications ?? true,
               enableDocumentNotifications: data.enable_document_notifications ?? true,
               enableAttendanceNotifications: data.enable_attendance_notifications ?? true,
@@ -170,6 +173,7 @@ export function useAdminSettings() {
             sender_name: settings.senderName.trim() || null,
             sender_email: settings.senderEmail.trim() || null,
             reply_to: settings.replyTo.trim() || null,
+            app_url: settings.appUrl.trim() || null,
             email_signature: settings.emailSignature.trim() || null,
             enable_notifications: settings.enableNotifications,
             enable_document_notifications: settings.enableDocumentNotifications,
