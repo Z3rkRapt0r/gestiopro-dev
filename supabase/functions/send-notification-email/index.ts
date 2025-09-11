@@ -569,8 +569,7 @@ serve(async (req) => {
             // NEW: Pass button configuration to template
             showButton: templateData.show_button,
             buttonText: templateData.button_text,
-            // Enforce global fixed URL for all templates
-            buttonUrl: 'https://finestra-gestione-aziendale-pro.vercel.app/',
+            buttonUrl: templateData.button_url,
           });
           
           console.log("[Notification Email] HTML content built successfully");

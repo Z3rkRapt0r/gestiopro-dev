@@ -63,10 +63,6 @@ Deno.serve(async (req) => {
 
     console.log('[Leave Request Email] Using Resend sender:', `${senderName} <${senderEmail}>`);
 
-    // Fixed button configuration (URL not configurable)
-    const buttonUrl = 'https://finestra-gestione-aziendale-pro.vercel.app/';
-    const buttonText = 'Accedi alla Dashboard';
-
     // Determine recipients
     let recipients: string[] = [];
     
@@ -108,13 +104,13 @@ Deno.serve(async (req) => {
 
     if (isApproval) {
       subject = `✅ Richiesta ${leaveType} approvata`;
-      htmlContent = buildApprovalEmail(employeeName, leaveType, leaveDetails, adminNote, buttonUrl, buttonText);
+      htmlContent = buildApprovalEmail(employeeName, leaveType, leaveDetails, adminNote);
     } else if (isRejection) {
       subject = `❌ Richiesta ${leaveType} rifiutata`;
-      htmlContent = buildRejectionEmail(employeeName, leaveType, leaveDetails, adminNote, buttonUrl, buttonText);
+      htmlContent = buildRejectionEmail(employeeName, leaveType, leaveDetails, adminNote);
     } else {
       subject = `📋 Nuova richiesta ${leaveType} da ${employeeName}`;
-      htmlContent = buildNewRequestEmail(employeeName, leaveType, leaveDetails, employeeNote, buttonUrl, buttonText);
+      htmlContent = buildNewRequestEmail(employeeName, leaveType, leaveDetails, employeeNote);
     }
 
     console.log('[Leave Request Email] Prepared email:', { subject, recipientCount: recipients.length });
@@ -161,9 +157,7 @@ function buildNewRequestEmail(
   employeeName: string, 
   leaveType: string, 
   leaveDetails: string, 
-  employeeNote?: string,
-  buttonUrl: string = 'https://finestra-gestione-aziendale-pro.vercel.app/',
-  buttonText: string = 'Gestisci Richiesta'
+  employeeNote?: string
 ): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -190,9 +184,9 @@ function buildNewRequestEmail(
         ` : ''}
         
         <div style="text-align: center; margin-top: 30px;">
-          <a href="${buttonUrl}" 
+          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
              style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-            ${buttonText}
+            Gestisci Richiesta
           </a>
         </div>
       </div>
@@ -208,9 +202,7 @@ function buildApprovalEmail(
   employeeName: string, 
   leaveType: string, 
   leaveDetails: string, 
-  adminNote?: string,
-  buttonUrl: string = 'https://finestra-gestione-aziendale-pro.vercel.app/',
-  buttonText: string = 'Accedi alla Dashboard'
+  adminNote?: string
 ): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -237,9 +229,9 @@ function buildApprovalEmail(
         ` : ''}
         
         <div style="text-align: center; margin-top: 30px;">
-          <a href="${buttonUrl}" 
+          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
              style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-            ${buttonText}
+            Accedi alla Dashboard
           </a>
         </div>
       </div>
@@ -255,9 +247,7 @@ function buildRejectionEmail(
   employeeName: string, 
   leaveType: string, 
   leaveDetails: string, 
-  adminNote?: string,
-  buttonUrl: string = 'https://finestra-gestione-aziendale-pro.vercel.app/',
-  buttonText: string = 'Accedi alla Dashboard'
+  adminNote?: string
 ): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -288,9 +278,9 @@ function buildRejectionEmail(
         </p>
         
         <div style="text-align: center; margin-top: 30px;">
-          <a href="${buttonUrl}" 
+          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
              style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-            ${buttonText}
+            Accedi alla Dashboard
           </a>
         </div>
       </div>
