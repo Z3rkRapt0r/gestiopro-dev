@@ -70,7 +70,8 @@ const EmailTemplateEditor = ({
   // NEW: Button configuration
   const [showButton, setShowButton] = useState(true);
   const [buttonText, setButtonText] = useState("Accedi alla Dashboard");
-  const [buttonUrl, setButtonUrl] = useState("https://finestra-gestione-aziendale-pro.vercel.app/");
+  // URL pulsante fisso e non più modificabile da UI
+  const [buttonUrl] = useState("https://finestra-gestione-aziendale-pro.vercel.app/");
   
   // State
   const [loading, setLoading] = useState(false);
@@ -104,6 +105,7 @@ const EmailTemplateEditor = ({
 
   // NEW: Check if this template should show button configuration (exclude document templates)
   const shouldShowButtonConfig = () => {
+    // Nascondi sempre il campo URL pulsante (gestito fisso)
     return templateType !== 'documenti';
   };
 
@@ -167,7 +169,8 @@ const EmailTemplateEditor = ({
         // NEW: Load button configuration
         setShowButton(data.show_button !== undefined ? data.show_button : true);
         setButtonText(data.button_text || "Accedi alla Dashboard");
-        setButtonUrl(data.button_url || "https://finestra-gestione-aziendale-pro.vercel.app/");
+        // Ignora l'URL salvato: imposto sempre quello fisso
+        // setButtonUrl(data.button_url || "https://finestra-gestione-aziendale-pro.vercel.app/");
       } else {
         console.log('No existing template found, using defaults');
         setExistingTemplateId(null);
@@ -229,7 +232,8 @@ const EmailTemplateEditor = ({
         // NEW: Save button configuration
         show_button: showButton,
         button_text: buttonText,
-        button_url: buttonUrl,
+        // Forzo sempre l'URL fisso lato salvataggio
+        button_url: "https://finestra-gestione-aziendale-pro.vercel.app/",
       };
 
       if (existingTemplateId) {
