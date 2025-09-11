@@ -566,8 +566,8 @@ serve(async (req) => {
             adminMessageTextColor: templateData.admin_message_text_color,
             // NEW: Pass recipient name to template
             recipientName: recipientName,
-            // NEW: Pass button configuration to template
-            showButton: templateData.show_button,
+            // NEW: Pass button configuration to template - ALWAYS DISABLED
+            showButton: false, // Force disable buttons regardless of database value
             buttonText: templateData.button_text,
             buttonUrl: templateData.button_url,
           });

@@ -284,9 +284,9 @@ export function buildHtmlContent({
     </div>
   ` : "";
 
-  // NEW: Updated button generation logic - buttons disabled by default
+  // NEW: Updated button generation logic - buttons ALWAYS disabled
   let customButton = '';
-  const shouldShowCustomButton = false; // Always false to disable buttons
+  const shouldShowCustomButton = false; // ALWAYS false - ignore database show_button value
   
   console.log("[Mail Templates] Custom button decision:");
   console.log("  showButton:", showButton);
