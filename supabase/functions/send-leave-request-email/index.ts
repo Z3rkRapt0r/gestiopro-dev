@@ -183,12 +183,7 @@ function buildNewRequestEmail(
         </div>
         ` : ''}
         
-        <div style="text-align: center; margin-top: 30px;">
-          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
-             style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-            Gestisci Richiesta
-          </a>
-        </div>
+        <!-- Button removed as requested -->
       </div>
       
       <div style="background-color: #6c757d; color: white; padding: 15px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px;">
@@ -228,12 +223,7 @@ function buildApprovalEmail(
         </div>
         ` : ''}
         
-        <div style="text-align: center; margin-top: 30px;">
-          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
-             style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-            Accedi alla Dashboard
-          </a>
-        </div>
+        <!-- Button removed as requested -->
       </div>
       
       <div style="background-color: #6c757d; color: white; padding: 15px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px;">
@@ -277,12 +267,7 @@ function buildRejectionEmail(
           Per ulteriori chiarimenti, contatta l'amministrazione.
         </p>
         
-        <div style="text-align: center; margin-top: 30px;">
-          <a href="https://finestra-gestione-aziendale-pro.vercel.app/" 
-             style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-            Accedi alla Dashboard
-          </a>
-        </div>
+        <!-- Button removed as requested -->
       </div>
       
       <div style="background-color: #6c757d; color: white; padding: 15px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px;">
