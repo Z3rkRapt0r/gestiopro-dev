@@ -67,7 +67,7 @@ export const useWorkingHoursValidation = (employeeId?: string) => {
         errors.push(`Orario di fine non valido: ${timeTo} è troppo tardi. L'orario di lavoro termina alle ${workEnd.substring(0, 5)}`);
       }
 
-      if (timeFrom >= timeTo) {
+      if (timeFrom > timeTo) {
         errors.push(`L'orario di fine deve essere successivo all'orario di inizio`);
       }
     }

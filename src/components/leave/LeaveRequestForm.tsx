@@ -405,6 +405,13 @@ export default function LeaveRequestForm({
   useEffect(() => {
     if (watchedType === 'permesso' && watchedDay && watchedTimeFrom && watchedTimeTo) {
       const timeoutId = setTimeout(() => {
+        // Per i permessi di inizio turno, non applicare la validazione generale
+        // perché l'orario di inizio deve essere uguale all'orario di inizio turno
+        if (permissionType === 'start_of_day') {
+          setWorkingHoursErrors([]);
+          return;
+        }
+        
         const hoursValidation = validatePermissionTime(watchedDay, watchedTimeFrom, watchedTimeTo);
         console.log('Validazione orari di lavoro:', hoursValidation);
         if (!hoursValidation.isValid) {
@@ -417,7 +424,7 @@ export default function LeaveRequestForm({
     } else {
       setWorkingHoursErrors([]);
     }
-  }, [watchedType, watchedDay, watchedTimeFrom, watchedTimeTo, validatePermissionTime]);
+  }, [watchedType, watchedDay, watchedTimeFrom, watchedTimeTo, permissionType, validatePermissionTime]);
 
   // VALIDAZIONE ORE MASSIME PERMESSI - Real-time con controllo loop
   useEffect(() => {

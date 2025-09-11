@@ -228,6 +228,13 @@ export function ManualLeaveEntryForm({
   };
   const validateWorkingHours = (day?: Date, timeFrom?: string, timeTo?: string) => {
     if (leaveType === 'permesso' && day && timeFrom && timeTo) {
+      // Per i permessi di inizio turno, non applicare la validazione generale
+      // perché l'orario di inizio deve essere uguale all'orario di inizio turno
+      if (permissionType === 'start_of_day') {
+        setWorkingHoursErrors([]);
+        return true;
+      }
+      
       const hoursValidation = validatePermissionTime(day, timeFrom, timeTo);
       if (!hoursValidation.isValid) {
         setWorkingHoursErrors(hoursValidation.errors);
