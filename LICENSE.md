@@ -59,5 +59,3 @@ Questo software è protetto da copyright e da altre leggi sulla proprietà intel
 ---
 
 **© 2024 License Global di Gabriele Giacomo Bellante. Tutti i diritti riservati.**
-
-*Ultima modifica: 15 Settembre 2024*
