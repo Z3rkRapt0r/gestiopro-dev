@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Settings, MapPin } from 'lucide-react';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import GPSStatusIndicator from './GPSStatusIndicator';
+import AttendanceAlertSettings from './AttendanceAlertSettings';
 
 export default function AttendanceSettings() {
   const { settings, updateSettings, isUpdating } = useAttendanceSettings();
@@ -116,7 +117,11 @@ export default function AttendanceSettings() {
         </CardContent>
       </Card>
 
-      <GPSStatusIndicator />
+      <AttendanceAlertSettings />
+      
+      <div className="lg:col-span-2">
+        <GPSStatusIndicator />
+      </div>
     </div>
   );
 }

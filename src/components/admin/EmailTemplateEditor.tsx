@@ -254,7 +254,8 @@ const EmailTemplateEditor = ({
 
       if (insertError) {
         console.error("Error inserting template:", insertError);
-        throw insertError;
+        console.error("Template data that failed:", templateData);
+        throw new Error(`Database error: ${insertError.message} (Code: ${insertError.code})`);
       }
 
       console.log('Template saved successfully:', newTemplate);

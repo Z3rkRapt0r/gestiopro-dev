@@ -1,6 +1,6 @@
 
 interface EmailTemplate {
-  template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto';
+  template_type: 'documenti' | 'notifiche' | 'approvazioni' | 'generale' | 'permessi-richiesta' | 'permessi-approvazione' | 'permessi-rifiuto' | 'avviso-entrata';
   name: string;
   subject: string;
   content: string;

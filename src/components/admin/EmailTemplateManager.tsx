@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Bell, CheckCircle, Mail, Calendar, UserCheck, UserX, Users, User, Clock, Plane } from "lucide-react";
+import { FileText, Bell, CheckCircle, Mail, Calendar, UserCheck, UserX, Users, User, Clock, Plane, AlertTriangle } from "lucide-react";
 import DocumentTemplateEditor from "./DocumentTemplateEditor";
 import NotificationTemplateEditor from "./NotificationTemplateEditor";
 import PermissionRequestTemplateEditor from "./PermissionRequestTemplateEditor";
@@ -11,6 +11,7 @@ import PermissionApprovalTemplateEditor from "./PermissionApprovalTemplateEditor
 import VacationApprovalTemplateEditor from "./VacationApprovalTemplateEditor";
 import PermissionRejectionTemplateEditor from "./PermissionRejectionTemplateEditor";
 import VacationRejectionTemplateEditor from "./VacationRejectionTemplateEditor";
+import AttendanceAlertTemplateEditor from "./AttendanceAlertTemplateEditor";
 import GlobalLogoSection from "./GlobalLogoSection";
 
 const EmailTemplateManager = () => {
@@ -56,7 +57,7 @@ const EmailTemplateManager = () => {
             </div>
 
             <Tabs value={activeAdminSubTab} onValueChange={setActiveAdminSubTab}>
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="documenti" className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   Documenti
@@ -64,6 +65,10 @@ const EmailTemplateManager = () => {
                 <TabsTrigger value="notifiche" className="flex items-center gap-2">
                   <Bell className="w-4 h-4" />
                   Notifiche
+                </TabsTrigger>
+                <TabsTrigger value="avviso-entrata" className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Avviso Entrata
                 </TabsTrigger>
                 <TabsTrigger value="permessi-approvazione" className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
@@ -113,6 +118,29 @@ const EmailTemplateManager = () => {
                   templateCategory="amministratori"
                   defaultContent="Hai ricevuto una nuova notifica dall'amministrazione. Controlla i dettagli nella dashboard."
                   defaultSubject="Nuova Notifica dall'Amministrazione"
+                  subjectEditable={true}
+                  contentEditable={true}
+                />
+              </TabsContent>
+
+              <TabsContent value="avviso-entrata" className="mt-6">
+                <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <h4 className="font-semibold text-orange-800 mb-2">Template Avviso Entrata Mancante</h4>
+                  <p className="text-sm text-orange-700">
+                    Template utilizzato per avvisare automaticamente i dipendenti che non registrano l'entrata.
+                    Usa <code>{'{employee_name}'}</code> per il nome del dipendente, <code>{'{expected_time}'}</code> per l'orario previsto,
+                    e <code>{'{current_time}'}</code> per l'orario attuale.
+                  </p>
+                  <div className="mt-3 p-3 bg-orange-100 rounded border-l-4 border-orange-400">
+                    <p className="text-sm text-orange-800 font-medium">
+                      ⚙️ Configurazione: Il tempo di attesa e l'attivazione del servizio si configurano nelle Impostazioni Presenze.
+                    </p>
+                  </div>
+                </div>
+                <AttendanceAlertTemplateEditor 
+                  templateCategory="amministratori"
+                  defaultContent="Gentile {employee_name},\n\nNotiamo che non hai ancora registrato la tua entrata per oggi.\n\nOrario previsto: {expected_time}\nOrario attuale: {current_time}\n\nTi ricordiamo di registrare la tua presenza il prima possibile.\n\nGrazie per la collaborazione."
+                  defaultSubject="Promemoria: Registrazione Entrata Mancante"
                   subjectEditable={true}
                   contentEditable={true}
                 />
