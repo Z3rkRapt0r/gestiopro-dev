@@ -1,5 +1,6 @@
 -- Aggiunge controllo degli orari aziendali alla funzione robusto_attendance_check
 -- per evitare esecuzioni inutili fuori orario
+-- Utilizza timezone Europe/Rome (CET/CEST) invece di UTC
 
 CREATE OR REPLACE FUNCTION public.robusto_attendance_check()
 RETURNS text
@@ -15,7 +16,7 @@ DECLARE
     is_working_day boolean;
     expected_start_time time;
     alert_time timestamp;
-    current_timestamp_val timestamp := now();
+    current_timestamp_val timestamp := now() at time zone 'Europe/Rome';
     employee_name text;
     leave_count integer;
     attendance_count integer;
@@ -100,7 +101,7 @@ BEGIN
         END IF;
 
         IF admin_count = 0 THEN
-            result_message := 'Nessun admin con controllo presenze abilitato alle ' || current_timestamp_val ||
+            result_message := 'Nessun admin con controllo presenze abilitato alle ' || current_timestamp_val || ' (CET/CEST)' ||
                            ' | Avvisi pendenti: ' || pending_alerts;
             RETURN result_message;
         END IF;
@@ -249,7 +250,7 @@ BEGIN
             edge_response := 'Nessun avviso creato';
         END IF;
 
-        result_message := 'Controllo completato alle ' || current_timestamp_val ||
+        result_message := 'Controllo completato alle ' || current_timestamp_val || ' (CET/CEST)' ||
                         '. Nuovi avvisi creati: ' || alerts_created ||
                         ' | Totali pendenti: ' || pending_alerts ||
                         ' | Edge function: ' || edge_response;
