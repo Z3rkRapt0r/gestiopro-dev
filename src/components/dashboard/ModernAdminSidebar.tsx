@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDashboardSettings } from '@/hooks/useDashboardSettings';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ModernAdminSidebarProps {
   activeTab: string;
@@ -90,6 +91,49 @@ export default function ModernAdminSidebar({
   setActiveTab
 }: ModernAdminSidebarProps) {
   const { settings, loading } = useDashboardSettings();
+  const [licenseGlobalLogoUrl, setLicenseGlobalLogoUrl] = useState<string | null>(null);
+
+  // Carica il logo License Global dal bucket company-logos
+  useEffect(() => {
+    const loadLicenseGlobalLogo = async () => {
+      try {
+        // Prova diversi percorsi possibili per il logo License Global
+        const possiblePaths = [
+          'LicenseGlobal/logo.png',
+          'licenseglobal/logo.png',
+          'License Global/logo.png',
+          'logo-license-global/logo.png',
+          'LicenseGlobal/logo.jpg',
+          'licenseglobal/logo.jpg',
+          'License Global/logo.jpg'
+        ];
+        
+        for (const path of possiblePaths) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('company-logos')
+            .getPublicUrl(path);
+          
+          if (publicUrl) {
+            // Verifica se l'URL è accessibile
+            try {
+              const response = await fetch(publicUrl, { method: 'HEAD' });
+              if (response.ok) {
+                setLicenseGlobalLogoUrl(publicUrl);
+                break;
+              }
+            } catch (error) {
+              console.log(`Logo non accessibile da ${path}:`, error);
+              continue;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Errore nel caricamento del logo License Global:', error);
+      }
+    };
+
+    loadLicenseGlobalLogo();
+  }, []);
 
   return (
     <div className="hidden lg:flex flex-col w-72 bg-white/90 backdrop-blur-xl border-r border-slate-200/60 shadow-xl">
@@ -162,6 +206,26 @@ export default function ModernAdminSidebar({
           );
         })}
       </nav>
+
+      {/* Footer con logo License Global */}
+      <div className="p-4 border-t border-slate-200/60 bg-gradient-to-r from-slate-50 to-white">
+        <div className="flex items-center justify-center space-x-2">
+          {licenseGlobalLogoUrl ? (
+            <img
+              src={licenseGlobalLogoUrl}
+              alt="License Global"
+              className="h-8 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-200"
+            />
+          ) : (
+            <div className="h-8 w-8 rounded bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center">
+              <Building className="h-4 w-4 text-white" />
+            </div>
+          )}
+          <span className="text-xs text-slate-500 font-medium">
+            License Global
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
