@@ -14,17 +14,20 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
+    /* Type checking ottimizzato */
     "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noImplicitAny": false,
-    "noFallthroughCasesInSwitch": false,
+    "noFallthroughCasesInSwitch": true,
 
+    /* Path mapping */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

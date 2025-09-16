@@ -69,12 +69,123 @@ npm run dev
 - `npm run preview` - Anteprima del build di produzione
 - `npm run lint` - Controllo del codice
 
+## ⚙️ Configurazione Avanzata
+
+### Database Setup
+Per abilitare il salvataggio persistente delle impostazioni:
+
+1. **Avvia Docker Desktop** e assicurati che sia attivo
+2. **Esegui la migrazione**: `npx supabase db reset`
+3. **Verifica**: Le impostazioni verranno salvate nel database
+
+### Primo Accesso Utente
+Sistema di cambio password obbligatorio al primo login:
+- ✅ **Solo al primo accesso** - Successivamente accesso normale
+- ✅ **Scelta utente** - Mantenere password attuale o cambiarla
+- ✅ **Validazioni sicurezza** - Minimo 6 caratteri
+- ✅ **User-friendly** - Interfaccia coerente
+
+**Setup**: Eseguire gli script SQL in `sql/data/update_email_templates.sql`
+
 ## Deploy
 
 Il progetto è configurato per il deploy automatico su Vercel:
 
 - **Produzione:** https://finestra-gestione-aziendale-1k51mpaua.vercel.app
 - **GitHub:** https://github.com/Z3rkRapt0r/finestra-gestione-aziendale-pro
+
+## 📁 Struttura File Organizzata
+
+```
+sql/
+├── README.md           # 📖 Guida organizzazione
+├── cron/
+│   └── cron_master.sql # 🚀 Configurazioni cron unificate
+├── data/               # 📅 Dati iniziali
+├── fixes/
+│   └── fixes_master.sql # 🔧 Soluzioni problemi unificate
+├── tests/              # 🧪 Test e diagnostica
+└── deprecated/         # 🗂️ File archiviati (21 file)
+
+scripts/
+└── version-manager.js  # 🏷️ Gestore versioni automatico
+
+docs/
+├── DATABASE_SETUP.md   # 🗄️ Setup database avanzato
+└── FIRST_LOGIN_SETUP.md # 🔐 Configurazione primo accesso
+
+CHANGELOG.md           # 📋 Storia versioni completa
+VERSION                # 🏷️ Versione corrente
+```
+
+## 🏷️ Versioning e Rilasci
+
+### Versione Corrente
+**GestioPro v2.1.0** - Ottimizzazione completa e organizzazione file
+
+### Sistema di Versioning
+Utilizziamo [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH):
+
+- **MAJOR**: Cambiamenti breaking / rebranding importante
+- **MINOR**: Nuove funzionalità significative
+- **PATCH**: Bug fix e miglioramenti minori
+
+### Come Creare una Nuova Versione
+
+```bash
+# Per nuove funzionalità (minor)
+npm run version:minor
+# o con descrizione personalizzata
+node scripts/version-manager.js minor "Aggiunto sistema notifiche push"
+
+# Per bug fix (patch)
+npm run version:patch
+node scripts/version-manager.js patch "Corretto bug validazione form"
+
+# Per cambiamenti breaking (major)
+npm run version:major
+node scripts/version-manager.js major "Ristrutturazione completa API"
+```
+
+### Rilascio Completo
+```bash
+# Build, version, tag e push automatico
+npm run release
+```
+
+### Documentazione Versioni
+- **CHANGELOG.md**: Storia completa di tutte le versioni
+- **VERSION**: File contenente la versione corrente
+- **Git Tags**: Ogni versione ha il suo tag (v2.1.0, v2.0.0, etc.)
+
+## 📋 Changelog Recente
+
+### v2.1.0 (2025-09-16)
+- 🔧 **Ottimizzazione completa** dei file SQL (138→60 file)
+- 📁 **Riorganizzazione** in cartelle logiche
+- 📚 **Documentazione consolidata** e migliorata
+- ⚙️ **Configurazioni TypeScript** ottimizzate
+
+### v2.0.0 (2025-09-16)
+- 🚀 **Rebranding completo** a GestioPro
+- 📧 **Sistema controllo entrate automatico**
+- 🎨 **Miglioramenti UI/UX** significativi
+
+*Vedi [CHANGELOG.md](CHANGELOG.md) per la storia completa*
+
+## 🤝 Contributi e Sviluppo
+
+### Per Sviluppatori
+1. **Prima di commit importanti**: Usa il version manager
+2. **Aggiorna CHANGELOG.md**: Documenta le tue modifiche
+3. **Testa le modifiche**: Assicurati che tutto funzioni
+4. **Crea versioni appropriate**: Usa semantic versioning
+
+### Workflow di Rilascio
+1. **Sviluppo**: Implementa le feature
+2. **Test**: Verifica che tutto funzioni
+3. **Version**: `npm run version:minor/patch/major`
+4. **Deploy**: `npm run release` (build + tag + push)
 
 ## Licenza
 
