@@ -130,7 +130,7 @@ export default function EmployeeDashboardSidebar({ activeSection, setActiveSecti
 
       {/* Footer con logo License Global */}
       <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <div className="flex items-center justify-center space-x-2">
+        <div className="flex items-center justify-center">
           {licenseGlobalLogoUrl ? (
             <img
               src={licenseGlobalLogoUrl}
@@ -142,9 +142,6 @@ export default function EmployeeDashboardSidebar({ activeSection, setActiveSecti
               <Building className="h-4 w-4 text-white" />
             </div>
           )}
-          <span className="text-xs text-gray-500 font-medium">
-            License Global
-          </span>
         </div>
       </div>
     </div>
