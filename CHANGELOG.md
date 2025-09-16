@@ -50,6 +50,32 @@ Tutti gli aggiornamenti importanti e le nuove funzionalità implementate in Gest
 
 ---
 
+## [1.6.0] - 2025-09-16
+
+### 🎯 Sistema Permessi Avanzato
+- **Controllo intelligente blocco Permesso Inizio Turno**
+- **Validazione ore massime permessi** in tempo reale
+- **Sistema tipi permesso** completo per dipendenti e admin
+- **Logica pulsante seconda entrata** migliorata e corretta
+- **Debug dettagliato** per troubleshooting permessi
+- **Controllo permessi stesso giorno** implementato
+
+### 🔧 Correzioni Critiche
+- **Fix calcolo tipo permesso** con debug avanzato
+- **Validazione immediata** ore massime permessi
+- **Blocco intelligente** per permessi sovrapposti
+- **Logica pulsante registrazione** seconda entrata corretta
+- **Rimozione debug** e ottimizzazione performance
+
+### 📄 PDF Export Avanzato
+- **Layout professionale** con loghi aziendali ottimizzato
+- **Legenda personalizzabile** (includi/escludi opzione)
+- **Riduzione spazi vuoti** e sovrapposizioni corrette
+- **Ottimizzazione mobile** layout prima pagina
+- **Forza calcolo dinamico** per intervalli permessi
+
+---
+
 ## [1.5.0] - 2025-09-15
 
 ### 📧 Sistema Email Avanzato
@@ -164,10 +190,34 @@ Tutti gli aggiornamenti importanti e le nuove funzionalità implementate in Gest
 - 📚 **Documentazione** aggiornata
 - 🎨 **UI/UX** migliorata
 
+### 📊 Statistiche Versioni
+- **Versioni totali**: 7 versioni documentate
+- **Periodo**: Settembre 2025
+- **Commit totali**: 1000+ commit analizzati
+- **Feature principali**: 50+ funzionalità implementate
+
 ### 📅 Prossime Versioni
-- **2.2.0**: Sistema notifiche push
-- **2.3.0**: App mobile companion
-- **3.0.0**: Multi-azienda support
+- **2.2.0**: Sistema notifiche push avanzate
+- **2.3.0**: App mobile companion nativa
+- **2.4.0**: Integrazione calendario esterno
+- **3.0.0**: Supporto multi-azienda e multi-sede
+
+---
+
+## 📈 Evoluzione Progetto
+
+### 🚀 Fasi Sviluppamento
+1. **1.0.0** → MVP base con autenticazione
+2. **1.1-1.4** → Core features (presenze, ferie, PDF, email)
+3. **1.5-1.6** → Advanced features (permessi avanzati, ottimizzazioni)
+4. **2.0.0** → Rebranding e automazione controllo entrate
+5. **2.1.0** → Ottimizzazione completa e versioning professionale
+
+### 🎯 Metriche Qualità
+- **Codice organizzato**: ✅ 138 → 21 file SQL attivi
+- **Documentazione**: ✅ Completa e strutturata
+- **Versioning**: ✅ Semantic versioning implementato
+- **Deployment**: ✅ Workflow automatizzato
 
 ---
 
@@ -178,5 +228,12 @@ Ogni versione importante deve:
 2. Documentare le modifiche in questo CHANGELOG
 3. Creare un tag git corrispondente
 4. Aggiornare la documentazione se necessario
+
+### 🔄 Processo di Release
+1. **Sviluppo** → Implementa feature
+2. **Testing** → Verifica funzionalità
+3. **Version** → `npm run version:minor/patch/major`
+4. **Deploy** → `npm run release` (auto-commit + tag + push)
+5. **Document** → Aggiorna CHANGELOG.md
 
 **Versione corrente**: 2.1.0 🎯
