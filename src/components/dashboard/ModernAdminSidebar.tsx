@@ -210,17 +210,24 @@ export default function ModernAdminSidebar({
       {/* Footer con logo License Global */}
       <div className="p-4 border-t border-slate-200/60 bg-gradient-to-r from-slate-50 to-white">
         <div className="flex items-center justify-center">
-          {licenseGlobalLogoUrl ? (
-            <img
-              src={licenseGlobalLogoUrl}
-              alt="License Global"
-              className="h-8 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-200"
-            />
-          ) : (
-            <div className="h-8 w-8 rounded bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center">
-              <Building className="h-4 w-4 text-white" />
-            </div>
-          )}
+          <a
+            href="https://licenseglobal.it/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-all duration-200 hover:scale-105"
+          >
+            {licenseGlobalLogoUrl ? (
+              <img
+                src={licenseGlobalLogoUrl}
+                alt="License Global"
+                className="h-8 w-auto object-contain opacity-100 hover:opacity-70 transition-opacity duration-200 cursor-pointer"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center hover:from-slate-500 hover:to-slate-600 transition-all duration-200 cursor-pointer">
+                <Building className="h-4 w-4 text-white" />
+              </div>
+            )}
+          </a>
         </div>
       </div>
     </div>
