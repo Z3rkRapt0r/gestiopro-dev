@@ -96,6 +96,19 @@ serve(async (req) => {
 
     console.log(`[Check Missing Attendance] Current time: ${currentTime}, day: ${currentDayName}`);
 
+    // Controllo globale: se siamo troppo tardi (dopo le 22:00), non eseguire controlli
+    const currentHour = currentDate.getHours();
+    if (currentHour >= 22 || currentHour < 6) {
+      console.log(`[Check Missing Attendance] Outside business hours (${currentHour}:00), skipping attendance checks`);
+      return new Response(JSON.stringify({
+        message: "Outside business hours, skipping attendance checks",
+        currentHour
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     for (const admin of adminSettings as AdminSettings[]) {
       try {
         console.log(`[Check Missing Attendance] Processing admin: ${admin.admin_id}`);
