@@ -21,8 +21,9 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { BarChart3, Calendar, Clock, FileText, MessageSquare, User } from 'lucide-react';
+import { BarChart3, Calendar, Clock, FileText, MessageSquare, User, Building } from 'lucide-react';
 import AppFooter from '../ui/AppFooter';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function EmployeeDashboard() {
   const [activeSection, setActiveSection] = useState<'overview' | 'leaves' | 'attendances' | 'documents' | 'messages'>(() => {
@@ -32,11 +33,54 @@ export default function EmployeeDashboard() {
   });
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const [licenseGlobalLogoUrl, setLicenseGlobalLogoUrl] = useState<string | null>(null);
 
   // Salva la sezione attiva nel localStorage quando cambia
   useEffect(() => {
     localStorage.setItem('employee-active-section', activeSection);
   }, [activeSection]);
+
+  // Carica il logo License Global dal bucket company-logos
+  useEffect(() => {
+    const loadLicenseGlobalLogo = async () => {
+      try {
+        // Prova diversi percorsi possibili per il logo License Global
+        const possiblePaths = [
+          'LicenseGlobal/logo.png',
+          'licenseglobal/logo.png',
+          'License Global/logo.png',
+          'logo-license-global/logo.png',
+          'LicenseGlobal/logo.jpg',
+          'licenseglobal/logo.jpg',
+          'License Global/logo.jpg'
+        ];
+        
+        for (const path of possiblePaths) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('company-logos')
+            .getPublicUrl(path);
+          
+          if (publicUrl) {
+            // Verifica se l'URL è accessibile
+            try {
+              const response = await fetch(publicUrl, { method: 'HEAD' });
+              if (response.ok) {
+                setLicenseGlobalLogoUrl(publicUrl);
+                break;
+              }
+            } catch (error) {
+              console.log(`Logo non accessibile da ${path}:`, error);
+              continue;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Errore nel caricamento del logo License Global:', error);
+      }
+    };
+
+    loadLicenseGlobalLogo();
+  }, []);
 
   // Aggiorna i dati quando si cambia sezione
   useEffect(() => {
@@ -172,6 +216,30 @@ export default function EmployeeDashboard() {
                 </SidebarGroupContent>
               </SidebarGroup>
             </SidebarContent>
+            
+            {/* Footer con logo License Global */}
+            <div className="p-4 border-t border-slate-200/60 bg-gradient-to-r from-slate-50 to-white">
+              <div className="flex items-center justify-center">
+                <a
+                  href="https://licenseglobal.it/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-all duration-200 hover:scale-105"
+                >
+                  {licenseGlobalLogoUrl ? (
+                    <img
+                      src={licenseGlobalLogoUrl}
+                      alt="License Global"
+                      className="h-8 w-auto object-contain opacity-100 hover:opacity-70 transition-opacity duration-200 cursor-pointer"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center hover:from-slate-500 hover:to-slate-600 transition-all duration-200 cursor-pointer">
+                      <Building className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                </a>
+              </div>
+            </div>
           </Sidebar>
 
           <SidebarInset className="flex-1">
