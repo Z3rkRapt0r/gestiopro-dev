@@ -130,12 +130,29 @@ Utilizziamo [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH):
 - **MINOR**: Nuove funzionalità significative
 - **PATCH**: Bug fix e miglioramenti minori
 
-### Come Creare una Nuova Versione
+### 🚀 Sistema di Auto-Release (Raccomandato)
+
+```bash
+# RILASCIO AUTOMATICO - Analizza i commit e determina automaticamente la versione
+npm run auto-release
+
+# Mostra aiuto per il sistema di auto-release
+npm run release:help
+```
+
+**Cosa fa automaticamente:**
+- 🔍 **Analizza gli ultimi 20 commit** per determinare il tipo di versione
+- 📝 **Genera automaticamente** le voci del CHANGELOG
+- 📦 **Aggiorna VERSION e package.json**
+- 📚 **Aggiorna README.md** con la nuova versione
+- 🏷️ **Crea tag Git** appropriato
+- 📋 **Documenta tutto** nel CHANGELOG
+
+### Metodi Manuali Alternativi
 
 ```bash
 # Per nuove funzionalità (minor)
 npm run version:minor
-# o con descrizione personalizzata
 node scripts/version-manager.js minor "Aggiunto sistema notifiche push"
 
 # Per bug fix (patch)
@@ -147,9 +164,9 @@ npm run version:major
 node scripts/version-manager.js major "Ristrutturazione completa API"
 ```
 
-### Rilascio Completo
+### Rilascio Tradizionale
 ```bash
-# Build, version, tag e push automatico
+# Build, version, tag e push manuale
 npm run release
 ```
 
@@ -181,11 +198,28 @@ npm run release
 3. **Testa le modifiche**: Assicurati che tutto funzioni
 4. **Crea versioni appropriate**: Usa semantic versioning
 
-### Workflow di Rilascio
+### 🔄 Workflow di Rilascio (Nuovo Sistema Automatico)
+
+#### **Opzione 1: Auto-Release (Raccomandato)**
+```bash
+# Dopo aver completato le modifiche e fatto commit
+npm run auto-release
+
+# Questo fa tutto automaticamente:
+# ✅ Analizza commit → Determina versione → Aggiorna file → Crea tag
+```
+
+#### **Opzione 2: Rilascio Manuale**
 1. **Sviluppo**: Implementa le feature
 2. **Test**: Verifica che tutto funzioni
 3. **Version**: `npm run version:minor/patch/major`
 4. **Deploy**: `npm run release` (build + tag + push)
+
+#### **Opzione 3: Rilascio Guidato**
+```bash
+# Per aiuto e opzioni
+npm run release:help
+```
 
 ## Licenza
 

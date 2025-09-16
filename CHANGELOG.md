@@ -26,10 +26,19 @@ Tutti gli aggiornamenti importanti e le nuove funzionalità implementate in Gest
   - Miglioramenti alla type safety
   - Organizzazione commenti e struttura
 
+- **🤖 Sistema Auto-Release**
+  - Auto-Release Manager per rilasci automatici
+  - Analisi intelligente dei commit per determinare versioni
+  - Generazione automatica CHANGELOG.md
+  - Aggiornamento automatico VERSION e package.json
+  - Creazione tag Git automatica
+  - Workflow di rilascio completamente automatizzato
+
 ### 🔧 Miglioramenti Tecnici
 - **Performance**: Riduzione complessità navigazione file
 - **Manutenibilità**: Codice più organizzato e documentato
 - **Developer Experience**: Onboarding semplificato per nuovi sviluppatori
+- **Automation**: Sistema di release completamente automatico
 
 ---
 

@@ -12,7 +12,9 @@
     "version:patch": "npm version patch && git add . && git commit -m \"chore: bump version to $(cat VERSION)\"",
     "version:minor": "npm version minor && git add . && git commit -m \"feat: bump version to $(cat VERSION)\"",
     "version:major": "npm version major && git add . && git commit -m \"breaking: bump version to $(cat VERSION)\"",
-    "release": "npm run build && npm version patch && git tag v$(cat VERSION) && git push && git push --tags"
+    "release": "npm run build && npm version patch && git tag v$(cat VERSION) && git push && git push --tags",
+    "auto-release": "node scripts/auto-release.js",
+    "release:help": "node scripts/auto-release.js --help"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
