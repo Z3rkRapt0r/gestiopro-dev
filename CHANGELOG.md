@@ -41,6 +41,130 @@ Tutti gli aggiornamenti importanti e le nuove funzionalità implementate in Gest
 - **Automation**: Sistema di release completamente automatico
 
 ---
+## [2.5.0] - 2025-09-16
+
+### ✨ Nuove Funzionalità
+- feat: aggiungere logo License Global alla sidebar dipendenti principale
+- feat: rendere logo License Global cliccabile e migliorare effetti hover
+- feat: aggiungere logo License Global in fondo alle sidebar
+- feat: implementare sistema Auto-Release Manager per rilasci automatici
+- feat: implementare sistema versioning completo con CHANGELOG, version manager e documentazione rilasci
+- Add debug logging for email button URL tracking
+
+### 🐛 Correzioni
+- fix: rimuovere scritta 'License Global' affianco al logo
+- fix: aggiungere autoprefixer mancante per build di produzione
+- fix: convertire auto-release.js a ES modules per compatibilità
+- Fix: permessi inizio turno ora accettano orario esatto di inizio lavoro
+
+### 📚 Documentazione
+- docs: completare recupero storico versioni da Git
+
+### 🔧 Miglioramenti
+- 2.1.1
+- Implementa sistema completo di controllo entrate automatico
+- Aggiungi workflow GitHub Actions per controllo entrate automatico
+- Rimuovi riga 'Ultima modifica' dal LICENSE.md
+- Rebranding a GestioPro - Aggiornamento completo del progetto
+- Nascondi scritta 'Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso'
+- Remove buttons from send-leave-request-email function
+- Force disable email buttons - ignore database show_button value
+- Remove email buttons from all templates
+
+---
+## [2.4.0] - 2025-09-16
+
+### ✨ Nuove Funzionalità
+- feat: rendere logo License Global cliccabile e migliorare effetti hover
+- feat: aggiungere logo License Global in fondo alle sidebar
+- feat: implementare sistema Auto-Release Manager per rilasci automatici
+- feat: implementare sistema versioning completo con CHANGELOG, version manager e documentazione rilasci
+- Add debug logging for email button URL tracking
+
+### 🐛 Correzioni
+- fix: rimuovere scritta 'License Global' affianco al logo
+- fix: aggiungere autoprefixer mancante per build di produzione
+- fix: convertire auto-release.js a ES modules per compatibilità
+- Fix: permessi inizio turno ora accettano orario esatto di inizio lavoro
+- Fix: Email button URLs now use admin settings app_url instead of hardcoded URLs
+
+### 📚 Documentazione
+- docs: completare recupero storico versioni da Git
+
+### 🔧 Miglioramenti
+- 2.1.1
+- Implementa sistema completo di controllo entrate automatico
+- Aggiungi workflow GitHub Actions per controllo entrate automatico
+- Rimuovi riga 'Ultima modifica' dal LICENSE.md
+- Rebranding a GestioPro - Aggiornamento completo del progetto
+- Nascondi scritta 'Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso'
+- Remove buttons from send-leave-request-email function
+- Force disable email buttons - ignore database show_button value
+- Remove email buttons from all templates
+
+---
+## [2.3.0] - 2025-09-16
+
+### ✨ Nuove Funzionalità
+- feat: aggiungere logo License Global in fondo alle sidebar
+- feat: implementare sistema Auto-Release Manager per rilasci automatici
+- feat: implementare sistema versioning completo con CHANGELOG, version manager e documentazione rilasci
+- Add debug logging for email button URL tracking
+
+### 🐛 Correzioni
+- fix: rimuovere scritta 'License Global' affianco al logo
+- fix: aggiungere autoprefixer mancante per build di produzione
+- fix: convertire auto-release.js a ES modules per compatibilità
+- Fix: permessi inizio turno ora accettano orario esatto di inizio lavoro
+- Fix: Email button URLs now use admin settings app_url instead of hardcoded URLs
+- Email: mostra correttamente fascia oraria nei permessi approvati; piccoli fix template
+
+### 📚 Documentazione
+- docs: completare recupero storico versioni da Git
+
+### 🔧 Miglioramenti
+- 2.1.1
+- Implementa sistema completo di controllo entrate automatico
+- Aggiungi workflow GitHub Actions per controllo entrate automatico
+- Rimuovi riga 'Ultima modifica' dal LICENSE.md
+- Rebranding a GestioPro - Aggiornamento completo del progetto
+- Nascondi scritta 'Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso'
+- Remove buttons from send-leave-request-email function
+- Force disable email buttons - ignore database show_button value
+- Remove email buttons from all templates
+
+---
+## [2.2.0] - 2025-09-16
+
+### ✨ Nuove Funzionalità
+- feat: aggiungere logo License Global in fondo alle sidebar
+- feat: implementare sistema Auto-Release Manager per rilasci automatici
+- feat: implementare sistema versioning completo con CHANGELOG, version manager e documentazione rilasci
+- Add debug logging for email button URL tracking
+
+### 🐛 Correzioni
+- fix: aggiungere autoprefixer mancante per build di produzione
+- fix: convertire auto-release.js a ES modules per compatibilità
+- Fix: permessi inizio turno ora accettano orario esatto di inizio lavoro
+- Fix: Email button URLs now use admin settings app_url instead of hardcoded URLs
+- Email: mostra correttamente fascia oraria nei permessi approvati; piccoli fix template
+- Email templates: force all buttons to fixed URL and disable URL editing in admin UI; ensure runtime uses fixed URL for all templates
+
+### 📚 Documentazione
+- docs: completare recupero storico versioni da Git
+
+### 🔧 Miglioramenti
+- 2.1.1
+- Implementa sistema completo di controllo entrate automatico
+- Aggiungi workflow GitHub Actions per controllo entrate automatico
+- Rimuovi riga 'Ultima modifica' dal LICENSE.md
+- Rebranding a GestioPro - Aggiornamento completo del progetto
+- Nascondi scritta 'Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso'
+- Remove buttons from send-leave-request-email function
+- Force disable email buttons - ignore database show_button value
+- Remove email buttons from all templates
+
+---
 
 ## [2.0.0] - 2025-09-16
 
