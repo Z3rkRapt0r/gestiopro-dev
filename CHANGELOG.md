@@ -41,6 +41,37 @@ Tutti gli aggiornamenti importanti e le nuove funzionalità implementate in Gest
 - **Automation**: Sistema di release completamente automatico
 
 ---
+## [2.6.0] - 2025-09-16
+
+### ✨ Nuove Funzionalità
+- fix: add business hours check to prevent midnight cron job execution
+- feat: aggiungere logo License Global alla sidebar dipendenti principale
+- feat: rendere logo License Global cliccabile e migliorare effetti hover
+- feat: aggiungere logo License Global in fondo alle sidebar
+- feat: implementare sistema Auto-Release Manager per rilasci automatici
+- feat: implementare sistema versioning completo con CHANGELOG, version manager e documentazione rilasci
+
+### 🐛 Correzioni
+- fix: rimuovere scritta 'License Global' affianco al logo
+- fix: aggiungere autoprefixer mancante per build di produzione
+- fix: convertire auto-release.js a ES modules per compatibilità
+
+### 📚 Documentazione
+- docs: completare recupero storico versioni da Git
+
+### 🔧 Miglioramenti
+- chore: aggiornare documentazione per versione 2.5.0
+- 2.1.1
+- Implementa sistema completo di controllo entrate automatico
+- Aggiungi workflow GitHub Actions per controllo entrate automatico
+- Rimuovi riga 'Ultima modifica' dal LICENSE.md
+- Rebranding a GestioPro - Aggiornamento completo del progetto
+- Nascondi scritta 'Dovrai effettuare una seconda registrazione di ingresso dopo il termine del permesso'
+- Remove buttons from send-leave-request-email function
+- Force disable email buttons - ignore database show_button value
+- Remove email buttons from all templates
+
+---
 ## [2.5.0] - 2025-09-16
 
 ### ✨ Nuove Funzionalità
