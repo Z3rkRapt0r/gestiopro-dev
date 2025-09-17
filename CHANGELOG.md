@@ -41,6 +41,37 @@ Tutti gli aggiornamenti importanti e le nuove funzionalità implementate in Gest
 - **Automation**: Sistema di release completamente automatico
 
 ---
+## [2.11.0] - 2025-09-17
+
+### ✨ Nuove Funzionalità
+- chore: consolidamento modifiche esistenti prima della creazione branch feature
+- feat: ottimizzazione completa migrations Supabase
+- feat: ottimizzazione completa file SQL
+- feat: nuovo sistema completo di monitoraggio presenze da zero
+- feat: add business hours check to attendance cron system
+- fix: add business hours check to prevent midnight cron job execution
+- feat: aggiungere logo License Global alla sidebar dipendenti principale
+- feat: rendere logo License Global cliccabile e migliorare effetti hover
+- feat: aggiungere logo License Global in fondo alle sidebar
+- feat: implementare sistema Auto-Release Manager per rilasci automatici
+- feat: implementare sistema versioning completo con CHANGELOG, version manager e documentazione rilasci
+
+### 🐛 Correzioni
+- fix: aggiornare descrizione versione nel README
+- fix: update PostgreSQL function to use Europe/Rome timezone instead of UTC
+- fix: rimuovere scritta 'License Global' affianco al logo
+- fix: aggiungere autoprefixer mancante per build di produzione
+- fix: convertire auto-release.js a ES modules per compatibilità
+
+### 📚 Documentazione
+- docs: completare recupero storico versioni da Git
+
+### 🔧 Miglioramenti
+- chore: aggiornare documentazione per versione 2.5.0
+- 2.1.1
+- Implementa sistema completo di controllo entrate automatico
+
+---
 ## [2.10.0] - 2025-09-17
 
 ### ✨ Nuove Funzionalità
