@@ -2,8 +2,25 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nohufgceuqhkycsdffqj.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vaHVmZ2NldXFoa3ljc2RmZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTEyNzYsImV4cCI6MjA2NTQ2NzI3Nn0.oigK8ck7f_sBeXfJ8P1ySdqMHiVpXdjkoBSR4uMZgRQ";
+// Determina se usare il database di sviluppo o produzione
+const USE_DEV_DB = import.meta.env.DEV && (import.meta.env.VITE_SUPABASE_DEV_URL || import.meta.env.VITE_SUPABASE_DEV_ANON_KEY);
+
+let SUPABASE_URL: string;
+let SUPABASE_PUBLISHABLE_KEY: string;
+
+if (USE_DEV_DB) {
+  // Usa database di sviluppo se siamo in modalità DEV e le variabili sono configurate
+  SUPABASE_URL = import.meta.env.VITE_SUPABASE_DEV_URL || import.meta.env.VITE_SUPABASE_URL || "https://nohufgceuqhkycsdffqj.supabase.co";
+  SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_DEV_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vaHVmZ2NldXFoa3ljc2RmZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTEyNzYsImV4cCI6MjA2NTQ2NzI3Nn0.oigK8ck7f_sBeXfJ8P1ySdqMHiVpXdjkoBSR4uMZgRQ";
+
+  console.log('🔧 Usando DATABASE DI SVILUPPO:', SUPABASE_URL);
+} else {
+  // Usa database di produzione
+  SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nohufgceuqhkycsdffqj.supabase.co";
+  SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vaHVmZ2NldXFoa3ljc2RmZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTEyNzYsImV4cCI6MjA2NTQ2NzI3Nn0.oigK8ck7f_sBeXfJ8P1ySdqMHiVpXdjkoBSR4uMZgRQ";
+
+  console.log('🏭 Usando DATABASE DI PRODUZIONE:', SUPABASE_URL);
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
