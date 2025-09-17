@@ -1,8 +1,6 @@
--- ============================================================================
--- SISTEMA DI MONITORAGGIO PRESENZE - NUOVA IMPLEMENTAZIONE
--- ============================================================================
--- Funzione per il controllo automatico delle entrate mancanti
--- Sostituisce completamente il sistema precedente
+
+-- Ricrea direttamente la funzione attendance_monitor_cron
+-- Copiata dalla migrazione originale
 
 CREATE OR REPLACE FUNCTION public.attendance_monitor_cron()
 RETURNS text
@@ -253,40 +251,21 @@ BEGIN
 END;
 $$;
 
--- ============================================================================
--- CONFIGURAZIONE CRON JOB
--- ============================================================================
+-- Verifica che la funzione sia stata creata
+SELECT 
+    'FUNZIONE CREATA' as status,
+    CASE 
+        WHEN EXISTS (
+            SELECT 1 FROM pg_proc p 
+            JOIN pg_namespace n ON p.pronamespace = n.oid 
+            WHERE n.nspname = 'public' 
+            AND p.proname = 'attendance_monitor_cron'
+        ) THEN '✅ SUCCESSO'
+        ELSE '❌ FALLITO'
+    END as risultato;
 
--- Rimuovi eventuali cron job esistenti con nomi simili
-SELECT cron.unschedule('attendance-monitor-cron') WHERE EXISTS (
-    SELECT 1 FROM cron.job WHERE jobname = 'attendance-monitor-cron'
-);
+-- Test della funzione appena creata
+SELECT 
+    'TEST FUNZIONE' as test,
+    public.attendance_monitor_cron() as risultato;
 
-SELECT cron.unschedule('robusto-attendance-check') WHERE EXISTS (
-    SELECT 1 FROM cron.job WHERE jobname = 'robusto-attendance-check'
-);
-
--- Crea il nuovo cron job - esecuzione ogni 15 minuti
-SELECT cron.schedule(
-    'attendance-monitor-cron',
-    '*/15 * * * *',  -- Ogni 15 minuti
-    'SELECT public.attendance_monitor_cron();'
-);
-
--- ============================================================================
--- TEST DEL SISTEMA
--- ============================================================================
-
--- Test della funzione
-SELECT
-    '✅ Sistema Monitoraggio Presenze - Test Completato' as test_status,
-    public.attendance_monitor_cron() as test_result;
-
--- Verifica configurazione cron
-SELECT
-    jobname,
-    schedule,
-    command,
-    active
-FROM cron.job
-WHERE jobname = 'attendance-monitor-cron';

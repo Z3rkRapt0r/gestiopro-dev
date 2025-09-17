@@ -121,7 +121,7 @@ VERSION                # 🏷️ Versione corrente
 ## 🏷️ Versioning e Rilasci
 
 ### Versione Corrente
-**GestioPro v2.6.0** - Ottimizzazione completa e organizzazione file
+**GestioPro v2.10.0** - Sistema completamente ottimizzato e production-ready
 
 ### Sistema di Versioning
 Utilizziamo [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH):

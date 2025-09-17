@@ -24,7 +24,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    current_timestamp_val timestamp := now() at time zone 'Europe/Rome';
+    current_timestamp_val timestamp := now();
     current_date_str text;
     current_day_name text;
     admin_count integer := 0;
@@ -214,13 +214,13 @@ BEGIN
         RAISE NOTICE '[Attendance Monitor Cron] Controllo completato: % nuovi avvisi, % totali pendenti',
             alerts_created, pending_alerts;
 
-        -- Se ci sono avvisi pendenti (nuovi o esistenti), chiama la Edge Function
-        IF alerts_created > 0 OR pending_alerts > 0 THEN
-            RAISE NOTICE '[Attendance Monitor Cron] Chiamata Edge Function attendance-monitor per elaborare % avvisi (% nuovi, % esistenti)',
-                pending_alerts, alerts_created, pending_alerts - alerts_created;
+        -- Se ci sono avvisi da inviare, chiama la Edge Function
+        IF alerts_created > 0 THEN
+            RAISE NOTICE '[Attendance Monitor Cron] Chiamata Edge Function attendance-monitor per % avvisi',
+                alerts_created;
 
             BEGIN
-                -- Chiama la nuova Edge Function per elaborare TUTTI gli avvisi pendenti
+                -- Chiama la nuova Edge Function
                 SELECT content INTO edge_response
                 FROM http((
                     'POST',
@@ -241,7 +241,7 @@ BEGIN
                 edge_response := 'ERRORE: ' || SQLERRM;
             END;
         ELSE
-            edge_response := 'Nessun avviso da elaborare';
+            edge_response := 'Nessun nuovo avviso creato';
         END IF;
 
         -- Costruisci messaggio finale

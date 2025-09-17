@@ -96,50 +96,6 @@ serve(async (req) => {
 
     console.log(`[Check Missing Attendance] Current time: ${currentTime}, day: ${currentDayName}`);
 
-    // Controllo globale: recupera gli orari aziendali per determinare il range di controllo
-    const { data: companySchedule, error: scheduleError } = await supabase
-      .from("work_schedules")
-      .select("*")
-      .single();
-
-    if (scheduleError) {
-      console.error("[Check Missing Attendance] Error fetching company schedule:", scheduleError);
-      // Fallback: usa orari di default se non riusciamo a recuperare quelli aziendali
-      if (currentDate.getHours() >= 22 || currentDate.getHours() < 6) {
-        console.log(`[Check Missing Attendance] Outside default business hours (${currentDate.getHours()}:00), skipping attendance checks`);
-        return new Response(JSON.stringify({
-          message: "Outside default business hours, skipping attendance checks",
-          currentHour: currentDate.getHours()
-        }), {
-          status: 200,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        });
-      }
-    } else {
-      // Calcola il range dinamico basato sugli orari aziendali
-      const [startHour] = companySchedule.start_time.split(':').map(Number);
-      const [endHour] = companySchedule.end_time.split(':').map(Number);
-
-      // Range di controllo: da 1 ora prima dell'inizio fino a 2 ore dopo la fine
-      const checkStartHour = Math.max(0, startHour - 1); // Non va sotto la mezzanotte
-      const checkEndHour = Math.min(23, endHour + 2); // Non va sopra le 23:00
-
-      const currentHour = currentDate.getHours();
-
-      if (currentHour < checkStartHour || currentHour > checkEndHour) {
-        console.log(`[Check Missing Attendance] Outside company business hours (${currentHour}:00 not in ${checkStartHour}:00-${checkEndHour}:00), skipping attendance checks`);
-        return new Response(JSON.stringify({
-          message: "Outside company business hours, skipping attendance checks",
-          currentHour,
-          companySchedule: { startHour, endHour },
-          checkRange: { checkStartHour, checkEndHour }
-        }), {
-          status: 200,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        });
-      }
-    }
-
     for (const admin of adminSettings as AdminSettings[]) {
       try {
         console.log(`[Check Missing Attendance] Processing admin: ${admin.admin_id}`);
@@ -166,10 +122,14 @@ serve(async (req) => {
           continue;
         }
 
-        // Usa gli orari aziendali recuperati all'inizio (sono globali per l'azienda)
-        // Se non sono stati recuperati, salta questo admin
-        if (!companySchedule) {
-          console.log(`[Check Missing Attendance] No company schedule available for admin ${admin.admin_id}, skipping`);
+        // Ottieni gli orari aziendali di default
+        const { data: companySchedule, error: scheduleError } = await supabase
+          .from("work_schedules")
+          .select("*")
+          .single();
+
+        if (scheduleError) {
+          console.error(`[Check Missing Attendance] Error fetching company schedule:`, scheduleError);
           continue;
         }
 

@@ -45,7 +45,8 @@ serve(async (req) => {
     );
 
     // Recupera tutti gli avvisi non ancora inviati per oggi
-    const today = new Date().toISOString().split('T')[0];
+    // Usa timezone europeo per essere consistente con il cron job
+    const today = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Rome"})).toISOString().split('T')[0];
     const { data: alerts, error: alertsError } = await supabase
       .from("attendance_alerts")
       .select(`
@@ -75,6 +76,8 @@ serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`[Attendance Monitor] Found ${alerts.length} pending alerts to process`);
 
     // Recupera i dati degli employee e admin settings separatamente
     const employeeIds = [...new Set(alerts.map(a => a.employee_id))];
