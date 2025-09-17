@@ -33,9 +33,23 @@ supabase db push --file supabase/migrations/active/20250101000000_consolidated_d
 
 #### **Crea il file `.env.local`** (NON committare mai questo file!)
 ```bash
-# Copia le variabili dal progetto di sviluppo
-VITE_SUPABASE_DEV_URL=https://your-dev-project-ref.supabase.co
-VITE_SUPABASE_DEV_ANON_KEY=your-dev-anon-key
+# Copia il file di esempio e modificalo
+cp .env.local.example .env.local
+
+# Poi modifica le variabili con i tuoi valori del progetto di sviluppo
+# VITE_SUPABASE_DEV_URL=https://your-dev-project-ref.supabase.co
+# VITE_SUPABASE_DEV_ANON_KEY=your-dev-anon-key
+```
+
+**Esempio di file `.env.local`:**
+```bash
+# Database di Sviluppo
+VITE_SUPABASE_DEV_URL=https://abcdefghijk.supabase.co
+VITE_SUPABASE_DEV_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Database di Produzione (già configurato)
+VITE_SUPABASE_URL=https://nohufgceuqhkycsdffqj.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 #### **Come trovare l'URL e la chiave:**
@@ -136,6 +150,74 @@ git branch -D feature/nuova-funzionalita  # Elimina il branch problematico
 - ✅ **🔄 Rollback**: Facile tornare indietro
 - ✅ **👥 Team**: Più sviluppatori possono lavorare contemporaneamente
 
+## 🎯 **COME USARE IL SISTEMA**
+
+### **Test Attuale:**
+```bash
+# Senza .env.local → Usa produzione
+npm run dev
+# Console: "🏭 Usando DATABASE DI PRODUZIONE"
+
+# Con .env.local configurato → Usa sviluppo
+npm run dev
+# Console: "🔧 Usando DATABASE DI SVILUPPO"
+```
+
+### **Workflow Completo per Nuove Funzionalità:**
+```bash
+# 1. Crea branch feature
+git checkout -b feature/nuova-funzionalita
+
+# 2. Configura database sviluppo (se non già fatto)
+cp .env.local.example .env.local
+# Modifica .env.local con le tue credenziali DEV
+
+# 3. Sviluppa e testa
+npm run dev  # Userà automaticamente database DEV
+
+# 4. Commit e push
+git add .
+git commit -m "feat: descrizione"
+git push origin feature/nuova-funzionalita
+
+# 5. Crea Pull Request su GitHub
+# 6. Merge nel main (usa produzione)
+git checkout main
+git merge feature/nuova-funzionalita
+npm run auto-release  # Deploy produzione
+```
+
+## 🛡️ **SICUREZZA IMPLEMENTATA**
+
+### **🔒 Protezioni Automatiche:**
+- **Produzione**: Sempre protetta, mai toccata durante sviluppo
+- **Sviluppo**: Ambiente isolato per esperimenti
+- **Console Logs**: Chiare indicazioni su quale DB stai usando
+- **Fallback**: Se DEV non configurato, usa automaticamente produzione
+
+### **🚨 Regole d'Oro:**
+1. **Mai committare `.env.local`**
+2. **Sempre verificare i logs del console** per sapere quale DB stai usando
+3. **Testare sempre su DEV prima del merge**
+4. **Backup regolari** del database di produzione
+
+### **🔍 Come Verificare:**
+- **Console Browser**: Controlla i messaggi di log
+- **Dashboard Supabase**: Verifica quale progetto stai modificando
+- **URL nell'app**: Confronta con l'URL del progetto Supabase
+
 ## 🎉 **PRONTO PER LO SVILUPPO SICURO!**
 
-Ora puoi sviluppare senza paura di rompere il database di produzione! 🚀
+Ora hai un sistema completamente isolato:
+
+### **🏭 Produzione** (`main` branch)
+- Database originale: `nohufgceuqhkycsdffqj`
+- Codice stabile e testato
+- Clienti reali usano questo
+
+### **🔧 Sviluppo** (`feature/*` branches)
+- Database separato: `your-dev-project`
+- Ambiente di test sicuro
+- Puoi rompere tutto senza conseguenze!
+
+**Il tuo workflow è ora professionale e sicuro!** 🚀✨
