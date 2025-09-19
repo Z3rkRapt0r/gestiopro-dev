@@ -124,9 +124,17 @@ export const formatHireDate = (hireDate: string): string => {
 export interface EmployeeWorkSchedule {
   id: string;
   employee_id: string;
-  work_days: string[];
+  work_days: string[] | null; // Mantenuto per compatibilità temporanea
   start_time: string;
   end_time: string;
+  // Nuove colonne booleane
+  monday: boolean;
+  tuesday: boolean;
+  wednesday: boolean;
+  thursday: boolean;
+  friday: boolean;
+  saturday: boolean;
+  sunday: boolean;
 }
 
 /**
@@ -139,15 +147,23 @@ export const isEmployeeWorkingDay = (
   companyWorkSchedule: any
 ): boolean => {
   const dayOfWeek = date.getDay();
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const currentDayName = dayNames[dayOfWeek];
 
-  console.log(`🔍 [isEmployeeWorkingDay] ${date.toISOString().split('T')[0]} - employeeWorkSchedule:`, employeeWorkSchedule, 'companyWorkSchedule:', companyWorkSchedule, 'currentDayName:', currentDayName);
+  console.log(`🔍 [isEmployeeWorkingDay] ${date.toISOString().split('T')[0]} - employeeWorkSchedule:`, employeeWorkSchedule, 'companyWorkSchedule:', companyWorkSchedule);
 
   // Se il dipendente ha orari personalizzati, usa quelli
-  if (employeeWorkSchedule && employeeWorkSchedule.work_days) {
-    const result = employeeWorkSchedule.work_days.includes(currentDayName);
-    console.log(`✅ [isEmployeeWorkingDay] Usando orari personalizzati - work_days:`, employeeWorkSchedule.work_days, 'includes:', result);
+  if (employeeWorkSchedule && employeeWorkSchedule.start_time) {
+    let result = false;
+    switch (dayOfWeek) {
+      case 0: result = employeeWorkSchedule.sunday; break;
+      case 1: result = employeeWorkSchedule.monday; break;
+      case 2: result = employeeWorkSchedule.tuesday; break;
+      case 3: result = employeeWorkSchedule.wednesday; break;
+      case 4: result = employeeWorkSchedule.thursday; break;
+      case 5: result = employeeWorkSchedule.friday; break;
+      case 6: result = employeeWorkSchedule.saturday; break;
+      default: result = false;
+    }
+    console.log(`✅ [isEmployeeWorkingDay] Usando orari personalizzati - result:`, result);
     return result;
   }
 

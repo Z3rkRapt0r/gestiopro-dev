@@ -639,28 +639,49 @@ export type Database = {
           created_at: string | null
           employee_id: string
           end_time: string
+          friday: boolean
           id: string
+          monday: boolean
+          saturday: boolean
           start_time: string
+          sunday: boolean
+          thursday: boolean
+          tuesday: boolean
           updated_at: string | null
-          work_days: string[]
+          wednesday: boolean
+          work_days: string[] | null
         }
         Insert: {
           created_at?: string | null
           employee_id: string
           end_time: string
+          friday?: boolean
           id?: string
+          monday?: boolean
+          saturday?: boolean
           start_time: string
+          sunday?: boolean
+          thursday?: boolean
+          tuesday?: boolean
           updated_at?: string | null
-          work_days: string[]
+          wednesday?: boolean
+          work_days?: string[] | null
         }
         Update: {
           created_at?: string | null
           employee_id?: string
           end_time?: string
+          friday?: boolean
           id?: string
+          monday?: boolean
+          saturday?: boolean
           start_time?: string
+          sunday?: boolean
+          thursday?: boolean
+          tuesday?: boolean
           updated_at?: string | null
-          work_days?: string[]
+          wednesday?: boolean
+          work_days?: string[] | null
         }
         Relationships: [
           {

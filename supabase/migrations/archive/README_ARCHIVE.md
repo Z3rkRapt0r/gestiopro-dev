@@ -57,3 +57,6 @@ Per qualsiasi domanda sull'ottimizzazione o necessità di accesso all'archivio:
 - **Data ottimizzazione:** 17 settembre 2025
 - **Migration consolidata:** `20250101000000_consolidated_database_schema.sql`
 - **Team:** Sviluppo GestioPro
+
+
+
