@@ -5,10 +5,18 @@ import { useToast } from '@/hooks/use-toast';
 export interface EmployeeWorkSchedule {
   id: string;
   employee_id: string;
-  work_days: string[];
+  work_days: string[] | null; // Mantenuto per compatibilità temporanea
   start_time: string;
   end_time: string;
   tolerance_minutes?: number;
+  // Nuove colonne booleane
+  monday: boolean;
+  tuesday: boolean;
+  wednesday: boolean;
+  thursday: boolean;
+  friday: boolean;
+  saturday: boolean;
+  sunday: boolean;
 }
 
 export const useEmployeeWorkSchedule = (employeeId?: string) => {
@@ -34,9 +42,11 @@ export const useEmployeeWorkSchedule = (employeeId?: string) => {
 
   const upsertWorkSchedule = useMutation({
     mutationFn: async (newSchedule: Omit<EmployeeWorkSchedule, 'id'>) => {
+      // Rimuovi work_days dal payload per evitare errori
+      const { work_days, ...scheduleWithoutWorkDays } = newSchedule;
       const { data, error } = await supabase
         .from('employee_work_schedules')
-        .upsert(newSchedule, { onConflict: 'employee_id' })
+        .upsert(scheduleWithoutWorkDays, { onConflict: 'employee_id' })
         .select()
         .single();
       if (error) throw error;

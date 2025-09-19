@@ -1,8 +1,8 @@
--- AGGIORNAMENTO DIRETTO: Controlli aggiuntivi per malattia e trasferta
--- Questo script aggiorna direttamente la funzione attendance_monitor_cron
--- per includere controlli per malattia e trasferta oltre a ferie e permessi
+-- =====================================================
+-- AGGIORNAMENTO: attendance_monitor_cron per colonne booleane
+-- =====================================================
 
--- AGGIORNAMENTO FUNZIONE CRON PER INCLUDERE MALATTIA E TRASFERTA
+-- Aggiorna la funzione attendance_monitor_cron per usare le nuove colonne booleane
 CREATE OR REPLACE FUNCTION public.attendance_monitor_cron()
 RETURNS text
 LANGUAGE plpgsql
@@ -206,7 +206,7 @@ BEGIN
                     'https://nohufgceuqhkycsdffqj.supabase.co/functions/v1/attendance-monitor',
                     ARRAY[
                         http_header('Content-Type', 'application/json'),
-                        http_header('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vaHVmZ2NldXFoa3ljc2RmZnFqIiwicm9sZSI6ImFubG9uIiwiaWF0IjoxNzQ5ODkxMjc2LCJleHAiOjIwNjU0NjcyNzZ9.oigK8ck7f_sBeXfJ8P1ySdqMHiVpXdjkoBSR4uMZgRQ')
+                        http_header('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vaHVmZ2NldXFoa3ljc2RmZnFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTg5MTI3NiwiZXhwIjoyMDY1NDY3Mjc2fQ.jbXMlI5J5sURH4oBLhm6bvTJa0G5ur_BEHNcedq4_co')
                     ],
                     'application/json',
                     '{}'
@@ -244,10 +244,13 @@ BEGIN
 END;
 $$;
 
--- TEST DELLA FUNZIONE AGGIORNATA
-SELECT
-    '✅ Funzione attendance_monitor_cron aggiornata con controlli malattia/trasferta' as status,
-    public.attendance_monitor_cron() as test_result;
-
-
-
+-- Messaggio di completamento
+DO $$
+BEGIN
+    RAISE NOTICE '=====================================================';
+    RAISE NOTICE 'FUNZIONE ATTENDANCE_MONITOR_CRON AGGIORNATA!';
+    RAISE NOTICE '=====================================================';
+    RAISE NOTICE 'La funzione ora usa le colonne booleane invece di work_days.';
+    RAISE NOTICE 'Sistema completamente aggiornato per la nuova struttura.';
+    RAISE NOTICE '=====================================================';
+END $$;

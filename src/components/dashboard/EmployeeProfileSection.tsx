@@ -43,14 +43,21 @@ const EmployeeProfileSection = () => {
   const { workSchedule: employeeWorkSchedule, isLoading, upsertWorkSchedule, isUpdating } = useEmployeeWorkSchedule(id);
   const { workSchedule: companyWorkSchedule } = useWorkSchedules();
   const workSchedule = useMemo(() => {
-    if (employeeWorkSchedule) return employeeWorkSchedule;
+    if (employeeWorkSchedule) {
+      // Usa direttamente le colonne booleane
+      return employeeWorkSchedule;
+    }
     if (companyWorkSchedule) {
       return {
         start_time: companyWorkSchedule.start_time,
         end_time: companyWorkSchedule.end_time,
-        work_days: Object.entries(companyWorkSchedule)
-          .filter(([k, v]) => ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].includes(k) && v)
-          .map(([k]) => k),
+        monday: companyWorkSchedule.monday,
+        tuesday: companyWorkSchedule.tuesday,
+        wednesday: companyWorkSchedule.wednesday,
+        thursday: companyWorkSchedule.thursday,
+        friday: companyWorkSchedule.friday,
+        saturday: companyWorkSchedule.saturday,
+        sunday: companyWorkSchedule.sunday,
       };
     }
     return null;
@@ -58,9 +65,16 @@ const EmployeeProfileSection = () => {
 
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    work_days: workSchedule?.work_days || [],
     start_time: workSchedule?.start_time || '',
     end_time: workSchedule?.end_time || '',
+    // Colonne booleane
+    monday: workSchedule?.monday || false,
+    tuesday: workSchedule?.tuesday || false,
+    wednesday: workSchedule?.wednesday || false,
+    thursday: workSchedule?.thursday || false,
+    friday: workSchedule?.friday || false,
+    saturday: workSchedule?.saturday || false,
+    sunday: workSchedule?.sunday || false,
   });
   const dayLabels = {
     monday: 'Lunedì',
@@ -78,9 +92,16 @@ const EmployeeProfileSection = () => {
     }
     upsertWorkSchedule({
       employee_id: profile.id,
-      work_days: formData.work_days,
       start_time: formData.start_time,
       end_time: formData.end_time,
+      // Colonne booleane
+      monday: formData.monday,
+      tuesday: formData.tuesday,
+      wednesday: formData.wednesday,
+      thursday: formData.thursday,
+      friday: formData.friday,
+      saturday: formData.saturday,
+      sunday: formData.sunday,
     });
     setEditMode(false);
   };
@@ -92,13 +113,26 @@ const EmployeeProfileSection = () => {
       (
         formData.start_time !== workSchedule.start_time ||
         formData.end_time !== workSchedule.end_time ||
-        JSON.stringify(formData.work_days) !== JSON.stringify(workSchedule.work_days)
+        formData.monday !== workSchedule.monday ||
+        formData.tuesday !== workSchedule.tuesday ||
+        formData.wednesday !== workSchedule.wednesday ||
+        formData.thursday !== workSchedule.thursday ||
+        formData.friday !== workSchedule.friday ||
+        formData.saturday !== workSchedule.saturday ||
+        formData.sunday !== workSchedule.sunday
       )
     ) {
       setFormData({
-        work_days: workSchedule.work_days || [],
         start_time: workSchedule.start_time || '',
         end_time: workSchedule.end_time || '',
+        // Colonne booleane
+        monday: workSchedule.monday || false,
+        tuesday: workSchedule.tuesday || false,
+        wednesday: workSchedule.wednesday || false,
+        thursday: workSchedule.thursday || false,
+        friday: workSchedule.friday || false,
+        saturday: workSchedule.saturday || false,
+        sunday: workSchedule.sunday || false,
       });
     }
   }, [workSchedule]);
@@ -368,12 +402,10 @@ const EmployeeProfileSection = () => {
                       <div key={key} className="flex items-center justify-between">
                         <span>{label}</span>
                         <Switch
-                          checked={formData.work_days.includes(key)}
+                          checked={formData[key as keyof typeof formData] as boolean}
                           onCheckedChange={checked => setFormData(f => ({
                             ...f,
-                            work_days: checked
-                              ? [...f.work_days, key]
-                              : f.work_days.filter(d => d !== key)
+                            [key]: checked
                           }))}
                         />
                       </div>
@@ -388,7 +420,14 @@ const EmployeeProfileSection = () => {
             ) : (
               <div className="space-y-2">
                 <div><strong>Orario:</strong> {workSchedule?.start_time || '--:--'} - {workSchedule?.end_time || '--:--'}</div>
-                <div><strong>Giorni:</strong> {(workSchedule?.work_days || []).map(d => dayLabels[d as keyof typeof dayLabels]).join(', ')}</div>
+                <div><strong>Giorni:</strong> {
+                  workSchedule ? 
+                    Object.entries(dayLabels)
+                      .filter(([key]) => workSchedule[key as keyof typeof workSchedule] === true)
+                      .map(([, label]) => label)
+                      .join(', ') || 'Nessun giorno selezionato'
+                    : 'Caricamento...'
+                }</div>
                 <div className="flex justify-end">
                   <Button size="sm" onClick={() => setEditMode(true)} className="mt-2">Modifica</Button>
                 </div>
@@ -401,7 +440,14 @@ const EmployeeProfileSection = () => {
           <div className="space-y-2">
             <div className="text-base font-semibold text-gray-900">Orari e Giorni di Lavoro</div>
             <div><strong>Orario:</strong> {workSchedule?.start_time || '--:--'} - {workSchedule?.end_time || '--:--'}</div>
-            <div><strong>Giorni:</strong> {(workSchedule?.work_days || []).map(d => dayLabels[d as keyof typeof dayLabels]).join(', ')}</div>
+            <div><strong>Giorni:</strong> {
+              workSchedule ? 
+                Object.entries(dayLabels)
+                  .filter(([key]) => workSchedule[key as keyof typeof workSchedule] === true)
+                  .map(([, label]) => label)
+                  .join(', ') || 'Nessun giorno selezionato'
+                : 'Caricamento...'
+            }</div>
           </div>
         </div>
       )}
