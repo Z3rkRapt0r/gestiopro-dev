@@ -75,10 +75,14 @@ const checkIfWorkingDay = (date: Date, workSchedule: any): boolean => {
   const dayOfWeek = date.getDay();
   
   if ('work_days' in workSchedule) {
-    // Employee work schedule: work_days is an array of strings
+    // Employee work schedule: support array or boolean-per-day schema
+    const ws: any = workSchedule as any;
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const currentDayName = dayNames[dayOfWeek];
-    return workSchedule.work_days.includes(currentDayName);
+    if (Array.isArray(ws.work_days)) {
+      return ws.work_days.includes(currentDayName);
+    }
+    return Boolean(ws[currentDayName]);
   } else {
     // Company work schedule: use boolean properties
     switch (dayOfWeek) {

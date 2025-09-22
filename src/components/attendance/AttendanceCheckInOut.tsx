@@ -71,8 +71,12 @@ export default function AttendanceCheckInOut() {
     const dayName = dayNames[dayOfWeek];
     
     if (employeeWorkSchedule) {
-      // Orari personalizzati: usa work_days array
-      return employeeWorkSchedule.work_days.includes(dayName);
+      // Orari personalizzati: supporta sia schema con array `work_days` sia schema con booleani per giorno
+      const ws: any = employeeWorkSchedule as any;
+      if (Array.isArray(ws.work_days)) {
+        return ws.work_days.includes(dayName);
+      }
+      return Boolean(ws[dayName]);
     } else if (companyWorkSchedule) {
       // Orari aziendali: usa i booleani
       switch (dayOfWeek) {

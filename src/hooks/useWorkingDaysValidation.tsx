@@ -41,10 +41,23 @@ export const useWorkingDaysValidation = (employeeId?: string) => {
     if (isHoliday(date)) return false;
     const dayOfWeek = date.getDay();
     if ('work_days' in workSchedule) {
-      // employeeWorkSchedule: work_days è un array di string
-      const days = workSchedule.work_days;
-      const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-      return days.includes(dayNames[dayOfWeek]);
+      // employeeWorkSchedule: supporta array work_days oppure booleans per giorno
+      const ws: any = workSchedule as any;
+      if (Array.isArray(ws.work_days)) {
+        const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        return ws.work_days.includes(dayNames[dayOfWeek]);
+      }
+      // Schema con booleani per giorno
+      switch (dayOfWeek) {
+        case 0: return !!ws.sunday;
+        case 1: return !!ws.monday;
+        case 2: return !!ws.tuesday;
+        case 3: return !!ws.wednesday;
+        case 4: return !!ws.thursday;
+        case 5: return !!ws.friday;
+        case 6: return !!ws.saturday;
+        default: return false;
+      }
     } else {
       // companyWorkSchedule: boolean per ogni giorno
       switch (dayOfWeek) {
@@ -87,7 +100,8 @@ export const useWorkingDaysValidation = (employeeId?: string) => {
   const getWorkingDaysLabels = (): string[] => {
     if (!workSchedule) return [];
     if ('work_days' in workSchedule) {
-      const dayLabels = {
+      const ws: any = workSchedule as any;
+      const dayLabels: Record<string, string> = {
         monday: 'Lunedì',
         tuesday: 'Martedì',
         wednesday: 'Mercoledì',
@@ -96,7 +110,10 @@ export const useWorkingDaysValidation = (employeeId?: string) => {
         saturday: 'Sabato',
         sunday: 'Domenica',
       };
-      return workSchedule.work_days.map((d: string) => dayLabels[d as keyof typeof dayLabels] || d);
+      if (Array.isArray(ws.work_days)) {
+        return ws.work_days.map((d: string) => dayLabels[d] || d);
+      }
+      return Object.keys(dayLabels).filter((k) => !!ws[k]).map((k) => dayLabels[k]);
     } else {
       const days = [];
       if (workSchedule.monday) days.push('Lunedì');

@@ -124,9 +124,17 @@ export const formatHireDate = (hireDate: string): string => {
 export interface EmployeeWorkSchedule {
   id: string;
   employee_id: string;
-  work_days: string[];
+  work_days?: string[];
   start_time: string;
   end_time: string;
+  // Supporto schema con booleani per giorno
+  monday?: boolean;
+  tuesday?: boolean;
+  wednesday?: boolean;
+  thursday?: boolean;
+  friday?: boolean;
+  saturday?: boolean;
+  sunday?: boolean;
 }
 
 /**
@@ -145,10 +153,19 @@ export const isEmployeeWorkingDay = (
   console.log(`🔍 [isEmployeeWorkingDay] ${date.toISOString().split('T')[0]} - employeeWorkSchedule:`, employeeWorkSchedule, 'companyWorkSchedule:', companyWorkSchedule, 'currentDayName:', currentDayName);
 
   // Se il dipendente ha orari personalizzati, usa quelli
-  if (employeeWorkSchedule && employeeWorkSchedule.work_days) {
-    const result = employeeWorkSchedule.work_days.includes(currentDayName);
-    console.log(`✅ [isEmployeeWorkingDay] Usando orari personalizzati - work_days:`, employeeWorkSchedule.work_days, 'includes:', result);
-    return result;
+  if (employeeWorkSchedule) {
+    // Supporta sia array work_days che booleans per giorno
+    if (Array.isArray(employeeWorkSchedule.work_days)) {
+      const result = employeeWorkSchedule.work_days.includes(currentDayName);
+      console.log(`✅ [isEmployeeWorkingDay] Usando orari personalizzati (array) - work_days:`, employeeWorkSchedule.work_days, 'includes:', result);
+      return result;
+    }
+    const ws: any = employeeWorkSchedule as any;
+    if (typeof ws[currentDayName] === 'boolean') {
+      const result = !!ws[currentDayName];
+      console.log(`✅ [isEmployeeWorkingDay] Usando orari personalizzati (booleans) - ${currentDayName}:`, result);
+      return result;
+    }
   }
 
   // Altrimenti usa gli orari aziendali
