@@ -11,12 +11,20 @@ export default async function handler(request: Request) {
   if (maintenance) {
     return new Response('Manutenzione in corso', {
       status: 503,
-      headers: { 'Retry-After': '3600', 'Content-Type': 'text/plain; charset=utf-8' }
+      headers: {
+        'Retry-After': '3600',
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0'
+      }
     });
-
     // Variante B: pagina statica (se crei public/maintenance.html)
     // return fetch(new URL('/maintenance.html', request.url));
   }
 
-  return fetch(request);
+  // Maintenance off: forward to original path with bypass flag to avoid re-routing to the guard
+  const url = new URL(request.url);
+  if (!url.searchParams.has('__bypass_guard')) {
+    url.searchParams.set('__bypass_guard', '1');
+  }
+  return fetch(url.toString(), request);
 }
