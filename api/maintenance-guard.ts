@@ -1,10 +1,9 @@
 export const config = { runtime: 'edge' };
 
-import { get } from '@vercel/edge-config';
-
 export default async function handler(request: Request) {
   async function safeGetBoolean(key: string): Promise<boolean | undefined> {
     try {
+      const { get } = await import('@vercel/edge-config');
       const value = await get<boolean | undefined>(key);
       return typeof value === 'boolean' ? value : undefined;
     } catch {
