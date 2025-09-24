@@ -16,6 +16,30 @@ export default async function handler(request: Request) {
     maintenance = await safeGetBoolean('maintenance-config');
   }
 
+  // Env var override for cases where Edge Config is unavailable
+  if (typeof maintenance === 'undefined') {
+    const envOverride = (process as any)?.env?.MAINTENANCE_MODE;
+    if (typeof envOverride === 'string') {
+      const normalized = envOverride.trim().toLowerCase();
+      if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+        maintenance = true;
+      } else if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+        maintenance = false;
+      }
+    }
+  }
+
+  // Header override for debugging/tests
+  if (typeof maintenance === 'undefined') {
+    const headerOverride = request.headers.get('x-force-maintenance');
+    if (headerOverride === '1' || headerOverride === 'true') {
+      maintenance = true;
+    }
+  }
+
+  // Debug log to verify value on Vercel logs
+  try { console.log('[maintenance-guard] maintenance =', maintenance); } catch {}
+
   if (maintenance === true) {
     return new Response('Manutenzione in corso', {
       status: 503,
