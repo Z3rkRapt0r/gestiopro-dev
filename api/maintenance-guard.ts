@@ -41,16 +41,18 @@ export default async function handler(request: Request) {
   try { console.log('[maintenance-guard] maintenance =', maintenance); } catch {}
 
   if (maintenance === true) {
-    return new Response('Manutenzione in corso', {
-      status: 503,
-      headers: {
-        'Retry-After': '3600',
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-store, max-age=0'
-      }
-    });
-    // Variante B: pagina statica (se crei public/maintenance.html)
-    // return fetch(new URL('/maintenance.html', request.url));
+    // Usa la pagina HTML personalizzata
+    return fetch(new URL('/maintenance.html', request.url));
+    
+    // Variante A: testo semplice (commentata)
+    // return new Response('Manutenzione in corso', {
+    //   status: 503,
+    //   headers: {
+    //     'Retry-After': '3600',
+    //     'Content-Type': 'text/plain; charset=utf-8',
+    //     'Cache-Control': 'no-store, max-age=0'
+    //   }
+    // });
   }
 
   // Maintenance off: forward to the original path with a header to bypass the guard routing
