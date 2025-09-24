@@ -81,3 +81,4 @@ INSERT INTO public.profiles (
 --   BEFORE UPDATE ON public.profiles
 --   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
+

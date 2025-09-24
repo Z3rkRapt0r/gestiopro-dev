@@ -53,3 +53,4 @@ WHERE u.email = 'your-email@example.com';
 -- SELECT auth.uid() as current_user_id;
 -- SELECT * FROM public.profiles WHERE id = auth.uid();
 
+

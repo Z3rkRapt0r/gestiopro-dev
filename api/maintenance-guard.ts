@@ -3,12 +3,21 @@ export const config = { runtime: 'edge' };
 import { get } from '@vercel/edge-config';
 
 export default async function handler(request: Request) {
-  let maintenance = await get<boolean>('maintenance');
-  if (typeof maintenance === 'undefined') {
-    maintenance = await get<boolean>('maintenance-config');
+  async function safeGetBoolean(key: string): Promise<boolean | undefined> {
+    try {
+      const value = await get<boolean | undefined>(key);
+      return typeof value === 'boolean' ? value : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
-  if (maintenance) {
+  let maintenance = await safeGetBoolean('maintenance');
+  if (typeof maintenance === 'undefined') {
+    maintenance = await safeGetBoolean('maintenance-config');
+  }
+
+  if (maintenance === true) {
     return new Response('Manutenzione in corso', {
       status: 503,
       headers: {

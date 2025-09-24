@@ -107,3 +107,4 @@ WHERE email = 'test@example.com';
 -- 9. Pulisci il test
 DELETE FROM public.profiles WHERE email = 'test@example.com';
 
+

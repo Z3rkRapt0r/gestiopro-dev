@@ -87,3 +87,4 @@ SELECT
 FROM public.profiles 
 WHERE email = 'connection.test@example.com';
 
+

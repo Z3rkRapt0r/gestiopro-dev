@@ -21,3 +21,4 @@ WHERE id = 'your-user-id-here';
 -- 5. Verifica se ci sono errori nei log
 -- Controlla Supabase Dashboard → Logs per errori specifici
 
+

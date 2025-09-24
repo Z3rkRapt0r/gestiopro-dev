@@ -51,3 +51,4 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 -- SELECT auth.uid() as current_user_id;
 -- SELECT * FROM public.profiles WHERE id = auth.uid();
 
+

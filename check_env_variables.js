@@ -36,3 +36,4 @@ supabase.from('profiles').select('*').limit(1).then(({ data, error }) => {
 
 console.log('=== FINE VERIFICA ===');
 
+

@@ -79,3 +79,4 @@ WHERE id = (SELECT id FROM auth.users WHERE email = 'your-email@example.com');
 -- 6. Verifica se ci sono errori nei log
 -- Controlla Supabase Dashboard → Logs per errori specifici
 
+

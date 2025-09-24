@@ -21,3 +21,4 @@ WHERE id = '4262c811-5e05-4ae9-a04f-861cd2c44af7';
 -- 5. Ricrea le politiche RLS corrette
 -- Esegui clean_rls_policies.sql dopo aver riabilitato RLS
 
+

@@ -54,3 +54,4 @@ ORDER BY policyname;
 -- 6. Verifica se ci sono errori nei log
 -- Controlla Supabase Dashboard → Logs per errori RLS
 
+

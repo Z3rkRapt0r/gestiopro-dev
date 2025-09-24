@@ -55,3 +55,4 @@ FROM information_schema.triggers
 WHERE trigger_name LIKE '%user%' 
 OR trigger_name LIKE '%profile%';
 
+

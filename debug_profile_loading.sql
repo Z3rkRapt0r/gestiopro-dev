@@ -59,3 +59,4 @@ AND tablename = 'profiles';
 -- SELECT * FROM public.profiles WHERE id = (SELECT id FROM auth.users WHERE email = 'your-email@example.com');
 -- SET row_security = on;
 
+

@@ -48,3 +48,4 @@ AND routine_name = 'clear_user_data';
 -- 5. Verifica le variabili d'ambiente per le Edge Functions
 -- Controlla che SUPABASE_SERVICE_ROLE_KEY sia configurata su Vercel
 
+

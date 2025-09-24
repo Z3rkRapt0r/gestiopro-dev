@@ -55,3 +55,4 @@ SET row_security = on;
 -- SELECT current_user, session_user;
 -- SELECT * FROM information_schema.role_table_grants WHERE table_name = 'profiles';
 
+
