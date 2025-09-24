@@ -44,8 +44,12 @@ export const useAttendanceOperations = () => {
     let isWorkingDay = false;
     
     if (employeeWorkSchedule) {
-      // Orari personalizzati: usa work_days array
-      isWorkingDay = employeeWorkSchedule.work_days.includes(dayName);
+      // Orari personalizzati: supporta sia schema con array `work_days` sia schema con booleani per giorno
+      if (Array.isArray((employeeWorkSchedule as any).work_days)) {
+        isWorkingDay = (employeeWorkSchedule as any).work_days.includes(dayName);
+      } else {
+        isWorkingDay = Boolean((employeeWorkSchedule as any)[dayName]);
+      }
     } else if (companyWorkSchedule) {
       // Orari aziendali: usa i booleani
       isWorkingDay = companyWorkSchedule[dayName as keyof typeof companyWorkSchedule] as boolean;
