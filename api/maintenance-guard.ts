@@ -41,7 +41,7 @@ export default async function handler(request: Request) {
   try { console.log('[maintenance-guard] maintenance =', maintenance); } catch {}
 
   if (maintenance === true) {
-    return new Response('Manutenzione in corso', {
+    return new Response('Abbonamento scaduto', {
       status: 503,
       headers: {
         'Retry-After': '3600',
