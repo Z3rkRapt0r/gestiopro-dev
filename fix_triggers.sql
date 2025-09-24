@@ -82,3 +82,4 @@ WHERE trigger_name IN ('on_auth_user_created', 'profiles_updated_at');
 -- SELECT public.handle_new_user();
 
 
+

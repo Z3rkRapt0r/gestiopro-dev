@@ -81,3 +81,4 @@ WHERE email = 'test@example.com';
 DELETE FROM public.profiles WHERE email = 'test@example.com';
 
 
+

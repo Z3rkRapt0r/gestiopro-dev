@@ -60,3 +60,4 @@ WHERE event_object_table = 'profiles'
 AND event_object_schema = 'public';
 
 
+

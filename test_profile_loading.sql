@@ -55,3 +55,4 @@ ORDER BY policyname;
 -- Controlla Supabase Dashboard → Logs per errori RLS
 
 
+

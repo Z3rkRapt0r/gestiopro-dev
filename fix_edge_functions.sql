@@ -49,3 +49,4 @@ AND routine_name = 'clear_user_data';
 -- Controlla che SUPABASE_SERVICE_ROLE_KEY sia configurata su Vercel
 
 
+

@@ -52,3 +52,4 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 -- SELECT * FROM public.profiles WHERE id = auth.uid();
 
 
+

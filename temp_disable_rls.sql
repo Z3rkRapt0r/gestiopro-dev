@@ -12,3 +12,4 @@ SELECT * FROM public.profiles WHERE id = (SELECT id FROM auth.users WHERE email 
 -- 4. E poi esegui clean_rls_policies.sql per ricreare le politiche corrette
 
 
+

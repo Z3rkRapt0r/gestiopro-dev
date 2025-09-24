@@ -80,3 +80,4 @@ WHERE id = (SELECT id FROM auth.users WHERE email = 'your-email@example.com');
 -- Controlla Supabase Dashboard → Logs per errori specifici
 
 
+

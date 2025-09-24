@@ -42,3 +42,4 @@ SELECT
   'Verify that the service role has DELETE permissions on all tables' as note;
 
 
+

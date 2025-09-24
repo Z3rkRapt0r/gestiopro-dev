@@ -44,3 +44,4 @@ SELECT
   has_table_privilege('public.profiles', 'UPDATE') as can_update;
 
 
+

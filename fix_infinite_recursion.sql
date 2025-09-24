@@ -43,3 +43,4 @@ ORDER BY cmd, policyname;
 -- SELECT * FROM public.profiles WHERE id = auth.uid();
 
 
+

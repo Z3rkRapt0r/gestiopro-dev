@@ -95,3 +95,4 @@ FROM public.profiles
 WHERE email = 'test.rls.disabled@example.com';
 
 
+
