@@ -41,8 +41,21 @@ export default async function handler(request: Request) {
   try { console.log('[maintenance-guard] maintenance =', maintenance); } catch {}
 
   if (maintenance === true) {
-    // Pagina HTML personalizzata per abbonamento scaduto
-    return fetch(new URL('/maintenance.html', request.url));
+    // Evita loop infinito: se stiamo già servendo maintenance.html, restituisci il contenuto direttamente
+    const url = new URL(request.url);
+    if (url.pathname === '/maintenance.html') {
+      return new Response('Abbonamento scaduto - Contatta l\'amministratore', {
+        status: 503,
+        headers: {
+          'Retry-After': '3600',
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store, max-age=0'
+        }
+      });
+    }
+    
+    // Redirect alla pagina di manutenzione
+    return Response.redirect(new URL('/maintenance.html', request.url), 302);
   }
 
   // Maintenance off: forward to the original path with a header to bypass the guard routing
