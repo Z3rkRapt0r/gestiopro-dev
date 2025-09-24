@@ -29,10 +29,20 @@ export default async function handler(request: Request) {
     // return fetch(new URL('/maintenance.html', request.url));
   }
 
-  // Maintenance off: forward to original path with bypass flag to avoid re-routing to the guard
-  const url = new URL(request.url);
-  if (!url.searchParams.has('__bypass_guard')) {
-    url.searchParams.set('__bypass_guard', '1');
-  }
-  return fetch(url.toString(), request);
+  // Maintenance off: forward to the original path with a header to bypass the guard routing
+  const currentUrl = new URL(request.url);
+  const originalPath = currentUrl.searchParams.get('__path') || currentUrl.pathname + currentUrl.search;
+  const forwardUrl = new URL(originalPath, currentUrl.origin).toString();
+
+  const headers = new Headers(request.headers);
+  headers.set('x-bypass-guard', '1');
+
+  const forwardRequest = new Request(forwardUrl, {
+    method: request.method,
+    headers,
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
+    redirect: 'manual'
+  });
+
+  return fetch(forwardRequest);
 }
