@@ -1,11 +1,10 @@
 {
   "routes": [
-    { "src": "/(.*)", "dest": "/$1", "has": [{ "type": "header", "key": "x-bypass-guard", "value": "1" }] },
     { "src": "/(.*\\.(css|js|png|jpg|jpeg|svg|ico|webp|woff2|txt|map|html))$", "dest": "/$1" },
     { "src": "/favicon.ico", "dest": "/favicon.ico" },
     { "src": "/robots.txt", "dest": "/robots.txt" },
     { "src": "/assets/(.*)", "dest": "/assets/$1" },
-
+    { "src": "/(.*)", "dest": "/index.html", "has": [{ "type": "header", "key": "x-bypass-guard", "value": "1" }] },
     { "src": "/(.*)", "dest": "/api/maintenance-guard?__path=$1" }
   ]
 }
