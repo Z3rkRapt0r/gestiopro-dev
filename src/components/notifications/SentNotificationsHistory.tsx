@@ -82,9 +82,12 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
     }
   };
 
+  // Ensure notifications is always an array
+  const safeNotifications = notifications || [];
+
   // Raggruppa le notifiche per tipo
   const notificationsByType = useMemo(() => {
-    const grouped = notifications.reduce((acc, notification) => {
+    const grouped = safeNotifications.reduce((acc, notification) => {
       const type = notification.type || 'system';
       if (!acc[type]) {
         acc[type] = [];
@@ -94,7 +97,7 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
     }, {} as Record<string, SentNotification[]>);
 
     return grouped;
-  }, [notifications]);
+  }, [safeNotifications]);
 
   // Calcola i conteggi per ogni tipo
   const typeCounts = useMemo(() => {
@@ -108,10 +111,10 @@ const SentNotificationsHistory = ({ refreshKey }: { refreshKey?: number }) => {
   // Filtra le notifiche in base al tab attivo
   const filteredNotifications = useMemo(() => {
     if (activeTab === "all") {
-      return notifications;
+      return safeNotifications;
     }
     return notificationsByType[activeTab] || [];
-  }, [activeTab, notifications, notificationsByType]);
+  }, [activeTab, safeNotifications, notificationsByType]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
