@@ -15,12 +15,12 @@ import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceSta
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
 import { useMultipleCheckins } from '@/hooks/useMultipleCheckins';
 import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
-import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
+import type { OptimizedAttendance } from '@/hooks/useOptimizedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 
 interface NewEmployeeAttendanceCalendarProps {
   employee: EmployeeProfile;
-  attendances: UnifiedAttendance[];
+  attendances: OptimizedAttendance[];
 }
 
 export default function NewEmployeeAttendanceCalendar({ employee, attendances }: NewEmployeeAttendanceCalendarProps) {

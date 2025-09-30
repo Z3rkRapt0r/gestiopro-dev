@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus, AlertCircle } from 'lucide-react';
-import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
+import { useOptimizedAttendances } from '@/hooks/useOptimizedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import ConflictSummaryCard from './ConflictSummaryCard';
 
 export default function NewManualAttendanceForm() {
-  const { createManualAttendance, isCreating } = useUnifiedAttendances();
+  const { createManualAttendance, isCreating } = useOptimizedAttendances();
   const { employees } = useActiveEmployees();
   const [formData, setFormData] = useState({
     user_id: '',

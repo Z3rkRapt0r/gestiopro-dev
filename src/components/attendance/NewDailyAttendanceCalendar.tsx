@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
+import { useOptimizedAttendances } from '@/hooks/useOptimizedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
@@ -34,7 +34,7 @@ export default function NewDailyAttendanceCalendar() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [employeeWorkSchedules, setEmployeeWorkSchedules] = useState<{ [employeeId: string]: any }>({});
   
-  const { attendances, isLoading } = useUnifiedAttendances();
+  const { attendances, isLoading } = useOptimizedAttendances();
   const { employees } = useActiveEmployees();
   const { workSchedule } = useWorkSchedules();
   const { leaveRequests } = useLeaveRequests();

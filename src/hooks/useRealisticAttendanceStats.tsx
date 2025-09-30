@@ -1,7 +1,7 @@
 
 import { useMemo } from 'react';
 import { format } from 'date-fns';
-import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
+import type { OptimizedAttendance } from '@/hooks/useOptimizedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 import { isEmployeeWorkingDay } from '@/utils/employeeStatusUtils';
 
@@ -22,7 +22,7 @@ interface RealisticAttendanceStats {
 
 export const useRealisticAttendanceStats = (
   employee: EmployeeProfile | null,
-  attendances: UnifiedAttendance[],
+  attendances: OptimizedAttendance[],
   workSchedule: any,
   employeeWorkSchedule?: any
 ): RealisticAttendanceStats => {

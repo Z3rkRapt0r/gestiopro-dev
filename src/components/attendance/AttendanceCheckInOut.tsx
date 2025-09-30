@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, AlertCircle, XCircle, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
+import { useOptimizedAttendances } from '@/hooks/useOptimizedAttendances';
 import { useWorkSchedules } from '@/hooks/useWorkSchedules';
 import { useEmployeeWorkSchedule } from '@/hooks/useEmployeeWorkSchedule';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,7 +20,7 @@ export default function AttendanceCheckInOut() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { user } = useAuth();
   const { checkIn, checkOut, secondCheckIn, isCheckingIn, isCheckingOut, isSecondCheckingIn } = useAttendanceOperations();
-  const { attendances } = useUnifiedAttendances();
+  const { attendances } = useOptimizedAttendances();
   const { workSchedule: companyWorkSchedule } = useWorkSchedules();
   const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(user?.id);
   const { settings: attendanceSettings } = useAttendanceSettings();

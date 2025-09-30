@@ -29,7 +29,7 @@ export const useTodayAttendanceSummary = () => {
       
       // Ottieni tutte le presenze di oggi
       const { data: todayAttendances } = await supabase
-        .from('unified_attendances')
+        .from('attendances')
         .select('*')
         .eq('date', today);
 

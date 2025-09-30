@@ -85,7 +85,7 @@ export const usePunctualityStats = (period: 'week' | 'month' = 'week') => {
 
       // Ottieni tutte le presenze nel periodo
       const { data: attendances, error } = await supabase
-        .from('unified_attendances')
+        .from('attendances')
         .select(`
           user_id,
           date,
