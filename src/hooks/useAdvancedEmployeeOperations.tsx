@@ -111,46 +111,10 @@ export const useAdvancedEmployeeOperations = () => {
     }
   };
 
-  const deleteUserCompletely = async (userId: string, userName: string) => {
-    setIsLoading(true);
-    try {
-      console.log('Eliminando completamente utente:', userId);
-
-      // Utilizza l'edge function per l'eliminazione completa
-      const { data, error } = await supabase.functions.invoke('delete-user-completely', {
-        body: { userId }
-      });
-
-      if (error) throw error;
-
-      if (!data.success) {
-        throw new Error(data.error || 'Errore durante l\'eliminazione');
-      }
-
-      toast({
-        title: "Utente eliminato",
-        description: `${userName} è stato rimosso completamente dal sistema`,
-      });
-
-      return { success: true, data };
-    } catch (error: any) {
-      console.error('Error deleting user completely:', error);
-      toast({
-        title: "Errore",
-        description: error.message || "Errore durante l'eliminazione completa",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return {
     getUserStorageUsage,
     getAllUsersStorageStats,
     clearUserData,
-    deleteUserCompletely,
     isLoading
   };
 };
