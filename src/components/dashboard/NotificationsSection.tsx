@@ -1,8 +1,8 @@
 
-import AdminSendNotificationPage from "@/components/notifications/AdminSendNotificationPage";
+import AdminNotificationsSection from "@/components/dashboard/AdminNotificationsSection";
 
 const NotificationsSection = () => {
-  return <AdminSendNotificationPage />;
+  return <AdminNotificationsSection />;
 };
 
 export default NotificationsSection;
