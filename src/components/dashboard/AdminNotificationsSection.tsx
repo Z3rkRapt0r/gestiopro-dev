@@ -20,6 +20,7 @@ import {
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import NotificationItem from "@/components/notifications/NotificationItem";
+import NotificationsCleanupButton from "@/components/notifications/NotificationsCleanupButton";
 import { groupNotificationsByDate, getNotificationTypeLabel } from "@/utils/notificationUtils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -350,6 +351,9 @@ const AdminNotificationsSection = () => {
           </>
         )}
       </div>
+
+      {/* Sezione Cleanup Notifiche */}
+      <NotificationsCleanupButton />
     </div>
   );
 };
