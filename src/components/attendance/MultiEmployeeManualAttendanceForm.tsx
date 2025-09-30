@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { UserPlus, AlertCircle } from 'lucide-react';
-import { useOptimizedAttendances } from '@/hooks/useOptimizedAttendances';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import { useLeaveConflicts } from '@/hooks/useLeaveConflicts';
@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 
 export default function MultiEmployeeManualAttendanceForm() {
-  const { createManualAttendance, isCreating } = useOptimizedAttendances();
+  const { createManualAttendance, isCreating } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { settings } = useAttendanceSettings();
   const [formData, setFormData] = useState({

@@ -1,5 +1,5 @@
 
-import { useOptimizedAttendances, OptimizedAttendance } from './useOptimizedAttendances';
+import { useUnifiedAttendances, UnifiedAttendance } from './useUnifiedAttendances';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 
 export const useAttendanceArchive = () => {
-  const { attendances, isLoading } = useOptimizedAttendances();
+  const { attendances, isLoading } = useUnifiedAttendances();
   const { toast } = useToast();
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -36,10 +36,10 @@ export const useAttendanceArchive = () => {
     }
     acc[employeeKey].attendances.push(attendance);
     return acc;
-  }, {} as Record<string, { employee: any; attendances: OptimizedAttendance[] }>);
+  }, {} as Record<string, { employee: any; attendances: UnifiedAttendance[] }>);
 
   // Funzione per sincronizzare l'eliminazione con la tabella attendances
-  const syncAttendanceDeletion = async (deletedAttendances: OptimizedAttendance[], operation: 'single' | 'bulk') => {
+  const syncAttendanceDeletion = async (deletedAttendances: UnifiedAttendance[], operation: 'single' | 'bulk') => {
     try {
       console.log('🔄 Sincronizzando eliminazione con attendances...', deletedAttendances.length);
       
@@ -114,7 +114,7 @@ export const useAttendanceArchive = () => {
   });
 
   // Eliminazione massiva
-  const handleBulkDelete = async (attendancesToDelete: OptimizedAttendance[], period: string) => {
+  const handleBulkDelete = async (attendancesToDelete: UnifiedAttendance[], period: string) => {
     setBulkDeleteLoading(true);
     try {
       console.log('🗑️ Eliminazione massiva presenze:', attendancesToDelete.length, 'per periodo:', period);

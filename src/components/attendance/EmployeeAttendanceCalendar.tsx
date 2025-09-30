@@ -11,16 +11,16 @@ import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
 import { useEmployeeLeaveBalanceStats } from '@/hooks/useEmployeeLeaveBalanceStats';
 import { useBusinessTrips } from '@/hooks/useBusinessTrips';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
-import { useOptimizedAttendances } from '@/hooks/useOptimizedAttendances';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { getEmployeeStatusForDate, formatHireDate } from '@/utils/employeeStatusUtils';
-import type { OptimizedAttendance } from '@/hooks/useOptimizedAttendances';
+import type { UnifiedAttendance } from '@/hooks/useUnifiedAttendances';
 import type { EmployeeProfile } from '@/hooks/useActiveEmployees';
 import { useSickLeavesForCalendars } from '@/hooks/useSickLeavesForCalendars';
 import { useMultipleCheckins } from '@/hooks/useMultipleCheckins';
 
 interface EmployeeAttendanceCalendarProps {
   employee: EmployeeProfile;
-  attendances: OptimizedAttendance[];
+  attendances: UnifiedAttendance[];
 }
 
 // Component interno per visualizzare lo stato del dipendente

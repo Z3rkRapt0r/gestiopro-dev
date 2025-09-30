@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Download, FileText, Calendar as CalendarIcon, Users } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useOptimizedAttendances } from '@/hooks/useOptimizedAttendances';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useAuth } from '@/hooks/useAuth';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
@@ -53,7 +53,7 @@ export default function AttendanceExportSection() {
   const [isExporting, setIsExporting] = useState(false);
   const [includeLegend, setIncludeLegend] = useState<boolean>(true); // Default: include legend
   
-  const { attendances, isLoading } = useOptimizedAttendances();
+  const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { settings: attendanceSettings } = useAttendanceSettings();
   const { settings: dashboardSettings } = useDashboardSettings();

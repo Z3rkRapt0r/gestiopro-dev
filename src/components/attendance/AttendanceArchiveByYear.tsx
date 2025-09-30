@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { User2, Calendar, CheckCircle, Trash2, CalendarDays } from "lucide-react";
-import { OptimizedAttendance } from "@/hooks/useOptimizedAttendances";
+import { UnifiedAttendance } from "@/hooks/useUnifiedAttendances";
 import { useAttendanceArchive } from "@/hooks/useAttendanceArchive";
 import AttendanceDelayBadge from "./AttendanceDelayBadge";
 

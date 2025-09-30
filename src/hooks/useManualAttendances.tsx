@@ -15,12 +15,6 @@ export interface ManualAttendance {
   created_by: string;
   created_at: string;
   updated_at: string;
-  // Nuovi campi per tracking ritardi e organizzazione italiana
-  is_late: boolean;
-  late_minutes: number;
-  operation_path: string | null;
-  readable_id: string | null;
-  is_business_trip: boolean;
   profiles?: {
     first_name: string | null;
     last_name: string | null;
@@ -36,11 +30,12 @@ export const useManualAttendances = () => {
   const { data: manualAttendances, isLoading } = useQuery({
     queryKey: ['manual-attendances'],
     queryFn: async () => {
-      console.log('Caricamento presenze manuali da manual_attendances...');
+      console.log('Caricamento presenze manuali da unified_attendances...');
       
       const { data: attendanceData, error } = await supabase
-        .from('manual_attendances')
+        .from('unified_attendances')
         .select('*')
+        .eq('is_manual', true)
         .order('date', { ascending: false });
 
       if (error) {
@@ -85,34 +80,31 @@ export const useManualAttendances = () => {
     }) => {
       console.log('Creazione presenza manuale con dati:', attendanceData);
       
-      const { data: manualData, error: manualError } = await supabase
-        .from('manual_attendances')
+      const { data: unifiedData, error: unifiedError } = await supabase
+        .from('unified_attendances')
         .upsert({
           ...attendanceData,
+          is_manual: true,
           is_business_trip: false,
           is_sick_leave: attendanceData.is_sick_leave || false,
           created_by: user?.id,
-          // Inizializza i nuovi campi
-          is_late: false,
-          late_minutes: 0,
-          operation_path: null,
-          readable_id: null,
         }, {
           onConflict: 'user_id,date'
         })
         .select()
         .single();
 
-      if (manualError) {
-        console.error('Errore inserimento/aggiornamento manual_attendances:', manualError);
-        throw manualError;
+      if (unifiedError) {
+        console.error('Errore inserimento/aggiornamento unified_attendances:', unifiedError);
+        throw unifiedError;
       }
 
-      console.log('Presenza manuale salvata:', manualData);
-      return manualData;
+      console.log('Presenza manuale salvata:', unifiedData);
+      return unifiedData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza salvata",
@@ -132,7 +124,7 @@ export const useManualAttendances = () => {
   const updateManualAttendance = useMutation({
     mutationFn: async ({ id, ...updateData }: Partial<ManualAttendance> & { id: string }) => {
       const { data, error } = await supabase
-        .from('manual_attendances')
+        .from('unified_attendances')
         .update(updateData)
         .eq('id', id)
         .select()
@@ -143,6 +135,7 @@ export const useManualAttendances = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza aggiornata",
@@ -164,7 +157,7 @@ export const useManualAttendances = () => {
       console.log('Eliminazione presenza manuale con ID:', id);
       
       const { error } = await supabase
-        .from('manual_attendances')
+        .from('unified_attendances')
         .delete()
         .eq('id', id);
 
@@ -177,6 +170,7 @@ export const useManualAttendances = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manual-attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       toast({
         title: "Presenza eliminata",

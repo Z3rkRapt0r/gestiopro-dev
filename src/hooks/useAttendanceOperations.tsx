@@ -216,7 +216,7 @@ export const useAttendanceOperations = () => {
 
     // Controllo presenza già esistente
     const { data: existingAttendance } = await supabase
-      .from('attendances')
+      .from('unified_attendances')
       .select('*')
       .eq('user_id', userId)
       .eq('date', date)
@@ -288,34 +288,39 @@ export const useAttendanceOperations = () => {
 
       if (attendanceError) throw attendanceError;
 
-      // Aggiorna la tabella attendances con i nuovi campi
-      const { data: updatedAttendance, error: updateError } = await supabase
-        .from('attendances')
-        .update({
+      const { data: unifiedData, error: unifiedError } = await supabase
+        .from('unified_attendances')
+        .upsert({
+          user_id: user?.id,
+          date: today,
+          check_in_time: checkInTime,
+          is_manual: false,
+          is_business_trip: isBusinessTrip,
           is_late: isLate,
           late_minutes: lateMinutes,
-          operation_path: operationPath,
-          readable_id: readableId,
+          notes: readableId,
+          created_by: user?.id,
+        }, {
+          onConflict: 'user_id,date'
         })
-        .eq('user_id', user?.id)
-        .eq('date', today)
         .select()
         .single();
 
-      if (updateError) throw updateError;
+      if (unifiedError) throw unifiedError;
 
       console.log('✅ Check-in completato con validazione anti-conflitto');
-      return { attendanceData, updatedAttendance };
+      return { attendanceData, unifiedData };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['employee-status'] });
       
-      const { updatedAttendance } = data;
-      if (updatedAttendance.is_late) {
+      const { unifiedData } = data;
+      if (unifiedData.is_late) {
         toast({
           title: "Check-in effettuato (IN RITARDO)",
-          description: `Sei arrivato con ${updatedAttendance.late_minutes} minuti di ritardo`,
+          description: `Sei arrivato con ${unifiedData.late_minutes} minuti di ritardo`,
           variant: "destructive",
         });
       } else {
@@ -357,11 +362,24 @@ export const useAttendanceOperations = () => {
 
       if (attendanceError) throw attendanceError;
 
+      const { data: unifiedData, error: unifiedError } = await supabase
+        .from('unified_attendances')
+        .update({
+          check_out_time: checkOutTime,
+        })
+        .eq('user_id', user?.id)
+        .eq('date', today)
+        .select()
+        .single();
+
+      if (unifiedError) throw unifiedError;
+
       console.log('✅ Check-out completato');
-      return { attendanceData };
+      return { attendanceData, unifiedData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['employee-status'] });
       toast({
         title: "Check-out effettuato",

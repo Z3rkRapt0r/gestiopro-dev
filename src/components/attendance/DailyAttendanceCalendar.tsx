@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar as CalendarIcon, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useOptimizedAttendances } from '@/hooks/useOptimizedAttendances';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
@@ -14,7 +14,7 @@ import LeaveEmployeesSection from './sections/LeaveEmployeesSection';
 
 export default function DailyAttendanceCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const { attendances, isLoading } = useOptimizedAttendances();
+  const { attendances, isLoading } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { leaveRequests } = useLeaveRequests();
   const { shouldTrackEmployeeOnDate } = useWorkingDaysTracking();

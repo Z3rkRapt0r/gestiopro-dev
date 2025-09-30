@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { UserPlus, AlertCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useManualAttendances } from '@/hooks/useManualAttendances';
+import { useUnifiedAttendances } from '@/hooks/useUnifiedAttendances';
 import { useActiveEmployees } from '@/hooks/useActiveEmployees';
 import { useLeaveRequests } from '@/hooks/useLeaveRequests';
 import { useWorkingDaysTracking } from '@/hooks/useWorkingDaysTracking';
@@ -20,7 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 
 export default function ManualAttendanceForm() {
-  const { createManualAttendance, isCreating } = useManualAttendances();
+  const { createManualAttendance, isCreating, attendances } = useUnifiedAttendances();
   const { employees } = useActiveEmployees();
   const { leaveRequests } = useLeaveRequests();
   const { isValidDateForEmployee } = useWorkingDaysTracking();
