@@ -154,6 +154,12 @@ export type Database = {
           is_business_trip: boolean | null
           updated_at: string
           user_id: string
+          // Nuovi campi per tracking ritardi e organizzazione italiana
+          is_late: boolean
+          late_minutes: number
+          operation_path: string | null
+          readable_id: string | null
+          is_sick_leave: boolean
         }
         Insert: {
           business_trip_id?: string | null
@@ -169,6 +175,12 @@ export type Database = {
           is_business_trip?: boolean | null
           updated_at?: string
           user_id: string
+          // Nuovi campi per tracking ritardi e organizzazione italiana
+          is_late?: boolean
+          late_minutes?: number
+          operation_path?: string | null
+          readable_id?: string | null
+          is_sick_leave?: boolean
         }
         Update: {
           business_trip_id?: string | null
@@ -184,6 +196,12 @@ export type Database = {
           is_business_trip?: boolean | null
           updated_at?: string
           user_id?: string
+          // Nuovi campi per tracking ritardi e organizzazione italiana
+          is_late?: boolean
+          late_minutes?: number
+          operation_path?: string | null
+          readable_id?: string | null
+          is_sick_leave?: boolean
         }
         Relationships: [
           {
@@ -822,6 +840,13 @@ export type Database = {
           notes: string | null
           updated_at: string
           user_id: string
+          // Nuovi campi per tracking ritardi e organizzazione italiana
+          is_late: boolean
+          late_minutes: number
+          operation_path: string | null
+          readable_id: string | null
+          is_sick_leave: boolean
+          is_business_trip: boolean
         }
         Insert: {
           check_in_time?: string | null
@@ -833,6 +858,13 @@ export type Database = {
           notes?: string | null
           updated_at?: string
           user_id: string
+          // Nuovi campi per tracking ritardi e organizzazione italiana
+          is_late?: boolean
+          late_minutes?: number
+          operation_path?: string | null
+          readable_id?: string | null
+          is_sick_leave?: boolean
+          is_business_trip?: boolean
         }
         Update: {
           check_in_time?: string | null
@@ -844,6 +876,13 @@ export type Database = {
           notes?: string | null
           updated_at?: string
           user_id?: string
+          // Nuovi campi per tracking ritardi e organizzazione italiana
+          is_late?: boolean
+          late_minutes?: number
+          operation_path?: string | null
+          readable_id?: string | null
+          is_sick_leave?: boolean
+          is_business_trip?: boolean
         }
         Relationships: []
       }

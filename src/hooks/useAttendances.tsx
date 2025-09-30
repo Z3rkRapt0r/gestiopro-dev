@@ -21,6 +21,12 @@ export interface Attendance {
   updated_at: string;
   is_business_trip: boolean | null;
   business_trip_id: string | null;
+  // Nuovi campi per tracking ritardi e organizzazione italiana
+  is_late: boolean;
+  late_minutes: number;
+  operation_path: string | null;
+  readable_id: string | null;
+  is_sick_leave: boolean;
   profiles?: {
     first_name: string | null;
     last_name: string | null;

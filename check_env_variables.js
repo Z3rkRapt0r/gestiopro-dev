@@ -9,7 +9,7 @@ console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 // 2. Verifica la configurazione Supabase
 console.log('=== CONFIGURAZIONE SUPABASE ===');
-console.log('URL configurato:', 'https://sccmtqgjcjqezcnvxnep.supabase.co');
+console.log('URL configurato:', 'https://peejlpqmxueviclhjcrr.supabase.co');
 console.log('Chiave configurata:', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjY210cWdqY2pxZXpjbnZ4bmVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzODUxNTEsImV4cCI6MjA3Mzk2MTE1MX0.8epBqzphxxPOEdRXx-sKMYo8XZzIx-XP22rkhHj6SCE');
 
 // 3. Test di connessione Supabase
