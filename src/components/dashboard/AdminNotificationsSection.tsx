@@ -40,8 +40,11 @@ const AdminNotificationsSection = () => {
   const { notifications, createNotification, loading } = useNotifications();
   const { toast } = useToast();
 
+  // Ensure notifications is always an array
+  const safeNotifications = notifications || [];
+
   // Filtering logic for all notifications
-  const filteredNotifications = notifications
+  const filteredNotifications = safeNotifications
     .filter(notification => {
       const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            notification.message.toLowerCase().includes(searchTerm.toLowerCase());
@@ -61,12 +64,12 @@ const AdminNotificationsSection = () => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-  const notificationTypeStats = notifications.reduce((acc, notification) => {
+  const notificationTypeStats = safeNotifications.reduce((acc, notification) => {
     acc[notification.type] = (acc[notification.type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = safeNotifications.filter(n => !n.is_read).length;
   const groupedNotifications = groupNotificationsByDate(filteredNotifications);
 
   const handleCreateNotification = async () => {
@@ -220,7 +223,7 @@ const AdminNotificationsSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Totali</p>
-                <p className="text-2xl font-bold text-gray-900">{notifications.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{safeNotifications.length}</p>
               </div>
               <Users className="h-8 w-8 text-purple-600" />
             </div>

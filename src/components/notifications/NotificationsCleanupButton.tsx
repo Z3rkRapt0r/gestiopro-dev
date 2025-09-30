@@ -63,8 +63,9 @@ const NotificationsCleanupButton = () => {
     }
   };
 
-  const totalOldRecords = stats.reduce((sum, stat) => sum + stat.old_records_count, 0);
-  const totalRecords = stats.reduce((sum, stat) => sum + stat.total_records, 0);
+  const safeStats = stats || [];
+  const totalOldRecords = safeStats.reduce((sum, stat) => sum + stat.old_records_count, 0);
+  const totalRecords = safeStats.reduce((sum, stat) => sum + stat.total_records, 0);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Mai';
@@ -106,7 +107,7 @@ const NotificationsCleanupButton = () => {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-purple-600">
-                  {stats.find(s => s.last_cleanup_at) ? '✅' : '❌'}
+                  {safeStats.find(s => s.last_cleanup_at) ? '✅' : '❌'}
                 </div>
                 <div className="text-sm text-gray-600">Ultimo Cleanup</div>
               </div>
@@ -166,7 +167,7 @@ const NotificationsCleanupButton = () => {
                       Sei sicuro di voler eliminare <strong>{totalOldRecords} notifiche vecchie</strong>?
                     </p>
                     
-                    {stats.map((stat) => (
+                    {safeStats.map((stat) => (
                       stat.old_records_count > 0 && (
                         <div key={stat.table_name} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                           <div>
@@ -221,10 +222,10 @@ const NotificationsCleanupButton = () => {
             </div>
 
             {/* Dettagli statistiche */}
-            {stats.length > 0 && (
+            {safeStats.length > 0 && (
               <div className="space-y-3">
                 <h4 className="font-medium text-gray-900">Dettagli Configurazione</h4>
-                {stats.map((stat) => (
+                {safeStats.map((stat) => (
                   <div key={stat.table_name} className="border rounded-lg p-3">
                     <div className="flex justify-between items-start mb-2">
                       <div className="font-medium capitalize">
