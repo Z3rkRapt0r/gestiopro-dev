@@ -51,8 +51,14 @@ export const useAdminStats = () => {
         { count: unreadNotifications },
         recentNotificationsData
       ] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        // Conta solo i dipendenti (esclude gli admin)
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'employee'),
+        // Conta solo dipendenti attivi (esclude admin)
+        supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_active', true)
+          .eq('role', 'employee'),
         supabase.from('documents').select('*', { count: 'exact', head: true }),
         supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('attendances').select('*', { count: 'exact', head: true }).eq('date', today),

@@ -26,17 +26,7 @@ const statsConfig = [
     change: '+2.5%',
     changeType: 'positive' as const
   },
-  {
-    title: 'Dipendenti Attivi',
-    key: 'activeEmployees' as const,
-    icon: UserCheck,
-    gradient: 'from-emerald-500 via-emerald-600 to-teal-600',
-    bgGradient: 'from-emerald-50 to-teal-50',
-    borderColor: 'border-emerald-200',
-    iconBg: 'bg-emerald-500',
-    change: '+5.2%',
-    changeType: 'positive' as const
-  },
+  // RIMOSSO: scheda "Dipendenti Attivi" su richiesta
   {
     title: 'Documenti',
     key: 'totalDocuments' as const,
