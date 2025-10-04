@@ -436,9 +436,13 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                       onChange={(e) => setTimeFrom(e.target.value)}
                       min={getWorkStartTime()}
                       max={getWorkEndTime()}
+                      disabled={permissionType === 'start_of_day'}
                     />
                     <div className="text-xs text-gray-500">
-                      Minimo: {getWorkStartTime()} (per permessi all'interno del turno)
+                      {permissionType === 'start_of_day' 
+                        ? `Automaticamente impostato a ${getWorkStartTime()} (inizio turno)`
+                        : `Minimo: ${getWorkStartTime()} (per permessi all'interno del turno)`
+                      }
                     </div>
                   </div>
                   <div className="space-y-2">
