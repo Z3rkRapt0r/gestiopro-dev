@@ -86,11 +86,13 @@ export function ManualLeaveEntryForm({
     
     if (!timeFromValue || !timeToValue) return errors;
     
+    // Normalizza gli orari per confronto sicuro
+    const normalizedTimeFrom = timeFromValue.includes(':') ? timeFromValue.split(':').slice(0, 2).join(':') : timeFromValue;
     const workStartTime = getWorkStartTime(); // Ora già nel formato HH:mm
     const minTimeForMidDay = getMinTimeForMidDay();
     
     // VALIDAZIONE 1: L'orario di fine non può essere antecedente all'orario di inizio
-    if (timeToValue <= timeFromValue) {
+    if (timeToValue <= normalizedTimeFrom) {
       errors.push('L\'orario di fine deve essere successivo all\'orario di inizio');
     }
     
@@ -105,20 +107,20 @@ export function ManualLeaveEntryForm({
     
     if (permissionType === 'start_of_day') {
       // Permesso inizio turno: l'orario di inizio deve essere quello del turno
-      if (timeFromValue !== workStartTime) {
+      if (normalizedTimeFrom !== workStartTime) {
         errors.push('Per Permessi Inizio Turno, l\'orario di inizio deve corrispondere all\'inizio del turno');
       }
     } else if (permissionType === 'mid_day') {
       // Permesso all'interno del turno: controlli rigorosi
-      if (timeFromValue === workStartTime) {
+      if (normalizedTimeFrom === workStartTime) {
         errors.push(`Per Permessi all'interno del Turno, l'orario di inizio non può essere uguale all'orario di inizio turno (${workStartTime})`);
       }
       
-      if (timeFromValue < workStartTime) {
-        errors.push(`Per Permessi all'interno del Turno, l'orario di inizio non può essere precedente all'orario di inizio turno (${workStartTime})`);
+      if (normalizedTimeFrom <= workStartTime) {
+        errors.push(`L'orario di inizio (${normalizedTimeFrom}) deve essere dopo l'inizio dell'orario di lavoro (${workStartTime})`);
       }
       
-      if (timeFromValue < minTimeForMidDay) {
+      if (normalizedTimeFrom < minTimeForMidDay) {
         errors.push(`Per Permessi all'interno del Turno, l'orario di inizio deve essere almeno alle ${minTimeForMidDay} (30 minuti dopo l'inizio turno)`);
       }
     }
