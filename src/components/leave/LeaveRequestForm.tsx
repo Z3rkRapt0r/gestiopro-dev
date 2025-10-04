@@ -387,12 +387,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                         checked={permissionType === 'start_of_day'}
                         onChange={(e) => handlePermissionTypeChange(e.target.value as 'start_of_day' | 'mid_day')}
                         className="w-4 h-4"
-                        disabled
                       />
-                      <label htmlFor="start_of_day" className="text-sm text-gray-400">
-                        Permesso Inizio Turno non disponibile
-                        <div className="text-xs text-red-500">
-                          Solo permessi all'interno del turno dopo {getWorkStartTime()}
+                      <label htmlFor="start_of_day" className="text-sm">
+                        Permesso Inizio Turno
+                        <div className="text-xs text-gray-500">
+                          Permesso dall'inizio del turno alle {getWorkStartTime()}
                         </div>
                       </label>
                     </div>
