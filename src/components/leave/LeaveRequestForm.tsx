@@ -54,11 +54,15 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
 
   // Funzioni helper per calcolare orari
   const getWorkStartTime = () => {
-    return workSchedule?.start_time || '08:00';
+    const startTime = workSchedule?.start_time || '08:00';
+    // Assicurati che sia nel formato HH:mm
+    return startTime.includes(':') ? startTime.split(':').slice(0, 2).join(':') : startTime;
   };
 
   const getWorkEndTime = () => {
-    return workSchedule?.end_time || '17:00';
+    const endTime = workSchedule?.end_time || '17:00';
+    // Assicurati che sia nel formato HH:mm
+    return endTime.includes(':') ? endTime.split(':').slice(0, 2).join(':') : endTime;
   };
 
   // Gestione validazione form generale
@@ -126,10 +130,20 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     const workStart = getWorkStartTime();
     
     if (type === 'start_of_day') {
-      setTimeFrom(workStart);
-      const startTime = new Date(`1970-01-01T${workStart}:00`);
+      // Assicurati che workStart sia nel formato HH:mm
+      const normalizedStart = workStart.includes(':') ? workStart.split(':').slice(0, 2).join(':') : workStart;
+      setTimeFrom(normalizedStart);
+      
+      // Calcola l'orario di fine (30 minuti dopo)
+      const [hours, minutes] = normalizedStart.split(':').map(Number);
+      const startTime = new Date();
+      startTime.setHours(hours, minutes, 0, 0);
       const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // +30 minuti
-      setTimeTo(endTime.toTimeString().slice(0, 5));
+      
+      // Formatta l'orario di fine nel formato HH:mm
+      const endHours = endTime.getHours().toString().padStart(2, '0');
+      const endMinutes = endTime.getMinutes().toString().padStart(2, '0');
+      setTimeTo(`${endHours}:${endMinutes}`);
     } else {
       // mid_day - lascia libera scelta
       setTimeFrom("");

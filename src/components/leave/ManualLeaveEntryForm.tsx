@@ -66,7 +66,9 @@ export function ManualLeaveEntryForm({
   // Funzioni helper per calcolare orari (stesse del form dipendenti)
   const getWorkStartTime = () => {
     const effectiveSchedule = employeeWorkSchedule || companyWorkSchedule;
-    return effectiveSchedule?.start_time || '08:00:00';
+    const startTime = effectiveSchedule?.start_time || '08:00:00';
+    // Assicurati che sia nel formato HH:mm
+    return startTime.includes(':') ? startTime.split(':').slice(0, 2).join(':') : startTime;
   };
 
   const getMinTimeForMidDay = () => {
@@ -84,7 +86,7 @@ export function ManualLeaveEntryForm({
     
     if (!timeFromValue || !timeToValue) return errors;
     
-    const workStartTime = getWorkStartTime().substring(0, 5); // Rimuove secondi
+    const workStartTime = getWorkStartTime(); // Ora già nel formato HH:mm
     const minTimeForMidDay = getMinTimeForMidDay();
     
     // VALIDAZIONE 1: L'orario di fine non può essere antecedente all'orario di inizio
