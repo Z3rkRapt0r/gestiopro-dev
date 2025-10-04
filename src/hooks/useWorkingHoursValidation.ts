@@ -78,7 +78,7 @@ export const useWorkingHoursValidation = (employeeId?: string) => {
 
       // CONTROLLO: orari entro limiti lavorativi (personalizzati o aziendali)
       if (timeFrom < workStart) {
-        errors.push(`L'orario di inizio (${timeFrom}) deve essere dopo l'inizio dell'orario di lavoro (${workStart})`);
+        errors.push(`L'orario di inizio (${timeFrom}) deve essere dopo o uguale all'inizio dell'orario di lavoro (${workStart})`);
       }
 
       if (timeTo > workEnd) {
@@ -163,7 +163,7 @@ export const useWorkingHoursValidation = (employeeId?: string) => {
       // CONTROLLO: orari entro limiti lavorativi
       if (timeFrom < workStart) {
         const scheduleType = employeeWorkSchedule ? 'personalizzati' : 'aziendali generali';
-        errors.push(`L'orario di inizio (${timeFrom}) deve essere dopo l'inizio dell'orario di lavoro ${scheduleType} (${workStart})`);
+        errors.push(`L'orario di inizio (${timeFrom}) deve essere dopo o uguale all'inizio dell'orario di lavoro ${scheduleType} (${workStart})`);
       }
 
       if (timeTo > workEnd) {

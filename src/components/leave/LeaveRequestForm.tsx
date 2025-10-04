@@ -219,7 +219,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       if (timeFrom < workStart) {
         toast({
           title: "Errore orario inizio",
-          description: `L'orario di inizio (${timeFrom}) deve essere dopo l'inizio dell'orario di lavoro (${workStart})`,
+          description: `L'orario di inizio (${timeFrom}) deve essere dopo o uguale all'inizio dell'orario di lavoro (${workStart})`,
           variant: "destructive",
         });
         return;
