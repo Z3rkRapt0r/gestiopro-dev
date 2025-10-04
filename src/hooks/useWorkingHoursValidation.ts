@@ -13,6 +13,13 @@ export const useWorkingHoursValidation = (employeeId?: string) => {
   const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(employeeId);
   const workSchedule = employeeWorkSchedule || companyWorkSchedule;
 
+  // Funzione helper per normalizzare gli orari nel formato HH:mm
+  const normalizeTime = (time: string): string => {
+    if (!time) return time;
+    // Rimuovi i secondi se presenti (es. "09:00:00" -> "09:00")
+    return time.includes(':') ? time.split(':').slice(0, 2).join(':') : time;
+  };
+
   const validatePermissionTime = (
     day: Date,
     timeFrom: string,
@@ -68,8 +75,8 @@ export const useWorkingHoursValidation = (employeeId?: string) => {
 
     // Verifica orari
     if (timeFrom && timeTo) {
-      const workStart = workSchedule.start_time;
-      const workEnd = workSchedule.end_time;
+      const workStart = normalizeTime(workSchedule.start_time);
+      const workEnd = normalizeTime(workSchedule.end_time);
 
       // CONTROLLO PRINCIPALE: orario fine > orario inizio
       if (timeFrom >= timeTo) {
@@ -152,8 +159,8 @@ export const useWorkingHoursValidation = (employeeId?: string) => {
 
     // Verifica orari
     if (timeFrom && timeTo) {
-      const workStart = effectiveSchedule.start_time;
-      const workEnd = effectiveSchedule.end_time;
+      const workStart = normalizeTime(effectiveSchedule.start_time);
+      const workEnd = normalizeTime(effectiveSchedule.end_time);
 
       // CONTROLLO PRINCIPALE: orario fine > orario inizio
       if (timeFrom >= timeTo) {

@@ -216,7 +216,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       const workStart = getWorkStartTime();
       const workEnd = getWorkEndTime();
       
-      if (timeFrom < workStart) {
+      // Normalizza gli orari per il confronto
+      const normalizedTimeFrom = timeFrom.includes(':') ? timeFrom.split(':').slice(0, 2).join(':') : timeFrom;
+      const normalizedWorkStart = workStart.includes(':') ? workStart.split(':').slice(0, 2).join(':') : workStart;
+      
+      if (normalizedTimeFrom < normalizedWorkStart) {
         toast({
           title: "Errore orario inizio",
           description: `L'orario di inizio (${timeFrom}) deve essere dopo o uguale all'inizio dell'orario di lavoro (${workStart})`,
