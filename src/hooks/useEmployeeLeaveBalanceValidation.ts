@@ -1,4 +1,5 @@
 
+import { useCallback } from 'react';
 import { useEmployeeLeaveBalanceStats } from "@/hooks/useEmployeeLeaveBalanceStats";
 import { formatDecimalHours } from "@/hooks/useLeaveBalanceValidation";
 
@@ -15,14 +16,14 @@ export function useEmployeeLeaveBalanceValidation(employeeId?: string) {
   const { leaveBalance, isLoading } = useEmployeeLeaveBalanceStats(employeeId);
 
   // Funzione helper per convertire ore e minuti in ore decimali
-  const timeToDecimalHours = (timeFrom: string, timeTo: string): number => {
+  const timeToDecimalHours = useCallback((timeFrom: string, timeTo: string): number => {
     const startTime = new Date(`1970-01-01T${timeFrom}:00`);
     const endTime = new Date(`1970-01-01T${timeTo}:00`);
     const diffMs = endTime.getTime() - startTime.getTime();
     return diffMs / (1000 * 60 * 60); // Convert to hours
-  };
+  }, []);
 
-  const getWorkingDaysBetween = (startDate: Date, endDate: Date): number => {
+  const getWorkingDaysBetween = useCallback((startDate: Date, endDate: Date): number => {
     let count = 0;
     const current = new Date(startDate);
     
@@ -35,9 +36,9 @@ export function useEmployeeLeaveBalanceValidation(employeeId?: string) {
     }
     
     return count;
-  };
+  }, []);
 
-  const validateLeaveRequest = (
+  const validateLeaveRequest = useCallback((
     type: "ferie" | "permesso",
     dateFrom?: Date | null,
     dateTo?: Date | null,
@@ -138,7 +139,7 @@ export function useEmployeeLeaveBalanceValidation(employeeId?: string) {
       exceedsVacationLimit: false,
       exceedsPermissionLimit: false
     };
-  };
+  }, [employeeId, leaveBalance, getWorkingDaysBetween, timeToDecimalHours, formatDecimalHours]);
 
   return {
     leaveBalance,
