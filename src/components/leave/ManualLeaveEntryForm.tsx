@@ -18,6 +18,7 @@ import { useWorkingHoursValidation } from "@/hooks/useWorkingHoursValidation";
 import { useEmployeeLeaveBalanceValidation } from "@/hooks/useEmployeeLeaveBalanceValidation";
 import { useWorkSchedules } from "@/hooks/useWorkSchedules";
 import { useEmployeeWorkSchedule } from "@/hooks/useEmployeeWorkSchedule";
+import { useWorkingDaysValidation } from "@/hooks/useWorkingDaysValidation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -60,6 +61,7 @@ export function ManualLeaveEntryForm({
   } = useEmployeeLeaveBalanceValidation(selectedUserId);
   const { workSchedule: companyWorkSchedule } = useWorkSchedules();
   const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(selectedUserId);
+  const { isWorkingDay } = useWorkingDaysValidation(selectedUserId);
 
   // Funzioni helper per calcolare orari (stesse del form dipendenti)
   const getWorkStartTime = () => {
@@ -576,6 +578,8 @@ export function ManualLeaveEntryForm({
                   const employee = employees?.find(emp => emp.id === selectedUserId);
                   const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
                   if (hireDate && date < hireDate) return true;
+                  // Blocca giorni non lavorativi se dipendente selezionato
+                  if (selectedUserId && !isWorkingDay(date)) return true;
                   return isDateDisabled(date);
                 }} />
                   </PopoverContent>
@@ -599,6 +603,8 @@ export function ManualLeaveEntryForm({
                   const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
                   const minDate = startDate || hireDate;
                   if (minDate && date < minDate) return true;
+                  // Blocca giorni non lavorativi se dipendente selezionato
+                  if (selectedUserId && !isWorkingDay(date)) return true;
                   return isDateDisabled(date);
                 }} />
                   </PopoverContent>
@@ -621,6 +627,8 @@ export function ManualLeaveEntryForm({
                   const employee = employees?.find(emp => emp.id === selectedUserId);
                   const hireDate = employee?.hire_date ? new Date(employee.hire_date) : null;
                   if (hireDate && date < hireDate) return true;
+                  // Blocca giorni non lavorativi se dipendente selezionato
+                  if (selectedUserId && !isWorkingDay(date)) return true;
                   return isDateDisabled(date);
                 }} />
                   </PopoverContent>

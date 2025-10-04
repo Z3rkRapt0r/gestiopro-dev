@@ -15,6 +15,7 @@ import { useWorkingHoursValidation } from "@/hooks/useWorkingHoursValidation";
 import { useEmployeeLeaveBalanceValidation } from "@/hooks/useEmployeeLeaveBalanceValidation";
 import { useWorkSchedules } from "@/hooks/useWorkSchedules";
 import { useEmployeeWorkSchedule } from "@/hooks/useEmployeeWorkSchedule";
+import { useWorkingDaysValidation } from "@/hooks/useWorkingDaysValidation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "@/hooks/use-toast";
@@ -49,6 +50,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   } = useEmployeeLeaveBalanceValidation(user?.id);
   const { workSchedule: companyWorkSchedule } = useWorkSchedules();
   const { workSchedule: employeeWorkSchedule } = useEmployeeWorkSchedule(user?.id);
+  const { isWorkingDay } = useWorkingDaysValidation(user?.id);
 
   // Funzioni helper per calcolare orari
   const getWorkStartTime = () => {
@@ -349,7 +351,14 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                         mode="single"
                         selected={singleDay}
                         onSelect={setSingleDay}
-                        disabled={(date) => date < new Date() || date < new Date(Date.now() - 86400000)}
+                        disabled={(date) => {
+                          // Blocca date passate
+                          if (date < new Date() || date < new Date(Date.now() - 86400000)) {
+                            return true;
+                          }
+                          // Blocca giorni non lavorativi
+                          return !isWorkingDay(date);
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
@@ -452,7 +461,14 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                         mode="single"
                         selected={startDate}
                         onSelect={setStartDate}
-                        disabled={(date) => date < new Date() || date < new Date(Date.now() - 86400000)}
+                        disabled={(date) => {
+                          // Blocca date passate
+                          if (date < new Date() || date < new Date(Date.now() - 86400000)) {
+                            return true;
+                          }
+                          // Blocca giorni non lavorativi
+                          return !isWorkingDay(date);
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
@@ -475,7 +491,18 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                         mode="single"
                         selected={endDate}
                         onSelect={setEndDate}
-                        disabled={(date) => date < new Date() || date < new Date(Date.now() - 86400000) || (startDate && date < startDate)}
+                        disabled={(date) => {
+                          // Blocca date passate
+                          if (date < new Date() || date < new Date(Date.now() - 86400000)) {
+                            return true;
+                          }
+                          // Blocca date precedenti alla data di inizio
+                          if (startDate && date < startDate) {
+                            return true;
+                          }
+                          // Blocca giorni non lavorativi
+                          return !isWorkingDay(date);
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
