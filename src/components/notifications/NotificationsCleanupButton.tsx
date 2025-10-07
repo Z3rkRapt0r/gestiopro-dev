@@ -28,7 +28,7 @@ const NotificationsCleanupButton = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [stats, setStats] = useState<CleanupStats[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
-  const { loading, getStats, dryRun, executeCleanup } = useNotificationsCleanup();
+  const { loading, getStats, executeCleanup } = useNotificationsCleanup();
   const { toast } = useToast();
 
   const loadStats = async () => {
@@ -38,6 +38,19 @@ const NotificationsCleanupButton = () => {
       const statsData = await getStats();
       console.log('[NotificationsCleanupButton] Stats loaded:', statsData);
       setStats(statsData);
+      // Mostra un riepilogo stile "dry run" direttamente qui
+      const totalToDelete = (Array.isArray(statsData) ? statsData : []).reduce((sum, s: any) => sum + (Number(s.old_records_count) || 0), 0);
+      if (totalToDelete > 0) {
+        toast({
+          title: "Simulazione completata",
+          description: `Trovati ${totalToDelete} record da eliminare`,
+        });
+      } else {
+        toast({
+          title: "Simulazione completata",
+          description: "Trovati 0 record da eliminare",
+        });
+      }
     } catch (error) {
       console.error('Error loading stats:', error);
     } finally {
@@ -45,17 +58,7 @@ const NotificationsCleanupButton = () => {
     }
   };
 
-  const handleDryRun = async () => {
-    try {
-      console.log('[NotificationsCleanupButton] Dry run clicked');
-      const res = await dryRun();
-      console.log('[NotificationsCleanupButton] Dry run result:', res);
-      // Ricarica le statistiche dopo il dry run
-      await loadStats();
-    } catch (error) {
-      console.error('Dry run failed:', error);
-    }
-  };
+  // Rimosso pulsante "Simula Pulizia"; la simulazione ora è inclusa in Aggiorna Statistiche
 
   const handleCleanup = async () => {
     try {
@@ -131,20 +134,6 @@ const NotificationsCleanupButton = () => {
                   <BarChart3 className="h-4 w-4 mr-2" />
                 )}
                 Aggiorna Statistiche
-              </Button>
-
-              <Button
-                onClick={handleDryRun}
-                disabled={loading}
-                variant="outline"
-                size="sm"
-              >
-                {loading ? (
-                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Clock className="h-4 w-4 mr-2" />
-                )}
-                Simula Pulizia
               </Button>
 
               <Dialog open={showDialog} onOpenChange={setShowDialog}>
