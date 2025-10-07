@@ -67,7 +67,8 @@ const NotificationForm = ({ onCreated }: Props) => {
             <Select
               value={recipientId}
               onValueChange={setRecipientId}
-              disabled={loadingEmployees}
+              // Allow opening even during loading; show fallback options
+              disabled={false}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleziona destinatari" />
@@ -76,10 +77,20 @@ const NotificationForm = ({ onCreated }: Props) => {
                 <SelectItem value="ALL">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    Tutti i dipendenti ({employees.length})
+                    {loadingEmployees ? 'Tutti i dipendenti' : `Tutti i dipendenti (${employees.length})`}
                   </div>
                 </SelectItem>
-                {employees.map((emp) => (
+                {loadingEmployees && (
+                  <SelectItem value="loading" disabled>
+                    Caricamento dipendenti...
+                  </SelectItem>
+                )}
+                {!loadingEmployees && employees.length === 0 && (
+                  <SelectItem value="none" disabled>
+                    Nessun dipendente attivo trovato
+                  </SelectItem>
+                )}
+                {!loadingEmployees && employees.map((emp) => (
                   <SelectItem key={emp.id} value={emp.id}>
                     {(emp.first_name || "") + " " + (emp.last_name || "")} {emp.email && `(${emp.email})`}
                   </SelectItem>

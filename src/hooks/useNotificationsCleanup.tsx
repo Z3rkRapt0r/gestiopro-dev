@@ -38,6 +38,8 @@ export const useNotificationsCleanup = () => {
   const getStats = async (): Promise<CleanupStats[]> => {
     try {
       const { data, error } = await supabase.functions.invoke('notifications-cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: { action: 'stats' }
       });
 
@@ -65,6 +67,8 @@ export const useNotificationsCleanup = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('notifications-cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: { action: 'dry_run' }
       });
 
@@ -98,6 +102,8 @@ export const useNotificationsCleanup = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('notifications-cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: { action: 'cleanup' }
       });
 

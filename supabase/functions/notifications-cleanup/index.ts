@@ -149,8 +149,30 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const url = new URL(req.url)
-    const action = url.searchParams.get('action') || 'cleanup'
-    const dryRun = url.searchParams.get('dry_run') === 'true'
+    // Support both URL query params and JSON body for action selection
+    let action = url.searchParams.get('action') || ''
+    let dryRun = url.searchParams.get('dry_run') === 'true'
+
+    // If action not provided in URL, try to parse JSON body
+    if (!action) {
+      try {
+        const contentType = req.headers.get('content-type') || ''
+        if (contentType.includes('application/json')) {
+          const body = await req.json().catch(() => null)
+          if (body && typeof body.action === 'string') {
+            action = body.action
+          }
+          if (body && typeof body.dry_run !== 'undefined') {
+            dryRun = Boolean(body.dry_run)
+          }
+        }
+      } catch (_) {
+        // Ignore body parse errors; fallback to defaults
+      }
+    }
+
+    // Fallback default action
+    if (!action) action = 'cleanup'
 
     console.log(`🚀 Notifications cleanup function called with action: ${action}, dry_run: ${dryRun}`)
 
