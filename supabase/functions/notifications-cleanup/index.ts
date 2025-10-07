@@ -99,9 +99,16 @@ async function getCleanupStats(supabase: any): Promise<CleanupStats[]> {
       .order('table_name')
     
     if (error) throw error
-    
+    // Se la tabella è vuota o mancante, usa una configurazione di default per le notifiche
+    const effectiveConfigs: CleanupConfig[] = (data && data.length > 0)
+      ? data
+      : [
+          { table_name: 'notifications', retention_days: 30, is_enabled: true },
+          { table_name: 'sent_notifications', retention_days: 90, is_enabled: true }
+        ]
+
     // Aggiungi statistiche per ogni tabella
-    const stats = await Promise.all(data.map(async (config: CleanupConfig) => {
+    const stats = await Promise.all(effectiveConfigs.map(async (config: CleanupConfig) => {
       // Conta record totali
       const { count: totalRecords } = await supabase
         .from(config.table_name)
@@ -237,19 +244,13 @@ serve(async (req) => {
       
       if (configError) throw configError
 
-      if (!configs || configs.length === 0) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'No cleanup configurations found or all disabled',
-            timestamp: new Date().toISOString()
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-          }
-        )
-      }
+      // Fallback di default se non ci sono configurazioni: usa tabelle notifiche
+      const effectiveConfigs: CleanupConfig[] = (configs && configs.length > 0)
+        ? configs
+        : [
+            { table_name: 'notifications', retention_days: 30, is_enabled: true },
+            { table_name: 'sent_notifications', retention_days: 90, is_enabled: true }
+          ]
 
       const results: CleanupResult[] = []
       let totalDeleted = 0
@@ -257,7 +258,7 @@ serve(async (req) => {
       const startTime = Date.now()
 
       // Execute cleanup for each configured table
-      for (const config of configs) {
+      for (const config of effectiveConfigs) {
         if (dryRun) {
           // For dry run, just count records that would be deleted
           const { count } = await supabase
