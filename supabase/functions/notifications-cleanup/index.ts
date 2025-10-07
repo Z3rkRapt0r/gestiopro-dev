@@ -156,30 +156,37 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const url = new URL(req.url)
-    // Support both URL query params and JSON body for action selection
-    let action = url.searchParams.get('action') || ''
-    let dryRun = url.searchParams.get('dry_run') === 'true'
+    // Prefer JSON body over URL params to resolve action/dry_run
+    let action = ''
+    let dryRun = false
 
-    // If action not provided in URL, try to parse JSON body
-    if (!action) {
-      try {
-        const contentType = req.headers.get('content-type') || ''
-        if (contentType.includes('application/json')) {
-          const body = await req.json().catch(() => null)
-          if (body && typeof body.action === 'string') {
-            action = body.action
-          }
-          if (body && typeof body.dry_run !== 'undefined') {
-            dryRun = Boolean(body.dry_run)
-          }
+    try {
+      const contentType = req.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) {
+        const body = await req.json().catch(() => null)
+        if (body && typeof body.action === 'string') {
+          action = body.action
         }
-      } catch (_) {
-        // Ignore body parse errors; fallback to defaults
+        if (body && typeof body.dry_run !== 'undefined') {
+          dryRun = Boolean(body.dry_run)
+        }
       }
+    } catch (_) {
+      // Ignore body parse errors
     }
 
-    // Fallback default action
+    // If still not set, fallback to URL params
+    if (!action) {
+      action = url.searchParams.get('action') || ''
+    }
+    if (!dryRun) {
+      dryRun = url.searchParams.get('dry_run') === 'true'
+    }
+
+    // Final fallback default action
     if (!action) action = 'cleanup'
+
+    console.log(`[notifications-cleanup] Resolved action="${action}", dryRun=${dryRun}`)
 
     console.log(`🚀 Notifications cleanup function called with action: ${action}, dry_run: ${dryRun}`)
 
