@@ -38,6 +38,8 @@ export const formatRelativeDate = (dateString: string) => {
 };
 
 export const groupNotificationsByDate = (notifications: any[]) => {
+  // Defensive: ensure array
+  const list = Array.isArray(notifications) ? notifications : [];
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -48,7 +50,7 @@ export const groupNotificationsByDate = (notifications: any[]) => {
     older: [] as any[]
   };
 
-  notifications.forEach(notification => {
+  list.forEach(notification => {
     const notifDate = new Date(notification.created_at);
     
     if (notifDate.toDateString() === today.toDateString()) {
