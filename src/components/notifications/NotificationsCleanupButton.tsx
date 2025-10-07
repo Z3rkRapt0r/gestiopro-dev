@@ -63,9 +63,9 @@ const NotificationsCleanupButton = () => {
     }
   };
 
-  const safeStats = stats || [];
-  const totalOldRecords = safeStats.reduce((sum, stat) => sum + stat.old_records_count, 0);
-  const totalRecords = safeStats.reduce((sum, stat) => sum + stat.total_records, 0);
+  const safeStats = Array.isArray(stats) ? stats : [];
+  const totalOldRecords = safeStats.reduce((sum, stat) => sum + (Number(stat.old_records_count) || 0), 0);
+  const totalRecords = safeStats.reduce((sum, stat) => sum + (Number(stat.total_records) || 0), 0);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Mai';

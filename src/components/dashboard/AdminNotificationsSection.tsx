@@ -41,7 +41,7 @@ const AdminNotificationsSection = () => {
   const { toast } = useToast();
 
   // Ensure notifications is always an array
-  const safeNotifications = notifications || [];
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
 
   // Filtering logic for all notifications
   const filteredNotifications = safeNotifications
