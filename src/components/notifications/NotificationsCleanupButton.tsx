@@ -34,7 +34,9 @@ const NotificationsCleanupButton = () => {
   const loadStats = async () => {
     setStatsLoading(true);
     try {
+      console.log('[NotificationsCleanupButton] Loading stats...');
       const statsData = await getStats();
+      console.log('[NotificationsCleanupButton] Stats loaded:', statsData);
       setStats(statsData);
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -45,7 +47,9 @@ const NotificationsCleanupButton = () => {
 
   const handleDryRun = async () => {
     try {
-      await dryRun();
+      console.log('[NotificationsCleanupButton] Dry run clicked');
+      const res = await dryRun();
+      console.log('[NotificationsCleanupButton] Dry run result:', res);
       // Ricarica le statistiche dopo il dry run
       await loadStats();
     } catch (error) {

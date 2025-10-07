@@ -37,6 +37,7 @@ export const useNotificationsCleanup = () => {
   // Chiama l'edge function per ottenere le statistiche
   const getStats = async (): Promise<CleanupStats[]> => {
     try {
+      console.log('[notifications-cleanup] getStats: sending request');
       const { data, error } = await supabase.functions.invoke('notifications-cleanup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -46,9 +47,11 @@ export const useNotificationsCleanup = () => {
       if (error) throw error;
 
       if (data.success) {
+        console.log('[notifications-cleanup] getStats: response OK', data);
         setStats(data.data);
         return data.data;
       } else {
+        console.warn('[notifications-cleanup] getStats: response error', data);
         throw new Error(data.error || 'Errore nel recupero delle statistiche');
       }
     } catch (error) {
@@ -66,6 +69,7 @@ export const useNotificationsCleanup = () => {
   const dryRun = async (): Promise<CleanupResult> => {
     setLoading(true);
     try {
+      console.log('[notifications-cleanup] dry_run: sending request');
       const { data, error } = await supabase.functions.invoke('notifications-cleanup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,6 +79,7 @@ export const useNotificationsCleanup = () => {
       if (error) throw error;
 
       if (data.success) {
+        console.log('[notifications-cleanup] dry_run: response OK', data);
         const totalRecords = data.data?.total_records_to_delete || 0;
         toast({
           title: "Dry Run Completato",
@@ -82,6 +87,7 @@ export const useNotificationsCleanup = () => {
         });
         return data;
       } else {
+        console.warn('[notifications-cleanup] dry_run: response error', data);
         throw new Error(data.error || 'Errore nel dry run');
       }
     } catch (error) {
@@ -101,6 +107,7 @@ export const useNotificationsCleanup = () => {
   const executeCleanup = async (): Promise<CleanupResult> => {
     setLoading(true);
     try {
+      console.log('[notifications-cleanup] cleanup: sending request');
       const { data, error } = await supabase.functions.invoke('notifications-cleanup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -110,6 +117,7 @@ export const useNotificationsCleanup = () => {
       if (error) throw error;
 
       if (data.success) {
+        console.log('[notifications-cleanup] cleanup: response OK', data);
         const totalDeleted = data.data?.total_records_deleted || 0;
         const executionTime = data.data?.total_execution_time_ms || 0;
         
@@ -123,6 +131,7 @@ export const useNotificationsCleanup = () => {
         
         return data;
       } else {
+        console.warn('[notifications-cleanup] cleanup: response error', data);
         throw new Error(data.error || 'Errore nel cleanup');
       }
     } catch (error) {
