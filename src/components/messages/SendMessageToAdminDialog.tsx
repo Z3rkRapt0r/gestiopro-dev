@@ -44,7 +44,7 @@ export default function SendMessageToAdminDialog({ trigger }: SendMessageToAdmin
     try {
       // Use Edge Function to send message (bypasses RLS)
       console.log('Sending message via Edge Function...');
-      const { data, error } = await supabase.functions.invoke('send-employee-message', {
+      const response = await supabase.functions.invoke('send-employee-message', {
         body: {
           subject: subject,
           message: message,
@@ -53,17 +53,34 @@ export default function SendMessageToAdminDialog({ trigger }: SendMessageToAdmin
         }
       });
 
-      console.log('Edge Function response:', data);
-      console.log('Edge Function error:', error);
+      console.log('Edge Function full response:', response);
+      console.log('Edge Function data:', response.data);
+      console.log('Edge Function error:', response.error);
 
-      if (error) {
-        console.error('Error from Edge Function:', error);
-        throw new Error(error.message || 'Errore durante l\'invio del messaggio');
+      // Check for HTTP errors
+      if (response.error) {
+        console.error('Error from Edge Function:', response.error);
+        // Try to extract more details
+        const errorMessage = response.error.message || 
+                            response.error.toString() || 
+                            'Errore durante l\'invio del messaggio';
+        console.error('Detailed error:', errorMessage);
+        throw new Error(errorMessage);
       }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      // Check for application errors in data
+      if (response.data?.error) {
+        console.error('Application error from Edge Function:', response.data.error);
+        throw new Error(response.data.error);
       }
+
+      // Check if data indicates success
+      if (!response.data?.success) {
+        console.error('Edge Function did not return success:', response.data);
+        throw new Error('L\'invio del messaggio non è andato a buon fine');
+      }
+
+      console.log('Message sent successfully:', response.data);
 
       toast({
         title: "Messaggio inviato!",
