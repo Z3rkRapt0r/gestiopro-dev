@@ -47,18 +47,16 @@ interface CleanupStats {
 
 async function cleanupTable(
   supabase: any,
-  tableName: string,
-  retentionDays: number
+  tableName: string
 ): Promise<CleanupResult> {
   const startTime = Date.now()
   
   try {
-    console.log(`🧹 Starting cleanup for ${tableName} (retention: ${retentionDays} days)`)
+    console.log(`🧹 Starting cleanup for ${tableName} (deleting all records)`)
     
-    // Esegui cleanup
-    const { data, error } = await supabase.rpc('cleanup_old_records', {
-      target_table: tableName,
-      date_column: 'created_at'
+    // Esegui cleanup - elimina tutti i record
+    const { data, error } = await supabase.rpc('cleanup_all_records', {
+      target_table: tableName
     })
     
     if (error) {
@@ -109,25 +107,19 @@ async function getCleanupStats(supabase: any): Promise<CleanupStats[]> {
 
     // Aggiungi statistiche per ogni tabella
     const stats = await Promise.all(effectiveConfigs.map(async (config: CleanupConfig) => {
-      // Conta record totali
+      // Conta tutti i record presenti (che saranno eliminati)
       const { count: totalRecords } = await supabase
         .from(config.table_name)
         .select('*', { count: 'exact', head: true })
       
-      // Conta record vecchi
-      const { count: oldRecords } = await supabase
-        .from(config.table_name)
-        .select('*', { count: 'exact', head: true })
-        .lt('created_at', new Date(Date.now() - config.retention_days * 24 * 60 * 60 * 1000).toISOString())
-      
       return {
         table_name: config.table_name,
-        retention_days: config.retention_days,
+        retention_days: config.retention_days, // Manteniamo per compatibilità ma non lo usiamo
         is_enabled: config.is_enabled,
-        last_cleanup_at: null, // Verrà aggiornato dopo il cleanup
-        last_cleaned_count: 0, // Verrà aggiornato dopo il cleanup
+        last_cleanup_at: config.last_cleanup_at || null,
+        last_cleaned_count: config.last_cleaned_count || 0,
         total_records: totalRecords || 0,
-        old_records_count: oldRecords || 0
+        old_records_count: totalRecords || 0 // Tutti i record saranno eliminati
       }
     }))
     
@@ -215,7 +207,7 @@ serve(async (req) => {
     // ============================================================================
     if (action === 'dry_run') {
       const stats = await getCleanupStats(supabase)
-      const recordsToDelete = stats.reduce((sum, stat) => sum + stat.old_records_count, 0)
+      const recordsToDelete = stats.reduce((sum, stat) => sum + stat.total_records, 0)
       
       return new Response(
         JSON.stringify({
@@ -225,8 +217,8 @@ serve(async (req) => {
             total_records_to_delete: recordsToDelete,
             breakdown: stats.map(stat => ({
               table: stat.table_name,
-              records_to_delete: stat.old_records_count,
-              retention_days: stat.retention_days
+              records_to_delete: stat.total_records,
+              is_enabled: stat.is_enabled
             }))
           },
           timestamp: new Date().toISOString()
@@ -267,11 +259,10 @@ serve(async (req) => {
       // Execute cleanup for each configured table
       for (const config of effectiveConfigs) {
         if (dryRun) {
-          // For dry run, just count records that would be deleted
+          // For dry run, just count all records
           const { count } = await supabase
             .from(config.table_name)
             .select('*', { count: 'exact', head: true })
-            .lt('created_at', new Date(Date.now() - config.retention_days * 24 * 60 * 60 * 1000).toISOString())
           
           results.push({
             table_name: config.table_name,
@@ -280,8 +271,8 @@ serve(async (req) => {
             success: true
           })
         } else {
-          // Actual cleanup
-          const result = await cleanupTable(supabase, config.table_name, config.retention_days)
+          // Actual cleanup - elimina tutti i record
+          const result = await cleanupTable(supabase, config.table_name)
           results.push(result)
           totalDeleted += result.deleted_count
         }
@@ -291,16 +282,33 @@ serve(async (req) => {
 
       const overallExecutionTime = Date.now() - startTime
 
-      // Log the operation
+      // Update cleanup_config with last cleanup info
       if (!dryRun) {
-        await supabase
-          .from('cleanup_logs')
-          .insert({
-            table_name: 'notifications_cleanup_batch',
-            records_deleted: totalDeleted,
-            retention_days: 0, // Mixed retention days
-            execution_time_ms: overallExecutionTime
-          })
+        for (const result of results) {
+          if (result.success) {
+            await supabase
+              .from('cleanup_config')
+              .update({
+                last_cleanup_at: new Date().toISOString(),
+                last_cleaned_count: result.deleted_count
+              })
+              .eq('table_name', result.table_name)
+          }
+        }
+        
+        // Log the operation (optional, if cleanup_logs table exists)
+        try {
+          await supabase
+            .from('cleanup_logs')
+            .insert({
+              table_name: 'notifications_cleanup_batch',
+              records_deleted: totalDeleted,
+              retention_days: 0,
+              execution_time_ms: overallExecutionTime
+            })
+        } catch (logError) {
+          console.warn('Could not log cleanup operation:', logError)
+        }
       }
 
       return new Response(

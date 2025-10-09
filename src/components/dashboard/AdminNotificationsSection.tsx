@@ -23,18 +23,13 @@ import NotificationItem from "@/components/notifications/NotificationItem";
 import NotificationsCleanupButton from "@/components/notifications/NotificationsCleanupButton";
 import { groupNotificationsByDate, getNotificationTypeLabel } from "@/utils/notificationUtils";
 import { useToast } from "@/hooks/use-toast";
+import NotificationForm from '@/components/notifications/NotificationForm';
 
 const AdminNotificationsSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterRead, setFilterRead] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newNotification, setNewNotification] = useState({
-    title: '',
-    message: '',
-    type: 'system' as 'document' | 'system' | 'message' | 'announcement',
-    userId: 'all'
-  });
   
   const { profile } = useAuth();
   const { notifications, createNotification, loading } = useNotifications();
@@ -72,35 +67,6 @@ const AdminNotificationsSection = () => {
   const unreadCount = safeNotifications.filter(n => !n.is_read).length;
   const groupedNotifications = groupNotificationsByDate(filteredNotifications);
 
-  const handleCreateNotification = async () => {
-    if (!newNotification.title.trim() || !newNotification.message.trim()) {
-      toast({
-        title: "Errore",
-        description: "Titolo e messaggio sono obbligatori",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Per ora creiamo una notifica per l'admin stesso
-    // In futuro si potrebbe implementare la logica per inviare a utenti specifici
-    const result = await createNotification(
-      profile?.id || '',
-      newNotification.title,
-      newNotification.message,
-      newNotification.type
-    );
-
-    if (!result.error) {
-      setShowCreateDialog(false);
-      setNewNotification({
-        title: '',
-        message: '',
-        type: 'system',
-        userId: 'all'
-      });
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -113,63 +79,16 @@ const AdminNotificationsSection = () => {
               Nuova Notifica
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Crea Nuova Notifica</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Titolo
-                </label>
-                <Input
-                  value={newNotification.title}
-                  onChange={(e) => setNewNotification(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Inserisci il titolo della notifica"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Messaggio
-                </label>
-                <Textarea
-                  value={newNotification.message}
-                  onChange={(e) => setNewNotification(prev => ({ ...prev, message: e.target.value }))}
-                  placeholder="Inserisci il messaggio della notifica"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo
-                </label>
-                <Select 
-                  value={newNotification.type} 
-                  onValueChange={(value: 'document' | 'system' | 'message' | 'announcement') => 
-                    setNewNotification(prev => ({ ...prev, type: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="system">Sistema</SelectItem>
-                    <SelectItem value="document">Documento</SelectItem>
-                    <SelectItem value="message">Messaggio</SelectItem>
-                    <SelectItem value="announcement">Annuncio</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="p-4">
+              <NotificationForm onCreated={() => {
+                setShowCreateDialog(false);
+                // Refresh notifications list if needed
+              }} />
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                Annulla
-              </Button>
-              <Button onClick={handleCreateNotification}>
-                <Send className="mr-2 h-4 w-4" />
-                Invia
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
