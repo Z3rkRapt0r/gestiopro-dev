@@ -15,7 +15,9 @@ import {
   Send,
   Users,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  Inbox,
+  Mail
 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +32,7 @@ const AdminNotificationsSection = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterRead, setFilterRead] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<'system' | 'inbox' | 'sent'>('system');
   
   const { profile } = useAuth();
   const { notifications, createNotification, loading } = useNotifications();
@@ -38,8 +41,23 @@ const AdminNotificationsSection = () => {
   // Ensure notifications is always an array
   const safeNotifications = Array.isArray(notifications) ? notifications : [];
 
-  // Filtering logic for all notifications
-  const filteredNotifications = safeNotifications
+  // Filter notifications by tab
+  const getNotificationsForTab = (tab: 'system' | 'inbox' | 'sent') => {
+    switch (tab) {
+      case 'system':
+        return safeNotifications.filter(n => n.type === 'system');
+      case 'inbox':
+        return safeNotifications.filter(n => n.type === 'message' && !n.is_read);
+      case 'sent':
+        return safeNotifications.filter(n => n.type === 'message' && n.is_read);
+      default:
+        return safeNotifications;
+    }
+  };
+
+  // Filtering logic for current tab
+  const tabNotifications = getNotificationsForTab(activeTab);
+  const filteredNotifications = tabNotifications
     .filter(notification => {
       const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            notification.message.toLowerCase().includes(searchTerm.toLowerCase());
@@ -66,6 +84,11 @@ const AdminNotificationsSection = () => {
 
   const unreadCount = safeNotifications.filter(n => !n.is_read).length;
   const groupedNotifications = groupNotificationsByDate(filteredNotifications);
+
+  // Count notifications for each tab
+  const systemCount = safeNotifications.filter(n => n.type === 'system').length;
+  const inboxCount = safeNotifications.filter(n => n.type === 'message' && !n.is_read).length;
+  const sentCount = safeNotifications.filter(n => n.type === 'message' && n.is_read).length;
 
 
   return (
@@ -150,6 +173,60 @@ const AdminNotificationsSection = () => {
         </Card>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+        <button
+          onClick={() => setActiveTab('system')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'system'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Bell className="h-4 w-4" />
+          Sistema
+          {systemCount > 0 && (
+            <Badge variant="secondary" className="ml-1">
+              {systemCount}
+            </Badge>
+          )}
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('inbox')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'inbox'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Inbox className="h-4 w-4" />
+          Messaggi in arrivo
+          {inboxCount > 0 && (
+            <Badge variant="secondary" className="ml-1">
+              {inboxCount}
+            </Badge>
+          )}
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('sent')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'sent'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Mail className="h-4 w-4" />
+          Spediti
+          {sentCount > 0 && (
+            <Badge variant="secondary" className="ml-1">
+              {sentCount}
+            </Badge>
+          )}
+        </button>
+      </div>
+
       {/* Filtri e ricerca */}
       <Card>
         <CardHeader>
@@ -209,17 +286,23 @@ const AdminNotificationsSection = () => {
         ) : filteredNotifications.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
-              <Bell className="mx-auto h-16 w-16 text-gray-400" />
+              {activeTab === 'system' && <Bell className="mx-auto h-16 w-16 text-gray-400" />}
+              {activeTab === 'inbox' && <Inbox className="mx-auto h-16 w-16 text-gray-400" />}
+              {activeTab === 'sent' && <Mail className="mx-auto h-16 w-16 text-gray-400" />}
               <h3 className="mt-4 text-lg font-medium text-gray-900">
                 {searchTerm || filterType !== 'all' || filterRead !== 'all' 
                   ? 'Nessuna notifica trovata' 
-                  : 'Nessuna notifica'
+                  : activeTab === 'system' ? 'Nessuna notifica'
+                    : activeTab === 'inbox' ? 'Nessuna notifica'
+                      : 'Nessuna notifica'
                 }
               </h3>
               <p className="mt-2 text-gray-500">
                 {searchTerm || filterType !== 'all' || filterRead !== 'all'
                   ? 'Prova a modificare i filtri di ricerca'
-                  : 'Le notifiche del sistema appariranno qui'
+                  : activeTab === 'system' ? 'Le notifiche del sistema appariranno qui'
+                    : activeTab === 'inbox' ? 'Le notifiche in arrivo appariranno qui'
+                      : 'Le notifiche spedite appariranno qui'
                 }
               </p>
             </CardContent>
