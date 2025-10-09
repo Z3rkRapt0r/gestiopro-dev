@@ -12,7 +12,6 @@ import {
   Search,
   Filter,
   Plus,
-  Send,
   Users,
   MessageSquare,
   AlertCircle,
@@ -32,7 +31,7 @@ const AdminNotificationsSection = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterRead, setFilterRead] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState<'system' | 'inbox' | 'sent'>('system');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
   
   const { profile } = useAuth();
   const { notifications, createNotification, loading } = useNotifications();
@@ -42,14 +41,12 @@ const AdminNotificationsSection = () => {
   const safeNotifications = Array.isArray(notifications) ? notifications : [];
 
   // Filter notifications by tab
-  const getNotificationsForTab = (tab: 'system' | 'inbox' | 'sent') => {
+  const getNotificationsForTab = (tab: 'inbox' | 'sent') => {
     switch (tab) {
-      case 'system':
-        return safeNotifications.filter(n => n.type === 'system');
       case 'inbox':
-        return safeNotifications.filter(n => n.type === 'message' && !n.is_read);
+        return safeNotifications.filter(n => !n.is_read);
       case 'sent':
-        return safeNotifications.filter(n => n.type === 'message' && n.is_read);
+        return safeNotifications.filter(n => n.is_read);
       default:
         return safeNotifications;
     }
@@ -86,9 +83,8 @@ const AdminNotificationsSection = () => {
   const groupedNotifications = groupNotificationsByDate(filteredNotifications);
 
   // Count notifications for each tab
-  const systemCount = safeNotifications.filter(n => n.type === 'system').length;
-  const inboxCount = safeNotifications.filter(n => n.type === 'message' && !n.is_read).length;
-  const sentCount = safeNotifications.filter(n => n.type === 'message' && n.is_read).length;
+  const inboxCount = safeNotifications.filter(n => !n.is_read).length;
+  const sentCount = safeNotifications.filter(n => n.is_read).length;
 
 
   return (
@@ -175,23 +171,6 @@ const AdminNotificationsSection = () => {
 
       {/* Tab Navigation */}
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-        <button
-          onClick={() => setActiveTab('system')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'system'
-              ? 'bg-white text-blue-600 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <Bell className="h-4 w-4" />
-          Sistema
-          {systemCount > 0 && (
-            <Badge variant="secondary" className="ml-1">
-              {systemCount}
-            </Badge>
-          )}
-        </button>
-        
         <button
           onClick={() => setActiveTab('inbox')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -286,23 +265,20 @@ const AdminNotificationsSection = () => {
         ) : filteredNotifications.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
-              {activeTab === 'system' && <Bell className="mx-auto h-16 w-16 text-gray-400" />}
               {activeTab === 'inbox' && <Inbox className="mx-auto h-16 w-16 text-gray-400" />}
               {activeTab === 'sent' && <Mail className="mx-auto h-16 w-16 text-gray-400" />}
               <h3 className="mt-4 text-lg font-medium text-gray-900">
                 {searchTerm || filterType !== 'all' || filterRead !== 'all' 
                   ? 'Nessuna notifica trovata' 
-                  : activeTab === 'system' ? 'Nessuna notifica'
-                    : activeTab === 'inbox' ? 'Nessuna notifica'
-                      : 'Nessuna notifica'
+                  : 'Nessuna notifica'
                 }
               </h3>
               <p className="mt-2 text-gray-500">
                 {searchTerm || filterType !== 'all' || filterRead !== 'all'
                   ? 'Prova a modificare i filtri di ricerca'
-                  : activeTab === 'system' ? 'Le notifiche del sistema appariranno qui'
-                    : activeTab === 'inbox' ? 'Le notifiche in arrivo appariranno qui'
-                      : 'Le notifiche spedite appariranno qui'
+                  : activeTab === 'inbox' 
+                    ? 'Le notifiche in arrivo appariranno qui'
+                    : 'Le notifiche spedite appariranno qui'
                 }
               </p>
             </CardContent>
