@@ -75,32 +75,64 @@ async function cleanupTable(
       }
     }
     
-    // Direct DELETE instead of RPC to avoid RLS issues
+    // Count records first, then delete them
     let deletedCount = 0
     if (tableName === 'notifications') {
-      const { count, error } = await supabase
+      // Count records first
+      const { count: recordCount, error: countError } = await supabase
         .from('notifications')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all (neq with non-existent ID)
+        .select('*', { count: 'exact', head: true })
       
-      if (error) {
-        console.error(`Error deleting from notifications:`, error)
-        throw error
+      if (countError) {
+        console.error(`Error counting notifications:`, countError)
+        throw countError
       }
       
-      deletedCount = count || 0
+      deletedCount = recordCount || 0
+      console.log(`Found ${deletedCount} notifications to delete`)
+      
+      if (deletedCount > 0) {
+        // Delete all records
+        const { error } = await supabase
+          .from('notifications')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all
+        
+        if (error) {
+          console.error(`Error deleting from notifications:`, error)
+          throw error
+        }
+        
+        console.log(`Successfully deleted ${deletedCount} notifications`)
+      }
     } else if (tableName === 'sent_notifications') {
-      const { count, error } = await supabase
+      // Count records first
+      const { count: recordCount, error: countError } = await supabase
         .from('sent_notifications')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all
+        .select('*', { count: 'exact', head: true })
       
-      if (error) {
-        console.error(`Error deleting from sent_notifications:`, error)
-        throw error
+      if (countError) {
+        console.error(`Error counting sent_notifications:`, countError)
+        throw countError
       }
       
-      deletedCount = count || 0
+      deletedCount = recordCount || 0
+      console.log(`Found ${deletedCount} sent_notifications to delete`)
+      
+      if (deletedCount > 0) {
+        // Delete all records
+        const { error } = await supabase
+          .from('sent_notifications')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all
+        
+        if (error) {
+          console.error(`Error deleting from sent_notifications:`, error)
+          throw error
+        }
+        
+        console.log(`Successfully deleted ${deletedCount} sent_notifications`)
+      }
     }
     
     const executionTime = Date.now() - startTime
