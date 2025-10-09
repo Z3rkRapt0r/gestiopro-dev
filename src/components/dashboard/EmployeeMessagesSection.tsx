@@ -20,6 +20,7 @@ import {
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { formatRelativeDate, groupNotificationsByDate, getNotificationTypeLabel } from "@/utils/notificationUtils";
+import SendMessageToAdminDialog from "@/components/messages/SendMessageToAdminDialog";
 
 const EmployeeMessagesSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -126,13 +127,16 @@ const EmployeeMessagesSection = () => {
           <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-green-600" />
           Centro Messaggi
         </h2>
-        {unreadMessages.length > 0 && (
-          <Button variant="outline" onClick={markAllAsRead} className="w-full sm:w-auto min-h-[44px] text-sm sm:text-base">
-            <CheckCircle className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Segna tutti come letti</span>
-            <span className="sm:hidden">Segna letti</span> ({unreadMessages.length})
-          </Button>
-        )}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <SendMessageToAdminDialog />
+          {unreadMessages.length > 0 && (
+            <Button variant="outline" onClick={markAllAsRead} className="w-full sm:w-auto min-h-[44px] text-sm sm:text-base">
+              <CheckCircle className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Segna tutti come letti</span>
+              <span className="sm:hidden">Segna letti</span> ({unreadMessages.length})
+            </Button>
+          )}
+        </div>
       </div>
       <Card>
         <CardHeader className="p-4 sm:p-6">

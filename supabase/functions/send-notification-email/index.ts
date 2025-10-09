@@ -18,7 +18,25 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Notification Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { recipientId, subject, shortText, userId, topic, body: emailBody, adminNote, employeeEmail, employeeName, employeeNote, adminMessage } = body;
+    const { 
+      recipientId, 
+      subject, 
+      shortText, 
+      userId, 
+      topic, 
+      body: emailBody, 
+      adminNote, 
+      employeeEmail, 
+      employeeName, 
+      employeeNote, 
+      adminMessage,
+      recipientEmail,
+      recipientName,
+      message,
+      notificationType,
+      senderName,
+      messageTitle
+    } = body;
 
     // ENHANCED: Log employee note specifically
     console.log("[Notification Email] Employee note received:", employeeNote);
@@ -95,7 +113,11 @@ serve(async (req) => {
     let templateType = 'notifiche'; // default
     let templateCategory = 'generale'; // default
     
-    if (topic === 'document' || topic === 'documents') {
+    // Handle employee messages to admin
+    if (notificationType === 'employee_message') {
+      templateType = 'employee-message';
+      templateCategory = 'amministratori';
+    } else if (topic === 'document' || topic === 'documents') {
       templateType = 'documenti';
       templateCategory = employeeEmail ? 'dipendenti' : 'amministratori';
     } else if (topic === 'approvals' || topic === 'approval') {
@@ -265,7 +287,16 @@ serve(async (req) => {
     let recipients = [];
     console.log("[Notification Email] Determining recipients for recipientId:", recipientId, "templateType:", templateType);
     
-    if (!recipientId) {
+    // Handle employee messages to admin directly
+    if (notificationType === 'employee_message' && recipientEmail) {
+      console.log("[Notification Email] Direct employee message to admin:", recipientEmail);
+      recipients = [{
+        id: null,
+        email: recipientEmail,
+        first_name: recipientName?.split(' ')[0] || 'Amministratore',
+        last_name: recipientName?.split(' ').slice(1).join(' ') || ''
+      }];
+    } else if (!recipientId) {
       // CORRECTED: For ALL employee requests (permessi/ferie/documents), send ONLY to administrators
       if (templateType === 'permessi-richiesta' || templateType === 'ferie-richiesta' || (employeeEmail && templateType === 'documenti')) {
         console.log("[Notification Email] Sending to all admins for employee request");
@@ -387,7 +418,14 @@ serve(async (req) => {
         // NEW: DYNAMIC CONTENT LOGIC FOR ADMIN NOTIFICATION TEMPLATES
         let emailSubject, emailContent;
         
-        if (isAdminNotificationTemplate) {
+        // Handle employee messages to admin
+        if (notificationType === 'employee_message') {
+          console.log("[Notification Email] EMPLOYEE MESSAGE TO ADMIN - Using provided content");
+          emailSubject = subject || `Messaggio da ${senderName}`;
+          emailContent = `Hai ricevuto un nuovo messaggio da ${senderName}:<br><br><strong>${messageTitle || subject}</strong><br><br>${message || 'Nessun messaggio'}`;
+          console.log("[Notification Email] Employee message subject:", emailSubject);
+          console.log("[Notification Email] Employee message content:", emailContent);
+        } else if (isAdminNotificationTemplate) {
           // ADMIN NOTIFICATION TEMPLATE: Always use dynamic content from form
           console.log("[Notification Email] ADMIN NOTIFICATION TEMPLATE - Using dynamic content from form");
           
