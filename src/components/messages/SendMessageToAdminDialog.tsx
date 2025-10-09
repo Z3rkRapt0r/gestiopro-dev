@@ -42,118 +42,27 @@ export default function SendMessageToAdminDialog({ trigger }: SendMessageToAdmin
     setLoading(true);
 
     try {
-      // 1. Fetch all profiles to check available data
-      console.log('Fetching admin users...');
-      const { data: allProfiles, error: allProfilesError } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name, role, is_active');
-
-      console.log('All profiles query result:', allProfiles);
-      console.log('All profiles query error:', allProfilesError);
-
-      if (allProfilesError) {
-        console.error('Error fetching profiles:', allProfilesError);
-        throw allProfilesError;
-      }
-
-      // Filter admin profiles (check multiple possible role values)
-      const adminProfiles = (allProfiles || []).filter(p => {
-        const role = p.role?.toLowerCase() || '';
-        return role.includes('admin') && p.is_active !== false && p.email;
+      // Use Edge Function to send message (bypasses RLS)
+      console.log('Sending message via Edge Function...');
+      const { data, error } = await supabase.functions.invoke('send-employee-message', {
+        body: {
+          subject: subject,
+          message: message,
+          employeeId: profile.id,
+          employeeName: `${profile.first_name} ${profile.last_name}`
+        }
       });
-      
-      console.log('Filtered admin profiles:', adminProfiles);
-      console.log('Admin profiles found:', adminProfiles.length);
 
-      if (!adminProfiles || adminProfiles.length === 0) {
-        console.error('No active admins found. All profiles:', allProfiles);
-        
-        // Fallback: use admin settings table to find admins
-        console.log('Trying fallback: fetching from admin_settings...');
-        const { data: adminSettings, error: adminSettingsError } = await supabase
-          .from('admin_settings')
-          .select('admin_id, profiles:admin_id(id, email, first_name, last_name, is_active)');
-        
-        console.log('Admin settings query result:', adminSettings);
-        
-        if (!adminSettingsError && adminSettings && adminSettings.length > 0) {
-          const fallbackAdmins = adminSettings
-            .map(s => s.profiles)
-            .filter(p => p && p.email && p.is_active !== false);
-          
-          if (fallbackAdmins.length > 0) {
-            console.log('Found admins via admin_settings:', fallbackAdmins);
-            // Use fallback admins
-            var activeAdmins = fallbackAdmins;
-          } else {
-            toast({
-              title: "Errore",
-              description: "Nessun amministratore attivo trovato. Contatta il supporto tecnico.",
-              variant: "destructive",
-            });
-            return;
-          }
-        } else {
-          toast({
-            title: "Errore",
-            description: "Nessun amministratore attivo trovato. Contatta il supporto tecnico.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else {
-        var activeAdmins = adminProfiles;
+      console.log('Edge Function response:', data);
+      console.log('Edge Function error:', error);
+
+      if (error) {
+        console.error('Error from Edge Function:', error);
+        throw new Error(error.message || 'Errore durante l\'invio del messaggio');
       }
 
-      console.log('Final active admins to use:', activeAdmins);
-
-      // 2. Create notification for each admin in notifications table
-      const notificationsToInsert = activeAdmins.map(admin => ({
-        user_id: admin.id,
-        title: `Messaggio da ${profile.first_name} ${profile.last_name}: ${subject}`,
-        message: message,
-        type: 'message',
-        category: 'employee_message',
-        created_by: profile.id,
-        is_read: false
-      }));
-
-      console.log('Creating notifications:', notificationsToInsert.length);
-      const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert(notificationsToInsert);
-
-      if (notificationError) {
-        console.error('Error creating notification:', notificationError);
-        throw notificationError;
-      }
-      console.log('Notifications created successfully');
-
-      // 3. Send email notification to admins via Edge Function
-      console.log('Sending email notifications to admins...');
-      
-      for (const admin of activeAdmins) {
-        try {
-          const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
-            body: {
-              recipientEmail: admin.email,
-              recipientName: `${admin.first_name} ${admin.last_name}`,
-              subject: `Nuovo messaggio da ${profile.first_name} ${profile.last_name}`,
-              message: message,
-              notificationType: 'employee_message',
-              senderName: `${profile.first_name} ${profile.last_name}`,
-              messageTitle: subject
-            }
-          });
-
-          if (emailError) {
-            console.error(`Error sending email to ${admin.email}:`, emailError);
-          } else {
-            console.log(`Email sent successfully to ${admin.email}`);
-          }
-        } catch (emailError) {
-          console.error(`Failed to send email to ${admin.email}:`, emailError);
-        }
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast({
