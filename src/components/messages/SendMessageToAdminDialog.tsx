@@ -42,34 +42,70 @@ export default function SendMessageToAdminDialog({ trigger }: SendMessageToAdmin
     setLoading(true);
 
     try {
-      // 1. Fetch all admin users (check both 'admin' and 'administrator' roles)
+      // 1. Fetch all profiles to check available data
       console.log('Fetching admin users...');
-      const { data: admins, error: adminsError } = await supabase
+      const { data: allProfiles, error: allProfilesError } = await supabase
         .from('profiles')
-        .select('id, email, first_name, last_name, role, is_active')
-        .or('role.eq.admin,role.eq.administrator');
+        .select('id, email, first_name, last_name, role, is_active');
 
-      console.log('Admins query result:', admins);
-      console.log('Admins query error:', adminsError);
+      console.log('All profiles query result:', allProfiles);
+      console.log('All profiles query error:', allProfilesError);
 
-      if (adminsError) {
-        console.error('Error fetching admins:', adminsError);
-        throw adminsError;
+      if (allProfilesError) {
+        console.error('Error fetching profiles:', allProfilesError);
+        throw allProfilesError;
       }
 
-      // Filter active admins
-      const activeAdmins = (admins || []).filter(admin => admin.is_active !== false);
-      console.log('Active admins found:', activeAdmins.length);
+      // Filter admin profiles (check multiple possible role values)
+      const adminProfiles = (allProfiles || []).filter(p => {
+        const role = p.role?.toLowerCase() || '';
+        return role.includes('admin') && p.is_active !== false && p.email;
+      });
+      
+      console.log('Filtered admin profiles:', adminProfiles);
+      console.log('Admin profiles found:', adminProfiles.length);
 
-      if (!activeAdmins || activeAdmins.length === 0) {
-        console.error('No active admins found. All admins:', admins);
-        toast({
-          title: "Errore",
-          description: "Nessun amministratore attivo trovato. Contatta il supporto tecnico.",
-          variant: "destructive",
-        });
-        return;
+      if (!adminProfiles || adminProfiles.length === 0) {
+        console.error('No active admins found. All profiles:', allProfiles);
+        
+        // Fallback: use admin settings table to find admins
+        console.log('Trying fallback: fetching from admin_settings...');
+        const { data: adminSettings, error: adminSettingsError } = await supabase
+          .from('admin_settings')
+          .select('admin_id, profiles:admin_id(id, email, first_name, last_name, is_active)');
+        
+        console.log('Admin settings query result:', adminSettings);
+        
+        if (!adminSettingsError && adminSettings && adminSettings.length > 0) {
+          const fallbackAdmins = adminSettings
+            .map(s => s.profiles)
+            .filter(p => p && p.email && p.is_active !== false);
+          
+          if (fallbackAdmins.length > 0) {
+            console.log('Found admins via admin_settings:', fallbackAdmins);
+            // Use fallback admins
+            var activeAdmins = fallbackAdmins;
+          } else {
+            toast({
+              title: "Errore",
+              description: "Nessun amministratore attivo trovato. Contatta il supporto tecnico.",
+              variant: "destructive",
+            });
+            return;
+          }
+        } else {
+          toast({
+            title: "Errore",
+            description: "Nessun amministratore attivo trovato. Contatta il supporto tecnico.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        var activeAdmins = adminProfiles;
       }
+
+      console.log('Final active admins to use:', activeAdmins);
 
       // 2. Create notification for each admin in notifications table
       const notificationsToInsert = activeAdmins.map(admin => ({
