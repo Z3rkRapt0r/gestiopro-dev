@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   CheckCircle,
   RefreshCw,
-  Broom
+  Brush
 } from 'lucide-react';
 import { useNotificationsCleanup } from '@/hooks/useNotificationsCleanup';
 import { useToast } from '@/hooks/use-toast';
@@ -109,7 +109,7 @@ const NotificationsCleanupButton = () => {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-purple-600">
-                  <Broom className="h-8 w-8 mx-auto" />
+                  <Brush className="h-8 w-8 mx-auto" />
                 </div>
                 <div className="text-sm text-gray-600">Ultima pulizia eseguita</div>
                 <div className="text-xs text-gray-500 mt-1">
