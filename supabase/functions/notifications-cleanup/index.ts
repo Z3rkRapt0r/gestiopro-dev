@@ -54,18 +54,56 @@ async function cleanupTable(
   try {
     console.log(`🧹 Starting cleanup for ${tableName} (deleting all records)`)
     
-    // Esegui cleanup - elimina tutti i record
-    const { data, error } = await supabase.rpc('cleanup_all_records', {
-      target_table: tableName
-    })
+    // Check if cleanup is enabled for this table
+    const { data: config, error: configError } = await supabase
+      .from('cleanup_config')
+      .select('is_enabled')
+      .eq('table_name', tableName)
+      .single()
     
-    if (error) {
-      throw error
+    if (configError) {
+      console.warn(`Config not found for ${tableName}, proceeding anyway`)
     }
     
-    const deletedCount = data?.[0]?.deleted_count || 0
-    const executionTime = Date.now() - startTime
+    if (config && !config.is_enabled) {
+      console.log(`Cleanup disabled for ${tableName}`)
+      return {
+        table_name: tableName,
+        deleted_count: 0,
+        execution_time_ms: Date.now() - startTime,
+        success: true
+      }
+    }
     
+    // Direct DELETE instead of RPC to avoid RLS issues
+    let deletedCount = 0
+    if (tableName === 'notifications') {
+      const { count, error } = await supabase
+        .from('notifications')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all (neq with non-existent ID)
+      
+      if (error) {
+        console.error(`Error deleting from notifications:`, error)
+        throw error
+      }
+      
+      deletedCount = count || 0
+    } else if (tableName === 'sent_notifications') {
+      const { count, error } = await supabase
+        .from('sent_notifications')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all
+      
+      if (error) {
+        console.error(`Error deleting from sent_notifications:`, error)
+        throw error
+      }
+      
+      deletedCount = count || 0
+    }
+    
+    const executionTime = Date.now() - startTime
     console.log(`✅ Cleanup completed for ${tableName}: ${deletedCount} records deleted in ${executionTime}ms`)
     
     return {
