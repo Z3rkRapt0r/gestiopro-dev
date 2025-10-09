@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -145,6 +145,9 @@ export default function SendMessageToAdminDialog({ trigger }: SendMessageToAdmin
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Invia Messaggio all'Amministratore</DialogTitle>
+          <DialogDescription>
+            Compila il form per inviare un messaggio diretto agli amministratori. Riceverai una conferma dopo l'invio.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
