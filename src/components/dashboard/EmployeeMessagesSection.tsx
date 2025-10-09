@@ -21,6 +21,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { formatRelativeDate, groupNotificationsByDate, getNotificationTypeLabel } from "@/utils/notificationUtils";
 import SendMessageToAdminDialog from "@/components/messages/SendMessageToAdminDialog";
+import EmployeeSentMessages from "@/components/messages/EmployeeSentMessages";
 
 const EmployeeMessagesSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -200,6 +201,10 @@ const EmployeeMessagesSection = () => {
                   <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
                   Sistema ({categoryCounts.system || 0})
                 </TabsTrigger>
+                <TabsTrigger value="sent" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
+                  <Send className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Inviati</span><span className="sm:hidden">Inv.</span>
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -228,6 +233,10 @@ const EmployeeMessagesSection = () => {
                 />
               </TabsContent>
             ))}
+
+            <TabsContent value="sent" className="mt-4">
+              <EmployeeSentMessages />
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>

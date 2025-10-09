@@ -51,8 +51,28 @@ const AdminNotificationsSection = () => {
   const [sentLoading, setSentLoading] = useState(false);
   
   const { profile } = useAuth();
-  const { notifications, createNotification, loading } = useNotifications();
+  const { notifications, createNotification, loading, markAsRead } = useNotifications();
   const { toast } = useToast();
+
+  // Handle marking notification as read
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await markAsRead(notificationId);
+      toast({
+        title: "Successo",
+        description: "Messaggio contrassegnato come letto",
+      });
+      // Refresh notifications list
+      window.location.reload();
+    } catch (error) {
+      console.error('Error marking as read:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile contrassegnare come letto",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Fetch sent notifications
   const fetchSentNotifications = async () => {
@@ -427,7 +447,7 @@ const AdminNotificationsSection = () => {
                     <NotificationItem
                       key={notification.id}
                       notification={notification}
-                      onMarkAsRead={() => {}}
+                      onMarkAsRead={() => handleMarkAsRead(notification.id)}
                     />
                   ))}
                 </div>
@@ -442,7 +462,7 @@ const AdminNotificationsSection = () => {
                     <NotificationItem
                       key={notification.id}
                       notification={notification}
-                      onMarkAsRead={() => {}}
+                      onMarkAsRead={() => handleMarkAsRead(notification.id)}
                     />
                   ))}
                 </div>
@@ -457,7 +477,7 @@ const AdminNotificationsSection = () => {
                     <NotificationItem
                       key={notification.id}
                       notification={notification}
-                      onMarkAsRead={() => {}}
+                      onMarkAsRead={() => handleMarkAsRead(notification.id)}
                     />
                   ))}
                 </div>
