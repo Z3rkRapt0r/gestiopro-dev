@@ -42,29 +42,37 @@ export default function SendMessageToAdminDialog({ trigger }: SendMessageToAdmin
     setLoading(true);
 
     try {
-      // 1. Fetch all admin users
+      // 1. Fetch all admin users (check both 'admin' and 'administrator' roles)
+      console.log('Fetching admin users...');
       const { data: admins, error: adminsError } = await supabase
         .from('profiles')
-        .select('id, email, first_name, last_name')
-        .eq('role', 'admin')
-        .eq('is_active', true);
+        .select('id, email, first_name, last_name, role, is_active')
+        .or('role.eq.admin,role.eq.administrator');
+
+      console.log('Admins query result:', admins);
+      console.log('Admins query error:', adminsError);
 
       if (adminsError) {
         console.error('Error fetching admins:', adminsError);
         throw adminsError;
       }
 
-      if (!admins || admins.length === 0) {
+      // Filter active admins
+      const activeAdmins = (admins || []).filter(admin => admin.is_active !== false);
+      console.log('Active admins found:', activeAdmins.length);
+
+      if (!activeAdmins || activeAdmins.length === 0) {
+        console.error('No active admins found. All admins:', admins);
         toast({
           title: "Errore",
-          description: "Nessun amministratore trovato",
+          description: "Nessun amministratore attivo trovato. Contatta il supporto tecnico.",
           variant: "destructive",
         });
         return;
       }
 
       // 2. Create notification for each admin in notifications table
-      const notificationsToInsert = admins.map(admin => ({
+      const notificationsToInsert = activeAdmins.map(admin => ({
         user_id: admin.id,
         title: `Messaggio da ${profile.first_name} ${profile.last_name}: ${subject}`,
         message: message,
@@ -74,6 +82,7 @@ export default function SendMessageToAdminDialog({ trigger }: SendMessageToAdmin
         is_read: false
       }));
 
+      console.log('Creating notifications:', notificationsToInsert.length);
       const { error: notificationError } = await supabase
         .from('notifications')
         .insert(notificationsToInsert);
@@ -82,11 +91,12 @@ export default function SendMessageToAdminDialog({ trigger }: SendMessageToAdmin
         console.error('Error creating notification:', notificationError);
         throw notificationError;
       }
+      console.log('Notifications created successfully');
 
       // 3. Send email notification to admins via Edge Function
       console.log('Sending email notifications to admins...');
       
-      for (const admin of admins) {
+      for (const admin of activeAdmins) {
         try {
           const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
             body: {
