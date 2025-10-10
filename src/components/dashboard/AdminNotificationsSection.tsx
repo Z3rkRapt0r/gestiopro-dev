@@ -40,7 +40,7 @@ interface SentNotification {
 const AdminNotificationsSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
-  const [filterRead, setFilterRead] = useState<string>('all');
+  const [filterRead, setFilterRead] = useState<string>('unread'); // Default a "Non Lette"
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
   const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
@@ -49,7 +49,7 @@ const AdminNotificationsSection = () => {
   // Reset read filter when tab changes (since tabs handle read/unread filtering)
   const handleTabChange = (tab: 'inbox' | 'sent') => {
     setActiveTab(tab);
-    setFilterRead('all'); // Reset read filter when switching tabs
+    setFilterRead('unread'); // Reset a "Non Lette" quando si cambia tab
   };
   
   const { profile } = useAuth();
@@ -146,7 +146,6 @@ const AdminNotificationsSection = () => {
       
       // Read filter - only apply to inbox tab
       const matchesRead = activeTab === 'inbox' ? (
-        filterRead === 'all' || 
         (filterRead === 'read' && 'is_read' in notification && notification.is_read) ||
         (filterRead === 'unread' && 'is_read' in notification && !notification.is_read)
       ) : true; // No read filter for sent tab
@@ -335,7 +334,6 @@ const AdminNotificationsSection = () => {
                 <SelectValue placeholder="Stato lettura" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tutte</SelectItem>
                 <SelectItem value="unread">Non lette</SelectItem>
                 <SelectItem value="read">Lette</SelectItem>
               </SelectContent>
