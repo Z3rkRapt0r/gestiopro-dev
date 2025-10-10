@@ -26,7 +26,7 @@ import EmployeeSentMessages from "@/components/messages/EmployeeSentMessages";
 const EmployeeMessagesSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRead, setFilterRead] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<string>("notifiche");
   const { profile } = useAuth();
   const { notifications, markAsRead, markAllAsRead, loading } = useNotifications();
 
@@ -39,48 +39,9 @@ const EmployeeMessagesSection = () => {
   );
   const unreadMessages = myMessages.filter((n) => !n.is_read);
 
-  // Raggruppa i messaggi per categoria utilizzando il campo category dal database
-  const messagesByCategory = useMemo(() => {
-    const grouped = myMessages.reduce((acc, msg) => {
-      // Use the category field from database, fallback to system
-      let category = msg.category || "system";
-      
-      // Handle legacy messages without category using simple heuristics for backward compatibility
-      if (!msg.category && category === "system") {
-        if (msg.title.toLowerCase().includes('aziendal') || msg.message.toLowerCase().includes('aziendal')) {
-          category = 'Aggiornamenti aziendali';
-        } else if (msg.title.toLowerCase().includes('important') || msg.message.toLowerCase().includes('important') || 
-                   msg.title.toLowerCase().includes('comunicazione')) {
-          category = 'Comunicazioni importanti';
-        } else if (msg.title.toLowerCase().includes('evento') || msg.message.toLowerCase().includes('evento')) {
-          category = 'Eventi';
-        } else if (msg.title.toLowerCase().includes('sicurezza') || msg.message.toLowerCase().includes('sicurezza')) {
-          category = 'Avvisi sicurezza';
-        }
-      }
-      
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(msg);
-      return acc;
-    }, {} as Record<string, typeof myMessages>);
-
-    return grouped;
-  }, [myMessages]);
-
-  // Calcola i conteggi per ogni categoria
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    Object.keys(messagesByCategory).forEach(category => {
-      counts[category] = messagesByCategory[category].length;
-    });
-    return counts;
-  }, [messagesByCategory]);
-
-  // Filtra i messaggi in base al tab attivo
+  // Semplificazione: non servono più categorie, tutti i messaggi sono "notifiche"
   const filteredMessages = useMemo(() => {
-    let baseMessages = activeTab === "all" ? myMessages : (messagesByCategory[activeTab] || []);
+    let baseMessages = myMessages;
     
     return baseMessages
       .filter((msg) => {
@@ -177,29 +138,9 @@ const EmployeeMessagesSection = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <div className="overflow-x-auto mb-4">
               <TabsList className="inline-flex w-max min-w-full gap-1 p-1 h-auto bg-muted rounded-lg">
-                <TabsTrigger value="all" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
-                  <Send className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Tutti</span> ({myMessages.length})
-                </TabsTrigger>
-                <TabsTrigger value="Aggiornamenti aziendali" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
-                  <Building2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Aziendali</span><span className="sm:hidden">Azien.</span> ({categoryCounts['Aggiornamenti aziendali'] || 0})
-                </TabsTrigger>
-                <TabsTrigger value="Comunicazioni importanti" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
-                  <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Importanti</span><span className="sm:hidden">Import.</span> ({categoryCounts['Comunicazioni importanti'] || 0})
-                </TabsTrigger>
-                <TabsTrigger value="Eventi" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
-                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                  Eventi ({categoryCounts.Eventi || 0})
-                </TabsTrigger>
-                <TabsTrigger value="Avvisi sicurezza" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
-                  <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Sicurezza</span><span className="sm:hidden">Sicur.</span> ({categoryCounts['Avvisi sicurezza'] || 0})
-                </TabsTrigger>
-                <TabsTrigger value="system" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
-                  <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
-                  Sistema ({categoryCounts.system || 0})
+                <TabsTrigger value="notifiche" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
+                  <Bell className="w-3 h-3 sm:w-4 sm:h-4" />
+                  Notifiche ({myMessages.length})
                 </TabsTrigger>
                 <TabsTrigger value="sent" className="flex items-center gap-1 text-xs sm:text-sm px-3 py-2 min-h-[44px] whitespace-nowrap">
                   <Send className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -208,7 +149,7 @@ const EmployeeMessagesSection = () => {
               </TabsList>
             </div>
 
-            <TabsContent value="all" className="mt-4">
+            <TabsContent value="notifiche" className="mt-4">
               <MessagesList 
                 groupedMessages={groupedMessages} 
                 loading={loading} 
@@ -219,20 +160,6 @@ const EmployeeMessagesSection = () => {
                 getTypeIcon={getTypeIcon}
               />
             </TabsContent>
-
-            {Object.keys(messagesByCategory).map((category) => (
-              <TabsContent key={category} value={category} className="mt-4">
-                <MessagesList 
-                  groupedMessages={groupedMessages} 
-                  loading={loading} 
-                  filteredMessages={filteredMessages}
-                  searchTerm={searchTerm}
-                  filterRead={filterRead}
-                  onMarkAsRead={handleMarkAsRead}
-                  getTypeIcon={getTypeIcon}
-                />
-              </TabsContent>
-            ))}
 
             <TabsContent value="sent" className="mt-4">
               <EmployeeSentMessages />

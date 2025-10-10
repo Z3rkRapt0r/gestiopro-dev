@@ -81,20 +81,9 @@ export const useNotificationForm = (onCreated?: () => void) => {
         is_read: false
       };
 
-      // Map topic to valid category
+      // Tutto diventa "notifiche" - semplificazione drastica
       const mapTopicToCategory = (topic: string | undefined): string => {
-        if (!topic) return 'system';
-        
-        const topicMap: Record<string, string> = {
-          'Aggiornamenti aziendali': 'announcement',
-          'Comunicazioni importanti': 'announcement',
-          'Eventi': 'generale',
-          'Avvisi sicurezza': 'announcement',
-          'document': 'document',
-          'notification': 'generale',
-        };
-        
-        return topicMap[topic] || 'system';
+        return 'notifiche'; // Una sola categoria per tutto
       };
 
       const validCategory = mapTopicToCategory(topic);

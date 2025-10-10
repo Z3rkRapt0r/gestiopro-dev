@@ -1,17 +1,7 @@
 
 export const getNotificationTypeLabel = (type: string) => {
-  const types: Record<string, string> = {
-    'Aggiornamenti aziendali': 'Aggiornamenti aziendali',
-    'Comunicazioni importanti': 'Comunicazioni importanti', 
-    'Eventi': 'Eventi',
-    'Avvisi sicurezza': 'Avvisi sicurezza',
-    'system': 'Sistema',
-    // Manteniamo compatibilità con i vecchi tipi
-    'document': 'Documento',
-    'message': 'Messaggio',
-    'announcement': 'Annuncio'
-  };
-  return types[type] || type;
+  // Tutto diventa "Notifiche" - semplificazione drastica
+  return 'Notifiche';
 };
 
 export const formatRelativeDate = (dateString: string) => {

@@ -9,12 +9,7 @@ import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Users, Send } from "lucide-react";
 
-const TOPICS = [
-  "Aggiornamenti aziendali",
-  "Comunicazioni importanti",
-  "Eventi",
-  "Avvisi sicurezza",
-];
+// Rimuoviamo la selezione di categorie - tutto diventa "notifiche"
 
 interface Props {
   onCreated?: () => void;
@@ -23,7 +18,7 @@ interface Props {
 const NotificationForm = ({ onCreated }: Props) => {
   const [subject, setSubject] = useState("");
   const [shortText, setShortText] = useState("");
-  const [topic, setTopic] = useState("");
+  // Rimuoviamo topic - tutto diventa "notifiche"
   const [recipientId, setRecipientId] = useState<string>("ALL");
 
   const { employees, loading: loadingEmployees } = useActiveEmployees();
@@ -39,11 +34,10 @@ const NotificationForm = ({ onCreated }: Props) => {
       shortText,
       body: undefined,
       file: null,
-      topic, // Use original topic for categorization
+      topic: "notifiche", // Sempre "notifiche"
     });
     setSubject("");
     setShortText("");
-    setTopic("");
     setRecipientId("ALL");
   };
 
@@ -102,19 +96,7 @@ const NotificationForm = ({ onCreated }: Props) => {
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Argomento</label>
-            <Select value={topic} onValueChange={setTopic}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona argomento della comunicazione" />
-              </SelectTrigger>
-              <SelectContent>
-                {TOPICS.map(t =>
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Rimuoviamo la selezione di argomento - tutto diventa "notifiche" */}
 
           <div>
             <label className="block text-sm font-medium mb-2">
@@ -146,7 +128,7 @@ const NotificationForm = ({ onCreated }: Props) => {
 
           <Button 
             type="submit" 
-            disabled={loading || loadingEmployees || !topic || !shortText.trim()}
+            disabled={loading || loadingEmployees || !shortText.trim()}
             className="w-full"
           >
             {loading ? (
