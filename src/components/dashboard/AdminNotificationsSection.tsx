@@ -32,6 +32,12 @@ const AdminNotificationsSection = () => {
   const [filterRead, setFilterRead] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
+
+  // Reset read filter when tab changes (since tabs handle read/unread filtering)
+  const handleTabChange = (tab: 'inbox' | 'sent') => {
+    setActiveTab(tab);
+    setFilterRead('all'); // Reset read filter when switching tabs
+  };
   
   const { profile } = useAuth();
   const { notifications, createNotification, loading, markAsRead, refreshNotifications } = useNotifications();
@@ -81,9 +87,9 @@ const AdminNotificationsSection = () => {
       
       const matchesType = filterType === 'all' || notification.type === filterType;
       
-      const matchesRead = filterRead === 'all' || 
-                         (filterRead === 'read' && notification.is_read) ||
-                         (filterRead === 'unread' && !notification.is_read);
+      // Don't apply read filter when using tabs (tabs already filter by read status)
+      // Only apply read filter if we're in a specific category view
+      const matchesRead = true; // Tab logic already handles read/unread filtering
       
       return matchesSearch && matchesType && matchesRead;
     })
@@ -193,7 +199,7 @@ const AdminNotificationsSection = () => {
       {/* Tab Navigation */}
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
         <button
-          onClick={() => setActiveTab('inbox')}
+          onClick={() => handleTabChange('inbox')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeTab === 'inbox'
               ? 'bg-white text-blue-600 shadow-sm'
@@ -210,7 +216,7 @@ const AdminNotificationsSection = () => {
         </button>
         
         <button
-          onClick={() => setActiveTab('sent')}
+          onClick={() => handleTabChange('sent')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeTab === 'sent'
               ? 'bg-white text-blue-600 shadow-sm'
