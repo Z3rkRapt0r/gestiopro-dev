@@ -32,9 +32,13 @@ interface SentNotification {
   title: string;
   message: string;
   created_at: string;
-  recipient_name: string;
-  recipient_email: string;
+  recipient_id: string | null;
   type: string;
+  recipient?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
 }
 
 const AdminNotificationsSection = () => {
@@ -64,8 +68,15 @@ const AdminNotificationsSection = () => {
     try {
       const { data, error } = await supabase
         .from('sent_notifications')
-        .select('*')
-        .eq('sender_id', profile.id)
+        .select(`
+          *,
+          recipient:recipient_id (
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('admin_id', profile.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -74,7 +85,7 @@ const AdminNotificationsSection = () => {
       }
 
       setSentNotifications(data || []);
-      console.log('Fetched sent notifications:', data?.length || 0);
+      console.log('Fetched sent notifications:', data?.length || 0, data);
     } catch (error) {
       console.error('Error fetching sent notifications:', error);
     } finally {
@@ -132,22 +143,29 @@ const AdminNotificationsSection = () => {
   // Filtering logic for current tab
   const tabNotifications = getNotificationsForTab(activeTab);
   const filteredNotifications = tabNotifications
-    .filter(notification => {
+    .filter((notification: any) => {
       // Search filter - handle different structures
-      const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           ('message' in notification && notification.message.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                           ('recipient_name' in notification && notification.recipient_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                           ('recipient_email' in notification && notification.recipient_email.toLowerCase().includes(searchTerm.toLowerCase()));
+      let matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (notification.message && notification.message.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      // For sent notifications, also search in recipient info
+      if (activeTab === 'sent' && notification.recipient) {
+        const recipientName = `${notification.recipient.first_name || ''} ${notification.recipient.last_name || ''}`.toLowerCase();
+        const recipientEmail = notification.recipient.email?.toLowerCase() || '';
+        matchesSearch = matchesSearch || 
+                       recipientName.includes(searchTerm.toLowerCase()) ||
+                       recipientEmail.includes(searchTerm.toLowerCase());
+      }
       
       // Type filter - only apply to inbox tab
       const matchesType = activeTab === 'inbox' ? (
-        filterType === 'all' || ('type' in notification && notification.type === filterType)
+        filterType === 'all' || (notification.type && notification.type === filterType)
       ) : true; // No type filter for sent tab
       
       // Read filter - only apply to inbox tab
       const matchesRead = activeTab === 'inbox' ? (
-        (filterRead === 'read' && 'is_read' in notification && notification.is_read) ||
-        (filterRead === 'unread' && 'is_read' in notification && !notification.is_read)
+        (filterRead === 'read' && notification.is_read) ||
+        (filterRead === 'unread' && !notification.is_read)
       ) : true; // No read filter for sent tab
       
       return matchesSearch && matchesType && matchesRead;
@@ -316,28 +334,32 @@ const AdminNotificationsSection = () => {
               </div>
             </div>
             
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Tipo notifica" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti i tipi</SelectItem>
-                <SelectItem value="document">Documenti</SelectItem>
-                <SelectItem value="message">Messaggi</SelectItem>
-                <SelectItem value="announcement">Annunci</SelectItem>
-                <SelectItem value="system">Sistema</SelectItem>
-              </SelectContent>
-            </Select>
+            {activeTab === 'inbox' && (
+              <>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Tipo notifica" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti i tipi</SelectItem>
+                    <SelectItem value="document">Documenti</SelectItem>
+                    <SelectItem value="message">Messaggi</SelectItem>
+                    <SelectItem value="announcement">Annunci</SelectItem>
+                    <SelectItem value="system">Sistema</SelectItem>
+                  </SelectContent>
+                </Select>
 
-            <Select value={filterRead} onValueChange={setFilterRead}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Stato lettura" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unread">Non lette</SelectItem>
-                <SelectItem value="read">Lette</SelectItem>
-              </SelectContent>
-            </Select>
+                <Select value={filterRead} onValueChange={setFilterRead}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Stato lettura" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unread">Non lette</SelectItem>
+                    <SelectItem value="read">Lette</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -429,31 +451,38 @@ const AdminNotificationsSection = () => {
                     <p className="mt-2 text-gray-600">Caricamento messaggi inviati...</p>
                   </div>
                 ) : (
-                  filteredNotifications.map((sentNotification) => (
-                    <Card key={sentNotification.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-gray-900">{sentNotification.title}</h3>
-                              <Badge variant="secondary" className="text-xs">
-                                Inviato
-                              </Badge>
+                  filteredNotifications.map((sentNotification: any) => {
+                    const recipientName = sentNotification.recipient_id 
+                      ? `${sentNotification.recipient?.first_name || ''} ${sentNotification.recipient?.last_name || ''}`.trim() || 'Utente'
+                      : 'Tutti i dipendenti';
+                    const recipientEmail = sentNotification.recipient?.email || '';
+                    
+                    return (
+                      <Card key={sentNotification.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-gray-900">{sentNotification.title}</h3>
+                                <Badge variant="secondary" className="text-xs">
+                                  Inviato
+                                </Badge>
+                              </div>
+                              <p className="text-gray-600 text-sm mb-2">{sentNotification.message}</p>
+                              <div className="flex items-center gap-4 text-xs text-gray-500">
+                                <span className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  A: {recipientName}{recipientEmail && ` (${recipientEmail})`}
+                                </span>
+                                <span>{formatRelativeDate(sentNotification.created_at)}</span>
+                              </div>
                             </div>
-                            <p className="text-gray-600 text-sm mb-2">{sentNotification.message}</p>
-                            <div className="flex items-center gap-4 text-xs text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                A: {sentNotification.recipient_name} ({sentNotification.recipient_email})
-                              </span>
-                              <span>{formatRelativeDate(sentNotification.created_at)}</span>
-                            </div>
+                            <Send className="h-5 w-5 text-blue-600 ml-4" />
                           </div>
-                          <Send className="h-5 w-5 text-blue-600 ml-4" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                        </CardContent>
+                      </Card>
+                    );
+                  })
                 )}
               </div>
             )}
