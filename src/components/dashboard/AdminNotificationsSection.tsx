@@ -46,13 +46,16 @@ const AdminNotificationsSection = () => {
   // Handle marking notification as read
   const handleMarkAsRead = async (notificationId: string) => {
     try {
+      console.log('Admin: Marking notification as read:', notificationId);
       await markAsRead(notificationId);
+      console.log('Admin: Notification marked as read, refreshing...');
       toast({
         title: "Successo",
         description: "Messaggio contrassegnato come letto",
       });
       // Refresh notifications list without reloading page
       await refreshNotifications();
+      console.log('Admin: Notifications refreshed');
     } catch (error) {
       console.error('Error marking as read:', error);
       toast({
@@ -71,10 +74,15 @@ const AdminNotificationsSection = () => {
   const getNotificationsForTab = (tab: 'inbox' | 'sent') => {
     if (tab === 'inbox') {
       // Messaggi non letti
-      return safeNotifications.filter(n => !n.is_read);
+      const unread = safeNotifications.filter(n => !n.is_read);
+      console.log('Tab Inbox - Unread notifications:', unread.length, unread);
+      return unread;
     } else {
       // Messaggi letti
-      return safeNotifications.filter(n => n.is_read);
+      const read = safeNotifications.filter(n => n.is_read);
+      console.log('Tab Sent - Read notifications:', read.length, read);
+      console.log('All notifications:', safeNotifications);
+      return read;
     }
   };
 
