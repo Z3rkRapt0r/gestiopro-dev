@@ -118,6 +118,13 @@ Deno.serve(async (req) => {
 
     console.log('[Leave Request Email] Prepared email:', { subject, recipientCount: recipients.length });
 
+    // Add delay to respect Resend rate limit (2 requests per second)
+    if (recipients.length > 1) {
+      const delay = Math.ceil(1000 / 2); // 500ms delay between requests
+      console.log(`[Leave Request Email] Adding ${delay}ms delay to respect rate limit...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
     // Send email via Resend API
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",

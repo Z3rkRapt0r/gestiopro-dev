@@ -77,10 +77,17 @@ serve(async (req) => {
 
     console.log("[Employee Message] Notifications created successfully");
 
-    // 3. Send email notifications
+    // 3. Send email notifications with rate limiting
     let emailsSent = 0;
     for (const admin of admins) {
       try {
+        // Add delay to respect Resend rate limit (2 requests per second)
+        if (emailsSent > 0) {
+          const delay = Math.ceil(1000 / 2); // 500ms delay between requests
+          console.log(`[Employee Message] Adding ${delay}ms delay to respect rate limit...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        
         console.log(`[Employee Message] Sending email to ${admin.email}...`);
         const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
           body: {

@@ -652,9 +652,16 @@ serve(async (req) => {
           hasReplyTo: !!emailConfig.replyTo
         }, null, 2));
 
-        // ENHANCED: Detailed Resend API call with comprehensive logging
+        // ENHANCED: Detailed Resend API call with comprehensive logging and rate limiting
         try {
           console.log("[Notification Email] About to call Resend API...");
+          
+          // Add delay to respect Resend rate limit (2 requests per second)
+          if (recipients.length > 1) {
+            const delay = Math.ceil(1000 / 2); // 500ms delay between requests
+            console.log(`[Notification Email] Adding ${delay}ms delay to respect rate limit...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
           
           const resendResponse = await fetch("https://api.resend.com/emails", {
             method: "POST",
