@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLeaveRequestNotifications } from '@/hooks/useLeaveRequestNotifications';
 
 export interface LeaveRequest {
   id: string;
@@ -31,6 +32,7 @@ export interface LeaveRequest {
 export const useLeaveRequests = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { sendLeaveRequestNotification } = useLeaveRequestNotifications();
 
   const { data: leaveRequests, isLoading } = useQuery({
     queryKey: ['leave-requests'],
@@ -57,18 +59,48 @@ export const useLeaveRequests = () => {
       const { data, error } = await supabase
         .from('leave_requests')
         .insert([payload as any])
-        .select()
+        .select(`
+          *,
+          profiles:user_id (
+            first_name,
+            last_name,
+            email
+          )
+        `)
         .single();
       
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (leaveRequest) => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      
       toast({
         title: "Richiesta inviata",
         description: "La tua richiesta è stata inviata con successo.",
       });
+
+      // Send email notification to admins
+      try {
+        const profile = leaveRequest.profiles as any;
+        const result = await sendLeaveRequestNotification(
+          leaveRequest,
+          profile,
+          leaveRequest.note,
+          false, // isApproval
+          false  // isRejection
+        );
+
+        if (result.success) {
+          toast({
+            title: "Email inviata",
+            description: "Gli amministratori sono stati notificati via email.",
+          });
+        }
+      } catch (emailError) {
+        console.error('Error sending leave request email:', emailError);
+        // Don't show error toast - request was saved successfully
+      }
     },
     onError: (error) => {
       console.error('Error inserting leave request:', error);
