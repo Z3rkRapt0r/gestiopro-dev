@@ -34,7 +34,7 @@ serve(async (req) => {
       recipientName,
       message,
       notificationType,
-      senderName,
+      senderName: employeeSenderName,
       messageTitle
     } = body;
 
@@ -421,8 +421,8 @@ serve(async (req) => {
         // Handle employee messages to admin
         if (notificationType === 'employee_message') {
           console.log("[Notification Email] EMPLOYEE MESSAGE TO ADMIN - Using provided content");
-          emailSubject = subject || `Messaggio da ${senderName}`;
-          emailContent = `Hai ricevuto un nuovo messaggio da ${senderName}:<br><br><strong>${messageTitle || subject}</strong><br><br>${message || 'Nessun messaggio'}`;
+          emailSubject = subject || `Messaggio da ${employeeSenderName}`;
+          emailContent = `Hai ricevuto un nuovo messaggio da ${employeeSenderName}:<br><br><strong>${messageTitle || subject}</strong><br><br>${message || 'Nessun messaggio'}`;
           console.log("[Notification Email] Employee message subject:", emailSubject);
           console.log("[Notification Email] Employee message content:", emailContent);
         } else if (isAdminNotificationTemplate) {
