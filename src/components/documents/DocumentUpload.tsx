@@ -38,7 +38,6 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
   
   const {
     file,
-    subject,
     body,
     documentType,
     uploadTarget,
@@ -46,7 +45,6 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
     notifyRecipient,
     loading,
     notificationLoading,
-    handleSubjectChange,
     handleFileChange,
     handleDocumentTypeChange,
     handleSubmit,
@@ -93,7 +91,6 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
         </DialogHeader>
         <DocumentUploadForm
           file={file}
-          subject={subject}
           body={body}
           documentType={documentType}
           uploadTarget={uploadTarget}
@@ -105,7 +102,6 @@ const DocumentUpload = ({ onSuccess, open, setOpen, targetUserId }: DocumentUplo
           loading={loading}
           notificationLoading={notificationLoading}
           onFileChange={handleFileChange}
-          onSubjectChange={handleSubjectChange}
           onBodyChange={setBody}
           onDocumentTypeChange={handleDocumentTypeChangeWrapper}
           onUploadTargetChange={setUploadTarget}

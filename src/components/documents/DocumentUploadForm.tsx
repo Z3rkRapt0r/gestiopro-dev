@@ -18,7 +18,6 @@ interface Profile {
 interface DocumentUploadFormProps {
   // Form state
   file: File | null;
-  subject: string;
   body: string;
   documentType: string;
   uploadTarget: 'self' | 'specific_user' | 'all_employees';
@@ -36,7 +35,6 @@ interface DocumentUploadFormProps {
   
   // Handlers
   onFileChange: (file: File | null) => void;
-  onSubjectChange: (value: string) => void;
   onBodyChange: (value: string) => void;
   onDocumentTypeChange: (typeValue: string) => void;
   onUploadTargetChange: (target: 'self' | 'specific_user' | 'all_employees') => void;
@@ -59,7 +57,6 @@ const documentTypes = [
 
 const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
   file,
-  subject,
   body,
   documentType,
   uploadTarget,
@@ -71,7 +68,6 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
   loading,
   notificationLoading,
   onFileChange,
-  onSubjectChange,
   onBodyChange,
   onDocumentTypeChange,
   onUploadTargetChange,
@@ -139,17 +135,6 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
       {/* Admin-specific fields */}
       {isAdmin && (
         <>
-          <div className="space-y-2">
-            <Label htmlFor="subject">Oggetto della mail</Label>
-            <Input
-              id="subject"
-              value={subject}
-              onChange={(e) => onSubjectChange(e.target.value)}
-              placeholder="Oggetto della mail"
-              disabled={!notifyRecipient}
-            />
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="body" className="flex items-center gap-2">
               <Mail className="h-4 w-4" />

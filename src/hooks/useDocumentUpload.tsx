@@ -11,14 +11,12 @@ interface UseDocumentUploadProps {
 
 export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocumentUploadProps) => {
   const [file, setFile] = useState<File | null>(null);
-  const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [documentType, setDocumentType] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [uploadTarget, setUploadTarget] = useState<'self' | 'specific_user' | 'all_employees'>('self');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [notifyRecipient, setNotifyRecipient] = useState(true);
-  const [subjectDirty, setSubjectDirty] = useState(false);
 
   const { uploadDocument } = useDocuments();
   const { user, profile } = useAuth();
@@ -35,36 +33,18 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     }
   }, [isAdmin, targetUserId]);
 
-  useEffect(() => {
-    setSubjectDirty(false);
-  }, [file]);
-
   const resetForm = () => {
     setFile(null);
-    setSubject("");
     setBody("");
     setDocumentType('');
   };
 
-  const handleSubjectChange = (value: string) => {
-    setSubject(value);
-    setSubjectDirty(true);
-  };
-
   const handleFileChange = (selectedFile: File | null) => {
     setFile(selectedFile);
-    setSubjectDirty(false);
   };
 
   const handleDocumentTypeChange = (typeValue: string, documentTypes: { value: string; label: string }[]) => {
     setDocumentType(typeValue);
-    const type = documentTypes.find(dt => dt.value === typeValue);
-    if (type) {
-      if (!subjectDirty || !subject || documentTypes.some(dt => dt.label === subject)) {
-        setSubject(type.label);
-        setSubjectDirty(false);
-      }
-    }
   };
 
   const handleSubmit = async (documentTypes: { value: string; label: string }[]) => {
@@ -136,9 +116,12 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
       specificEmployeeToNotify
     });
 
+    // Get document type label for display
+    const documentTypeLabel = documentTypes.find(dt => dt.value === documentType)?.label || documentType;
+
     const { error } = await uploadDocument(
       file,
-      subject,
+      documentTypeLabel,
       "",
       documentType as any,
       targetUserForUpload,
@@ -156,8 +139,8 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
 
       // FIXED: Prepare notification payload with admin message
       const notificationPayload: any = {
-        subject: subject.trim(),
-        shortText: body.trim() || `Nuovo documento caricato: ${subject}`,
+        subject: documentTypeLabel,
+        shortText: body.trim() || `Nuovo documento caricato: ${documentTypeLabel}`,
         topic: "document",
         employeeName, // Pass employee name for template personalization
         // FIXED: Pass the admin message correctly
@@ -218,13 +201,11 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
   return {
     // Form state
     file,
-    subject,
     body,
     documentType,
     uploadTarget,
     selectedUserId,
     notifyRecipient,
-    subjectDirty,
     
     // Loading states
     loading,
@@ -234,7 +215,6 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     isAdmin,
     
     // Handlers
-    handleSubjectChange,
     handleFileChange,
     handleDocumentTypeChange,
     handleSubmit,
