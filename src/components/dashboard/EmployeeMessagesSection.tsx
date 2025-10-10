@@ -58,7 +58,7 @@ const EmployeeMessagesSection = () => {
         if (a.is_read !== b.is_read) return a.is_read ? 1 : -1;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
-  }, [activeTab, myMessages, messagesByCategory, searchTerm, filterRead]);
+  }, [activeTab, myMessages, searchTerm, filterRead]);
 
   const groupedMessages = groupNotificationsByDate(filteredMessages);
 
