@@ -62,8 +62,12 @@ const AdminNotificationsSection = () => {
 
   // Fetch sent notifications (messages sent by admin to employees)
   const fetchSentNotifications = async () => {
-    if (!profile?.id) return;
+    if (!profile?.id) {
+      console.log('No profile ID available');
+      return;
+    }
     
+    console.log('Fetching sent notifications for admin:', profile.id);
     setSentLoading(true);
     try {
       const { data, error } = await supabase
@@ -79,6 +83,8 @@ const AdminNotificationsSection = () => {
         .eq('admin_id', profile.id)
         .order('created_at', { ascending: false });
 
+      console.log('Sent notifications query result:', { data, error });
+
       if (error) {
         console.error('Error fetching sent notifications:', error);
         throw error;
@@ -88,6 +94,7 @@ const AdminNotificationsSection = () => {
       console.log('Fetched sent notifications:', data?.length || 0, data);
     } catch (error) {
       console.error('Error fetching sent notifications:', error);
+      // Don't throw - just log the error
     } finally {
       setSentLoading(false);
     }
