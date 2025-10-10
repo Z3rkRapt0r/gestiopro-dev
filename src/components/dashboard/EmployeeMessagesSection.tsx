@@ -15,7 +15,8 @@ import {
   Calendar, 
   Shield, 
   Settings,
-  Send
+  Send,
+  Bell
 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
