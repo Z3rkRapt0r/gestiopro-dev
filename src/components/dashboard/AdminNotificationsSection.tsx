@@ -56,6 +56,12 @@ const AdminNotificationsSection = () => {
       // Refresh notifications list without reloading page
       await refreshNotifications();
       console.log('Admin: Notifications refreshed');
+      
+      // Auto-switch to "Spediti" tab to show the read message
+      setTimeout(() => {
+        console.log('Admin: Auto-switching to Sent tab');
+        handleTabChange('sent');
+      }, 500);
     } catch (error) {
       console.error('Error marking as read:', error);
       toast({
