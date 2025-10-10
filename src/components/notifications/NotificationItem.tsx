@@ -42,12 +42,12 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }: Notification
 
   return (
     <Card
-      className={`p-4 cursor-pointer transition-all hover:shadow-sm ${
+      className={`p-4 transition-all hover:shadow-sm ${
         notification.is_read 
           ? 'bg-gray-50 border-gray-200' 
-          : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+          : 'bg-blue-50 border-blue-200 hover:bg-blue-100 cursor-pointer'
       }`}
-      onClick={() => onMarkAsRead(notification.id, notification.is_read)}
+      onClick={() => !notification.is_read && onMarkAsRead(notification.id, notification.is_read)}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-3 flex-1">
