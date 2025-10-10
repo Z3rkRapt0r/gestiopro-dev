@@ -70,28 +70,56 @@ const AdminNotificationsSection = () => {
     console.log('Fetching sent notifications for admin:', profile.id);
     setSentLoading(true);
     try {
-      const { data, error } = await supabase
+      // First, get sent notifications without join
+      const { data: sentData, error: sentError } = await supabase
         .from('sent_notifications')
-        .select(`
-          *,
-          recipient:recipient_id (
-            first_name,
-            last_name,
-            email
-          )
-        `)
+        .select('*')
         .eq('admin_id', profile.id)
         .order('created_at', { ascending: false });
 
-      console.log('Sent notifications query result:', { data, error });
+      console.log('Sent notifications query result:', { data: sentData, error: sentError });
 
-      if (error) {
-        console.error('Error fetching sent notifications:', error);
-        throw error;
+      if (sentError) {
+        console.error('Error fetching sent notifications:', sentError);
+        throw sentError;
       }
 
-      setSentNotifications(data || []);
-      console.log('Fetched sent notifications:', data?.length || 0, data);
+      if (!sentData || sentData.length === 0) {
+        setSentNotifications([]);
+        console.log('No sent notifications found');
+        return;
+      }
+
+      // Get unique recipient IDs
+      const recipientIds = [...new Set(sentData.map(s => s.recipient_id).filter(Boolean))];
+      
+      let recipientProfiles: any = {};
+      if (recipientIds.length > 0) {
+        // Fetch recipient profiles separately
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', recipientIds);
+
+        if (profilesError) {
+          console.error('Error fetching recipient profiles:', profilesError);
+        } else if (profilesData) {
+          // Create a map for easy lookup
+          recipientProfiles = profilesData.reduce((acc, profile) => {
+            acc[profile.id] = profile;
+            return acc;
+          }, {} as any);
+        }
+      }
+
+      // Combine sent notifications with recipient data
+      const notificationsWithRecipients = sentData.map(notification => ({
+        ...notification,
+        recipient: notification.recipient_id ? recipientProfiles[notification.recipient_id] : null
+      }));
+
+      setSentNotifications(notificationsWithRecipients);
+      console.log('Fetched sent notifications with recipients:', notificationsWithRecipients.length, notificationsWithRecipients);
     } catch (error) {
       console.error('Error fetching sent notifications:', error);
       // Don't throw - just log the error
