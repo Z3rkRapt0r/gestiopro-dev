@@ -1,7 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
-import { Resend } from "npm:resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,10 +44,10 @@ Deno.serve(async (req) => {
       employeeNote
     } = payload;
 
-    // Get sender settings from admin_settings table
+    // Get sender settings and Resend API key from admin_settings table
     const { data: adminSettings, error: adminError } = await supabase
       .from('admin_settings')
-      .select('sender_name, sender_email')
+      .select('sender_name, sender_email, resend_api_key')
       .single();
 
     if (adminError || !adminSettings) {
@@ -58,8 +55,14 @@ Deno.serve(async (req) => {
       throw new Error('Configurazione sender non trovata');
     }
 
+    if (!adminSettings.resend_api_key) {
+      console.error('[Leave Request Email] No Resend API key configured');
+      throw new Error('Resend API key non configurata');
+    }
+
     const senderName = adminSettings.sender_name || 'Sistema Gestionale';
     const senderEmail = adminSettings.sender_email || 'noreply@example.com';
+    const resendApiKey = adminSettings.resend_api_key;
 
     console.log('[Leave Request Email] Using Resend sender:', `${senderName} <${senderEmail}>`);
 
@@ -115,15 +118,31 @@ Deno.serve(async (req) => {
 
     console.log('[Leave Request Email] Prepared email:', { subject, recipientCount: recipients.length });
 
-    // Send email via Resend
-    const emailResponse = await resend.emails.send({
-      from: `${senderName} <${senderEmail}>`,
-      to: recipients,
-      subject,
-      html: htmlContent,
-      replyTo: senderEmail,
+    // Send email via Resend API
+    const resendResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${resendApiKey}`,
+      },
+      body: JSON.stringify({
+        from: `${senderName} <${senderEmail}>`,
+        to: recipients,
+        subject,
+        html: htmlContent,
+        reply_to: senderEmail,
+      }),
     });
 
+    console.log('[Leave Request Email] Resend API response status:', resendResponse.status);
+
+    if (!resendResponse.ok) {
+      const errorText = await resendResponse.text();
+      console.error('[Leave Request Email] Resend API error:', errorText);
+      throw new Error(`Resend API error: ${resendResponse.status} - ${errorText}`);
+    }
+
+    const emailResponse = await resendResponse.json();
     console.log('[Leave Request Email] Email sent successfully:', emailResponse);
 
     return new Response(
