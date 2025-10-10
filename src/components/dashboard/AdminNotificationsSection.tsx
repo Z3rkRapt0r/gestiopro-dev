@@ -16,7 +16,8 @@ import {
   MessageSquare,
   AlertCircle,
   Inbox,
-  Mail
+  Mail,
+  Send
 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuth } from "@/hooks/useAuth";
