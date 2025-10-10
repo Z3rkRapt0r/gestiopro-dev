@@ -25,6 +25,17 @@ import NotificationsCleanupButton from "@/components/notifications/Notifications
 import { groupNotificationsByDate, getNotificationTypeLabel, formatRelativeDate } from "@/utils/notificationUtils";
 import { useToast } from "@/hooks/use-toast";
 import NotificationForm from '@/components/notifications/NotificationForm';
+import { supabase } from '@/integrations/supabase/client';
+
+interface SentNotification {
+  id: string;
+  title: string;
+  message: string;
+  created_at: string;
+  recipient_name: string;
+  recipient_email: string;
+  type: string;
+}
 
 const AdminNotificationsSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,6 +43,8 @@ const AdminNotificationsSection = () => {
   const [filterRead, setFilterRead] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
+  const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
+  const [sentLoading, setSentLoading] = useState(false);
 
   // Reset read filter when tab changes (since tabs handle read/unread filtering)
   const handleTabChange = (tab: 'inbox' | 'sent') => {
@@ -42,6 +55,39 @@ const AdminNotificationsSection = () => {
   const { profile } = useAuth();
   const { notifications, createNotification, loading, markAsRead, refreshNotifications } = useNotifications();
   const { toast } = useToast();
+
+  // Fetch sent notifications (messages sent by admin to employees)
+  const fetchSentNotifications = async () => {
+    if (!profile?.id) return;
+    
+    setSentLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('sent_notifications')
+        .select('*')
+        .eq('sender_id', profile.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching sent notifications:', error);
+        throw error;
+      }
+
+      setSentNotifications(data || []);
+      console.log('Fetched sent notifications:', data?.length || 0);
+    } catch (error) {
+      console.error('Error fetching sent notifications:', error);
+    } finally {
+      setSentLoading(false);
+    }
+  };
+
+  // Load sent notifications when switching to sent tab
+  useEffect(() => {
+    if (activeTab === 'sent') {
+      fetchSentNotifications();
+    }
+  }, [activeTab, profile?.id]);
 
   // Handle marking notification as read
   const handleMarkAsRead = async (notificationId: string) => {
@@ -56,12 +102,6 @@ const AdminNotificationsSection = () => {
       // Refresh notifications list without reloading page
       await refreshNotifications();
       console.log('Admin: Notifications refreshed');
-      
-      // Auto-switch to "Spediti" tab to show the read message
-      setTimeout(() => {
-        console.log('Admin: Auto-switching to Sent tab');
-        handleTabChange('sent');
-      }, 500);
     } catch (error) {
       console.error('Error marking as read:', error);
       toast({
@@ -79,16 +119,13 @@ const AdminNotificationsSection = () => {
   // Filter notifications by tab
   const getNotificationsForTab = (tab: 'inbox' | 'sent') => {
     if (tab === 'inbox') {
-      // Messaggi non letti
-      const unread = safeNotifications.filter(n => !n.is_read);
-      console.log('Tab Inbox - Unread notifications:', unread.length, unread);
-      return unread;
+      // Tutti i messaggi ricevuti (sia letti che non letti)
+      console.log('Tab Inbox - All received notifications:', safeNotifications.length, safeNotifications);
+      return safeNotifications;
     } else {
-      // Messaggi letti
-      const read = safeNotifications.filter(n => n.is_read);
-      console.log('Tab Sent - Read notifications:', read.length, read);
-      console.log('All notifications:', safeNotifications);
-      return read;
+      // Messaggi inviati dall'admin (da sent_notifications)
+      console.log('Tab Sent - Sent notifications:', sentNotifications.length, sentNotifications);
+      return sentNotifications;
     }
   };
 
@@ -96,21 +133,32 @@ const AdminNotificationsSection = () => {
   const tabNotifications = getNotificationsForTab(activeTab);
   const filteredNotifications = tabNotifications
     .filter(notification => {
+      // Search filter - handle different structures
       const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           notification.message.toLowerCase().includes(searchTerm.toLowerCase());
+                           ('message' in notification && notification.message.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           ('recipient_name' in notification && notification.recipient_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           ('recipient_email' in notification && notification.recipient_email.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      const matchesType = filterType === 'all' || notification.type === filterType;
+      // Type filter - only apply to inbox tab
+      const matchesType = activeTab === 'inbox' ? (
+        filterType === 'all' || ('type' in notification && notification.type === filterType)
+      ) : true; // No type filter for sent tab
       
-      // Don't apply read filter when using tabs (tabs already filter by read status)
-      // Only apply read filter if we're in a specific category view
-      const matchesRead = true; // Tab logic already handles read/unread filtering
+      // Read filter - only apply to inbox tab
+      const matchesRead = activeTab === 'inbox' ? (
+        filterRead === 'all' || 
+        (filterRead === 'read' && 'is_read' in notification && notification.is_read) ||
+        (filterRead === 'unread' && 'is_read' in notification && !notification.is_read)
+      ) : true; // No read filter for sent tab
       
       return matchesSearch && matchesType && matchesRead;
     })
     .sort((a, b) => {
-      if (a.is_read !== b.is_read) {
+      // For inbox, sort by read status first, then by date
+      if (activeTab === 'inbox' && 'is_read' in a && 'is_read' in b && a.is_read !== b.is_read) {
         return a.is_read ? 1 : -1;
       }
+      // For both tabs, sort by date
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
@@ -125,7 +173,7 @@ const AdminNotificationsSection = () => {
 
   // Count notifications for each tab
   const inboxCount = safeNotifications.filter(n => !n.is_read).length;
-  const sentCount = safeNotifications.filter(n => n.is_read).length;
+  const sentCount = sentNotifications.length;
 
 
   return (
@@ -319,55 +367,96 @@ const AdminNotificationsSection = () => {
                   ? 'Prova a modificare i filtri di ricerca'
                   : activeTab === 'inbox' 
                     ? 'I messaggi in arrivo appariranno qui'
-                    : 'I messaggi letti appariranno qui'
+                    : 'I messaggi inviati ai dipendenti appariranno qui'
                 }
               </p>
             </CardContent>
           </Card>
         ) : (
           <>
-            {groupedNotifications.today.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Oggi</h3>
-                <div className="space-y-3">
-                  {groupedNotifications.today.map((notification) => (
-                    <NotificationItem
-                      key={notification.id}
-                      notification={notification}
-                      onMarkAsRead={() => handleMarkAsRead(notification.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+            {activeTab === 'inbox' ? (
+              // Rendering per messaggi ricevuti (inbox)
+              <>
+                {groupedNotifications.today.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Oggi</h3>
+                    <div className="space-y-3">
+                      {groupedNotifications.today.map((notification) => (
+                        <NotificationItem
+                          key={notification.id}
+                          notification={notification}
+                          onMarkAsRead={() => handleMarkAsRead(notification.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {groupedNotifications.yesterday.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Ieri</h3>
-                <div className="space-y-3">
-                  {groupedNotifications.yesterday.map((notification) => (
-                    <NotificationItem
-                      key={notification.id}
-                      notification={notification}
-                      onMarkAsRead={() => handleMarkAsRead(notification.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+                {groupedNotifications.yesterday.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Ieri</h3>
+                    <div className="space-y-3">
+                      {groupedNotifications.yesterday.map((notification) => (
+                        <NotificationItem
+                          key={notification.id}
+                          notification={notification}
+                          onMarkAsRead={() => handleMarkAsRead(notification.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {groupedNotifications.older.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Precedenti</h3>
-                <div className="space-y-3">
-                  {groupedNotifications.older.map((notification) => (
-                    <NotificationItem
-                      key={notification.id}
-                      notification={notification}
-                      onMarkAsRead={() => handleMarkAsRead(notification.id)}
-                    />
-                  ))}
-                </div>
+                {groupedNotifications.older.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Precedenti</h3>
+                    <div className="space-y-3">
+                      {groupedNotifications.older.map((notification) => (
+                        <NotificationItem
+                          key={notification.id}
+                          notification={notification}
+                          onMarkAsRead={() => handleMarkAsRead(notification.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              // Rendering per messaggi inviati (sent)
+              <div className="space-y-3">
+                {sentLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Caricamento messaggi inviati...</p>
+                  </div>
+                ) : (
+                  filteredNotifications.map((sentNotification) => (
+                    <Card key={sentNotification.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-semibold text-gray-900">{sentNotification.title}</h3>
+                              <Badge variant="secondary" className="text-xs">
+                                Inviato
+                              </Badge>
+                            </div>
+                            <p className="text-gray-600 text-sm mb-2">{sentNotification.message}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                A: {sentNotification.recipient_name} ({sentNotification.recipient_email})
+                              </span>
+                              <span>{formatRelativeDate(sentNotification.created_at)}</span>
+                            </div>
+                          </div>
+                          <Send className="h-5 w-5 text-blue-600 ml-4" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
             )}
           </>
