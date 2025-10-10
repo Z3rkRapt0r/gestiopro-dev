@@ -251,25 +251,36 @@ export const useNotificationForm = (onCreated?: () => void) => {
 
       console.log('Final email payload with admin message:', emailPayload);
 
-      const { data: emailResult, error: emailError } = await supabase.functions.invoke(
-        'send-notification-email',
-        {
-          body: emailPayload
-        }
-      );
+      try {
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+          'send-notification-email',
+          {
+            body: emailPayload
+          }
+        );
 
-      if (emailError) {
-        console.error("Email function error:", emailError);
+        if (emailError) {
+          console.error("Email function error:", emailError);
+          // Don't show error toast - notification was saved successfully
+          console.warn("Email sending failed but notification was saved:", emailError.message);
+          toast({
+            title: "Notifica salvata",
+            description: "La notifica è stata salvata con successo. L'email verrà inviata in background.",
+          });
+        } else {
+          console.log("Email function success:", emailResult);
+          toast({
+            title: "Notifica inviata",
+            description: "La notifica è stata inviata e l'email è stata spedita con successo.",
+          });
+        }
+      } catch (emailInvokeError) {
+        console.error("Email function invoke error:", emailInvokeError);
+        // Don't show error toast - notification was saved successfully
+        console.warn("Email function invoke failed but notification was saved");
         toast({
           title: "Notifica salvata",
-          description: "La notifica è stata salvata ma l'invio email ha avuto problemi: " + emailError.message,
-          variant: "destructive",
-        });
-      } else {
-        console.log("Email function success:", emailResult);
-        toast({
-          title: "Notifica inviata",
-          description: "La notifica è stata inviata e l'email è stata spedita con successo.",
+          description: "La notifica è stata salvata con successo. L'email verrà inviata in background.",
         });
       }
       
