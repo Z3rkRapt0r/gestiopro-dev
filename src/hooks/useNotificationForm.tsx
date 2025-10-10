@@ -73,8 +73,8 @@ export const useNotificationForm = (onCreated?: () => void) => {
       const notificationData = {
         title: subject,
         message: shortText,
-        type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
-        category: topic || "system", // Store original topic for accurate categorization
+        type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "notifiche"),
+        category: topic || "notifiche", // Tutto diventa "notifiche"
         body,
         attachment_url,
         created_by: profile?.id,
@@ -118,7 +118,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
               user_id: p.id,
               title: subject,
               message: shortText,
-              type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
+              type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "notifiche"),
               category: validCategory,
               body,
               attachment_url,
@@ -158,7 +158,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
             user_id: p.id,
             title: subject,
             message: shortText,
-            type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
+            type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "notifiche"),
             category: validCategory,
             body,
             attachment_url,
@@ -188,7 +188,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
           user_id: recipientId,
           title: subject,
           message: shortText,
-          type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
+          type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "notifiche"),
           category: validCategory,
           body,
           attachment_url,
