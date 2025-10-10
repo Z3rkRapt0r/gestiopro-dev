@@ -81,6 +81,28 @@ export const useNotificationForm = (onCreated?: () => void) => {
         is_read: false
       };
 
+      // Map topic to valid category
+      const mapTopicToCategory = (topic: string | undefined): string => {
+        if (!topic) return 'system';
+        
+        const topicMap: Record<string, string> = {
+          'Aggiornamenti aziendali': 'announcement',
+          'Comunicazioni importanti': 'announcement',
+          'Eventi': 'generale',
+          'Avvisi sicurezza': 'announcement',
+          'document': 'document',
+          'notification': 'generale',
+        };
+        
+        return topicMap[topic] || 'system';
+      };
+
+      const validCategory = mapTopicToCategory(topic);
+      console.log('Topic:', topic, '-> Category:', validCategory);
+
+      // Update notificationData with valid category
+      notificationData.category = validCategory;
+
       console.log('Notification data to insert:', notificationData);
 
       if (!recipientId) {
@@ -108,7 +130,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
               title: subject,
               message: shortText,
               type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
-              category: topic || "system", // Store original topic for accurate categorization
+              category: validCategory,
               body,
               attachment_url,
               created_by: profile?.id,
@@ -148,7 +170,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
             title: subject,
             message: shortText,
             type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
-            category: topic || "system", // Store original topic for accurate categorization
+            category: validCategory,
             body,
             attachment_url,
             created_by: profile?.id,
@@ -178,7 +200,7 @@ export const useNotificationForm = (onCreated?: () => void) => {
           title: subject,
           message: shortText,
           type: profile?.role === 'admin' && topic !== 'document' ? "message" : (topic || "system"),
-          category: topic || "system", // Store original topic for accurate categorization
+          category: validCategory,
           body,
           attachment_url,
           created_by: profile?.id,
