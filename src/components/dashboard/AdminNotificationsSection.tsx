@@ -25,21 +25,6 @@ import NotificationsCleanupButton from "@/components/notifications/Notifications
 import { groupNotificationsByDate, getNotificationTypeLabel, formatRelativeDate } from "@/utils/notificationUtils";
 import { useToast } from "@/hooks/use-toast";
 import NotificationForm from '@/components/notifications/NotificationForm';
-import { supabase } from "@/integrations/supabase/client";
-
-interface SentNotification {
-  id: string;
-  admin_id: string;
-  recipient_id: string | null;
-  title: string;
-  message: string;
-  body?: string;
-  type: string;
-  attachment_url?: string;
-  created_at: string;
-  recipient_first_name?: string;
-  recipient_last_name?: string;
-}
 
 const AdminNotificationsSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,11 +32,9 @@ const AdminNotificationsSection = () => {
   const [filterRead, setFilterRead] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
-  const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
-  const [sentLoading, setSentLoading] = useState(false);
   
   const { profile } = useAuth();
-  const { notifications, createNotification, loading, markAsRead } = useNotifications();
+  const { notifications, createNotification, loading, markAsRead, refreshNotifications } = useNotifications();
   const { toast } = useToast();
 
   // Handle marking notification as read
@@ -62,8 +45,8 @@ const AdminNotificationsSection = () => {
         title: "Successo",
         description: "Messaggio contrassegnato come letto",
       });
-      // Refresh notifications list
-      window.location.reload();
+      // Refresh notifications list without reloading page
+      await refreshNotifications();
     } catch (error) {
       console.error('Error marking as read:', error);
       toast({
@@ -74,57 +57,6 @@ const AdminNotificationsSection = () => {
     }
   };
 
-  // Fetch sent notifications
-  const fetchSentNotifications = async () => {
-    if (!profile?.id) return;
-    
-    setSentLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('sent_notifications')
-        .select('*')
-        .eq('admin_id', profile.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching sent notifications:', error);
-        return;
-      }
-
-      // Fetch recipient names
-      const notificationsWithRecipients = await Promise.all(
-        (data || []).map(async (notification) => {
-          if (notification.recipient_id) {
-            const { data: recipientProfile } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', notification.recipient_id)
-              .single();
-            
-            return {
-              ...notification,
-              recipient_first_name: recipientProfile?.first_name,
-              recipient_last_name: recipientProfile?.last_name
-            };
-          }
-          return notification;
-        })
-      );
-      
-      setSentNotifications(notificationsWithRecipients);
-    } catch (error) {
-      console.error('Error in fetchSentNotifications:', error);
-    } finally {
-      setSentLoading(false);
-    }
-  };
-
-  // Load sent notifications when tab changes or on mount
-  useEffect(() => {
-    if (activeTab === 'sent') {
-      fetchSentNotifications();
-    }
-  }, [activeTab, profile?.id]);
 
   // Ensure notifications is always an array
   const safeNotifications = Array.isArray(notifications) ? notifications : [];
@@ -132,10 +64,12 @@ const AdminNotificationsSection = () => {
   // Filter notifications by tab
   const getNotificationsForTab = (tab: 'inbox' | 'sent') => {
     if (tab === 'inbox') {
+      // Messaggi non letti
       return safeNotifications.filter(n => !n.is_read);
+    } else {
+      // Messaggi letti
+      return safeNotifications.filter(n => n.is_read);
     }
-    // For 'sent' tab, return empty as we'll use sentNotifications instead
-    return [];
   };
 
   // Filtering logic for current tab
@@ -160,16 +94,6 @@ const AdminNotificationsSection = () => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-  // Filter sent notifications
-  const filteredSentNotifications = sentNotifications
-    .filter(notification => {
-      const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           notification.message.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesType = filterType === 'all' || notification.type === filterType;
-      
-      return matchesSearch && matchesType;
-    });
 
   const notificationTypeStats = safeNotifications.reduce((acc, notification) => {
     acc[notification.type] = (acc[notification.type] || 0) + 1;
@@ -181,7 +105,7 @@ const AdminNotificationsSection = () => {
 
   // Count notifications for each tab
   const inboxCount = safeNotifications.filter(n => !n.is_read).length;
-  const sentCount = sentNotifications.length;
+  const sentCount = safeNotifications.filter(n => n.is_read).length;
 
 
   return (
@@ -354,67 +278,10 @@ const AdminNotificationsSection = () => {
 
       {/* Grouped notifications list */}
       <div className="space-y-6">
-        {activeTab === 'inbox' && loading ? (
+        {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-2 text-gray-600">Caricamento notifiche...</p>
-          </div>
-        ) : activeTab === 'sent' && sentLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">Caricamento notifiche inviate...</p>
-          </div>
-        ) : activeTab === 'sent' && filteredSentNotifications.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <Mail className="mx-auto h-16 w-16 text-gray-400" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">
-                {searchTerm || filterType !== 'all' 
-                  ? 'Nessuna notifica trovata' 
-                  : 'Nessuna notifica inviata'
-                }
-              </h3>
-              <p className="mt-2 text-gray-500">
-                {searchTerm || filterType !== 'all'
-                  ? 'Prova a modificare i filtri di ricerca'
-                  : 'Le notifiche che invii ai dipendenti appariranno qui'
-                }
-              </p>
-            </CardContent>
-          </Card>
-        ) : activeTab === 'sent' ? (
-          <div className="space-y-3">
-            {filteredSentNotifications.map((notification) => (
-              <Card key={notification.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-gray-900">{notification.title}</h3>
-                        <Badge variant="outline" className="text-xs">
-                          {getNotificationTypeLabel(notification.type)}
-                        </Badge>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-2">{notification.message}</p>
-                      {notification.body && (
-                        <p className="text-gray-500 text-xs mb-2">{notification.body}</p>
-                      )}
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {notification.recipient_id 
-                            ? `${notification.recipient_first_name || ''} ${notification.recipient_last_name || ''}`.trim() || 'Dipendente'
-                            : 'Tutti i dipendenti'
-                          }
-                        </span>
-                        <span>{formatRelativeDate(notification.created_at)}</span>
-                      </div>
-                    </div>
-                    <Mail className="h-5 w-5 text-blue-600 ml-4" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         ) : filteredNotifications.length === 0 ? (
           <Card>
@@ -431,8 +298,8 @@ const AdminNotificationsSection = () => {
                 {searchTerm || filterType !== 'all' || filterRead !== 'all'
                   ? 'Prova a modificare i filtri di ricerca'
                   : activeTab === 'inbox' 
-                    ? 'Le notifiche in arrivo appariranno qui'
-                    : 'Le notifiche spedite appariranno qui'
+                    ? 'I messaggi in arrivo appariranno qui'
+                    : 'I messaggi letti appariranno qui'
                 }
               </p>
             </CardContent>
