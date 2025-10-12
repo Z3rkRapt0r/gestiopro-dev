@@ -52,6 +52,7 @@ const AdminNotificationsSection = () => {
   const [sentLoading, setSentLoading] = useState(false);
   const [showAllSent, setShowAllSent] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>('all');
+  const [totalSentCount, setTotalSentCount] = useState(0);
 
   // Reset read filter when tab changes (since tabs handle read/unread filtering)
   const handleTabChange = (tab: 'inbox' | 'sent') => {
@@ -73,7 +74,19 @@ const AdminNotificationsSection = () => {
     console.log('Fetching sent notifications for admin:', profile.id);
     setSentLoading(true);
     try {
-      // First, get sent notifications without join (limit to 5 initially, all if showAllSent)
+      // First, get total count of sent notifications
+      const { count: totalCount, error: countError } = await supabase
+        .from('sent_notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('admin_id', profile.id);
+      
+      if (countError) {
+        console.error('Error counting sent notifications:', countError);
+      } else {
+        setTotalSentCount(totalCount || 0);
+      }
+
+      // Then, get sent notifications without join (limit to 5 initially, all if showAllSent)
       const limit = showAllSent ? null : 5;
       let query = supabase
         .from('sent_notifications')
@@ -575,20 +588,20 @@ const AdminNotificationsSection = () => {
                            })}
                            
                            {/* Pulsante Mostra altri messaggi inviati */}
-                           {!showAllSent && sentNotifications.length > 5 && (
+                           {!showAllSent && totalSentCount > 5 && (
                              <div className="text-center pt-4">
                                <Button 
                                  variant="outline" 
                                  onClick={() => setShowAllSent(true)}
                                  className="w-full sm:w-auto"
                                >
-                                 Mostra altri messaggi inviati ({sentNotifications.length - 5} rimanenti)
+                                 Mostra altri messaggi inviati ({totalSentCount - 5} rimanenti)
                                </Button>
                              </div>
                            )}
                            
                            {/* Pulsante Mostra meno (quando mostra tutti) */}
-                           {showAllSent && sentNotifications.length > 5 && (
+                           {showAllSent && totalSentCount > 5 && (
                              <div className="text-center pt-4">
                                <Button 
                                  variant="outline" 
