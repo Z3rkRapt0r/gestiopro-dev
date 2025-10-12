@@ -50,6 +50,8 @@ const AdminNotificationsSection = () => {
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
   const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
   const [sentLoading, setSentLoading] = useState(false);
+  const [showAllSent, setShowAllSent] = useState(false);
+  const [dateFilter, setDateFilter] = useState<string>('all');
 
   // Reset read filter when tab changes (since tabs handle read/unread filtering)
   const handleTabChange = (tab: 'inbox' | 'sent') => {
@@ -71,13 +73,19 @@ const AdminNotificationsSection = () => {
     console.log('Fetching sent notifications for admin:', profile.id);
     setSentLoading(true);
     try {
-      // First, get sent notifications without join (limit to last 10)
-      const { data: sentData, error: sentError } = await supabase
+      // First, get sent notifications without join (limit to 5 initially, all if showAllSent)
+      const limit = showAllSent ? null : 5;
+      let query = supabase
         .from('sent_notifications')
         .select('*')
         .eq('admin_id', profile.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
+      
+      if (limit) {
+        query = query.limit(limit);
+      }
+      
+      const { data: sentData, error: sentError } = await query;
 
       console.log('Sent notifications query result:', { data: sentData, error: sentError });
 
@@ -130,12 +138,12 @@ const AdminNotificationsSection = () => {
     }
   };
 
-  // Load sent notifications when switching to sent tab
+  // Load sent notifications when switching to sent tab or when showAllSent changes
   useEffect(() => {
     if (activeTab === 'sent') {
       fetchSentNotifications();
     }
-  }, [activeTab, profile?.id]);
+  }, [activeTab, profile?.id, showAllSent]);
 
   // Handle marking notification as read
   const handleMarkAsRead = async (notificationId: string) => {
@@ -205,7 +213,36 @@ const AdminNotificationsSection = () => {
         (filterRead === 'unread' && !notification.is_read)
       ) : true; // No read filter for sent tab
       
-      return matchesSearch && matchesType && matchesRead;
+      // Date filter - only apply to sent tab
+      let matchesDate = true;
+      if (activeTab === 'sent' && dateFilter !== 'all') {
+        const notificationDate = new Date(notification.created_at);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        switch (dateFilter) {
+          case 'today':
+            matchesDate = notificationDate >= today;
+            break;
+          case 'yesterday':
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            matchesDate = notificationDate >= yesterday && notificationDate < today;
+            break;
+          case 'week':
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            matchesDate = notificationDate >= weekAgo;
+            break;
+          case 'month':
+            const monthAgo = new Date(today);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            matchesDate = notificationDate >= monthAgo;
+            break;
+        }
+      }
+      
+      return matchesSearch && matchesType && matchesRead && matchesDate;
     })
     .sort((a, b) => {
       // For inbox, sort by read status first, then by date
@@ -371,32 +408,47 @@ const AdminNotificationsSection = () => {
               </div>
             </div>
             
-            {activeTab === 'inbox' && (
-              <>
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="w-full sm:w-48">
-                    <SelectValue placeholder="Tipo notifica" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tutti i tipi</SelectItem>
-                    <SelectItem value="document">Documenti</SelectItem>
-                    <SelectItem value="message">Messaggi</SelectItem>
-                    <SelectItem value="announcement">Annunci</SelectItem>
-                    <SelectItem value="system">Sistema</SelectItem>
-                  </SelectContent>
-                </Select>
+                   {activeTab === 'inbox' && (
+                     <>
+                       <Select value={filterType} onValueChange={setFilterType}>
+                         <SelectTrigger className="w-full sm:w-48">
+                           <SelectValue placeholder="Tipo notifica" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="all">Tutti i tipi</SelectItem>
+                           <SelectItem value="document">Documenti</SelectItem>
+                           <SelectItem value="message">Messaggi</SelectItem>
+                           <SelectItem value="announcement">Annunci</SelectItem>
+                           <SelectItem value="system">Sistema</SelectItem>
+                         </SelectContent>
+                       </Select>
 
-                <Select value={filterRead} onValueChange={setFilterRead}>
-                  <SelectTrigger className="w-full sm:w-48">
-                    <SelectValue placeholder="Stato lettura" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unread">Non lette</SelectItem>
-                    <SelectItem value="read">Lette</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
-            )}
+                       <Select value={filterRead} onValueChange={setFilterRead}>
+                         <SelectTrigger className="w-full sm:w-48">
+                           <SelectValue placeholder="Stato lettura" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="unread">Non lette</SelectItem>
+                           <SelectItem value="read">Lette</SelectItem>
+                         </SelectContent>
+                       </Select>
+                     </>
+                   )}
+                   
+                   {activeTab === 'sent' && (
+                     <Select value={dateFilter} onValueChange={setDateFilter}>
+                       <SelectTrigger className="w-full sm:w-48">
+                         <SelectValue placeholder="Filtra per data" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="all">Tutte le date</SelectItem>
+                         <SelectItem value="today">Oggi</SelectItem>
+                         <SelectItem value="yesterday">Ieri</SelectItem>
+                         <SelectItem value="week">Ultima settimana</SelectItem>
+                         <SelectItem value="month">Ultimo mese</SelectItem>
+                       </SelectContent>
+                     </Select>
+                   )}
           </div>
         </CardContent>
       </Card>
@@ -480,15 +532,16 @@ const AdminNotificationsSection = () => {
                 )}
               </>
             ) : (
-              // Rendering per messaggi inviati (sent)
-              <div className="space-y-3">
-                {sentLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600">Caricamento messaggi inviati...</p>
-                  </div>
-                ) : (
-                  filteredNotifications.map((sentNotification: any) => {
+                     // Rendering per messaggi inviati (sent)
+                     <div className="space-y-3">
+                       {sentLoading ? (
+                         <div className="text-center py-8">
+                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                           <p className="mt-2 text-gray-600">Caricamento messaggi inviati...</p>
+                         </div>
+                       ) : (
+                         <>
+                           {filteredNotifications.map((sentNotification: any) => {
                     const recipientName = sentNotification.recipient_id 
                       ? `${sentNotification.recipient?.first_name || ''} ${sentNotification.recipient?.last_name || ''}`.trim() || 'Utente'
                       : 'Tutti i dipendenti';
@@ -518,10 +571,37 @@ const AdminNotificationsSection = () => {
                           </div>
                         </CardContent>
                       </Card>
-                    );
-                  })
-                )}
-              </div>
+                           );
+                           })}
+                           
+                           {/* Pulsante Mostra altri messaggi inviati */}
+                           {!showAllSent && sentNotifications.length > 5 && (
+                             <div className="text-center pt-4">
+                               <Button 
+                                 variant="outline" 
+                                 onClick={() => setShowAllSent(true)}
+                                 className="w-full sm:w-auto"
+                               >
+                                 Mostra altri messaggi inviati ({sentNotifications.length - 5} rimanenti)
+                               </Button>
+                             </div>
+                           )}
+                           
+                           {/* Pulsante Mostra meno (quando mostra tutti) */}
+                           {showAllSent && sentNotifications.length > 5 && (
+                             <div className="text-center pt-4">
+                               <Button 
+                                 variant="outline" 
+                                 onClick={() => setShowAllSent(false)}
+                                 className="w-full sm:w-auto"
+                               >
+                                 Mostra solo ultimi 5
+                               </Button>
+                             </div>
+                           )}
+                         </>
+                       )}
+                     </div>
             )}
           </>
         )}
