@@ -71,12 +71,13 @@ const AdminNotificationsSection = () => {
     console.log('Fetching sent notifications for admin:', profile.id);
     setSentLoading(true);
     try {
-      // First, get sent notifications without join
+      // First, get sent notifications without join (limit to last 10)
       const { data: sentData, error: sentError } = await supabase
         .from('sent_notifications')
         .select('*')
         .eq('admin_id', profile.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(10);
 
       console.log('Sent notifications query result:', { data: sentData, error: sentError });
 
