@@ -1,11 +1,10 @@
 name: Check Missing Attendance
 on:
-  schedule:
-    - cron: '*/15 * * * *'  # Ogni 15 minuti
-  workflow_dispatch:  # Permette esecuzione manuale
+  workflow_dispatch:  # Solo esecuzione manuale
 
 jobs:
   check-attendance:
+    # Nessuna guardia necessaria: avvio solo manuale
     runs-on: ubuntu-latest
     steps:
       - name: Call attendance check function
