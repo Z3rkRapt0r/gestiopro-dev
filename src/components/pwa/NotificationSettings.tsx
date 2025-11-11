@@ -85,9 +85,8 @@ export const NotificationSettings = () => {
           return;
         }
 
-        // NOTA: Per produzione, la VAPID key deve essere configurata nel backend
-        // Questo è un esempio - dovrai generare la tua chiave VAPID
-        const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+        // VAPID Public Key generata per Gestiopro
+        const VAPID_PUBLIC_KEY = 'BEeDR0PKDbiDT6hgkM_aVleyv2eneYjuC1OQD01zdaUjXQ27MNywDrHfMobPS1J-FVR47KvAkRSLmew2Y2o0MDc';
 
         const subscription = await subscribeToPushNotifications(VAPID_PUBLIC_KEY);
 
