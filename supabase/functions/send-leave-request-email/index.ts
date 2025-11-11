@@ -190,17 +190,29 @@ Deno.serve(async (req) => {
     const safeEmployeeNote = employeeNote || '';
     const safeAdminNote = adminNote || '';
 
-    // Build subject
+    // Build subject with ALL variable name variants
     let subject = templateData.subject || `Richiesta ${leaveType}`;
-    subject = subject.replace(/\{employeeName\}/g, safeEmployeeName);
+    subject = subject
+      .replace(/\{employeeName\}/gi, safeEmployeeName)
+      .replace(/\{employee_name\}/gi, safeEmployeeName);
 
-    // Build content
+    // Build content with ALL variable name variants (camelCase, snake_case, both cases)
     let content = templateData.content || `Hai ricevuto una richiesta di ${leaveType} da {employeeName}`;
     content = content
-      .replace(/\{employeeName\}/g, safeEmployeeName)
-      .replace(/\{leaveDetails\}/g, safeLeaveDetails)
-      .replace(/\{employeeNote\}/g, safeEmployeeNote)
-      .replace(/\{adminNote\}/g, safeAdminNote);
+      // Employee name variants
+      .replace(/\{employeeName\}/gi, safeEmployeeName)
+      .replace(/\{employee_name\}/gi, safeEmployeeName)
+      // Leave details variants
+      .replace(/\{leaveDetails\}/gi, safeLeaveDetails)
+      .replace(/\{leave_details\}/gi, safeLeaveDetails)
+      // Employee note variants
+      .replace(/\{employeeNote\}/gi, safeEmployeeNote)
+      .replace(/\{employee_note\}/gi, safeEmployeeNote)
+      // Admin note/message variants
+      .replace(/\{adminNote\}/gi, safeAdminNote)
+      .replace(/\{admin_note\}/gi, safeAdminNote)
+      .replace(/\{adminMessage\}/gi, safeAdminNote)
+      .replace(/\{admin_message\}/gi, safeAdminNote);
 
     console.log('[Leave Request Email] Building HTML content with buildHtmlContent');
 
