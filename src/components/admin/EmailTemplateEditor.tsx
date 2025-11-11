@@ -278,6 +278,26 @@ const EmailTemplateEditor = ({
             subject={subject}
             content={content}
             disabled={loading || !subject || !content}
+            // Pass all styling parameters from editor
+            primaryColor={primaryColor}
+            secondaryColor={secondaryColor}
+            backgroundColor={backgroundColor}
+            textColor={textColor}
+            fontFamily={fontFamily}
+            fontSize={fontSize}
+            footerText={footerText}
+            footerColor={footerColor}
+            borderRadius={borderRadius}
+            showCustomBlock={showCustomBlock}
+            customBlockText={customBlockText}
+            customBlockBgColor={customBlockBgColor}
+            customBlockTextColor={customBlockTextColor}
+            leaveDetailsBgColor={leaveDetailsBgColor}
+            leaveDetailsTextColor={leaveDetailsTextColor}
+            adminNotesBgColor={adminNotesBgColor}
+            adminNotesTextColor={adminNotesTextColor}
+            adminMessageBgColor={adminMessageBgColor}
+            adminMessageTextColor={adminMessageTextColor}
           />
           <Button onClick={handleSave} disabled={loading}>
             <Save className="w-4 h-4 mr-2" />

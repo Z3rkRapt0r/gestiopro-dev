@@ -24,14 +24,56 @@ interface TestEmailDialogProps {
   subject: string;
   content: string;
   disabled?: boolean;
+  // Styling parameters
+  primaryColor?: string;
+  secondaryColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  fontFamily?: string;
+  fontSize?: string;
+  footerText?: string;
+  footerColor?: string;
+  borderRadius?: string;
+  // Custom blocks
+  showCustomBlock?: boolean;
+  customBlockText?: string;
+  customBlockBgColor?: string;
+  customBlockTextColor?: string;
+  // Leave details styling
+  leaveDetailsBgColor?: string;
+  leaveDetailsTextColor?: string;
+  adminNotesBgColor?: string;
+  adminNotesTextColor?: string;
+  adminMessageBgColor?: string;
+  adminMessageTextColor?: string;
 }
 
-const TestEmailDialog = ({ 
-  templateType, 
+const TestEmailDialog = ({
+  templateType,
   templateCategory = "generale",
-  subject, 
-  content, 
-  disabled 
+  subject,
+  content,
+  disabled,
+  // Styling parameters with defaults
+  primaryColor,
+  secondaryColor,
+  backgroundColor,
+  textColor,
+  fontFamily,
+  fontSize,
+  footerText,
+  footerColor,
+  borderRadius,
+  showCustomBlock,
+  customBlockText,
+  customBlockBgColor,
+  customBlockTextColor,
+  leaveDetailsBgColor,
+  leaveDetailsTextColor,
+  adminNotesBgColor,
+  adminNotesTextColor,
+  adminMessageBgColor,
+  adminMessageTextColor
 }: TestEmailDialogProps) => {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -76,7 +118,29 @@ const TestEmailDialog = ({
           content,
           userId: profile.id,
           templateType,
-          templateCategory
+          templateCategory,
+          // Include all styling parameters
+          templateOverrides: {
+            primary_color: primaryColor,
+            secondary_color: secondaryColor,
+            background_color: backgroundColor,
+            text_color: textColor,
+            font_family: fontFamily,
+            font_size: fontSize,
+            footer_text: footerText,
+            footer_color: footerColor,
+            border_radius: borderRadius,
+            show_custom_block: showCustomBlock,
+            custom_block_text: customBlockText,
+            custom_block_bg_color: customBlockBgColor,
+            custom_block_text_color: customBlockTextColor,
+            leave_details_bg_color: leaveDetailsBgColor,
+            leave_details_text_color: leaveDetailsTextColor,
+            admin_notes_bg_color: adminNotesBgColor,
+            admin_notes_text_color: adminNotesTextColor,
+            admin_message_bg_color: adminMessageBgColor,
+            admin_message_text_color: adminMessageTextColor
+          }
         }
       });
 

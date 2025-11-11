@@ -83,7 +83,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("[Test Email] Request body:", JSON.stringify(body, null, 2));
 
-    const { templateType, templateCategory = "generale", testEmail, userId, subject, content } = body;
+    const { templateType, templateCategory = "generale", testEmail, userId, subject, content, templateOverrides } = body;
 
     if (!userId) {
       console.error("[Test Email] Missing userId in request");
@@ -155,7 +155,7 @@ serve(async (req) => {
     console.log("[Test Email] Found email template:", emailTemplate);
 
     // Use template data or defaults
-    const template = emailTemplate || {
+    let template = emailTemplate || {
       template_type: templateType,
       template_category: templateCategory,
       name: `Template ${templateType}`,
@@ -171,6 +171,16 @@ serve(async (req) => {
       button_text_color: '#ffffff',
       border_radius: '6px'
     };
+
+    // IMPORTANTE: Se sono stati passati templateOverrides dall'editor, usali invece dei dati dal database
+    // Questo permette di testare le modifiche in tempo reale prima di salvare
+    if (templateOverrides) {
+      console.log("[Test Email] Using template overrides from editor");
+      template = {
+        ...template,
+        ...templateOverrides
+      };
+    }
 
     // Get admin profile for fallback sender info
     const { data: adminProfile, error: profileError } = await supabase
