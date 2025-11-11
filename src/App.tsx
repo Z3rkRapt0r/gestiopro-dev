@@ -12,6 +12,7 @@ import AdminDashboard from "@/components/dashboard/AdminDashboard";
 import AdminSettingsSection from "@/components/admin/AdminSettingsSection";
 import EmployeeProfileSection from "@/components/dashboard/EmployeeProfileSection";
 import DocumentTitleManager from "@/components/DocumentTitleManager";
+import { PWAProvider } from "@/components/pwa/PWAProvider";
 
 // Create QueryClient outside component to avoid recreation
 const queryClient = new QueryClient({
@@ -27,20 +28,22 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
-          <DocumentTitleManager />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/documents/:employeeId" element={<EmployeeDocumentsPage />} />
-            <Route path="/settings" element={<AdminSettingsSection />} />
-            <Route path="/employee/:id" element={<EmployeeProfileSection />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Toaster />
-          <Sonner />
-        </BrowserRouter>
+        <PWAProvider>
+          <BrowserRouter>
+            <DocumentTitleManager />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/documents/:employeeId" element={<EmployeeDocumentsPage />} />
+              <Route path="/settings" element={<AdminSettingsSection />} />
+              <Route path="/employee/:id" element={<EmployeeProfileSection />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <Toaster />
+            <Sonner />
+          </BrowserRouter>
+        </PWAProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -7,6 +7,8 @@ import { useWorkSchedules } from './useWorkSchedules';
 import { useEmployeeWorkSchedule } from './useEmployeeWorkSchedule';
 import { format } from 'date-fns';
 import { generateOperationPath, generateReadableId } from '@/utils/italianPathUtils';
+import { offlineQueue } from '@/lib/offlineQueue';
+import { isOffline } from '@/lib/pwa';
 
 export const useAttendanceOperations = () => {
   const { toast } = useToast();
@@ -233,18 +235,22 @@ export const useAttendanceOperations = () => {
   };
 
   const checkInMutation = useMutation({
-    mutationFn: async ({ latitude, longitude, isBusinessTrip = false, businessTripId }: { 
-      latitude: number; 
-      longitude: number; 
+    mutationFn: async ({ latitude, longitude, isBusinessTrip = false, businessTripId }: {
+      latitude: number;
+      longitude: number;
       isBusinessTrip?: boolean;
       businessTripId?: string;
     }) => {
       console.log('🔐 Inizio check-in con validazione anti-conflitto:', { latitude, longitude, isBusinessTrip });
 
       const today = format(new Date(), 'yyyy-MM-dd');
-      
-      // VALIDAZIONE ANTI-CONFLITTO PRIORITARIA
-      await validateEmployeeStatus(user?.id!, today);
+      const now = new Date();
+      const checkInTime = now.toTimeString().slice(0, 5);
+
+      // Verifica connessione - le timbrature richiedono GPS in tempo reale
+      if (isOffline()) {
+        throw new Error('Impossibile timbrare offline: è necessaria la connessione per verificare la posizione GPS');
+      }
 
       // Validazione GPS
       const gpsValidation = validateLocation(latitude, longitude, isBusinessTrip);
@@ -252,12 +258,12 @@ export const useAttendanceOperations = () => {
         throw new Error(gpsValidation.message || 'Posizione non valida');
       }
 
-      const now = new Date();
-      const checkInTime = now.toTimeString().slice(0, 5);
-      
+      // Validazione stato dipendente
+      await validateEmployeeStatus(user?.id!, today);
+
       // Calcola ritardo
       const { isLate, lateMinutes } = await calculateLateness(now);
-      
+
       // Genera il path organizzativo italiano
       const operationType = isBusinessTrip ? 'viaggio_lavoro' : 'presenza_normale';
       const operationPath = await generateOperationPath(operationType, user?.id!, now);
@@ -270,7 +276,7 @@ export const useAttendanceOperations = () => {
         isLate,
         lateMinutes
       });
-      
+
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendances')
         .upsert({
@@ -316,8 +322,9 @@ export const useAttendanceOperations = () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['employee-status'] });
-      
+
       const { unifiedData } = data;
+
       if (unifiedData.is_late) {
         toast({
           title: "Check-in effettuato (IN RITARDO)",
@@ -346,9 +353,13 @@ export const useAttendanceOperations = () => {
       const today = format(new Date(), 'yyyy-MM-dd');
       const now = new Date();
       const checkOutTime = now.toTimeString().slice(0, 5);
-      
+
       console.log('🔐 Check-out con validazione');
-      
+
+      // Verifica connessione - le timbrature richiedono GPS in tempo reale
+      if (isOffline()) {
+        throw new Error('Impossibile timbrare offline: è necessaria la connessione per verificare la posizione GPS');
+      }
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendances')
         .update({
@@ -382,6 +393,7 @@ export const useAttendanceOperations = () => {
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       queryClient.invalidateQueries({ queryKey: ['unified-attendances'] });
       queryClient.invalidateQueries({ queryKey: ['employee-status'] });
+
       toast({
         title: "Check-out effettuato",
         description: "Il tuo check-out è stato registrato con successo",

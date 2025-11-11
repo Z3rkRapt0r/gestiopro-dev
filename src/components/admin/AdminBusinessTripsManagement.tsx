@@ -186,7 +186,15 @@ export default function AdminBusinessTripsManagement() {
                       selected={endDate}
                       onSelect={setEndDate}
                       locale={it}
-                      disabled={isDateDisabled}
+                      defaultMonth={startDate || undefined}
+                      disabled={(date) => {
+                        // Disabilita date precedenti alla data di inizio
+                        if (startDate && date < startDate) {
+                          return true;
+                        }
+                        // Disabilita date con conflitti
+                        return isDateDisabled(date);
+                      }}
                       modifiers={{
                         conflict: conflictDates
                       }}
