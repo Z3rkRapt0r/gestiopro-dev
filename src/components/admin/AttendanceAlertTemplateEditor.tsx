@@ -17,9 +17,7 @@ const AttendanceAlertTemplateEditor = ({
 }: AttendanceAlertTemplateEditorProps) => {
   
   const getDefaultContent = () => {
-    if (defaultContent) return defaultContent;
-    
-    return "Gentile {employee_name},\n\nNotiamo che non hai ancora registrato la tua entrata per oggi.\n\nOrario previsto: {expected_time}\nOrario attuale: {current_time}\n\nTi ricordiamo di registrare la tua presenza il prima possibile.\n\nGrazie per la collaborazione.";
+    return defaultContent || "";
   };
 
   const getDefaultSubject = () => {

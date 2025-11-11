@@ -97,6 +97,20 @@ export const useOvertimeConflicts = (selectedEmployeeId: string) => {
         }
       }
 
+      // 5. CONTROLLO STRAORDINARI AUTOMATICI
+      // Blocca le date che hanno già uno straordinario automatico
+      const { data: automaticOvertimes } = await supabase
+        .from('overtime_records')
+        .select('date')
+        .eq('user_id', userId)
+        .eq('is_automatic', true);
+
+      if (automaticOvertimes) {
+        automaticOvertimes.forEach(overtime => {
+          conflictDates.add(format(new Date(overtime.date), 'yyyy-MM-dd'));
+        });
+      }
+
       // Converti le date string in oggetti Date
       const conflictDateObjects = Array.from(conflictDates).map(dateStr => new Date(dateStr));
       

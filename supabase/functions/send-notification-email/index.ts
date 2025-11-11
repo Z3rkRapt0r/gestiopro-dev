@@ -418,13 +418,31 @@ serve(async (req) => {
         // NEW: DYNAMIC CONTENT LOGIC FOR ADMIN NOTIFICATION TEMPLATES
         let emailSubject, emailContent;
         
-        // Handle employee messages to admin
+        // Handle employee messages to admin - NOW USING DATABASE TEMPLATE
         if (notificationType === 'employee_message') {
-          console.log("[Notification Email] EMPLOYEE MESSAGE TO ADMIN - Using provided content");
-          emailSubject = subject || `Messaggio da ${employeeSenderName}`;
-          emailContent = `Hai ricevuto un nuovo messaggio da ${employeeSenderName}:<br><br><strong>${messageTitle || subject}</strong><br><br>${message || 'Nessun messaggio'}`;
+          console.log("[Notification Email] EMPLOYEE MESSAGE TO ADMIN - Using database template");
+          
+          if (!emailTemplate) {
+            throw new Error('Template email per messaggi dipendenti non trovato nel database');
+          }
+          
+          emailSubject = emailTemplate.subject || `Messaggio da ${employeeSenderName}`;
+          emailContent = emailTemplate.content || '';
+          
+          // Replace template variables
+          emailSubject = emailSubject
+            .replace(/\{employeeName\}/g, employeeSenderName || 'Dipendente')
+            .replace(/\{messageTitle\}/g, messageTitle || 'Nessun oggetto')
+            .replace(/\{message\}/g, message || 'Nessun messaggio');
+            
+          emailContent = emailContent
+            .replace(/\{employeeName\}/g, employeeSenderName || 'Dipendente')
+            .replace(/\{messageTitle\}/g, messageTitle || 'Nessun oggetto')
+            .replace(/\{message\}/g, message || 'Nessun messaggio')
+            .replace(/\{footerText\}/g, emailTemplate.footer_text || '© A.L.M Infissi - Sistema di Gestione Aziendale');
+          
           console.log("[Notification Email] Employee message subject:", emailSubject);
-          console.log("[Notification Email] Employee message content:", emailContent);
+          console.log("[Notification Email] Employee message content preview:", emailContent.substring(0, 100) + "...");
         } else if (isAdminNotificationTemplate) {
           // ADMIN NOTIFICATION TEMPLATE: Always use dynamic content from form
           console.log("[Notification Email] ADMIN NOTIFICATION TEMPLATE - Using dynamic content from form");
@@ -452,36 +470,12 @@ serve(async (req) => {
           console.log("[Notification Email] Database template subject:", emailSubject);
           console.log("[Notification Email] Database template content preview:", emailContent.substring(0, 100) + "...");
         } else {
-          // ONLY FALLBACK: Use frontend content when NO database template exists
-          // CRITICAL: For leave responses without database template, provide minimal fallback
-          if (isLeaveResponse) {
-            console.log("[Notification Email] CRITICAL: Leave response without database template detected");
-            // Provide minimal fallback for leave responses
-            if (templateType === 'permessi-approvazione') {
-              emailSubject = 'Richiesta Permesso Approvata';
-              emailContent = 'La tua richiesta di permesso è stata approvata.';
-            } else if (templateType === 'ferie-approvazione') {
-              emailSubject = 'Richiesta Ferie Approvata';
-              emailContent = 'La tua richiesta di ferie è stata approvata.';
-            } else if (templateType === 'permessi-rifiuto') {
-              emailSubject = 'Richiesta Permesso Rifiutata';
-              emailContent = 'La tua richiesta di permesso è stata rifiutata.';
-            } else if (templateType === 'ferie-rifiuto') {
-              emailSubject = 'Richiesta Ferie Rifiutata';
-              emailContent = 'La tua richiesta di ferie è stata rifiutata.';
-            } else {
-              emailSubject = subject || 'Notifica Leave Request';
-              emailContent = shortText || 'Hai ricevuto una notifica.';
-            }
-            console.log("[Notification Email] Using minimal leave response fallback");
-          } else {
-            // For other types, use frontend provided content
-            emailSubject = subject || 'Notifica Sistema';
-            emailContent = shortText || 'Hai ricevuto una nuova notifica.';
-          }
-          console.log("[Notification Email] FALLBACK CONTENT - No database template found");
-          console.log("[Notification Email] Using subject:", emailSubject);
-          console.log("[Notification Email] Using content:", emailContent);
+          // NO FALLBACK: Template must exist in database
+          console.error(`[Notification Email] No database template found for ${templateType}/${templateCategory}`);
+          console.error("[Notification Email] This should not happen - all templates should be in database");
+          
+          // Return error instead of using hardcoded fallback
+          throw new Error(`Email template not found: ${templateType}/${templateCategory}. Please create this template in the admin settings.`);
         }
         
         // ENHANCED VARIABLE SUBSTITUTION WITH DETAILED LOGGING
@@ -507,14 +501,44 @@ serve(async (req) => {
         console.log("  Recipient name:", recipientName);
         
         // FIXED: Separate substitution for employee_name (sender) and recipient_name (recipient)
-        // Replace {employee_name} with the actual employee name (sender)
+        // Replace both {employee_name} and {employeeName} with the actual employee name (sender)
         const finalEmployeeName = employeeName || 'Dipendente';
-        emailSubject = emailSubject.replace(/{employee_name}/g, finalEmployeeName);
-        emailContent = emailContent.replace(/{employee_name}/g, finalEmployeeName);
+        emailSubject = emailSubject
+          .replace(/{employee_name}/g, finalEmployeeName)
+          .replace(/\{employeeName\}/g, finalEmployeeName);
+        emailContent = emailContent
+          .replace(/{employee_name}/g, finalEmployeeName)
+          .replace(/\{employeeName\}/g, finalEmployeeName);
         
-        // Replace {recipient_name} with the actual recipient name
-        emailSubject = emailSubject.replace(/{recipient_name}/g, recipientName);
-        emailContent = emailContent.replace(/{recipient_name}/g, recipientName);
+        // Replace both {recipient_name} and {recipientName} with the actual recipient name
+        emailSubject = emailSubject
+          .replace(/{recipient_name}/g, recipientName)
+          .replace(/\{recipientName\}/g, recipientName);
+        emailContent = emailContent
+          .replace(/{recipient_name}/g, recipientName)
+          .replace(/\{recipientName\}/g, recipientName);
+        
+        // Replace other common template variables
+        const safeLeaveDetails = leaveDetails || 'Nessun dettaglio disponibile';
+        const safeEmployeeNote = employeeNote || '';
+        const safeAdminNote = adminNote || '';
+        const safeMessage = message || '';
+        const safeMessageTitle = messageTitle || '';
+        
+        emailSubject = emailSubject
+          .replace(/\{leaveDetails\}/g, safeLeaveDetails)
+          .replace(/\{employeeNote\}/g, safeEmployeeNote)
+          .replace(/\{adminNote\}/g, safeAdminNote)
+          .replace(/\{message\}/g, safeMessage)
+          .replace(/\{messageTitle\}/g, safeMessageTitle);
+        
+        emailContent = emailContent
+          .replace(/\{leaveDetails\}/g, safeLeaveDetails)
+          .replace(/\{employeeNote\}/g, safeEmployeeNote)
+          .replace(/\{adminNote\}/g, safeAdminNote)
+          .replace(/\{message\}/g, safeMessage)
+          .replace(/\{messageTitle\}/g, safeMessageTitle)
+          .replace(/\{footerText\}/g, templateData.footer_text || '© A.L.M Infissi - Sistema di Gestione Aziendale');
         
         console.log("  Final subject:", emailSubject);
         console.log("  Final content preview:", emailContent.substring(0, 100) + "...");

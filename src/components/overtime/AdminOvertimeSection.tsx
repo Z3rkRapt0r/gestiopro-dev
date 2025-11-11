@@ -4,11 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import OvertimeEntryForm from './OvertimeEntryForm';
 import OvertimeArchiveSection from './OvertimeArchiveSection';
+import AutomaticOvertimeSummary from './AutomaticOvertimeSummary';
 import { useOvertimeArchive } from '@/hooks/useOvertimeArchive';
+import { useAutomaticOvertimeSettings } from '@/hooks/useAutomaticOvertimeSettings';
 
 export default function AdminOvertimeSection() {
   const [activeTab, setActiveTab] = useState('entry');
   const { fetchOvertimes } = useOvertimeArchive();
+  const { settings, isLoading: isLoadingSettings } = useAutomaticOvertimeSettings();
 
   const handleOvertimeSuccess = () => {
     // Refresh the archive data after successful entry
@@ -47,7 +50,10 @@ export default function AdminOvertimeSection() {
         </TabsList>
 
         <TabsContent value="entry" className="space-y-4">
-          <OvertimeEntryForm onSuccess={handleOvertimeSuccess} />
+          <div className={`grid gap-6 ${settings?.enable_auto_overtime_checkin ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 max-w-2xl mx-auto'}`}>
+            <OvertimeEntryForm onSuccess={handleOvertimeSuccess} />
+            {settings?.enable_auto_overtime_checkin && <AutomaticOvertimeSummary />}
+          </div>
         </TabsContent>
 
         <TabsContent value="archive" className="space-y-4">

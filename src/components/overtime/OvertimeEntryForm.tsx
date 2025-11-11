@@ -80,8 +80,11 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
           user_id: data.user_id,
           date: format(data.date, 'yyyy-MM-dd'),
           hours: data.hours,
+          reason: data.notes || null,
           notes: data.notes || null,
           created_by: profile.id,
+          overtime_type: 'manual',
+          is_automatic: false,
         });
 
       if (error) {
@@ -211,7 +214,7 @@ export default function OvertimeEntryForm({ onSuccess }: OvertimeEntryFormProps)
                   )}
                   {form.watch('user_id') && !conflictsLoading && conflictDates.length > 0 && (
                     <p className="text-sm text-orange-600 mt-1">
-                      ⚠️ {conflictDates.length} date disabilitate per conflitti con presenze, malattie, trasferte o ferie esistenti
+                      ⚠️ {conflictDates.length} date disabilitate per conflitti con presenze, malattie, trasferte, ferie o straordinari automatici esistenti
                     </p>
                   )}
                 </FormItem>

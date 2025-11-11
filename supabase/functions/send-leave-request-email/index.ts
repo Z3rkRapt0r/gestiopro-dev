@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // Get sender settings and Resend API key from admin_settings table
     const { data: adminSettings, error: adminError } = await supabase
       .from('admin_settings')
-      .select('sender_name, sender_email, resend_api_key')
+      .select('admin_id, sender_name, sender_email, resend_api_key')
       .single();
 
     if (adminError || !adminSettings) {
@@ -101,20 +101,71 @@ Deno.serve(async (req) => {
       console.log('[Leave Request Email] Sending to all admins:', recipients);
     }
 
-    // Build email content
-    let subject: string;
-    let htmlContent: string;
-
+    // Determine template type and category based on email type
+    let templateType: string;
+    let templateCategory: string;
+    
     if (isApproval) {
-      subject = `✅ Richiesta ${leaveType} approvata`;
-      htmlContent = buildApprovalEmail(employeeName, leaveType, leaveDetails, adminNote);
+      templateType = `${leaveType}-approvazione`;
+      templateCategory = 'dipendenti'; // Send to employee
     } else if (isRejection) {
-      subject = `❌ Richiesta ${leaveType} rifiutata`;
-      htmlContent = buildRejectionEmail(employeeName, leaveType, leaveDetails, adminNote);
+      templateType = `${leaveType}-rifiuto`;
+      templateCategory = 'dipendenti'; // Send to employee
     } else {
-      subject = `📋 Nuova richiesta ${leaveType} da ${employeeName}`;
-      htmlContent = buildNewRequestEmail(employeeName, leaveType, leaveDetails, employeeNote);
+      templateType = `${leaveType}-richiesta`;
+      templateCategory = 'amministratori'; // Send to admins
     }
+
+    // Get email template from database
+    console.log(`[Leave Request Email] Looking for template: ${templateType}, ${templateCategory}`);
+    const { data: emailTemplate, error: templateError } = await supabase
+      .from("email_templates")
+      .select("*")
+      .eq("admin_id", adminSettings.admin_id)
+      .eq("template_type", templateType)
+      .eq("template_category", templateCategory)
+      .maybeSingle();
+
+    if (templateError) {
+      console.error("[Leave Request Email] Error fetching template:", templateError);
+      throw templateError;
+    }
+
+    if (!emailTemplate) {
+      console.error(`[Leave Request Email] No template found for ${templateType}/${templateCategory}`);
+      return new Response(
+        JSON.stringify({ error: `Email template not found: ${templateType}/${templateCategory}` }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("[Leave Request Email] Using template:", emailTemplate.name);
+
+    // Replace template variables with safe fallbacks
+    const safeEmployeeName = employeeName || 'Dipendente';
+    const safeLeaveDetails = leaveDetails || 'Nessun dettaglio disponibile';
+    const safeEmployeeNote = employeeNote || '';
+    const safeAdminNote = adminNote || '';
+    const safeFooterText = emailTemplate.footer_text || '© A.L.M Infissi - Sistema di Gestione Aziendale';
+    
+    let subject = emailTemplate.subject
+      .replace(/\{employeeName\}/g, safeEmployeeName);
+    
+    let htmlContent = emailTemplate.content
+      .replace(/\{employeeName\}/g, safeEmployeeName)
+      .replace(/\{leaveDetails\}/g, safeLeaveDetails)
+      .replace(/\{employeeNote\}/g, safeEmployeeNote)
+      .replace(/\{adminNote\}/g, safeAdminNote)
+      .replace(/\{footerText\}/g, safeFooterText);
+
+    // Apply template styling
+    htmlContent = htmlContent
+      .replace(/\{primaryColor\}/g, emailTemplate.primary_color || '#007bff')
+      .replace(/\{secondaryColor\}/g, emailTemplate.secondary_color || '#6c757d')
+      .replace(/\{backgroundColor\}/g, emailTemplate.background_color || '#ffffff')
+      .replace(/\{textColor\}/g, emailTemplate.text_color || '#333333')
+      .replace(/\{footerColor\}/g, emailTemplate.footer_color || '#888888')
+      .replace(/\{fontFamily\}/g, emailTemplate.font_family || 'Arial, sans-serif');
 
     console.log('[Leave Request Email] Prepared email:', { subject, recipientCount: recipients.length });
 
@@ -178,127 +229,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-function buildNewRequestEmail(
-  employeeName: string, 
-  leaveType: string, 
-  leaveDetails: string, 
-  employeeNote?: string
-): string {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background-color: #007bff; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0; font-size: 24px;">📋 Nuova Richiesta ${leaveType === 'ferie' ? 'Ferie' : 'Permesso'}</h1>
-      </div>
-      
-      <div style="background-color: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;">
-        <p style="font-size: 16px; margin-bottom: 20px;">
-          Gentile Amministratore,<br><br>
-          È stata ricevuta una nuova richiesta di ${leaveType === 'ferie' ? 'ferie' : 'permesso'} da <strong>${employeeName}</strong>.
-        </p>
-        
-        <div style="background-color: #e3f2fd; padding: 15px; border-left: 4px solid #007bff; margin-bottom: 20px; border-radius: 4px;">
-          <h3 style="margin: 0 0 10px 0; color: #007bff;">📅 Dettagli Richiesta</h3>
-          <div style="font-size: 14px; white-space: pre-line;">${leaveDetails}</div>
-        </div>
-        
-        ${employeeNote ? `
-        <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin-bottom: 20px; border-radius: 4px;">
-          <h3 style="margin: 0 0 10px 0; color: #856404;">💬 Note del Dipendente</h3>
-          <div style="font-size: 14px; white-space: pre-line;">${employeeNote}</div>
-        </div>
-        ` : ''}
-        
-        <!-- Button removed as requested -->
-      </div>
-      
-      <div style="background-color: #6c757d; color: white; padding: 15px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px;">
-        © A.L.M Infissi - Sistema di Gestione Aziendale
-      </div>
-    </div>
-  `;
-}
-
-function buildApprovalEmail(
-  employeeName: string, 
-  leaveType: string, 
-  leaveDetails: string, 
-  adminNote?: string
-): string {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background-color: #28a745; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0; font-size: 24px;">✅ Richiesta Approvata</h1>
-      </div>
-      
-      <div style="background-color: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;">
-        <p style="font-size: 16px; margin-bottom: 20px;">
-          Caro/a <strong>${employeeName}</strong>,<br><br>
-          La tua richiesta di ${leaveType === 'ferie' ? 'ferie' : 'permesso'} è stata <strong style="color: #28a745;">APPROVATA</strong>.
-        </p>
-        
-        <div style="background-color: #e3f2fd; padding: 15px; border-left: 4px solid #007bff; margin-bottom: 20px; border-radius: 4px;">
-          <h3 style="margin: 0 0 10px 0; color: #007bff;">📅 Dettagli Richiesta</h3>
-          <div style="font-size: 14px; white-space: pre-line;">${leaveDetails}</div>
-        </div>
-        
-        ${adminNote ? `
-        <div style="background-color: #d4edda; padding: 15px; border-left: 4px solid #28a745; margin-bottom: 20px; border-radius: 4px;">
-          <h3 style="margin: 0 0 10px 0; color: #155724;">💬 Note dell'Amministratore</h3>
-          <div style="font-size: 14px; white-space: pre-line;">${adminNote}</div>
-        </div>
-        ` : ''}
-        
-        <!-- Button removed as requested -->
-      </div>
-      
-      <div style="background-color: #6c757d; color: white; padding: 15px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px;">
-        © A.L.M Infissi - Sistema di Gestione Aziendale
-      </div>
-    </div>
-  `;
-}
-
-function buildRejectionEmail(
-  employeeName: string, 
-  leaveType: string, 
-  leaveDetails: string, 
-  adminNote?: string
-): string {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background-color: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0; font-size: 24px;">❌ Richiesta Rifiutata</h1>
-      </div>
-      
-      <div style="background-color: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;">
-        <p style="font-size: 16px; margin-bottom: 20px;">
-          Caro/a <strong>${employeeName}</strong>,<br><br>
-          La tua richiesta di ${leaveType === 'ferie' ? 'ferie' : 'permesso'} è stata <strong style="color: #dc3545;">RIFIUTATA</strong>.
-        </p>
-        
-        <div style="background-color: #e3f2fd; padding: 15px; border-left: 4px solid #007bff; margin-bottom: 20px; border-radius: 4px;">
-          <h3 style="margin: 0 0 10px 0; color: #007bff;">📅 Dettagli Richiesta</h3>
-          <div style="font-size: 14px; white-space: pre-line;">${leaveDetails}</div>
-        </div>
-        
-        ${adminNote ? `
-        <div style="background-color: #f8d7da; padding: 15px; border-left: 4px solid #dc3545; margin-bottom: 20px; border-radius: 4px;">
-          <h3 style="margin: 0 0 10px 0; color: #721c24;">💬 Motivo del Rifiuto</h3>
-          <div style="font-size: 14px; white-space: pre-line;">${adminNote}</div>
-        </div>
-        ` : ''}
-        
-        <p style="font-size: 14px; color: #6c757d; margin-top: 20px;">
-          Per ulteriori chiarimenti, contatta l'amministrazione.
-        </p>
-        
-        <!-- Button removed as requested -->
-      </div>
-      
-      <div style="background-color: #6c757d; color: white; padding: 15px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px;">
-        © A.L.M Infissi - Sistema di Gestione Aziendale
-      </div>
-    </div>
-  `;
-}

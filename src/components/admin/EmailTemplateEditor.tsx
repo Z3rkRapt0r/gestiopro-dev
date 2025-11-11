@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Save, Settings, Type, Palette, MousePointer, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import TestEmailDialog from "./TestEmailDialog";
 
 interface EmailTemplateEditorProps {
   templateType: string;
@@ -63,14 +64,8 @@ const EmailTemplateEditor = ({
   const [adminNotesBgColor, setAdminNotesBgColor] = useState("#f8f9fa");
   const [adminNotesTextColor, setAdminNotesTextColor] = useState("#495057");
   
-  // Button styling
-  const [buttonColor, setButtonColor] = useState("#007bff");
-  const [buttonTextColor, setButtonTextColor] = useState("#ffffff");
-  
-  // NEW: Button configuration - DISABLED
-  const [showButton, setShowButton] = useState(false);
-  const [buttonText, setButtonText] = useState("Accedi alla Dashboard");
-  const [buttonUrl, setButtonUrl] = useState("https://finestra-gestione-aziendale-pro.vercel.app/");
+  // Button styling - REMOVED
+  // No more button configuration in email templates
   
   // State
   const [loading, setLoading] = useState(false);
@@ -102,10 +97,12 @@ const EmailTemplateEditor = ({
     return templateType === 'notifiche' && templateCategory === 'amministratori';
   };
 
-  // NEW: Check if this template should show button configuration (exclude document templates) - DISABLED
-  const shouldShowButtonConfig = () => {
-    return false; // Always false to hide button configuration
+  // Check if this is an attendance alert template
+  const isAttendanceAlertTemplate = () => {
+    return templateType === 'avviso-entrata';
   };
+
+  // Button configuration removed - no more buttons in email templates
 
   // NEW: Check if content section should be shown (hide for admin notifications)
   const shouldShowContentSection = () => {
@@ -159,15 +156,8 @@ const EmailTemplateEditor = ({
         setLeaveDetailsTextColor(data.leave_details_text_color || "#1565c0");
         setAdminNotesBgColor(data.admin_notes_bg_color || "#f8f9fa");
         setAdminNotesTextColor(data.admin_notes_text_color || "#495057");
-        setButtonColor(data.button_color || "#007bff");
-        setButtonTextColor(data.button_text_color || "#ffffff");
         setAdminMessageBgColor(data.admin_message_bg_color || "#e3f2fd");
         setAdminMessageTextColor(data.admin_message_text_color || "#1565c0");
-        
-        // NEW: Load button configuration
-        setShowButton(data.show_button !== undefined ? data.show_button : true);
-        setButtonText(data.button_text || "Accedi alla Dashboard");
-        setButtonUrl(data.button_url || "https://finestra-gestione-aziendale-pro.vercel.app/");
       } else {
         console.log('No existing template found, using defaults');
         setExistingTemplateId(null);
@@ -219,17 +209,11 @@ const EmailTemplateEditor = ({
         leave_details_text_color: leaveDetailsTextColor,
         admin_notes_bg_color: adminNotesBgColor,
         admin_notes_text_color: adminNotesTextColor,
-        button_color: buttonColor,
-        button_text_color: buttonTextColor,
         subject_editable: subjectEditable,
         content_editable: contentEditable,
         show_admin_message: true, // Always true, no longer configurable
         admin_message_bg_color: adminMessageBgColor,
         admin_message_text_color: adminMessageTextColor,
-        // NEW: Save button configuration
-        show_button: showButton,
-        button_text: buttonText,
-        button_url: buttonUrl,
       };
 
       if (existingTemplateId) {
@@ -288,6 +272,13 @@ const EmailTemplateEditor = ({
           </p>
         </div>
         <div className="flex gap-2">
+          <TestEmailDialog
+            templateType={templateType as any}
+            templateCategory={templateCategory}
+            subject={subject}
+            content={content}
+            disabled={loading || !subject || !content}
+          />
           <Button onClick={handleSave} disabled={loading}>
             <Save className="w-4 h-4 mr-2" />
             {loading ? "Salvataggio..." : "Salva Template"}
@@ -352,6 +343,15 @@ const EmailTemplateEditor = ({
                   <p className="text-xs text-gray-500 mt-1">
                     Puoi usare <code>{'{admin_message}'}</code> per il messaggio dell'amministratore
                   </p>
+                )}
+                {isAttendanceAlertTemplate() && (
+                  <div className="text-xs text-gray-500 mt-2 space-y-1 bg-blue-50 p-3 rounded-md">
+                    <p className="font-semibold text-blue-800">Variabili disponibili:</p>
+                    <p>• <code className="bg-white px-1 py-0.5 rounded">{'{employee_name}'}</code> - Nome del dipendente</p>
+                    <p>• <code className="bg-white px-1 py-0.5 rounded">{'{alert_date}'}</code> - Data alert (es: 15 Gennaio 2025)</p>
+                    <p>• <code className="bg-white px-1 py-0.5 rounded">{'{alert_time}'}</code> - Ora corrente (es: 09:30)</p>
+                    <p>• <code className="bg-white px-1 py-0.5 rounded">{'{expected_time}'}</code> - Ora prevista (es: 08:00)</p>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -529,130 +529,11 @@ const EmailTemplateEditor = ({
           </CardContent>
         </Card>
 
-        {/* NEW: Button Configuration Section - Only show for non-document templates */}
-        {shouldShowButtonConfig() && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MousePointer className="w-5 h-5" />
-                Configurazione Pulsante
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Mostra Pulsante</Label>
-                <Switch
-                  checked={showButton}
-                  onCheckedChange={setShowButton}
-                />
-              </div>
+        {/* Button Configuration Section - REMOVED */}
+        {/* No more button configuration in email templates */}
 
-              {showButton && (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="button-text">Testo Pulsante</Label>
-                    <Input
-                      id="button-text"
-                      value={buttonText}
-                      onChange={(e) => setButtonText(e.target.value)}
-                      placeholder="es. Vai alla Dashboard"
-                      maxLength={100}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Massimo 100 caratteri
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="button-url">URL Pulsante</Label>
-                    <Input
-                      id="button-url"
-                      value={buttonUrl}
-                      onChange={(e) => setButtonUrl(e.target.value)}
-                      placeholder="https://finestra-gestione-aziendale-pro.vercel.app/"
-                      type="url"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      URL di destinazione del pulsante
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="button-color">Colore Pulsante</Label>
-                      <Input
-                        id="button-color"
-                        type="color"
-                        value={buttonColor}
-                        onChange={(e) => setButtonColor(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="button-text-color">Colore Testo Pulsante</Label>
-                      <Input
-                        id="button-text-color"
-                        type="color"
-                        value={buttonTextColor}
-                        onChange={(e) => setButtonTextColor(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="border-radius">Raggio Bordi</Label>
-                    <Input
-                      id="border-radius"
-                      value={borderRadius}
-                      onChange={(e) => setBorderRadius(e.target.value)}
-                      placeholder="es. 6px"
-                    />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Button Styling - Keep existing section but only show if not showing button config above */}
-        {!shouldShowButtonConfig() && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Stile Pulsanti</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="button-color">Colore Pulsante</Label>
-                  <Input
-                    id="button-color"
-                    type="color"
-                    value={buttonColor}
-                    onChange={(e) => setButtonColor(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="button-text-color">Colore Testo Pulsante</Label>
-                  <Input
-                    id="button-text-color"
-                    type="color"
-                    value={buttonTextColor}
-                    onChange={(e) => setButtonTextColor(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="border-radius">Raggio Bordi</Label>
-                <Input
-                  id="border-radius"
-                  value={borderRadius}
-                  onChange={(e) => setBorderRadius(e.target.value)}
-                  placeholder="es. 6px"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Button Styling Section - REMOVED */}
+        {/* No more button styling in email templates */}
       </div>
     </div>
   );

@@ -228,9 +228,9 @@ const NotificationsCleanupButton = () => {
                       <div className="font-medium capitalize">
                         {stat.table_name.replace('_', ' ')}
                       </div>
-                      <Badge variant={stat.is_enabled ? "default" : "secondary"}>
-                        {stat.is_enabled ? "Abilitato" : "Disabilitato"}
-                      </Badge>
+                        <Badge variant={stat.is_enabled ? "default" : "secondary"}>
+                          {stat.is_enabled ? "Abilitato" : "Disabilitato"}
+                        </Badge>
                     </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-600">

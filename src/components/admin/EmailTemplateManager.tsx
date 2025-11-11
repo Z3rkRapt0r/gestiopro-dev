@@ -1,8 +1,13 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Bell, CheckCircle, Mail, Calendar, UserCheck, UserX, Users, User, Clock, Plane, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { 
+  FileText, Bell, CheckCircle, Mail, Calendar, UserCheck, UserX, Users, User, 
+  Clock, Plane, AlertTriangle, Settings, Palette, Send, MessageSquare, 
+  FileCheck, UserPlus, UserMinus, Zap, ArrowRight, ArrowLeft, Target 
+} from "lucide-react";
 import DocumentTemplateEditor from "./DocumentTemplateEditor";
 import NotificationTemplateEditor from "./NotificationTemplateEditor";
 import PermissionRequestTemplateEditor from "./PermissionRequestTemplateEditor";
@@ -12,276 +17,441 @@ import VacationApprovalTemplateEditor from "./VacationApprovalTemplateEditor";
 import PermissionRejectionTemplateEditor from "./PermissionRejectionTemplateEditor";
 import VacationRejectionTemplateEditor from "./VacationRejectionTemplateEditor";
 import AttendanceAlertTemplateEditor from "./AttendanceAlertTemplateEditor";
+import EmailTemplateEditor from "./EmailTemplateEditor";
 import GlobalLogoSection from "./GlobalLogoSection";
 
 const EmailTemplateManager = () => {
-  const [activeTab, setActiveTab] = useState("global-logo");
+  const [activeTab, setActiveTab] = useState("global-settings");
   const [activeAdminSubTab, setActiveAdminSubTab] = useState("documenti");
   const [activeEmployeeSubTab, setActiveEmployeeSubTab] = useState("documenti");
 
+  const templateCategories = {
+    "global-settings": {
+      title: "Configurazione Globale",
+      icon: Settings,
+      description: "Impostazioni che si applicano a tutti i template email",
+      color: "blue"
+    },
+    "admin-templates": {
+      title: "Email Amministratore → Dipendente",
+      icon: Send,
+      description: "Template per email inviate dall'amministratore ai dipendenti",
+      color: "green",
+      direction: "admin-to-employee"
+    },
+    "employee-templates": {
+      title: "Email Dipendente → Amministratore",
+      icon: ArrowRight,
+      description: "Template per email inviate dai dipendenti all'amministratore",
+      color: "blue",
+      direction: "employee-to-admin"
+    },
+    "system-templates": {
+      title: "Template Sistema",
+      icon: Zap,
+      description: "Template automatici generati dal sistema",
+      color: "purple",
+      direction: "system"
+    }
+  };
+
+  const adminTemplates = [
+    { id: "documenti", name: "Documenti", icon: FileText, description: "Notifiche documenti", badge: "File" },
+    { id: "notifiche", name: "Notifiche", icon: Bell, description: "Notifiche generali", badge: "Alert" },
+    { id: "employee-message", name: "Messaggi", icon: MessageSquare, description: "Messaggi dipendenti", badge: "Chat" },
+    { id: "permessi-richiesta", name: "Permessi", icon: Clock, description: "Richieste permessi", badge: "Richiesta" },
+    { id: "ferie-richiesta", name: "Ferie", icon: Plane, description: "Richieste ferie", badge: "Richiesta" },
+    { id: "permessi-approvazione", name: "Permessi OK", icon: UserCheck, description: "Approvazioni permessi", badge: "Approvato", badgeVariant: "default" },
+    { id: "ferie-approvazione", name: "Ferie OK", icon: UserCheck, description: "Approvazioni ferie", badge: "Approvato", badgeVariant: "default" },
+    { id: "permessi-rifiuto", name: "Permessi NO", icon: UserX, description: "Rifiuti permessi", badge: "Rifiutato", badgeVariant: "destructive" },
+    { id: "ferie-rifiuto", name: "Ferie NO", icon: UserX, description: "Rifiuti ferie", badge: "Rifiutato", badgeVariant: "destructive" }
+  ];
+
+  const employeeTemplates = [
+    { id: "documenti", name: "Documenti", icon: FileText, description: "Caricamento documenti", badge: "Upload" },
+    { id: "notifiche", name: "Notifiche", icon: Bell, description: "Notifiche dipendenti", badge: "Alert" },
+    { id: "permessi-richiesta", name: "Permessi", icon: Clock, description: "Richieste permessi", badge: "Richiesta" },
+    { id: "ferie-richiesta", name: "Ferie", icon: Plane, description: "Richieste ferie", badge: "Richiesta" }
+  ];
+
+  const systemTemplates = [
+    { id: "promemoria-presenza", name: "Promemoria Presenza", icon: AlertTriangle, description: "Alert entrata mancante", badge: "Auto" }
+  ];
+
+  const getColorClasses = (color: string) => {
+    const colors = {
+      blue: "from-blue-50 to-indigo-50 border-blue-200 text-blue-800",
+      green: "from-green-50 to-emerald-50 border-green-200 text-green-800",
+      purple: "from-purple-50 to-violet-50 border-purple-200 text-purple-800"
+    };
+    return colors[color as keyof typeof colors] || colors.blue;
+  };
+
   return (
-    <Card className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header con descrizione migliorata */}
+      <Card className={`bg-gradient-to-r ${getColorClasses("blue")} shadow-lg`}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="w-6 h-6" />
-          Gestione Modelli Email
+          <CardTitle className="flex items-center gap-3 text-2xl">
+            <div className="p-3 bg-white rounded-xl shadow-sm">
+              <Mail className="w-7 h-7 text-blue-600" />
+            </div>
+            <div>
+              <span className="text-gray-900">Gestione Modelli Email</span>
+              <p className="text-sm font-normal text-gray-600 mt-2">
+                Personalizza tutti i template email del sistema con design, contenuti e branding personalizzati
+              </p>
+              <div className="flex gap-4 mt-3">
+                <Badge variant="secondary" className="text-xs">
+                  <Target className="w-3 h-3 mr-1" />
+                  4 Categorie
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  <Palette className="w-3 h-3 mr-1" />
+                  Personalizzazione Completa
+                </Badge>
+              </div>
+            </div>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="global-logo" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Logo Globale
+      </Card>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Navigation migliorata */}
+        <TabsList className="grid w-full grid-cols-4 h-auto p-2 bg-gray-100 rounded-xl">
+          {Object.entries(templateCategories).map(([key, category]) => {
+            const IconComponent = category.icon;
+            return (
+              <TabsTrigger 
+                key={key}
+                value={key} 
+                className="flex flex-col items-center gap-3 p-4 h-auto data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-2 rounded-lg transition-all duration-200"
+              >
+                <div className={`p-2 rounded-lg ${key === activeTab ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                  <IconComponent className={`w-5 h-5 ${key === activeTab ? 'text-blue-600' : 'text-gray-600'}`} />
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-medium block">{category.title.split(' ')[0]}</span>
+                  <span className="text-xs text-gray-500 block">{category.title.split(' ').slice(1).join(' ')}</span>
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  {category.direction === 'admin-to-employee' && 'Admin→Emp'}
+                  {category.direction === 'employee-to-admin' && 'Emp→Admin'}
+                  {category.direction === 'system' && 'Sistema'}
+                  {!category.direction && 'Globale'}
+                </Badge>
             </TabsTrigger>
-            <TabsTrigger value="admin-templates" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Email inviate dall'Amministratore
-            </TabsTrigger>
-            <TabsTrigger value="employee-templates" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Email inviate dal Dipendente
-            </TabsTrigger>
+            );
+          })}
           </TabsList>
 
-          <TabsContent value="global-logo" className="mt-6">
-            <GlobalLogoSection />
-          </TabsContent>
-
-          <TabsContent value="admin-templates" className="mt-6">
-            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h3 className="font-semibold text-green-800 mb-2">Template Email inviate dall'Amministratore</h3>
-              <p className="text-sm text-green-700">
-                Questi template vengono utilizzati quando l'amministratore invia email ai dipendenti.
-              </p>
-            </div>
-
-            <Tabs value={activeAdminSubTab} onValueChange={setActiveAdminSubTab}>
-              <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="documenti" className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Documenti
-                </TabsTrigger>
-                <TabsTrigger value="notifiche" className="flex items-center gap-2">
-                  <Bell className="w-4 h-4" />
-                  Notifiche
-                </TabsTrigger>
-                <TabsTrigger value="avviso-entrata" className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Avviso Entrata
-                </TabsTrigger>
-                <TabsTrigger value="permessi-approvazione" className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Permessi OK
-                </TabsTrigger>
-                <TabsTrigger value="ferie-approvazione" className="flex items-center gap-2">
-                  <Plane className="w-4 h-4" />
-                  Ferie OK
-                </TabsTrigger>
-                <TabsTrigger value="permessi-rifiuto" className="flex items-center gap-2">
-                  <UserX className="w-4 h-4" />
-                  Permessi NO
-                </TabsTrigger>
-                <TabsTrigger value="ferie-rifiuto" className="flex items-center gap-2">
-                  <UserX className="w-4 h-4" />
-                  Ferie NO
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="documenti" className="mt-6">
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="font-semibold text-blue-800 mb-2">Template Documenti per Dipendenti</h4>
-                  <p className="text-sm text-blue-700">
-                    Template utilizzato quando l'amministratore carica un documento per un dipendente.
-                    Puoi personalizzare oggetto e contenuto. Usa <code>{'{employee_name}'}</code> per il nome del dipendente.
-                  </p>
-                </div>
-                <DocumentTemplateEditor 
-                  templateType="documenti" 
-                  templateCategory="amministratori"
-                  defaultContent="Gentile {employee_name},\n\nÈ disponibile un nuovo documento per te. Il documento contiene informazioni importanti che richiedono la tua attenzione.\n\nAccedi alla dashboard per visualizzare il documento."
-                  defaultSubject="Nuovo Documento Disponibile"
-                  subjectEditable={true}
-                  contentEditable={true}
-                />
-              </TabsContent>
-
-              <TabsContent value="notifiche" className="mt-6">
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="font-semibold text-blue-800 mb-2">Template Notifiche per Dipendenti</h4>
-                  <p className="text-sm text-blue-700">
-                    Template utilizzato quando l'amministratore invia una notifica ai dipendenti.
-                    Puoi personalizzare oggetto e contenuto.
-                  </p>
-                </div>
-                <NotificationTemplateEditor 
-                  templateCategory="amministratori"
-                  defaultContent="Hai ricevuto una nuova notifica dall'amministrazione. Controlla i dettagli nella dashboard."
-                  defaultSubject="Nuova Notifica dall'Amministrazione"
-                  subjectEditable={true}
-                  contentEditable={true}
-                />
-              </TabsContent>
-
-              <TabsContent value="avviso-entrata" className="mt-6">
-                <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                  <h4 className="font-semibold text-orange-800 mb-2">Template Avviso Entrata Mancante</h4>
-                  <p className="text-sm text-orange-700">
-                    Template utilizzato per avvisare automaticamente i dipendenti che non registrano l'entrata.
-                    Usa <code>{'{employee_name}'}</code> per il nome del dipendente, <code>{'{expected_time}'}</code> per l'orario previsto,
-                    e <code>{'{current_time}'}</code> per l'orario attuale.
-                  </p>
-                  <div className="mt-3 p-3 bg-orange-100 rounded border-l-4 border-orange-400">
-                    <p className="text-sm text-orange-800 font-medium">
-                      ⚙️ Configurazione: Il tempo di attesa e l'attivazione del servizio si configurano nelle Impostazioni Presenze.
-                    </p>
-                  </div>
-                </div>
-                <AttendanceAlertTemplateEditor 
-                  templateCategory="amministratori"
-                  defaultContent="Gentile {employee_name},\n\nNotiamo che non hai ancora registrato la tua entrata per oggi.\n\nOrario previsto: {expected_time}\nOrario attuale: {current_time}\n\nTi ricordiamo di registrare la tua presenza il prima possibile.\n\nGrazie per la collaborazione."
-                  defaultSubject="Promemoria: Registrazione Entrata Mancante"
-                  subjectEditable={true}
-                  contentEditable={true}
-                />
-              </TabsContent>
-
-              <TabsContent value="permessi-approvazione" className="mt-6">
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-semibold text-green-800 mb-2">Template per Approvazioni Permessi</h4>
-                  <p className="text-sm text-green-700">
-                    Template utilizzato quando l'amministratore approva una richiesta di permesso.
-                    Usa <code>{'{employee_name}'}</code> e <code>{'{leave_details}'}</code> per personalizzare il messaggio.
-                  </p>
-                </div>
-                <PermissionApprovalTemplateEditor templateCategory="amministratori" />
-              </TabsContent>
-
-              <TabsContent value="ferie-approvazione" className="mt-6">
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-semibold text-green-800 mb-2">Template per Approvazioni Ferie</h4>
-                  <p className="text-sm text-green-700">
-                    Template utilizzato quando l'amministratore approva una richiesta di ferie.
-                    Usa <code>{'{employee_name}'}</code> e <code>{'{leave_details}'}</code> per personalizzare il messaggio.
-                  </p>
-                </div>
-                <VacationApprovalTemplateEditor templateCategory="amministratori" />
-              </TabsContent>
-
-              <TabsContent value="permessi-rifiuto" className="mt-6">
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <h4 className="font-semibold text-red-800 mb-2">Template per Rifiuti Permessi</h4>
-                  <p className="text-sm text-red-700">
-                    Template utilizzato quando l'amministratore rifiuta una richiesta di permesso.
-                    Usa <code>{'{employee_name}'}</code> e <code>{'{leave_details}'}</code> per personalizzare il messaggio.
-                  </p>
-                </div>
-                <PermissionRejectionTemplateEditor templateCategory="amministratori" />
-              </TabsContent>
-
-              <TabsContent value="ferie-rifiuto" className="mt-6">
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <h4 className="font-semibold text-red-800 mb-2">Template per Rifiuti Ferie</h4>
-                  <p className="text-sm text-red-700">
-                    Template utilizzato quando l'amministratore rifiuta una richiesta di ferie.
-                    Usa <code>{'{employee_name}'}</code> e <code>{'{leave_details}'}</code> per personalizzare il messaggio.
-                  </p>
-                </div>
-                <VacationRejectionTemplateEditor templateCategory="amministratori" />
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          <TabsContent value="employee-templates" className="mt-6">
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="font-semibold text-blue-800 mb-2">Template Email inviate dal Dipendente</h3>
+        {/* Configurazione Globale */}
+        <TabsContent value="global-settings" className="space-y-6">
+          <Card className="shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardTitle className="flex items-center gap-2 text-blue-800">
+                <Settings className="w-6 h-6" />
+                Configurazione Globale
+              </CardTitle>
               <p className="text-sm text-blue-700">
-                Questi template vengono utilizzati quando i dipendenti inviano email agli amministratori. 
-                Tutti i campi sono modificabili per personalizzare i messaggi.
+                Impostazioni che si applicano a tutti i template email del sistema
               </p>
-            </div>
+            </CardHeader>
+            <CardContent className="p-6">
+            <GlobalLogoSection />
+            </CardContent>
+          </Card>
+          </TabsContent>
 
-            <Tabs value={activeEmployeeSubTab} onValueChange={setActiveEmployeeSubTab}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="documenti" className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Documenti
+        {/* Template Amministratore */}
+        <TabsContent value="admin-templates" className="space-y-6">
+          <Card className={`border-green-200 bg-gradient-to-r ${getColorClasses("green")} shadow-lg`}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Send className="w-6 h-6" />
+                Template Email Amministratore → Dipendente
+              </CardTitle>
+              <p className="text-sm text-green-700">
+                Questi template vengono utilizzati quando l'amministratore invia email ai dipendenti
+              </p>
+            </CardHeader>
+          </Card>
+
+          <Tabs value={activeAdminSubTab} onValueChange={setActiveAdminSubTab} className="space-y-4">
+            <TabsList className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-auto p-2 bg-transparent">
+              {adminTemplates.map((template) => {
+                const IconComponent = template.icon;
+                return (
+                  <TabsTrigger 
+                    key={template.id}
+                    value={template.id} 
+                    className="flex flex-col items-center gap-3 p-4 h-auto data-[state=active]:bg-green-100 data-[state=active]:border-green-300 data-[state=active]:shadow-md rounded-xl border-2 border-transparent transition-all duration-200 hover:border-green-200"
+                  >
+                    <div className={`p-3 rounded-xl ${activeAdminSubTab === template.id ? 'bg-green-200' : 'bg-gray-100'}`}>
+                      <IconComponent className={`w-6 h-6 ${activeAdminSubTab === template.id ? 'text-green-700' : 'text-gray-600'}`} />
+                    </div>
+                    <div className="text-center">
+                      <span className="text-sm font-medium block">{template.name}</span>
+                      <span className="text-xs text-gray-500">{template.description}</span>
+            </div>
+                    <Badge 
+                      variant={template.badgeVariant as any || "outline"} 
+                      className="text-xs"
+                    >
+                      {template.badge}
+                    </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="notifiche" className="flex items-center gap-2">
-                  <Bell className="w-4 h-4" />
-                  Notifiche
-                </TabsTrigger>
-                <TabsTrigger value="permessi-richiesta" className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Richieste Permessi
-                </TabsTrigger>
-                <TabsTrigger value="ferie-richiesta" className="flex items-center gap-2">
-                  <Plane className="w-4 h-4" />
-                  Richieste Ferie
-                </TabsTrigger>
+                );
+              })}
               </TabsList>
 
-              <TabsContent value="documenti" className="mt-6">
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-semibold text-green-800 mb-2">Template Documenti per Amministratori</h4>
-                  <p className="text-sm text-green-700">
-                    Template utilizzato quando un dipendente carica un documento e invia notifica agli amministratori.
-                    Usa <code>{'{employee_name}'}</code> per il nome del dipendente e <code>{'{employee_note}'}</code> per le note del dipendente.
-                  </p>
-                </div>
+            {/* Contenuto dei template amministratore */}
+            {adminTemplates.map((template) => (
+              <TabsContent key={template.id} value={template.id} className="mt-6">
+                <Card className="shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
+                    <CardTitle className="flex items-center gap-2">
+                      <template.icon className="w-5 h-5" />
+                      Template {template.name}
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">
+                      Personalizza il template per le email {template.description}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {template.id === "documenti" && (
+                <DocumentTemplateEditor 
+                  templateType="documenti" 
+                  templateCategory="amministratori"
+                        defaultContent=""
+                        defaultSubject=""
+                  subjectEditable={true}
+                  contentEditable={true}
+                />
+                    )}
+                    {template.id === "notifiche" && (
+                <NotificationTemplateEditor 
+                        templateType="notifiche" 
+                        templateCategory="amministratori"
+                        defaultContent=""
+                        defaultSubject=""
+                        subjectEditable={true}
+                        contentEditable={true}
+                      />
+                    )}
+                    {template.id === "employee-message" && (
+                      <EmailTemplateEditor
+                        templateType="employee-message"
+                        templateCategory="amministratori"
+                        defaultSubject=""
+                        defaultContent=""
+                        subjectEditable={true}
+                        contentEditable={true}
+                      />
+                    )}
+                    {template.id === "permessi-richiesta" && (
+                      <PermissionRequestTemplateEditor 
+                  templateCategory="amministratori"
+                        defaultContent=""
+                        defaultSubject=""
+                  subjectEditable={true}
+                  contentEditable={true}
+                />
+                    )}
+                    {template.id === "ferie-richiesta" && (
+                      <VacationRequestTemplateEditor 
+                  templateCategory="amministratori"
+                        defaultContent=""
+                        defaultSubject=""
+                        subjectEditable={true}
+                        contentEditable={true}
+                      />
+                    )}
+                    {template.id === "permessi-approvazione" && (
+                      <PermissionApprovalTemplateEditor 
+                        templateCategory="dipendenti"
+                        defaultContent=""
+                        defaultSubject=""
+                        subjectEditable={true}
+                        contentEditable={true}
+                      />
+                    )}
+                    {template.id === "ferie-approvazione" && (
+                      <VacationApprovalTemplateEditor 
+                        templateCategory="dipendenti"
+                        defaultContent=""
+                        defaultSubject=""
+                        subjectEditable={true}
+                        contentEditable={true}
+                      />
+                    )}
+                    {template.id === "permessi-rifiuto" && (
+                      <PermissionRejectionTemplateEditor 
+                        templateCategory="dipendenti"
+                        defaultContent=""
+                        defaultSubject=""
+                        subjectEditable={true}
+                        contentEditable={true}
+                      />
+                    )}
+                    {template.id === "ferie-rifiuto" && (
+                      <VacationRejectionTemplateEditor 
+                        templateCategory="dipendenti"
+                        defaultContent=""
+                        defaultSubject=""
+                  subjectEditable={true}
+                  contentEditable={true}
+                />
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ))}
+            </Tabs>
+          </TabsContent>
+
+        {/* Template Dipendente */}
+        <TabsContent value="employee-templates" className="space-y-6">
+          <Card className={`border-blue-200 bg-gradient-to-r ${getColorClasses("blue")} shadow-lg`}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowRight className="w-6 h-6" />
+                Template Email Dipendente → Amministratore
+              </CardTitle>
+              <p className="text-sm text-blue-700">
+                Questi template vengono utilizzati quando i dipendenti inviano email all'amministratore
+              </p>
+            </CardHeader>
+          </Card>
+
+          <Tabs value={activeEmployeeSubTab} onValueChange={setActiveEmployeeSubTab} className="space-y-4">
+            <TabsList className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-auto p-2 bg-transparent">
+              {employeeTemplates.map((template) => {
+                const IconComponent = template.icon;
+                return (
+                  <TabsTrigger 
+                    key={template.id}
+                    value={template.id} 
+                    className="flex flex-col items-center gap-3 p-4 h-auto data-[state=active]:bg-blue-100 data-[state=active]:border-blue-300 data-[state=active]:shadow-md rounded-xl border-2 border-transparent transition-all duration-200 hover:border-blue-200"
+                  >
+                    <div className={`p-3 rounded-xl ${activeEmployeeSubTab === template.id ? 'bg-blue-200' : 'bg-gray-100'}`}>
+                      <IconComponent className={`w-6 h-6 ${activeEmployeeSubTab === template.id ? 'text-blue-700' : 'text-gray-600'}`} />
+                    </div>
+                    <div className="text-center">
+                      <span className="text-sm font-medium block">{template.name}</span>
+                      <span className="text-xs text-gray-500">{template.description}</span>
+            </div>
+                    <Badge variant="outline" className="text-xs">
+                      {template.badge}
+                    </Badge>
+                </TabsTrigger>
+                );
+              })}
+              </TabsList>
+
+            {/* Contenuto dei template dipendente */}
+            {employeeTemplates.map((template) => (
+              <TabsContent key={template.id} value={template.id} className="mt-6">
+                <Card className="shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <CardTitle className="flex items-center gap-2">
+                      <template.icon className="w-5 h-5" />
+                      Template {template.name}
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">
+                      Personalizza il template per le email {template.description}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {template.id === "documenti" && (
                 <DocumentTemplateEditor 
                   templateType="documenti" 
                   templateCategory="dipendenti"
-                  defaultContent="È disponibile un nuovo documento caricato da {employee_name} per la tua revisione.\n\nNote del dipendente:\n{employee_note}\n\nIl documento contiene informazioni che richiedono la tua attenzione."
-                  defaultSubject="Nuovo Documento da {employee_name}"
+                        defaultContent=""
+                        defaultSubject=""
                   subjectEditable={true}
                   contentEditable={true}
                 />
-              </TabsContent>
-
-              <TabsContent value="notifiche" className="mt-6">
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-semibold text-green-800 mb-2">Template Notifiche per Amministratori</h4>
-                  <p className="text-sm text-green-700">
-                    Template utilizzato quando un dipendente invia una notifica agli amministratori.
-                    Usa <code>{'{employee_name}'}</code> per personalizzare il messaggio.
-                  </p>
-                </div>
+                    )}
+                    {template.id === "notifiche" && (
                 <NotificationTemplateEditor 
+                        templateType="notifiche" 
+                        templateCategory="dipendenti"
+                        defaultContent=""
+                        defaultSubject=""
+                        subjectEditable={true}
+                        contentEditable={true}
+                      />
+                    )}
+                    {template.id === "permessi-richiesta" && (
+                      <PermissionRequestTemplateEditor 
+                        templateCategory="dipendenti"
+                        defaultContent=""
+                        defaultSubject=""
+                        subjectEditable={true}
+                        contentEditable={true}
+                      />
+                    )}
+                    {template.id === "ferie-richiesta" && (
+                      <VacationRequestTemplateEditor 
                   templateCategory="dipendenti"
-                  defaultContent="{employee_name} ha inviato una nuova notifica che richiede la tua attenzione. Controlla i dettagli nella dashboard."
-                  defaultSubject="Nuova Notifica da {employee_name}"
+                        defaultContent=""
+                        defaultSubject=""
                   subjectEditable={true}
                   contentEditable={true}
                 />
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ))}
+          </Tabs>
               </TabsContent>
 
-              <TabsContent value="permessi-richiesta" className="mt-6">
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-semibold text-green-800 mb-2">Template Richieste Permessi</h4>
-                  <p className="text-sm text-green-700">
-                    Template utilizzato quando un dipendente invia una richiesta di permesso agli amministratori.
-                    Usa <code>{'{employee_name}'}</code> per personalizzare il messaggio.
-                  </p>
-                </div>
-                <PermissionRequestTemplateEditor templateCategory="dipendenti" />
-              </TabsContent>
+        {/* Template Sistema */}
+        <TabsContent value="system-templates" className="space-y-6">
+          <Card className={`border-purple-200 bg-gradient-to-r ${getColorClasses("purple")} shadow-lg`}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-6 h-6" />
+                Template Sistema Automatici
+              </CardTitle>
+              <p className="text-sm text-purple-700">
+                Template generati automaticamente dal sistema per notifiche e promemoria
+              </p>
+            </CardHeader>
+          </Card>
 
-              <TabsContent value="ferie-richiesta" className="mt-6">
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-semibold text-green-800 mb-2">Template Richieste Ferie</h4>
-                  <p className="text-sm text-green-700">
-                    Template utilizzato quando un dipendente invia una richiesta di ferie agli amministratori.
-                    Usa <code>{'{employee_name}'}</code> per personalizzare il messaggio.
-                  </p>
+          <div className="max-w-4xl mx-auto">
+            {systemTemplates.map((template) => {
+              const IconComponent = template.icon;
+              return (
+                <Card key={template.id} className="shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50">
+                    <CardTitle className="flex items-center gap-2">
+                      <IconComponent className="w-5 h-5" />
+                      {template.name}
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">
+                      {template.description}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <AttendanceAlertTemplateEditor
+                      templateCategory="amministratori"
+                      defaultContent=""
+                      defaultSubject=""
+                      subjectEditable={true}
+                      contentEditable={true}
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })}
                 </div>
-                <VacationRequestTemplateEditor templateCategory="dipendenti" />
               </TabsContent>
             </Tabs>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+    </div>
   );
 };
 

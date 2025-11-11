@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,12 +24,10 @@ interface AttendanceAlert {
     resend_api_key: string;
     sender_name: string;
     sender_email: string;
+    global_logo_url?: string;
+    global_logo_alignment?: string;
+    global_logo_size?: string;
   };
-}
-
-interface EmailTemplate {
-  subject: string;
-  html: string;
 }
 
 serve(async (req) => {
@@ -90,7 +89,7 @@ serve(async (req) => {
         .in("id", employeeIds),
       supabase
         .from("admin_settings")
-        .select("admin_id, resend_api_key, sender_name, sender_email")
+        .select("admin_id, resend_api_key, sender_name, sender_email, global_logo_url, global_logo_alignment, global_logo_size")
         .in("admin_id", adminIds)
     ]);
 
@@ -122,6 +121,30 @@ serve(async (req) => {
     let errorCount = 0;
     const results = [];
 
+    // Get email template from database for "avviso-entrata"
+    const templateType = 'avviso-entrata';
+    const templateCategory = 'amministratori';
+
+    // Get unique admin IDs to fetch templates
+    const uniqueAdminIds = [...new Set(enrichedAlerts.map(alert => alert.admin_id))];
+
+    // Fetch email templates for all admins in one query
+    const { data: emailTemplates, error: templatesError } = await supabase
+      .from("email_templates")
+      .select("*")
+      .in("admin_id", uniqueAdminIds)
+      .eq("template_type", templateType)
+      .eq("template_category", templateCategory);
+
+    if (templatesError) {
+      console.error("[Attendance Monitor] Error fetching email templates:", templatesError);
+    }
+
+    // Create a map of templates by admin_id
+    const templatesMap = new Map(emailTemplates?.map(t => [t.admin_id, t]) || []);
+
+    console.log(`[Attendance Monitor] Found ${emailTemplates?.length || 0} email templates for admins`);
+
     for (const alert of enrichedAlerts as AttendanceAlert[]) {
       try {
         const employee = alert.employees;
@@ -134,13 +157,102 @@ serve(async (req) => {
           continue;
         }
 
-        // Genera email personalizzata
-        const emailTemplate = generateAttendanceAlertEmail({
-          employeeName: `${employee.first_name} ${employee.last_name}`,
-          expectedTime: alert.expected_time,
-          alertTime: alert.alert_time,
-          alertDate: alert.alert_date
+        // Get template for this admin or use default
+        const emailTemplate = templatesMap.get(alert.admin_id) || {
+          primary_color: '#007bff',
+          secondary_color: '#6c757d',
+          background_color: '#ffffff',
+          text_color: '#333333',
+          footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+          footer_color: '#888888',
+          font_family: 'Arial, sans-serif',
+          header_alignment: 'center',
+          body_alignment: 'left',
+          font_size: 'medium',
+          border_radius: '6px',
+          subject: 'Promemoria: Registrazione Entrata Mancante',
+          content: `Gentile {employee_name},\nNotiamo che non hai ancora registrato la tua entrata per oggi.\n\nOrario previsto: {expected_time}\nOra corrente: {alert_time}\nData: {alert_date}\n\nTi preghiamo di registrare la tua presenza il prima possibile.\n\nGrazie,\nAmministrazione`,
+          logo_alignment: 'center',
+          logo_size: 'medium'
+        };
+
+        // Get logo URL
+        let logoUrl = adminSettings.global_logo_url || emailTemplate.logo_url;
+        if (!logoUrl) {
+          const { data: logoData } = await supabase.storage
+            .from('company-assets')
+            .getPublicUrl(`${alert.admin_id}/email-logo.png?v=${Date.now()}`);
+          logoUrl = logoData?.publicUrl;
+        }
+
+        const logoAlignment = adminSettings.global_logo_alignment || emailTemplate.logo_alignment || 'center';
+        const logoSize = adminSettings.global_logo_size || emailTemplate.logo_size || 'medium';
+
+        // Prepare email data with template variables replaced
+        const employeeName = `${employee.first_name} ${employee.last_name}`;
+        const recipientName = employeeName;
+
+        // Replace variables in subject and content
+        let emailSubject = emailTemplate.subject || 'Promemoria: Registrazione Entrata Mancante';
+        let emailContent = emailTemplate.content || `Gentile {employee_name},\nNotiamo che non hai ancora registrato la tua entrata per oggi.`;
+
+        emailSubject = emailSubject
+          .replace(/\{employee_name\}/gi, employeeName)
+          .replace(/\{alert_date\}/gi, alert.alert_date)
+          .replace(/\{alert_time\}/gi, alert.alert_time)
+          .replace(/\{expected_time\}/gi, alert.expected_time);
+
+        emailContent = emailContent
+          .replace(/\{employee_name\}/gi, employeeName)
+          .replace(/\{recipient_name\}/gi, recipientName)
+          .replace(/\{alert_date\}/gi, alert.alert_date)
+          .replace(/\{alert_time\}/gi, alert.alert_time)
+          .replace(/\{expected_time\}/gi, alert.expected_time)
+          .replace(/\{current_date\}/gi, new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }));
+
+        console.log(`[Attendance Monitor] Building HTML for alert ${alert.id}`);
+
+        // Build HTML using template system
+        const attachmentSection = buildAttachmentSection(null, emailTemplate.primary_color || '#007bff');
+
+        const htmlContent = buildHtmlContent({
+          subject: emailSubject,
+          shortText: emailContent,
+          logoUrl: logoUrl || '',
+          attachmentSection,
+          senderEmail: adminSettings.sender_email,
+          isDocumentEmail: false,
+          templateType: 'avviso-entrata',
+          primaryColor: emailTemplate.primary_color || '#007bff',
+          backgroundColor: emailTemplate.background_color || '#ffffff',
+          textColor: emailTemplate.text_color || '#333333',
+          logoAlignment,
+          footerText: emailTemplate.footer_text || '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+          footerColor: emailTemplate.footer_color || '#888888',
+          fontFamily: emailTemplate.font_family || 'Arial, sans-serif',
+          logoSize,
+          headerAlignment: emailTemplate.header_alignment || 'center',
+          bodyAlignment: emailTemplate.body_alignment || 'left',
+          fontSize: emailTemplate.font_size || 'medium',
+          showLeaveDetails: false,
+          showAdminNotes: false,
+          leaveDetails: '',
+          adminNotes: '',
+          employeeNotes: '',
+          leaveDetailsBgColor: emailTemplate.leave_details_bg_color || '#e3f2fd',
+          leaveDetailsTextColor: emailTemplate.leave_details_text_color || '#1565c0',
+          adminNotesBgColor: emailTemplate.admin_notes_bg_color || '#f8f9fa',
+          adminNotesTextColor: emailTemplate.admin_notes_text_color || '#495057',
+          showCustomBlock: emailTemplate.show_custom_block || false,
+          customBlockText: emailTemplate.custom_block_text || '',
+          customBlockBgColor: emailTemplate.custom_block_bg_color || '#fff3cd',
+          customBlockTextColor: emailTemplate.custom_block_text_color || '#856404',
+          dynamicSubject: emailSubject,
+          dynamicContent: emailContent,
+          recipientName,
         });
+
+        console.log(`[Attendance Monitor] HTML built successfully for alert ${alert.id}, length: ${htmlContent?.length || 0}`);
 
         // Invia email via Resend
         const emailResponse = await fetch("https://api.resend.com/emails", {
@@ -152,8 +264,8 @@ serve(async (req) => {
           body: JSON.stringify({
             from: `${adminSettings.sender_name} <${adminSettings.sender_email}>`,
             to: [employee.email],
-            subject: emailTemplate.subject,
-            html: emailTemplate.html
+            subject: emailSubject,
+            html: htmlContent
           }),
         });
 
@@ -212,89 +324,3 @@ serve(async (req) => {
     );
   }
 });
-
-function generateAttendanceAlertEmail(data: {
-  employeeName: string;
-  expectedTime: string;
-  alertTime: string;
-  alertDate: string;
-}): EmailTemplate {
-  const subject = `🔔 Avviso: Registrazione Entrata Mancante - ${data.alertDate}`;
-
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Avviso Registrazione Entrata</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <!-- Header -->
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
-                <div style="font-size: 48px; margin-bottom: 10px;">🔔</div>
-                <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Avviso Registrazione Entrata</h1>
-                <p style="color: #e2e8f0; margin: 10px 0 0 0; font-size: 16px;">Sistema di Gestione Presenze</p>
-            </div>
-
-            <!-- Content -->
-            <div style="padding: 40px 30px;">
-                <p style="font-size: 18px; color: #374151; margin: 0 0 20px 0;">Gentile <strong>${data.employeeName}</strong>,</p>
-
-                <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 8px;">
-                    <p style="margin: 0; color: #92400e; font-size: 16px; line-height: 1.6;">
-                        <strong>Attenzione:</strong> Non abbiamo registrato la tua entrata oggi <strong>${data.alertDate}</strong>.
-                    </p>
-                </div>
-
-                <div style="background-color: #f0f9ff; border: 1px solid #0ea5e9; padding: 20px; margin: 20px 0; border-radius: 8px;">
-                    <h3 style="margin: 0 0 15px 0; color: #0c4a6e; font-size: 18px;">📋 Dettagli Registrazione</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px 0; border-bottom: 1px solid #e0f2fe; color: #374151; font-weight: 500;">Orario Previsto:</td>
-                            <td style="padding: 8px 0; border-bottom: 1px solid #e0f2fe; color: #0c4a6e; font-weight: 600; text-align: right;">${data.expectedTime}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px 0; border-bottom: 1px solid #e0f2fe; color: #374151; font-weight: 500;">Ora Avviso:</td>
-                            <td style="padding: 8px 0; border-bottom: 1px solid #e0f2fe; color: #dc2626; font-weight: 600; text-align: right;">${data.alertTime}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px 0; color: #374151; font-weight: 500;">Data:</td>
-                            <td style="padding: 8px 0; color: #0c4a6e; font-weight: 600; text-align: right;">${data.alertDate}</td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div style="background-color: #f0fdf4; border: 1px solid #22c55e; padding: 20px; margin: 20px 0; border-radius: 8px;">
-                    <h3 style="margin: 0 0 15px 0; color: #166534; font-size: 18px;">✅ Azioni Richieste</h3>
-                    <ul style="margin: 0; padding-left: 20px; color: #166534;">
-                        <li style="margin-bottom: 8px;">Registra la tua entrata nel sistema di gestione presenze</li>
-                        <li style="margin-bottom: 8px;">Verifica che l'orario sia corretto</li>
-                        <li>Contatta il tuo responsabile se hai problemi tecnici</li>
-                    </ul>
-                </div>
-
-                <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 20px 0;">
-                    Questo è un messaggio automatico del sistema di gestione presenze. Se hai già registrato la tua entrata, puoi ignorare questo avviso.
-                </p>
-
-                <p style="color: #6b7280; font-size: 14px; margin: 20px 0 0 0;">
-                    Cordiali saluti,<br>
-                    <strong>Sistema di Gestione Presenze</strong>
-                </p>
-            </div>
-
-            <!-- Footer -->
-            <div style="background-color: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-                <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                    Questo messaggio è stato inviato automaticamente. Non rispondere a questa email.
-                </p>
-            </div>
-        </div>
-    </body>
-    </html>
-  `;
-
-  return { subject, html };
-}

@@ -125,10 +125,10 @@ async function cleanupTable(
           .from('sent_notifications')
           .delete()
           .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all
-        
-        if (error) {
+    
+    if (error) {
           console.error(`Error deleting from sent_notifications:`, error)
-          throw error
+      throw error
         }
         
         console.log(`Successfully deleted ${deletedCount} sent_notifications`)
@@ -368,14 +368,14 @@ serve(async (req) => {
         
         // Log the operation (optional, if cleanup_logs table exists)
         try {
-          await supabase
-            .from('cleanup_logs')
-            .insert({
-              table_name: 'notifications_cleanup_batch',
-              records_deleted: totalDeleted,
+        await supabase
+          .from('cleanup_logs')
+          .insert({
+            table_name: 'notifications_cleanup_batch',
+            records_deleted: totalDeleted,
               retention_days: 0,
-              execution_time_ms: overallExecutionTime
-            })
+            execution_time_ms: overallExecutionTime
+          })
         } catch (logError) {
           console.warn('Could not log cleanup operation:', logError)
         }

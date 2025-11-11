@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,9 @@ interface AdminSettings {
   resend_api_key: string;
   sender_name: string;
   sender_email: string;
+  global_logo_url?: string;
+  global_logo_alignment?: string;
+  global_logo_size?: string;
 }
 
 serve(async (req) => {
@@ -70,7 +74,7 @@ serve(async (req) => {
     // Ottieni tutti gli admin con il controllo entrate abilitato
     const { data: adminSettings, error: adminError } = await supabase
       .from("admin_settings")
-      .select("admin_id, attendance_alert_enabled, attendance_alert_delay_minutes, resend_api_key, sender_name, sender_email")
+      .select("admin_id, attendance_alert_enabled, attendance_alert_delay_minutes, resend_api_key, sender_name, sender_email, global_logo_url, global_logo_alignment, global_logo_size")
       .eq("attendance_alert_enabled", true)
       .not("resend_api_key", "is", null);
 
@@ -325,20 +329,103 @@ Ti ricordiamo di registrare la tua presenza il prima possibile.
 
 Grazie per la collaborazione.`;
 
-  const subject = emailTemplate?.subject || defaultSubject;
-  const content = emailTemplate?.content || defaultContent;
+  // Use template from database or defaults
+  const template = emailTemplate || {
+    primary_color: '#007bff',
+    secondary_color: '#6c757d',
+    background_color: '#ffffff',
+    text_color: '#333333',
+    footer_text: '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+    footer_color: '#888888',
+    font_family: 'Arial, sans-serif',
+    header_alignment: 'center',
+    body_alignment: 'left',
+    font_size: 'medium',
+    border_radius: '6px',
+    subject: defaultSubject,
+    content: defaultContent,
+    logo_alignment: 'center',
+    logo_size: 'medium'
+  };
+
+  const subject = template.subject || defaultSubject;
+  const content = template.content || defaultContent;
 
   // Sostituisci i placeholder
   const employeeName = `${employee.first_name} ${employee.last_name}`.trim();
+  const recipientName = employeeName;
+
   const personalizedSubject = subject
-    .replace(/{employee_name}/g, employeeName)
-    .replace(/{expected_time}/g, employee.expectedTime)
-    .replace(/{current_time}/g, currentTime);
+    .replace(/{employee_name}/gi, employeeName)
+    .replace(/{recipient_name}/gi, recipientName)
+    .replace(/{expected_time}/gi, employee.expectedTime)
+    .replace(/{current_time}/gi, currentTime)
+    .replace(/{alert_time}/gi, currentTime)
+    .replace(/{alert_date}/gi, new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }));
 
   const personalizedContent = content
-    .replace(/{employee_name}/g, employeeName)
-    .replace(/{expected_time}/g, employee.expectedTime)
-    .replace(/{current_time}/g, currentTime);
+    .replace(/{employee_name}/gi, employeeName)
+    .replace(/{recipient_name}/gi, recipientName)
+    .replace(/{expected_time}/gi, employee.expectedTime)
+    .replace(/{current_time}/gi, currentTime)
+    .replace(/{alert_time}/gi, currentTime)
+    .replace(/{alert_date}/gi, new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }));
+
+  // Get logo URL
+  let logoUrl = admin.global_logo_url || template.logo_url;
+  if (!logoUrl) {
+    const { data: logoData } = await supabase.storage
+      .from('company-assets')
+      .getPublicUrl(`${admin.admin_id}/email-logo.png?v=${Date.now()}`);
+    logoUrl = logoData?.publicUrl;
+  }
+
+  const logoAlignment = admin.global_logo_alignment || template.logo_alignment || 'center';
+  const logoSize = admin.global_logo_size || template.logo_size || 'medium';
+
+  console.log(`[Check Missing Attendance] Building HTML for employee ${employee.id}`);
+
+  // Build HTML using template system
+  const attachmentSection = buildAttachmentSection(null, template.primary_color || '#007bff');
+
+  const htmlContent = buildHtmlContent({
+    subject: personalizedSubject,
+    shortText: personalizedContent,
+    logoUrl: logoUrl || '',
+    attachmentSection,
+    senderEmail: admin.sender_email,
+    isDocumentEmail: false,
+    templateType: 'avviso-entrata',
+    primaryColor: template.primary_color || '#007bff',
+    backgroundColor: template.background_color || '#ffffff',
+    textColor: template.text_color || '#333333',
+    logoAlignment,
+    footerText: template.footer_text || '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+    footerColor: template.footer_color || '#888888',
+    fontFamily: template.font_family || 'Arial, sans-serif',
+    logoSize,
+    headerAlignment: template.header_alignment || 'center',
+    bodyAlignment: template.body_alignment || 'left',
+    fontSize: template.font_size || 'medium',
+    showLeaveDetails: false,
+    showAdminNotes: false,
+    leaveDetails: '',
+    adminNotes: '',
+    employeeNotes: '',
+    leaveDetailsBgColor: template.leave_details_bg_color || '#e3f2fd',
+    leaveDetailsTextColor: template.leave_details_text_color || '#1565c0',
+    adminNotesBgColor: template.admin_notes_bg_color || '#f8f9fa',
+    adminNotesTextColor: template.admin_notes_text_color || '#495057',
+    showCustomBlock: template.show_custom_block || false,
+    customBlockText: template.custom_block_text || '',
+    customBlockBgColor: template.custom_block_bg_color || '#fff3cd',
+    customBlockTextColor: template.custom_block_text_color || '#856404',
+    dynamicSubject: personalizedSubject,
+    dynamicContent: personalizedContent,
+    recipientName,
+  });
+
+  console.log(`[Check Missing Attendance] HTML built successfully for employee ${employee.id}, length: ${htmlContent?.length || 0}`);
 
   // Invia l'email tramite Resend
   const emailResponse = await fetch("https://api.resend.com/emails", {
@@ -351,17 +438,7 @@ Grazie per la collaborazione.`;
       from: `${admin.sender_name} <${admin.sender_email}>`,
       to: [employee.email],
       subject: personalizedSubject,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #f97316; margin-bottom: 20px;">⚠️ Promemoria Registrazione Entrata</h2>
-          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #f97316;">
-            ${personalizedContent.replace(/\n/g, '<br>')}
-          </div>
-          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef; font-size: 12px; color: #6c757d;">
-            Questo è un messaggio automatico del sistema di gestione presenze.
-          </div>
-        </div>
-      `,
+      html: htmlContent,
     }),
   });
 

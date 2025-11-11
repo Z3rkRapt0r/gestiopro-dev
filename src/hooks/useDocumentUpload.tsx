@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotificationForm } from "@/hooks/useNotificationForm";
+import { useToast } from '@/hooks/use-toast';
+import imageCompression from 'browser-image-compression';
 
 interface UseDocumentUploadProps {
   onSuccess?: () => void;
@@ -21,7 +23,13 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
   const { uploadDocument } = useDocuments();
   const { user, profile } = useAuth();
   const { sendNotification, loading: notificationLoading } = useNotificationForm();
+  const { toast } = useToast();
   const isAdmin = profile?.role === 'admin';
+
+  // Validation constants
+  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB in bytes
+  const ALLOWED_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg'];
+  const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg'];
 
   useEffect(() => {
     if (targetUserId) {
@@ -39,8 +47,92 @@ export const useDocumentUpload = ({ onSuccess, setOpen, targetUserId }: UseDocum
     setDocumentType('');
   };
 
-  const handleFileChange = (selectedFile: File | null) => {
-    setFile(selectedFile);
+  const handleFileChange = async (selectedFile: File | null) => {
+    if (!selectedFile) {
+      setFile(null);
+      return;
+    }
+
+    // Validate file type
+    const fileExtension = '.' + selectedFile.name.split('.').pop()?.toLowerCase();
+    const isValidType = ALLOWED_FILE_TYPES.includes(selectedFile.type) ||
+                       ALLOWED_EXTENSIONS.includes(fileExtension);
+
+    if (!isValidType) {
+      toast({
+        title: "Formato file non valido",
+        description: "Sono accettati solo file PDF o JPEG",
+        variant: "destructive",
+      });
+      setFile(null);
+      return;
+    }
+
+    // Check if it's an image that needs compression
+    const isImage = selectedFile.type.includes('jpeg') ||
+                    selectedFile.type.includes('jpg') ||
+                    fileExtension === '.jpg' ||
+                    fileExtension === '.jpeg';
+
+    let finalFile = selectedFile;
+
+    // Compress images before validating size
+    if (isImage) {
+      try {
+        console.log('[Upload] Compressing image...', {
+          originalSize: (selectedFile.size / 1024).toFixed(2) + 'KB',
+          name: selectedFile.name
+        });
+
+        const options = {
+          maxSizeMB: 1.5, // Target max 1.5MB after compression
+          maxWidthOrHeight: 1920, // Max dimension
+          useWebWorker: true,
+          fileType: 'image/jpeg',
+          initialQuality: 0.8 // 80% quality
+        };
+
+        const compressedFile = await imageCompression(selectedFile, options);
+
+        const compressionRatio = ((selectedFile.size - compressedFile.size) / selectedFile.size * 100).toFixed(2);
+
+        console.log('[Upload] Image compressed successfully', {
+          originalSize: (selectedFile.size / 1024).toFixed(2) + 'KB',
+          compressedSize: (compressedFile.size / 1024).toFixed(2) + 'KB',
+          saved: ((selectedFile.size - compressedFile.size) / 1024).toFixed(2) + 'KB',
+          compressionRatio: compressionRatio + '%'
+        });
+
+        toast({
+          title: "Immagine compressa",
+          description: `Dimensione ridotta del ${compressionRatio}%`,
+        });
+
+        finalFile = compressedFile;
+      } catch (error) {
+        console.error('[Upload] Compression error:', error);
+        toast({
+          title: "Compressione fallita",
+          description: "Verrà caricato il file originale",
+        });
+        finalFile = selectedFile;
+      }
+    }
+
+    // Validate file size AFTER compression (max 2MB)
+    if (finalFile.size > MAX_FILE_SIZE) {
+      const sizeMB = (finalFile.size / (1024 * 1024)).toFixed(2);
+      toast({
+        title: "File troppo grande",
+        description: `Il file è ${sizeMB}MB. La dimensione massima consentita è 2MB`,
+        variant: "destructive",
+      });
+      setFile(null);
+      return;
+    }
+
+    // File is valid and compressed
+    setFile(finalFile);
   };
 
   const handleDocumentTypeChange = (typeValue: string, documentTypes: { value: string; label: string }[]) => {

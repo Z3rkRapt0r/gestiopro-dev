@@ -270,11 +270,11 @@ export const useNotificationForm = (onCreated?: () => void) => {
           body: emailPayload
         }
       ).then(({ data: emailResult, error: emailError }) => {
-        if (emailError) {
-          console.error("Email function error:", emailError);
+      if (emailError) {
+        console.error("Email function error:", emailError);
           console.warn("Email sending failed but notification was saved:", emailError.message);
-        } else {
-          console.log("Email function success:", emailResult);
+      } else {
+        console.log("Email function success:", emailResult);
         }
       }).catch((emailInvokeError) => {
         console.error("Email function invoke error:", emailInvokeError);
@@ -282,10 +282,10 @@ export const useNotificationForm = (onCreated?: () => void) => {
       });
 
       // Show success toast immediately
-      toast({
-        title: "Notifica inviata",
+        toast({
+          title: "Notifica inviata",
         description: "La notifica è stata inviata con successo.",
-      });
+        });
       
       // Call onCreated callback
       console.log("useNotificationForm: calling onCreated callback after delay");

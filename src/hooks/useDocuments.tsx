@@ -116,6 +116,14 @@ export const useDocuments = () => {
         throw dbError;
       }
 
+      // Images are already compressed client-side by browser-image-compression
+      // PDFs are uploaded as-is (max 2MB enforced client-side)
+      console.log('Document uploaded successfully:', {
+        fileName: file.name,
+        fileSize: (file.size / 1024).toFixed(2) + 'KB',
+        fileType: file.type
+      });
+
       toast({
         title: "Successo",
         description: "Documento caricato nella struttura organizzativa italiana",

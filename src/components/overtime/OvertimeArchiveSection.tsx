@@ -13,11 +13,16 @@ interface OvertimeRecord {
   date: string;
   hours: number;
   notes?: string;
+  reason?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
   first_name?: string;
   last_name?: string;
+  overtime_type?: 'manual' | 'automatic_checkin' | 'automatic_checkout';
+  is_automatic?: boolean;
+  calculated_minutes?: number;
+  approval_status?: 'pending' | 'approved' | 'rejected';
 }
 
 interface OvertimesByEmployee {

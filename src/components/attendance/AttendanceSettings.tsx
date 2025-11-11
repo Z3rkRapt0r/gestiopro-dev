@@ -9,6 +9,8 @@ import { Settings, MapPin } from 'lucide-react';
 import { useAttendanceSettings } from '@/hooks/useAttendanceSettings';
 import GPSStatusIndicator from './GPSStatusIndicator';
 import AttendanceAlertSettings from './AttendanceAlertSettings';
+import AutomaticOvertimeSettings from './AutomaticOvertimeSettings';
+import { SupabaseConfigSettings } from '@/components/settings/SupabaseConfigSettings';
 
 export default function AttendanceSettings() {
   const { settings, updateSettings, isUpdating } = useAttendanceSettings();
@@ -118,6 +120,12 @@ export default function AttendanceSettings() {
       </Card>
 
       <AttendanceAlertSettings />
+      
+      <AutomaticOvertimeSettings />
+      
+      <div className="lg:col-span-2">
+        <SupabaseConfigSettings />
+      </div>
       
       <div className="lg:col-span-2">
         <GPSStatusIndicator />

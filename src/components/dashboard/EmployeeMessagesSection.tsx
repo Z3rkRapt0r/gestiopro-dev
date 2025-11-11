@@ -92,13 +92,13 @@ const EmployeeMessagesSection = () => {
         </h2>
         <div className="flex flex-col sm:flex-row gap-2">
           <SendMessageToAdminDialog />
-          {unreadMessages.length > 0 && (
-            <Button variant="outline" onClick={markAllAsRead} className="w-full sm:w-auto min-h-[44px] text-sm sm:text-base">
-              <CheckCircle className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Segna tutti come letti</span>
-              <span className="sm:hidden">Segna letti</span> ({unreadMessages.length})
-            </Button>
-          )}
+        {unreadMessages.length > 0 && (
+          <Button variant="outline" onClick={markAllAsRead} className="w-full sm:w-auto min-h-[44px] text-sm sm:text-base">
+            <CheckCircle className="mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Segna tutti come letti</span>
+            <span className="sm:hidden">Segna letti</span> ({unreadMessages.length})
+          </Button>
+        )}
         </div>
       </div>
       <Card>
@@ -164,7 +164,7 @@ const EmployeeMessagesSection = () => {
 
             <TabsContent value="sent" className="mt-4">
               <EmployeeSentMessages />
-            </TabsContent>
+              </TabsContent>
           </Tabs>
         </CardContent>
       </Card>

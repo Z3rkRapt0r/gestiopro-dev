@@ -1,67 +1,74 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildHtmlContent, buildAttachmentSection } from "./mailTemplates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper per costruire il contenuto HTML dell'email con personalizzazioni
-function buildTestHtmlContent(template: any, subject: string, content: string) {
-  const isDocumentEmail = template.template_type === 'documenti';
-  
-  // Pulsante per email documenti
-  const dashboardButton = isDocumentEmail ? `
-    <div style="width:100%;text-align:center;margin:28px 0 0 0;">
-      <a href="https://finestra-gestione-aziendale-pro.vercel.app/" target="_blank" style="
-        background-color:${template.button_color || '#007bff'};
-        color:${template.button_text_color || '#ffffff'};
-        padding:12px 26px;
-        border-radius:${template.border_radius || '6px'};
-        text-decoration:none;
-        font-size:16px;
-        font-weight:bold;
-        letter-spacing:0.5px;
-        display:inline-block;
-        box-shadow:0 1px 6px rgba(40,82,180,.06);
-        margin:auto;
-      ">
-        Visualizza documento
-      </a>
-    </div>
-  ` : "";
+// Helper per preparare i dati di test specifici per tipo di template
+function prepareTestData(templateType: string, subject: string, content: string) {
+  return {
+    employeeName: 'Mario Rossi (Test)',
+    employeeEmail: 'mario.rossi@example.com',
+    recipientName: 'Test Utente',
+    alertDate: '15 Gennaio 2025',
+    alertTime: '09:30',
+    expectedTime: '08:00',
+    currentDate: new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }),
+    leaveType: 'Ferie',
+    leavePeriod: '15-20 Gennaio 2025',
+    leaveReason: 'Ferie invernali',
+    leaveDetails: `Tipo: Ferie\nPeriodo: 15-20 Gennaio 2025\nMotivo: Ferie invernali`,
+    employeeNote: 'Spero di poter approfittare di questi giorni per riposare.',
+    adminNote: 'Richiesta approvata. Buone vacanze!',
+    documentName: 'Contratto_Lavoro_2025.pdf',
+    adminMessage: 'Ho caricato il tuo contratto rinnovato. Controlla e firmalo entro il 31/01.'
+  };
+}
 
-  return `
-    <div style="font-family: ${template.font_family || 'Arial, sans-serif'}; max-width: 600px; margin: 0 auto; background-color: ${template.background_color || '#ffffff'}; color: ${template.text_color || '#333333'};">
-      ${
-        template.logo_url
-          ? `<div style="text-align:${template.logo_alignment || 'center'};margin-bottom:24px;">
-              <img src="${template.logo_url}" alt="Logo" style="max-height:${template.logo_size === 'small' ? '40px' : template.logo_size === 'large' ? '80px' : '60px'};max-width:180px;" />
-            </div>`
-          : ""
-      }
-      <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid ${template.primary_color || '#007bff'}; margin-bottom: 20px;">
-        <h3 style="margin: 0; color: ${template.primary_color || '#007bff'};">🧪 Questa è un'email di prova</h3>
-        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">
-          Template: ${template.name || template.template_type} (${template.template_category || 'generale'})
-        </p>
-      </div>
-      <h2 style="color: ${template.primary_color || '#007bff'}; border-bottom: 2px solid ${template.primary_color || '#007bff'}; padding-bottom: 10px; text-align: ${template.text_alignment || 'center'};">
-        ${subject}
-      </h2>
-      <div style="margin: 20px 0 0 0; line-height: 1.6; color: ${template.text_color || '#333333'}; text-align: ${template.text_alignment || 'left'};">
-        ${content.replace(/\n/g, '<br>')}
-        ${dashboardButton}
-      </div>
-      <hr style="border: none; border-top: 1px solid ${template.secondary_color || '#eee'}; margin: 30px 0;">
-      <div style="width:100%;text-align:center;margin-top:18px;">
-        <span style="color:${template.footer_color || '#888888'}; font-size:13px;">
-          ${template.footer_text || '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820'}
-        </span>
-      </div>
-    </div>
-  `;
+// Helper per sostituire le variabili nel contenuto con i dati di test
+function replaceTemplateVariables(text: string, testData: any): string {
+  if (!text) return '';
+
+  return text
+    // Variabili dipendente
+    .replace(/\{employeeName\}/gi, testData.employeeName)
+    .replace(/\{employee_name\}/gi, testData.employeeName)
+    .replace(/\{employeeEmail\}/gi, testData.employeeEmail)
+    .replace(/\{employee_email\}/gi, testData.employeeEmail)
+    .replace(/\{recipientName\}/gi, testData.recipientName)
+    .replace(/\{recipient_name\}/gi, testData.recipientName)
+
+    // Variabili alert presenze
+    .replace(/\{alertDate\}/gi, testData.alertDate)
+    .replace(/\{alert_date\}/gi, testData.alertDate)
+    .replace(/\{alertTime\}/gi, testData.alertTime)
+    .replace(/\{alert_time\}/gi, testData.alertTime)
+    .replace(/\{expectedTime\}/gi, testData.expectedTime)
+    .replace(/\{expected_time\}/gi, testData.expectedTime)
+    .replace(/\{currentDate\}/gi, testData.currentDate)
+    .replace(/\{current_date\}/gi, testData.currentDate)
+
+    // Variabili ferie/permessi
+    .replace(/\{leaveDetails\}/gi, testData.leaveDetails)
+    .replace(/\{leave_details\}/gi, testData.leaveDetails)
+    .replace(/\{leaveType\}/gi, testData.leaveType)
+    .replace(/\{leave_type\}/gi, testData.leaveType)
+    .replace(/\{leavePeriod\}/gi, testData.leavePeriod)
+    .replace(/\{leave_period\}/gi, testData.leavePeriod)
+    .replace(/\{employeeNote\}/gi, testData.employeeNote)
+    .replace(/\{employee_note\}/gi, testData.employeeNote)
+    .replace(/\{adminNote\}/gi, testData.adminNote)
+    .replace(/\{admin_note\}/gi, testData.adminNote)
+
+    // Variabili documenti
+    .replace(/\{documentName\}/gi, testData.documentName)
+    .replace(/\{document_name\}/gi, testData.documentName)
+    .replace(/\{adminMessage\}/gi, testData.adminMessage)
+    .replace(/\{admin_message\}/gi, testData.adminMessage);
 }
 
 serve(async (req) => {
@@ -99,37 +106,37 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get Brevo settings for admin
+    // Get Resend settings for admin including global logo settings
     console.log("[Test Email] Looking for admin settings for user:", userId);
-    
+
     const { data: adminSetting, error: settingsError } = await supabase
       .from("admin_settings")
-      .select("brevo_api_key, sender_name, sender_email, reply_to")
+      .select("resend_api_key, sender_name, sender_email, reply_to, global_logo_url, global_logo_alignment, global_logo_size")
       .eq("admin_id", userId)
       .single();
 
     if (settingsError) {
       console.error("[Test Email] Error fetching admin settings:", settingsError);
       return new Response(
-        JSON.stringify({ 
-          error: "Failed to fetch admin settings", 
-          details: settingsError.message 
+        JSON.stringify({
+          error: "Failed to fetch admin settings",
+          details: settingsError.message
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!adminSetting?.brevo_api_key) {
-      console.error("[Test Email] No Brevo API key found for admin:", userId);
+    if (!adminSetting?.resend_api_key) {
+      console.error("[Test Email] No Resend API key found for admin:", userId);
       return new Response(
-        JSON.stringify({ 
-          error: "No Brevo API key configured for this admin" 
+        JSON.stringify({
+          error: "No Resend API key configured for this admin"
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[Test Email] Found Brevo settings for admin");
+    console.log("[Test Email] Found Resend settings for admin");
 
     // Get email template for the specific template type and category
     console.log("[Test Email] Looking for email template:", templateType, templateCategory);
@@ -195,57 +202,164 @@ serve(async (req) => {
 
     console.log("[Test Email] Using sender:", senderName, "<" + senderEmail + ">");
 
-    // Generate HTML content using template settings
-    const htmlContent = buildTestHtmlContent(template, subject, content);
+    // Get logo URL from global settings, template, or storage
+    let logoUrl = adminSetting.global_logo_url;
+    let logoAlignment = adminSetting.global_logo_alignment || template.logo_alignment || 'center';
+    let logoSize = adminSetting.global_logo_size || template.logo_size || 'medium';
 
-    // Build Brevo payload
-    const brevoPayload: any = {
-      sender: { 
-        name: senderName, 
-        email: senderEmail
-      },
-      to: [{ email: testEmail }],
-      subject: `[TEST] ${subject}`,
-      htmlContent,
-      textContent: `[TEST] ${subject}\n\n${content}\n\n--- Questa è un'email di prova ---\nTemplate: ${templateType} (${templateCategory})\nInviata da: ${senderEmail}`
-    };
-
-    // Add replyTo if configured
-    if (adminSetting.reply_to && adminSetting.reply_to.trim()) {
-      brevoPayload.replyTo = { email: adminSetting.reply_to.trim() };
+    if (!logoUrl && template.logo_url) {
+      logoUrl = template.logo_url;
     }
 
-    console.log("[Test Email] Calling Brevo API");
+    if (!logoUrl) {
+      const { data: logoData } = await supabase.storage
+        .from('company-assets')
+        .getPublicUrl(`${userId}/email-logo.png?v=${Date.now()}`);
+      logoUrl = logoData?.publicUrl;
+    }
 
-    const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
+    console.log("[Test Email] Using logoUrl:", logoUrl);
+
+    // Prepare test data
+    const testData = prepareTestData(templateType, subject, content);
+
+    // Replace variables in subject and content with test data
+    const finalSubject = replaceTemplateVariables(subject, testData);
+    let finalContent = replaceTemplateVariables(content, testData);
+
+    // If template has content in database, use that instead (with variables replaced)
+    if (template.content && template.content.trim()) {
+      finalContent = replaceTemplateVariables(template.content, testData);
+      console.log("[Test Email] Using template content from database");
+    } else {
+      console.log("[Test Email] Using provided content parameter");
+    }
+
+    console.log("[Test Email] Building HTML content with buildHtmlContent");
+    console.log("[Test Email] Template settings:", {
+      primaryColor: template.primary_color,
+      backgroundColor: template.background_color,
+      textColor: template.text_color,
+      fontFamily: template.font_family,
+      hasFooter: !!template.footer_text
+    });
+
+    let htmlContent;
+    try {
+      // Determine if this is a leave-related email for proper section display
+      const isLeaveRequest = templateType.includes('richiesta');
+      const isLeaveResponse = templateType.includes('approvazione') || templateType.includes('rifiuto');
+
+      // Build attachment section (empty for test emails)
+      const attachmentSection = buildAttachmentSection(null, template.primary_color || '#007bff');
+
+      // Build HTML using the same function as send-notification-email
+      htmlContent = buildHtmlContent({
+        subject: finalSubject,
+        shortText: finalContent,
+        logoUrl: logoUrl || '',
+        attachmentSection,
+        senderEmail,
+        isDocumentEmail: templateType === 'documenti',
+        templateType,
+        primaryColor: template.primary_color || '#007bff',
+        backgroundColor: template.background_color || '#ffffff',
+        textColor: template.text_color || '#333333',
+        logoAlignment,
+        footerText: template.footer_text || '© A.L.M Infissi - Tutti i diritti riservati. P.Iva 06365120820',
+        footerColor: template.footer_color || '#888888',
+        fontFamily: template.font_family || 'Arial, sans-serif',
+        logoSize,
+        headerAlignment: template.header_alignment || 'center',
+        bodyAlignment: template.body_alignment || 'left',
+        fontSize: template.font_size || 'medium',
+        showLeaveDetails: template.show_leave_details !== false,
+        showAdminNotes: template.show_admin_notes !== false,
+        leaveDetails: isLeaveRequest || isLeaveResponse ? testData.leaveDetails : '',
+        adminNotes: isLeaveResponse ? testData.adminNote : '',
+        employeeNotes: isLeaveRequest ? testData.employeeNote : '',
+        leaveDetailsBgColor: template.leave_details_bg_color || '#e3f2fd',
+        leaveDetailsTextColor: template.leave_details_text_color || '#1565c0',
+        adminNotesBgColor: template.admin_notes_bg_color || '#f8f9fa',
+        adminNotesTextColor: template.admin_notes_text_color || '#495057',
+        showCustomBlock: template.show_custom_block || false,
+        customBlockText: template.custom_block_text || '',
+        customBlockBgColor: template.custom_block_bg_color || '#fff3cd',
+        customBlockTextColor: template.custom_block_text_color || '#856404',
+        dynamicSubject: finalSubject,
+        dynamicContent: finalContent,
+        employeeEmail: testData.employeeEmail,
+        showAdminMessage: template.show_admin_message && isLeaveResponse,
+        adminMessage: testData.adminMessage,
+        adminMessageBgColor: template.admin_message_bg_color || '#e3f2fd',
+        adminMessageTextColor: template.admin_message_text_color || '#1565c0',
+        recipientName: testData.recipientName,
+      });
+
+      console.log("[Test Email] HTML content generated successfully, length:", htmlContent?.length || 0);
+    } catch (htmlError) {
+      console.error("[Test Email] Error building HTML content:", htmlError);
+      console.error("[Test Email] Error stack:", htmlError.stack);
+      return new Response(
+        JSON.stringify({
+          error: "Failed to build email content",
+          details: htmlError.message
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Build Resend payload
+    const resendPayload: any = {
+      from: `${senderName} <${senderEmail}>`,
+      to: [testEmail],
+      subject: `[TEST] ${subject}`,
+      html: htmlContent,
+    };
+
+    // Add reply_to if configured
+    if (adminSetting.reply_to && adminSetting.reply_to.trim()) {
+      resendPayload.reply_to = adminSetting.reply_to.trim();
+    }
+
+    console.log("[Test Email] Calling Resend API");
+    console.log("[Test Email] Resend payload:", {
+      from: resendPayload.from,
+      to: resendPayload.to,
+      subject: resendPayload.subject,
+      reply_to: resendPayload.reply_to,
+      html_length: htmlContent?.length || 0
+    });
+
+    const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": adminSetting.brevo_api_key,
+        "Authorization": `Bearer ${adminSetting.resend_api_key}`,
       },
-      body: JSON.stringify(brevoPayload),
+      body: JSON.stringify(resendPayload),
     });
 
-    const brevoResponseText = await brevoResponse.text();
-    console.log("[Test Email] Brevo response status:", brevoResponse.status);
-    console.log("[Test Email] Brevo response:", brevoResponseText);
+    const resendResponseText = await resendResponse.text();
+    console.log("[Test Email] Resend response status:", resendResponse.status);
+    console.log("[Test Email] Resend response:", resendResponseText);
 
-    if (!brevoResponse.ok) {
-      console.error("[Test Email] Brevo API error:", brevoResponse.status, brevoResponseText);
-      
-      let errorMessage = "Failed to send test email via Brevo";
+    if (!resendResponse.ok) {
+      console.error("[Test Email] Resend API error:", resendResponse.status, resendResponseText);
+
+      let errorMessage = "Failed to send test email via Resend";
       try {
-        const errorData = JSON.parse(brevoResponseText);
+        const errorData = JSON.parse(resendResponseText);
         errorMessage = errorData.message || errorData.error || errorMessage;
       } catch (e) {
-        errorMessage = brevoResponseText || errorMessage;
+        errorMessage = resendResponseText || errorMessage;
       }
 
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: errorMessage,
-          status: brevoResponse.status,
-          details: brevoResponseText
+          status: resendResponse.status,
+          details: resendResponseText
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -266,10 +380,23 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("[Test Email] Unexpected error:", error);
+    console.error("[Test Email] Error stack:", error.stack);
+
+    // Try to get more details about the error
+    const errorDetails = {
+      message: error.message || 'Unknown error',
+      name: error.name || 'Error',
+      stack: error.stack || 'No stack trace'
+    };
+
+    console.error("[Test Email] Full error details:", JSON.stringify(errorDetails, null, 2));
+
     return new Response(
-      JSON.stringify({ 
-        error: "Internal server error", 
-        details: error.message 
+      JSON.stringify({
+        error: "Internal server error",
+        details: error.message || 'Unknown error',
+        errorName: error.name,
+        timestamp: new Date().toISOString()
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

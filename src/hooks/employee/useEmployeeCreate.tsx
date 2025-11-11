@@ -26,63 +26,44 @@ export const useEmployeeCreate = () => {
     try {
       setLoading(true);
       console.log('Creating employee with data:', employeeData);
-      
+
       if (!employeeData.email || !employeeData.password) {
         throw new Error('Email e password sono obbligatori');
       }
 
-      // Prima crea l'utente nell'auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: employeeData.email,
-        password: employeeData.password,
-        options: {
-          data: {
-            first_name: employeeData.first_name || '',
-            last_name: employeeData.last_name || '',
-            role: employeeData.role || 'employee'
-          }
-        }
-      });
-
-      if (authError) {
-        console.error('Auth error:', authError);
-        throw authError;
-      }
-
-      if (!authData.user) {
-        throw new Error('Utente non creato correttamente');
-      }
-
-      // Poi crea o aggiorna il profilo con l'ID dell'utente auth
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authData.user.id,
+      // Usa la Edge Function per creare il dipendente con privilegi admin
+      const { data, error } = await supabase.functions.invoke('create-employee', {
+        body: {
+          email: employeeData.email,
+          password: employeeData.password,
           first_name: employeeData.first_name || null,
           last_name: employeeData.last_name || null,
-          email: employeeData.email,
           role: employeeData.role || 'employee',
           department: employeeData.department || null,
           employee_code: employeeData.employee_code || null,
           hire_date: employeeData.hire_date || null,
           tracking_start_type: employeeData.tracking_start_type || 'from_hire_date',
-          // first_login: true, // Temporaneamente commentato - esegui la migrazione del database
-          is_active: true
-        })
-        .select()
-        .single();
+        }
+      });
 
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        throw profileError;
+      console.log('Function response:', { data, error });
+
+      if (error) {
+        console.error('Function error:', error);
+        throw new Error(error.message || 'Errore durante la chiamata alla funzione');
+      }
+
+      if (data?.error) {
+        console.error('Server error:', data.error);
+        throw new Error(data.error);
       }
 
       toast({
         title: "Dipendente creato",
-        description: "Il dipendente è stato aggiunto con successo. Deve confermare l'email per accedere.",
+        description: "Il dipendente è stato aggiunto con successo e può accedere immediatamente.",
       });
 
-      return { data: profileData, error: null };
+      return { data: data?.data, error: null };
     } catch (error: any) {
       console.error('Error creating employee:', error);
       toast({

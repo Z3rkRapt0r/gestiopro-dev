@@ -119,7 +119,7 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
       />
 
       <div className="space-y-2">
-        <Label htmlFor="file">File</Label>
+        <Label htmlFor="file">File (solo PDF o JPEG, max 2MB)</Label>
         <Input
           id="file"
           type="file"
@@ -127,9 +127,12 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
             const selectedFile = e.target.files?.[0];
             onFileChange(selectedFile || null);
           }}
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx,.txt"
+          accept=".pdf,.jpg,.jpeg,application/pdf,image/jpeg"
           required
         />
+        <p className="text-xs text-muted-foreground">
+          Formati accettati: PDF, JPEG. Dimensione massima: 2MB
+        </p>
       </div>
 
       {/* Admin-specific fields */}

@@ -222,7 +222,7 @@ const AdminNotificationsSection = () => {
       
       // Read filter - only apply to inbox tab
       const matchesRead = activeTab === 'inbox' ? (
-        (filterRead === 'read' && notification.is_read) ||
+                         (filterRead === 'read' && notification.is_read) ||
         (filterRead === 'unread' && !notification.is_read)
       ) : true; // No read filter for sent tab
       
@@ -423,28 +423,28 @@ const AdminNotificationsSection = () => {
             
                    {activeTab === 'inbox' && (
                      <>
-                       <Select value={filterType} onValueChange={setFilterType}>
-                         <SelectTrigger className="w-full sm:w-48">
-                           <SelectValue placeholder="Tipo notifica" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="all">Tutti i tipi</SelectItem>
-                           <SelectItem value="document">Documenti</SelectItem>
-                           <SelectItem value="message">Messaggi</SelectItem>
-                           <SelectItem value="announcement">Annunci</SelectItem>
-                           <SelectItem value="system">Sistema</SelectItem>
-                         </SelectContent>
-                       </Select>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Tipo notifica" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti i tipi</SelectItem>
+                <SelectItem value="document">Documenti</SelectItem>
+                <SelectItem value="message">Messaggi</SelectItem>
+                <SelectItem value="announcement">Annunci</SelectItem>
+                <SelectItem value="system">Sistema</SelectItem>
+              </SelectContent>
+            </Select>
 
-                       <Select value={filterRead} onValueChange={setFilterRead}>
-                         <SelectTrigger className="w-full sm:w-48">
-                           <SelectValue placeholder="Stato lettura" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="unread">Non lette</SelectItem>
-                           <SelectItem value="read">Lette</SelectItem>
-                         </SelectContent>
-                       </Select>
+            <Select value={filterRead} onValueChange={setFilterRead}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Stato lettura" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unread">Non lette</SelectItem>
+                <SelectItem value="read">Lette</SelectItem>
+              </SelectContent>
+            </Select>
                      </>
                    )}
                    
@@ -498,49 +498,49 @@ const AdminNotificationsSection = () => {
           <>
             {activeTab === 'inbox' ? (
               // Rendering per messaggi ricevuti (inbox)
-              <>
-                {groupedNotifications.today.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Oggi</h3>
-                    <div className="space-y-3">
-                      {groupedNotifications.today.map((notification) => (
-                        <NotificationItem
-                          key={notification.id}
-                          notification={notification}
+          <>
+            {groupedNotifications.today.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Oggi</h3>
+                <div className="space-y-3">
+                  {groupedNotifications.today.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
                           onMarkAsRead={() => handleMarkAsRead(notification.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-                {groupedNotifications.yesterday.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Ieri</h3>
-                    <div className="space-y-3">
-                      {groupedNotifications.yesterday.map((notification) => (
-                        <NotificationItem
-                          key={notification.id}
-                          notification={notification}
+            {groupedNotifications.yesterday.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Ieri</h3>
+                <div className="space-y-3">
+                  {groupedNotifications.yesterday.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
                           onMarkAsRead={() => handleMarkAsRead(notification.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-                {groupedNotifications.older.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Precedenti</h3>
-                    <div className="space-y-3">
-                      {groupedNotifications.older.map((notification) => (
-                        <NotificationItem
-                          key={notification.id}
-                          notification={notification}
+            {groupedNotifications.older.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Precedenti</h3>
+                <div className="space-y-3">
+                  {groupedNotifications.older.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
                           onMarkAsRead={() => handleMarkAsRead(notification.id)}
-                        />
-                      ))}
-                    </div>
+                    />
+                  ))}
+                </div>
                   </div>
                 )}
               </>
@@ -614,7 +614,7 @@ const AdminNotificationsSection = () => {
                            )}
                          </>
                        )}
-                     </div>
+              </div>
             )}
           </>
         )}

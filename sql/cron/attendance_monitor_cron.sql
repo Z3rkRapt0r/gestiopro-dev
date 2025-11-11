@@ -28,6 +28,8 @@ DECLARE
     leave_count integer;
     attendance_count integer;
     alert_count integer;
+    v_supabase_url text;
+    v_service_role_key text;
 BEGIN
     -- Inizializza messaggio risultato
     result_message := '';
@@ -87,7 +89,9 @@ BEGIN
             -- Per ogni dipendente attivo
             FOR employee_record IN
                 SELECT p.id, p.first_name, p.last_name, p.email,
-                       ews.work_days, ews.start_time as emp_start_time,
+                       ews.start_time as emp_start_time,
+                       ews.work_monday, ews.work_tuesday, ews.work_wednesday, ews.work_thursday,
+                       ews.work_friday, ews.work_saturday, ews.work_sunday,
                        ws.monday, ws.tuesday, ws.wednesday, ws.thursday,
                        ws.friday, ws.saturday, ws.sunday,
                        ws.start_time as company_start_time
@@ -101,9 +105,17 @@ BEGIN
                 -- Determina se è un giorno lavorativo e orario previsto
                 is_working_day := false;
 
-                IF employee_record.work_days IS NOT NULL THEN
+                IF employee_record.emp_start_time IS NOT NULL THEN
                     -- Usa orario personalizzato del dipendente
-                    is_working_day := current_day_name = ANY(employee_record.work_days);
+                    CASE current_day_name
+                        WHEN 'monday' THEN is_working_day := COALESCE(employee_record.work_monday, false);
+                        WHEN 'tuesday' THEN is_working_day := COALESCE(employee_record.work_tuesday, false);
+                        WHEN 'wednesday' THEN is_working_day := COALESCE(employee_record.work_wednesday, false);
+                        WHEN 'thursday' THEN is_working_day := COALESCE(employee_record.work_thursday, false);
+                        WHEN 'friday' THEN is_working_day := COALESCE(employee_record.work_friday, false);
+                        WHEN 'saturday' THEN is_working_day := COALESCE(employee_record.work_saturday, false);
+                        WHEN 'sunday' THEN is_working_day := COALESCE(employee_record.work_sunday, false);
+                    END CASE;
                     expected_start_time := employee_record.emp_start_time;
                 ELSE
                     -- Usa orario aziendale
@@ -201,26 +213,38 @@ BEGIN
             alerts_created, pending_alerts;
 
         -- Se ci sono avvisi da inviare, chiama la Edge Function
-        IF alerts_created > 0 THEN
-            RAISE NOTICE '[Attendance Monitor Cron] Chiamata Edge Function attendance-monitor per % avvisi',
-                alerts_created;
+        IF pending_alerts > 0 THEN
+            RAISE NOTICE '[Attendance Monitor Cron] Chiamata Edge Function attendance-monitor per % avvisi pendenti',
+                pending_alerts;
 
             BEGIN
-                -- Chiama la nuova Edge Function
-                SELECT content INTO edge_response
-                FROM http((
-                    'POST',
-                    'https://nohufgceuqhkycsdffqj.supabase.co/functions/v1/attendance-monitor',
-                    ARRAY[
-                        http_header('Content-Type', 'application/json'),
-                        http_header('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vaHVmZ2NldXFoa3ljc2RmZnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTEyNzYsImV4cCI6MjA2NTQ2NzI3Nn0.oigK8ck7f_sBeXfJ8P1ySdqMHiVpXdjkoBSR4uMZgRQ')
-                    ],
-                    'application/json',
-                    '{}'
-                ));
+                -- Leggi configurazione Supabase dalla tabella app_config
+                SELECT project_ref, service_role_key
+                INTO v_supabase_url, v_service_role_key
+                FROM app_config
+                WHERE id = 1;
 
-                RAISE NOTICE '[Attendance Monitor Cron] Risposta Edge Function: %', edge_response;
-                edge_response := COALESCE(edge_response, 'Risposta vuota dalla Edge Function');
+                -- Verifica che la configurazione sia presente
+                IF v_supabase_url IS NULL OR v_service_role_key IS NULL THEN
+                    RAISE WARNING '[Attendance Monitor Cron] Configurazione Supabase mancante! Configura URL e Service Role Key nelle impostazioni admin.';
+                    edge_response := 'ERRORE: Configurazione Supabase non trovata. Vai in Impostazioni → Presenze & Monitoraggio → Configurazione Supabase.';
+                ELSE
+                    -- Chiama la Edge Function usando la configurazione dal database
+                    SELECT content INTO edge_response
+                    FROM http((
+                        'POST',
+                        v_supabase_url || '/functions/v1/attendance-monitor',
+                        ARRAY[
+                            http_header('Content-Type', 'application/json'),
+                            http_header('Authorization', 'Bearer ' || v_service_role_key)
+                        ],
+                        'application/json',
+                        '{}'
+                    ));
+
+                    RAISE NOTICE '[Attendance Monitor Cron] Risposta Edge Function: %', edge_response;
+                    edge_response := COALESCE(edge_response, 'Risposta vuota dalla Edge Function');
+                END IF;
 
             EXCEPTION WHEN OTHERS THEN
                 RAISE NOTICE '[Attendance Monitor Cron] Errore chiamata Edge Function: %', SQLERRM;

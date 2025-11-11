@@ -128,12 +128,13 @@ export const useAttendanceOperations = () => {
     });
 
     if (checkInTime > toleranceTime) {
-      const lateMinutes = Math.floor((checkInTime.getTime() - toleranceTime.getTime()) / (1000 * 60));
-      console.log(`🚨 Ritardo rilevato: ${lateMinutes} minuti`);
+      // Calcola il ritardo rispetto all'orario previsto (NON rispetto alla tolleranza)
+      const lateMinutes = Math.floor((checkInTime.getTime() - expectedStartTime.getTime()) / (1000 * 60));
+      console.log(`🚨 Ritardo rilevato: ${lateMinutes} minuti (oltre la tolleranza di ${toleranceMinutes} minuti)`);
       return { isLate: true, lateMinutes };
     }
 
-    console.log('✅ Nessun ritardo rilevato');
+    console.log('✅ Nessun ritardo rilevato (entro la tolleranza)');
     return { isLate: false, lateMinutes: 0 };
   };
 
