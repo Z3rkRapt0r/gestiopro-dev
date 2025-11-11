@@ -225,15 +225,10 @@ serve(async (req) => {
 
     // Replace variables in subject and content with test data
     const finalSubject = replaceTemplateVariables(subject, testData);
+    // IMPORTANTE: Usa sempre il contenuto passato dal dialog (quello che l'utente sta modificando)
+    // NON usare il contenuto dal database perché vogliamo testare le modifiche in tempo reale
     let finalContent = replaceTemplateVariables(content, testData);
-
-    // If template has content in database, use that instead (with variables replaced)
-    if (template.content && template.content.trim()) {
-      finalContent = replaceTemplateVariables(template.content, testData);
-      console.log("[Test Email] Using template content from database");
-    } else {
-      console.log("[Test Email] Using provided content parameter");
-    }
+    console.log("[Test Email] Using provided content parameter from editor");
 
     console.log("[Test Email] Building HTML content with buildHtmlContent");
     console.log("[Test Email] Template settings:", {
