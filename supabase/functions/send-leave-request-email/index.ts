@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import { buildHtmlContent, buildAttachmentSection } from './mailTemplates.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,19 +28,19 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const payload: LeaveRequestEmailPayload = await req.json();
     console.log('[Leave Request Email] Received payload:', payload);
 
-    const { 
-      recipientId, 
-      employeeName, 
-      leaveType, 
-      leaveDetails, 
-      adminNote, 
-      isApproval = false, 
+    const {
+      recipientId,
+      employeeName,
+      leaveType,
+      leaveDetails,
+      adminNote,
+      isApproval = false,
       isRejection = false,
       employeeNote
     } = payload;
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
     // Get sender settings and Resend API key from admin_settings table
     const { data: adminSettings, error: adminError } = await supabase
       .from('admin_settings')
-      .select('admin_id, sender_name, sender_email, resend_api_key')
+      .select('admin_id, sender_name, sender_email, resend_api_key, global_logo_url, global_logo_alignment, global_logo_size')
       .single();
 
     if (adminError || !adminSettings) {
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
 
     // Determine recipients
     let recipients: string[] = [];
-    
+
     if (recipientId) {
       // Send to specific user (for approvals/rejections)
       const { data: userProfile, error: userError } = await supabase
@@ -104,7 +105,7 @@ Deno.serve(async (req) => {
     // Determine template type and category based on email type
     let templateType: string;
     let templateCategory: string;
-    
+
     if (isApproval) {
       templateType = `${leaveType}-approvazione`;
       templateCategory = 'dipendenti'; // Send to employee
@@ -131,42 +132,127 @@ Deno.serve(async (req) => {
       throw templateError;
     }
 
-    if (!emailTemplate) {
-      console.error(`[Leave Request Email] No template found for ${templateType}/${templateCategory}`);
-      return new Response(
-        JSON.stringify({ error: `Email template not found: ${templateType}/${templateCategory}` }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Template data handling - prioritize database template or use minimal fallback
+    let templateData;
+    if (emailTemplate) {
+      templateData = emailTemplate;
+      console.log("[Leave Request Email] Using custom template from database");
+    } else {
+      // Minimal fallback template with basic styling only
+      templateData = {
+        primary_color: '#007bff',
+        secondary_color: '#6c757d',
+        background_color: '#ffffff',
+        text_color: '#333333',
+        logo_alignment: 'center',
+        logo_size: 'medium',
+        footer_text: '© A.L.M Infissi - Sistema di Gestione Aziendale',
+        footer_color: '#888888',
+        header_alignment: 'center',
+        body_alignment: 'left',
+        font_family: 'Arial, sans-serif',
+        font_size: 'medium',
+        button_color: '#007bff',
+        button_text_color: '#ffffff',
+        border_radius: '6px',
+        show_leave_details: true,
+        show_admin_notes: true,
+        admin_notes_bg_color: '#f8f9fa',
+        admin_notes_text_color: '#495057',
+        leave_details_bg_color: '#e3f2fd',
+        leave_details_text_color: '#1565c0',
+        subject: `Richiesta ${leaveType}`,
+        content: `Richiesta ${leaveType} da {employeeName}`
+      };
+      console.log("[Leave Request Email] No custom template found, using minimal fallback styling");
     }
 
-    console.log("[Leave Request Email] Using template:", emailTemplate.name);
+    // Use global logo settings if available, otherwise fallback to template or default
+    let logoUrl = adminSettings.global_logo_url;
+    let logoAlignment = adminSettings.global_logo_alignment || templateData.logo_alignment || 'center';
+    let logoSize = adminSettings.global_logo_size || templateData.logo_size || 'medium';
 
-    // Replace template variables with safe fallbacks
+    if (!logoUrl) {
+      logoUrl = templateData.logo_url;
+      if (!logoUrl) {
+        const { data: logoData } = await supabase.storage
+          .from('company-assets')
+          .getPublicUrl(`${adminSettings.admin_id}/email-logo.png?v=${Date.now()}`);
+        logoUrl = logoData?.publicUrl;
+      }
+    }
+
+    console.log("[Leave Request Email] Using logoUrl:", logoUrl);
+
+    // Prepare safe values
     const safeEmployeeName = employeeName || 'Dipendente';
     const safeLeaveDetails = leaveDetails || 'Nessun dettaglio disponibile';
     const safeEmployeeNote = employeeNote || '';
     const safeAdminNote = adminNote || '';
-    const safeFooterText = emailTemplate.footer_text || '© A.L.M Infissi - Sistema di Gestione Aziendale';
-    
-    let subject = emailTemplate.subject
-      .replace(/\{employeeName\}/g, safeEmployeeName);
-    
-    let htmlContent = emailTemplate.content
+
+    // Build subject
+    let subject = templateData.subject || `Richiesta ${leaveType}`;
+    subject = subject.replace(/\{employeeName\}/g, safeEmployeeName);
+
+    // Build content
+    let content = templateData.content || `Hai ricevuto una richiesta di ${leaveType} da {employeeName}`;
+    content = content
       .replace(/\{employeeName\}/g, safeEmployeeName)
       .replace(/\{leaveDetails\}/g, safeLeaveDetails)
       .replace(/\{employeeNote\}/g, safeEmployeeNote)
-      .replace(/\{adminNote\}/g, safeAdminNote)
-      .replace(/\{footerText\}/g, safeFooterText);
+      .replace(/\{adminNote\}/g, safeAdminNote);
 
-    // Apply template styling
-    htmlContent = htmlContent
-      .replace(/\{primaryColor\}/g, emailTemplate.primary_color || '#007bff')
-      .replace(/\{secondaryColor\}/g, emailTemplate.secondary_color || '#6c757d')
-      .replace(/\{backgroundColor\}/g, emailTemplate.background_color || '#ffffff')
-      .replace(/\{textColor\}/g, emailTemplate.text_color || '#333333')
-      .replace(/\{footerColor\}/g, emailTemplate.footer_color || '#888888')
-      .replace(/\{fontFamily\}/g, emailTemplate.font_family || 'Arial, sans-serif');
+    console.log('[Leave Request Email] Building HTML content with buildHtmlContent');
 
+    // Build HTML using buildHtmlContent for consistent styling
+    const isLeaveRequest = !isApproval && !isRejection;
+    const isLeaveResponse = isApproval || isRejection;
+
+    // Build attachment section (empty for leave requests)
+    const attachmentSection = buildAttachmentSection(null, templateData.primary_color || '#007bff');
+
+    const htmlContent = buildHtmlContent({
+      subject,
+      shortText: content,
+      logoUrl: logoUrl || '',
+      attachmentSection,
+      senderEmail,
+      isDocumentEmail: false,
+      templateType,
+      primaryColor: templateData.primary_color || '#007bff',
+      backgroundColor: templateData.background_color || '#ffffff',
+      textColor: templateData.text_color || '#333333',
+      logoAlignment,
+      footerText: templateData.footer_text || '© A.L.M Infissi - Sistema di Gestione Aziendale',
+      footerColor: templateData.footer_color || '#888888',
+      fontFamily: templateData.font_family || 'Arial, sans-serif',
+      logoSize,
+      headerAlignment: templateData.header_alignment || 'center',
+      bodyAlignment: templateData.body_alignment || 'left',
+      fontSize: templateData.font_size || 'medium',
+      showLeaveDetails: templateData.show_leave_details !== false,
+      showAdminNotes: templateData.show_admin_notes !== false && isLeaveResponse,
+      leaveDetails: isLeaveRequest || isLeaveResponse ? safeLeaveDetails : '',
+      adminNotes: isLeaveResponse ? safeAdminNote : '',
+      employeeNotes: isLeaveRequest ? safeEmployeeNote : '',
+      leaveDetailsBgColor: templateData.leave_details_bg_color || '#e3f2fd',
+      leaveDetailsTextColor: templateData.leave_details_text_color || '#1565c0',
+      adminNotesBgColor: templateData.admin_notes_bg_color || '#f8f9fa',
+      adminNotesTextColor: templateData.admin_notes_text_color || '#495057',
+      showCustomBlock: templateData.show_custom_block || false,
+      customBlockText: templateData.custom_block_text || '',
+      customBlockBgColor: templateData.custom_block_bg_color || '#fff3cd',
+      customBlockTextColor: templateData.custom_block_text_color || '#856404',
+      dynamicSubject: subject,
+      dynamicContent: content,
+      recipientName: safeEmployeeName,
+      showAdminMessage: false,
+      adminMessage: '',
+      adminMessageBgColor: templateData.admin_message_bg_color || '#e3f2fd',
+      adminMessageTextColor: templateData.admin_message_text_color || '#1565c0',
+    });
+
+    console.log('[Leave Request Email] HTML content generated, length:', htmlContent?.length || 0);
     console.log('[Leave Request Email] Prepared email:', { subject, recipientCount: recipients.length });
 
     // Add delay to respect Resend rate limit (2 requests per second)
@@ -204,10 +290,10 @@ Deno.serve(async (req) => {
     console.log('[Leave Request Email] Email sent successfully:', emailResponse);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         data: emailResponse,
-        recipients: recipients.length 
+        recipients: recipients.length
       }),
       {
         status: 200,
@@ -218,9 +304,9 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('[Leave Request Email] Error:', error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message 
+      JSON.stringify({
+        success: false,
+        error: error.message
       }),
       {
         status: 500,
