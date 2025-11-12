@@ -50,7 +50,7 @@ BEGIN
                         'firstName', COALESCE(NEW.first_name, ''),
                         'lastName', COALESCE(NEW.last_name, '')
                     )::text
-                ))::http_response;
+                ));
 
                 RAISE NOTICE 'Email benvenuto dipendente inviata: %', v_response;
             EXCEPTION WHEN OTHERS THEN
@@ -138,7 +138,7 @@ BEGIN
                         'isApproval', false,
                         'isRejection', false
                     )::text
-                ))::http_response;
+                ));
 
                 RAISE NOTICE 'Email richiesta ferie inviata: %', v_response;
             EXCEPTION WHEN OTHERS THEN
@@ -232,7 +232,7 @@ BEGIN
                         'isApproval', v_is_approval,
                         'isRejection', v_is_rejection
                     )::text
-                ))::http_response;
+                ));
 
                 RAISE NOTICE 'Email cambio status ferie inviata: %', v_response;
             EXCEPTION WHEN OTHERS THEN
